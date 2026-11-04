@@ -40,6 +40,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -252,6 +253,12 @@ private fun BoxScope.SheetBody(
             .graphicsLayer { translationY = y.floatValue * density.density }
             .boxShadow(sheetShape, listOf(BoxShadow(y = -24f, blur = 60f, color = Color.Black.copy(alpha = if (c.isDark) 0.5f else 0.22f))))
             .background(c.surfaceSecondary, sheetShape)
+            // A skirt of sheet surface below the bottom edge: the elastic drag and a fast fling's
+            // spring can carry the sheet above its expanded snap, which would otherwise lift its
+            // bottom off the screen edge and show the map through the gap.
+            .drawBehind {
+                drawRect(c.surfaceSecondary, topLeft = Offset(0f, size.height - 1f), size = Size(size.width, size.height))
+            }
             .topBorder(if (c.isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.1f), 28f)
             .pointerInput(Unit) {
                 val px = density.density
