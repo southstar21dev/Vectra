@@ -23,6 +23,15 @@
       },
       "versions": [
         {
+          "version": "1.2.0",
+          "buildVersion": "1020099",
+          "date": "2026-11-04T17:22:43Z",
+          "localizedDescription": "1.2.0\n\n## [1.2.0](https://github.com/southstar21dev/Vectra/compare/v1.1.0...v1.2.0) (2026-11-04)\n\n### Features\n\n* **ios:** native Liquid Glass tab bar and mode switcher ([eb8827f](https://github.com/southstar21dev/Vectra/commit/eb8827f63cf031cfa13d48f815733103d36fb0ef))\n\n### Bug Fixes\n\n* drop milliseconds from AltStore source dates so SideStore can parse them ([245fc64](https://github.com/southstar21dev/Vectra/commit/245fc64b5329b2466fff2013095e5ac2ba55221c))\n* **ios:** pick the platform tab bar with an expect val, not a CompositionLocal ([0b1c208](https://github.com/southstar21dev/Vectra/commit/0b1c208d05350ddd02d10453f561efe3a4ed32a6))",
+          "downloadURL": "https://github.com/southstar21dev/Vectra/releases/download/v1.2.0/Vectra-1.2.0.ipa",
+          "size": 25046716,
+          "minOSVersion": "18.5"
+        },
+        {
           "version": "1.1.0",
           "buildVersion": "1010099",
           "date": "2026-11-03T23:57:37Z",
