@@ -83,9 +83,9 @@ fun LiquidTabs(
     backdrop: Backdrop,
     accent: Color,
     container: Color,
+    modifier: Modifier = Modifier,
     /** The resting fill of the selection drop. */
     selection: Color = accent.copy(alpha = 0.25f),
-    modifier: Modifier = Modifier,
     height: Dp = 64.dp,
     frosted: Boolean = false,
     /** The drop crossed onto another item: a detent, for a haptic tick. */
