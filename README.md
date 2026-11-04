@@ -10,7 +10,8 @@ Classes from Neptun with your breaks worked out, live departures and vehicles ar
 attendance you can actually keep track of. Built for students at Corvinus in Budapest.
 
 [![Release](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml)
-[![Latest release](https://img.shields.io/github/v/release/southstar21dev/Vectra?sort=semver&label=release&color=8B5CF6)](https://github.com/southstar21dev/Vectra/releases/latest)
+[![Native version](https://img.shields.io/github/v/release/southstar21dev/Vectra?sort=semver&label=native&color=8B5CF6)](https://github.com/southstar21dev/Vectra/releases/latest)
+[![Web version](https://img.shields.io/github/package-json/v/southstar21dev/Vectra/master?filename=web%2Fpackage.json&label=web&color=8B5CF6)](web)
 ![Android 8+](https://img.shields.io/badge/Android-8%2B-8B5CF6?logo=android&logoColor=white)
 ![iOS 18.5+](https://img.shields.io/badge/iOS-18.5%2B-8B5CF6?logo=apple&logoColor=white)
 ![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin%20Multiplatform-2.4-8B5CF6?logo=kotlin&logoColor=white)
@@ -18,6 +19,7 @@ attendance you can actually keep track of. Built for students at Corvinus in Bud
 
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/southstar21dev/Vectra"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="64" alt="Get it on Obtainium" /></a>
 <a href="https://github.com/southstar21dev/Vectra/releases/latest"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" height="64" alt="Get it on GitHub" /></a>
+<a href="https://southstar21dev.github.io/Vectra/"><img src=".github/readme/badge-altstore.png" height="64" alt="Get it on AltStore" /></a>
 
 <br />
 
@@ -128,7 +130,9 @@ Requires Android 8 or newer.
 ### iPhone
 
 Vectra installs through [AltStore](https://altstore.io), which signs it with your own Apple ID.
-In AltStore, go to **Browse → Sources → +** and add:
+On your iPhone, tap the **Get it on AltStore** badge above (or open
+[southstar21dev.github.io/Vectra](https://southstar21dev.github.io/Vectra/)) to add the source. Or, in
+AltStore, go to **Browse → Sources → +** and add:
 
 ```
 https://raw.githubusercontent.com/southstar21dev/Vectra/altstore/stable.json
@@ -140,7 +144,8 @@ in AltStore or SideStore.
 ### Betas
 
 Pre-releases are built from the `dev` (`-dev.N`) and `staging` (`-rc.N`) branches. On Android,
-enable *Include prereleases* in Obtainium. On iPhone, add the beta source instead:
+enable *Include prereleases* in Obtainium. On iPhone, add the beta source instead (or tap
+[*Add the beta source*](https://southstar21dev.github.io/Vectra/#beta) on the install page):
 
 ```
 https://raw.githubusercontent.com/southstar21dev/Vectra/altstore/beta.json
