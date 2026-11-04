@@ -1,12 +1,10 @@
 package dev.southstar21.vectra.platform
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.ComposeUIViewController
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.VectraApp
 import dev.southstar21.vectra.core.config.VectraConfig
 import dev.southstar21.vectra.core.platform.NoPush
-import dev.southstar21.vectra.features.navbar.LocalSystemNavbar
 import dev.zacsweers.metro.createGraphFactory
 import platform.UIKit.UIViewController
 import kotlin.experimental.ExperimentalNativeApi
@@ -45,7 +43,4 @@ object IosApp {
 
 /** The whole app, hosted by iosApp's SwiftUI scene. */
 @Suppress("FunctionName", "unused")
-fun MainViewController(): UIViewController = ComposeUIViewController {
-    // The tab bar is the system's (iosApp's TabBarHost), not the Compose Liquid Glass one.
-    CompositionLocalProvider(LocalSystemNavbar provides IosTabBar) { VectraApp(IosApp.graph) }
-}
+fun MainViewController(): UIViewController = ComposeUIViewController { VectraApp(IosApp.graph) }

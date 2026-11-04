@@ -1,7 +1,5 @@
 package dev.southstar21.vectra.features.navbar
 
-import androidx.compose.runtime.staticCompositionLocalOf
-
 /** One + action as the platform bar shows it (labels only; the platform picks its own icons by [id]). */
 data class SystemNavbarAction(val id: String, val label: String, val disabled: Boolean)
 
@@ -19,8 +17,7 @@ data class SystemNavbarState(
 
 /**
  * A tab bar drawn by the platform in place of [LiquidNavbar] (iOS: the system UITabBarController,
- * so the bar is the real Liquid Glass one). Provided through [LocalSystemNavbar]; null means the
- * Compose navbar draws.
+ * so the bar is the real Liquid Glass one). See [platformNavbar].
  */
 interface SystemNavbar {
     fun update(state: SystemNavbarState)
@@ -35,4 +32,5 @@ interface SystemNavbar {
     var onAction: ((String) -> Unit)?
 }
 
-val LocalSystemNavbar = staticCompositionLocalOf<SystemNavbar?> { null }
+/** The platform tab bar, or null where the Compose [LiquidNavbar] draws (Android). */
+expect val platformNavbar: SystemNavbar?

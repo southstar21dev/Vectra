@@ -51,7 +51,7 @@ import dev.southstar21.vectra.core.designsystem.components.navFadeBrush
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.features.navbar.LiquidNavbar
-import dev.southstar21.vectra.features.navbar.LocalSystemNavbar
+import dev.southstar21.vectra.features.navbar.platformNavbar
 import dev.southstar21.vectra.features.navbar.LocalNavbarActions
 import dev.southstar21.vectra.features.navbar.NavbarActions
 import dev.southstar21.vectra.navigation.AppNavigator
@@ -157,7 +157,7 @@ private fun TabShell(
     val shell = remember { ShellState() }
     val navbarActions = remember { NavbarActions() }
     // A platform bar (iOS's system tab bar) draws its own glass: no page backdrop to record.
-    val systemNavbar = LocalSystemNavbar.current
+    val systemNavbar = platformNavbar
     val backdrop = rememberLayerBackdrop()
 
     CompositionLocalProvider(LocalShellState provides shell, LocalNavbarActions provides navbarActions) {
