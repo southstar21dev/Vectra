@@ -36,13 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -56,7 +53,6 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
@@ -79,12 +75,12 @@ import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 
 /** Height the dock and its + button share; pages clear it (ShellState). */
-internal val DockHeight = 64.dp
+internal val DockHeight = 62.dp
 
 /**
  * The Kaloria dock: a Liquid Glass tab bar whose selection is itself a drop of glass you can press
  * and drag between tabs (it magnifies the tab beneath with a little chromatic aberration and
- * squashes with speed), plus a separate accent-tinted glass + on pages that have actions. The
+ * squashes with speed), plus a separate plain glass + (like the iOS search tab) on pages that have actions. The
  * actions pop out of the + as one glass panel.
  */
 @Composable
@@ -105,7 +101,9 @@ fun LiquidNavbar(
     if (!hasAction && menuOpen) menuOpen = false
     VBackHandler(enabled = menuOpen) { menuOpen = false }
     val frosted = !isRenderEffectSupported()
-    val safeBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // Like iOS: the bar floats just above the screen edge, over the gesture handle, but clear of
+    // 3-button navigation.
+    val safeBottom = (WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() - 4.dp).coerceAtLeast(12.dp)
 
     Box(modifier.fillMaxSize()) {
         AnimatedVisibility(menuOpen, Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(160))) {
@@ -120,7 +118,7 @@ fun LiquidNavbar(
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 16.dp, end = 16.dp, bottom = safeBottom + 12.dp)
+                .padding(start = 20.dp, end = 20.dp, bottom = safeBottom)
                 .widthIn(max = 460.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -139,15 +137,18 @@ fun LiquidNavbar(
                     onCross = { haptics.frequentTick() },
                     backdrop = backdrop,
                     accent = c.accentPrimary,
-                    container = if (frosted) c.glassBg.copy(alpha = (c.glassBg.alpha * 1.8f).coerceAtMost(1f)) else c.surfacePrimary.copy(alpha = 0.54f),
+                    // iOS selects with a neutral grey pill; only the item itself takes the accent.
+                    selection = if (c.isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f),
+                    container = dockMaterial(),
                     modifier = Modifier.weight(1f),
                     height = DockHeight,
                     frosted = frosted,
                 ) { index, tinted ->
                     val item = items[index]
                     val ink = if (tinted) c.accentPrimary else c.textPrimary
-                    // Icons only; the label stays for screen readers.
-                    VIcon(if (tinted) item.activeIcon else item.icon, size = 26.dp, tint = ink, contentDescription = item.label)
+                    // As in the iOS tab bar: filled glyphs with the title beneath.
+                    VIcon(item.activeIcon, size = 25.dp, tint = ink, contentDescription = null)
+                    VText(item.label, style = vtext(TypeScale.Micro, Weight.Semibold), color = ink, maxLines = 1)
                 }
                 // The + only exists on pages with actions; it grows out beside the bar.
                 AnimatedVisibility(
@@ -222,26 +223,37 @@ private fun AddButton(open: Boolean, icon: ImageVector, backdrop: Backdrop, onCl
     Box(
         Modifier
             .size(DockHeight)
-            .dockGlass(Capsule(), backdrop, GlassThickness.Control, highlight, tint = Vectra.colors.accentPrimary)
+            .dockGlass(Capsule(), backdrop, GlassThickness.Control, highlight)
             .tappable(Capsule(), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = if (open) "Close page actions" else "Page actions" },
         contentAlignment = Alignment.Center,
     ) {
-        VIcon(icon, Modifier.rotate(rotation), size = 30.dp, tint = Color.White)
+        VIcon(icon, Modifier.rotate(rotation), size = 26.dp, tint = Vectra.colors.textPrimary)
+    }
+}
+
+/** The fill of the bar, the + and the menu: iOS's tab bar material, a translucent grey. */
+@Composable
+private fun dockMaterial(): Color {
+    val c = Vectra.colors
+    return when {
+        !isRenderEffectSupported() -> c.glassBg.copy(alpha = (c.glassBg.alpha * 1.8f).coerceAtMost(1f))
+        c.isDark -> Color(0xFF1C1C1E).copy(alpha = 0.7f)
+        else -> Color.White.copy(alpha = 0.7f)
     }
 }
 
 /** How thick the material is. Bigger glass bends more and scatters light more softly. */
-private enum class GlassThickness(val blur: Dp, val refractionHeight: Dp, val refractionAmount: Dp, val surfaceLight: Float, val surfaceDark: Float, val shadowRadius: Dp) {
+private enum class GlassThickness(val blur: Dp, val refractionHeight: Dp, val refractionAmount: Dp, val shadowRadius: Dp) {
     /** Floating bars and panels, matching the dock. */
-    Bar(2.dp, 24.dp, 34.dp, 0.30f, 0.30f, 24.dp),
+    Bar(10.dp, 20.dp, 28.dp, 24.dp),
 
     /** Small controls: the + button. */
-    Control(2.dp, 14.dp, 28.dp, 0.26f, 0.32f, 16.dp),
+    Control(10.dp, 14.dp, 20.dp, 16.dp),
 }
 
 /**
- * Kaloria's Liquid Glass: lensing, a specular rim, an adaptive tint and, with [interaction],
+ * The bar's glass for the + and its menu (same material, blur, rim and shadow) and, with [interaction],
  * a gel-like swell that leans toward the finger and glows from it while pressed.
  */
 @Composable
@@ -250,16 +262,10 @@ private fun Modifier.dockGlass(
     backdrop: Backdrop,
     thickness: GlassThickness,
     interaction: InteractiveHighlight? = null,
-    tint: Color = Color.Unspecified,
 ): Modifier {
-    val c = Vectra.colors
     val frosted = !isRenderEffectSupported()
-    val dark = c.isDark
-    val surface = if (frosted) c.glassBg else c.surfacePrimary.copy(alpha = if (dark) thickness.surfaceDark else thickness.surfaceLight)
-    val rim = Color.White.copy(alpha = if (dark) 0.55f else 0.85f)
-    val shadowColor = Color.Black.copy(alpha = if (dark) 0.32f else 0.10f)
-    // Light falls from above: a faint sheen across the top of the material gives it thickness.
-    val sheen = if (frosted) Color.Transparent else Color.White.copy(alpha = if (dark) 0.07f else 0.16f)
+    val surface = dockMaterial()
+    val shadowColor = Color.Black.copy(alpha = 0.10f)
     return this
         .drawBackdrop(
             backdrop = backdrop,
@@ -271,7 +277,8 @@ private fun Modifier.dockGlass(
                     lens(thickness.refractionHeight.toPx(), thickness.refractionAmount.toPx())
                 }
             },
-            highlight = { Highlight(width = 0.75.dp, alpha = if (frosted) 0.4f else 1f, style = HighlightStyle.Default(color = rim, angle = 45f)) },
+            // A faint rim: iOS glass barely catches the light at its edge.
+            highlight = { Highlight.Default.copy(alpha = 0.3f) },
             shadow = { Shadow(radius = thickness.shadowRadius, color = shadowColor) },
             layerBlock = interaction?.let { ih ->
                 {
@@ -284,18 +291,7 @@ private fun Modifier.dockGlass(
                     translationY = max * tanh(0.04f * ih.offset.y / max)
                 }
             },
-            onDrawSurface = {
-                if (tint.isSpecified) {
-                    // Tinted glass, for the primary action only: the hue maps onto what's behind.
-                    drawRect(tint, blendMode = BlendMode.Hue)
-                    drawRect(tint.copy(alpha = 0.78f))
-                } else {
-                    drawRect(surface)
-                }
-                if (sheen.alpha > 0f) {
-                    drawRect(Brush.verticalGradient(0f to sheen, 0.45f to Color.Transparent, endY = size.height.coerceAtMost(96.dp.toPx())))
-                }
-            },
+            onDrawSurface = { drawRect(surface) },
         )
         .then(interaction?.let { it.modifier.then(it.gestureModifier) } ?: Modifier)
 }
