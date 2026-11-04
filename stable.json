@@ -23,6 +23,15 @@
       },
       "versions": [
         {
+          "version": "1.2.1",
+          "buildVersion": "1020199",
+          "date": "2026-11-04T20:12:22Z",
+          "localizedDescription": "1.2.1\n\n## [1.2.1](https://github.com/southstar21dev/Vectra/compare/v1.2.0...v1.2.1) (2026-11-04)\n\n### Bug Fixes\n\n* **native:** fill the gap under the nearby sheet when it overshoots its top snap ([e0c5f33](https://github.com/southstar21dev/Vectra/commit/e0c5f33948df65bbe0226ebbe90c7dd0d3c9fe10))\n* **native:** stop the white flash on a map's first touch ([d5ba4aa](https://github.com/southstar21dev/Vectra/commit/d5ba4aaa029c255cc81cd0b6230b39a190228451))",
+          "downloadURL": "https://github.com/southstar21dev/Vectra/releases/download/v1.2.1/Vectra-1.2.1.ipa",
+          "size": 25049299,
+          "minOSVersion": "18.5"
+        },
+        {
           "version": "1.2.0",
           "buildVersion": "1020099",
           "date": "2026-11-04T17:22:43Z",
