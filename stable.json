@@ -23,6 +23,15 @@
       },
       "versions": [
         {
+          "version": "1.3.0",
+          "buildVersion": "1030099",
+          "date": "2026-11-04T21:36:36Z",
+          "localizedDescription": "1.3.0\n\n## [1.3.0](https://github.com/southstar21dev/Vectra/compare/v1.2.1...v1.3.0) (2026-11-04)\n\n### Features\n\n* **android:** match the navbar to the iOS Liquid Glass tab bar ([e063082](https://github.com/southstar21dev/Vectra/commit/e0630827badf5640c4e281bed7b150cf348bb654))\n\n### Bug Fixes\n\n* **android:** order the LiquidTabs parameters for detekt ([895c5c8](https://github.com/southstar21dev/Vectra/commit/895c5c85362be66861a169a6f5543c4d8ef62ff4))",
+          "downloadURL": "https://github.com/southstar21dev/Vectra/releases/download/v1.3.0/Vectra-1.3.0.ipa",
+          "size": 25048021,
+          "minOSVersion": "18.5"
+        },
+        {
           "version": "1.2.1",
           "buildVersion": "1020199",
           "date": "2026-11-04T20:12:22Z",
