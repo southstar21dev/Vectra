@@ -6,6 +6,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.LocalMapLifecycleOwner
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.LocalIndication
+import dev.southstar21.vectra.core.designsystem.theme.NoIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -208,14 +210,24 @@ fun TransitMap(
     }
     Box(modifier.background(c.mapSurface)) {
         if (styleJson != null && mounted) {
-            CompositionLocalProvider(LocalLifecycleOwner provides (LocalMapLifecycleOwner.current ?: LocalLifecycleOwner.current)) {
+            // The map's input layer focuses and reports a press on the first touch, and the app's
+            // press highlight would draw that as a wash over the whole map. Markers on top get the
+            // page's indication back.
+            val pageIndication = LocalIndication.current
+            CompositionLocalProvider(
+                LocalLifecycleOwner provides (LocalMapLifecycleOwner.current ?: LocalLifecycleOwner.current),
+                LocalIndication provides NoIndication,
+            ) {
                 MaplibreMap(
                     modifier = Modifier.fillMaxSize(),
                     state = state,
                     cameraConstraints = constraints,
                     interactions = interactions,
                     uiOptions = ui,
-                    overlay = overlay,
+                    overlay = {
+                        val scope = this
+                        CompositionLocalProvider(LocalIndication provides pageIndication) { scope.overlay() }
+                    },
                 )
             }
         }

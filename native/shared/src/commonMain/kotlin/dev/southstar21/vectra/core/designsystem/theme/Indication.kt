@@ -16,6 +16,16 @@ import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
 
 /**
+ * No indication at all. For surfaces that report presses for their own reasons, like the map's
+ * input layer, where the app's [PressHighlight] would wash the whole map on the first touch.
+ */
+object NoIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = object : Modifier.Node() {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+/**
  * Press highlight: a tint over the pressed element in its own [shape], so it never spills
  * past rounded corners. It appears immediately and fades out on release, which is what
  * makes a tap feel acknowledged under the finger.
