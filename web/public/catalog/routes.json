@@ -5208,6 +5208,14 @@
     "textColor": "000000"
   },
   {
+    "id": "BKK_HP615",
+    "shortName": "H9",
+    "description": "Cinkota H | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
     "id": "BKK_H9",
     "shortName": "H9",
     "description": "Csömör | Örs vezér tere",
