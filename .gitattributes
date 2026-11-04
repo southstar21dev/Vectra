@@ -1,0 +1,4 @@
+# Generated BKK catalog — collapse these in diffs and exclude from language stats.
+web/public/catalog/routes.json linguist-generated=true
+web/public/catalog/stops.json linguist-generated=true
+web/public/catalog/route-variants.json linguist-generated=true

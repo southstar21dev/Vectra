@@ -1,0 +1,6 @@
+# Build-local state: the compiled binary and the PocketBase data directory
+# (SQLite DB, uploads, backups) never go into the image.
+pb
+pb_data
+.env
+.env.*

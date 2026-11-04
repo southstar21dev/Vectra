@@ -1,0 +1,89 @@
+# The Xcode project is generated from this file: `cd native/iosApp && xcodegen`.
+# Edit this, not iosApp.xcodeproj.
+name: iosApp
+options:
+  bundleIdPrefix: dev.southstar21
+  deploymentTarget:
+    iOS: "18.5"  # Compose Multiplatform's bundled ICU is built for 18.5
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # The Gradle phase reads the repo and writes the framework outside the sandbox's declared outputs.
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    # xcodegen writes Info.plist and the entitlements from these; edit here, not the generated files.
+    info:
+      path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: Vectra
+        # Macros from the "Version from Gradle" phase (Info.plist is preprocessed).
+        CFBundleShortVersionString: VECTRA_VERSION_NAME
+        CFBundleVersion: VECTRA_VERSION_CODE
+        CADisableMinimumFrameDurationOnPhone: true
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        NSLocationWhenInUseUsageDescription: Vectra uses your location to find nearby stops and departures and to show local weather.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    entitlements:
+      path: iosApp/iosApp.entitlements
+      properties:
+        # Passkeys: the domain must serve apple-app-site-association listing
+        # <TeamID>.dev.southstar21.vectra under webcredentials (docs/BACKEND_CHANGES.md).
+        com.apple.developer.associated-domains: ["webcredentials:vectra.southstar21.dev"]
+    settings:
+      base:
+        PRODUCT_NAME: Vectra
+        PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The version comes from gradle.properties' vectra.versionName, like androidApp's.
+        INFOPLIST_PREPROCESS: YES
+        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
+        # Set your team for device builds (passkeys need it for the associated domain).
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+        # shared targets iosArm64 + iosSimulatorArm64 only (MapLibre ships no x64 simulator build).
+        "ARCHS[sdk=iphonesimulator*]": arm64
+        # The shared Kotlin framework (static), built by the Gradle phase below.
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared", "-lsqlite3", "-lc++"]
+    preBuildScripts:
+      - name: Version from Gradle
+        basedOnDependencyAnalysis: false
+        shell: /bin/sh
+        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
+        script: |
+          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
+          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
+          set -e
+          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
+          NAME=${FULL%%-*}
+          CODE=$(echo "$FULL" | awk -F'[.-]' '{
+            b = 99
+            if ($4 == "dev") b = ($5 > 49 ? 49 : $5)
+            if ($4 == "rc") b = 50 + ($5 > 48 ? 48 : $5)
+            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
+          }')
+          mkdir -p "$DERIVED_FILE_DIR"
+          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"
+      - name: Compile Kotlin framework
+        basedOnDependencyAnalysis: false
+        shell: /bin/sh
+        script: |
+          if [ "YES" = "$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED" ]; then
+            echo "Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \"YES\""
+            exit 0
+          fi
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode

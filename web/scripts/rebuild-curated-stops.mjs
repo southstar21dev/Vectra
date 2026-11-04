@@ -1,0 +1,126 @@
+/**
+ * Regenerate src/features/transit/curated-stops.ts from the current catalog.
+ *
+ * Stop-area ids in the BKK feed get renamed over time (e.g. the area formerly
+ * labelled "Corvin-negyed" now resolves to "Kálvin tér"), so the quick-pick
+ * groups are re-resolved against public/catalog/stops.json (built today by
+ * build-catalog.mjs). An id is kept only when the catalog still maps it to the
+ * same name; otherwise the current area for that name is used.
+ *
+ * Also seeds a curated POPULAR group (major interchanges + the two legacy
+ * tram stops) for the Add Tracker quick picks.
+ *
+ * Usage:  node scripts/rebuild-curated-stops.mjs
+ */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const outDir = join(root, 'src/features/transit');
+
+const catalog = JSON.parse(readFileSync(join(root, 'public/catalog/stops.json'), 'utf8')).filter(
+  (s) => s.id.startsWith('BKK_CS')
+);
+
+const norm = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const OLD = readFileSync(join(outDir, 'curated-stops.ts'), 'utf8');
+const oldIds = new Map(); // name -> old id
+const oldRe = /"id": "(BKK_CS[^"]+)",\s*"name": "([^"]+)"/g;
+let m;
+while ((m = oldRe.exec(OLD))) oldIds.set(norm(m[2]), m[1]);
+
+// Canonical station names per line, in station order (from the original script).
+const LINES = {
+  M1: ['Vörösmarty tér', 'Deák Ferenc tér', 'Bajcsy-Zsilinszky út', 'Opera', 'Oktogon', 'Vörösmarty utca', 'Kodály körönd', 'Bajza utca', 'Hősök tere', 'Széchenyi fürdő', 'Mexikói út'],
+  M2: ['Déli pályaudvar', 'Széll Kálmán tér', 'Batthyány tér', 'Kossuth Lajos tér', 'Deák Ferenc tér', 'Astoria', 'Blaha Lujza tér', 'Keleti pályaudvar', 'Puskás Ferenc Stadion', 'Pillangó utca', 'Örs vezér tere'],
+  M3: ['Kőbánya-Kispest', 'Határ út', 'Pöttyös utca', 'Ecseri út', 'Népliget', 'Nagyvárad tér', 'Semmelweis Klinikák', 'Corvin-negyed', 'Kálvin tér', 'Ferenciek tere', 'Arany János utca', 'Nyugati pályaudvar', 'Lehel tér', 'Dózsa György út', 'Árpád híd', 'Forgách utca', 'Gyöngyösi utca', 'Újpest-Városkapu', 'Újpest-központ'],
+  M4: ['Kelenföld vasútállomás', 'Bikás park', 'Újbuda-központ', 'Móricz Zsigmond körtér', 'Szent Gellért tér', 'Fővám tér', 'Kálvin tér', 'Rákóczi tér', 'II. János Pál pápa tér', 'Keleti pályaudvar'],
+};
+
+// Official current names that differ from the familiar ones.
+const OVERRIDES = {
+  'Árpád híd': 'Göncz Árpád városközpont',
+  'Szent Gellért tér': 'Szent Gellért tér - Műegyetem',
+  'Újpest-Városkapu': 'Újpest-városkapu',
+};
+
+// Major interchanges + the two legacy tram stops for the POPULAR group.
+const POPULAR = [
+  'Deák Ferenc tér',
+  'Keleti pályaudvar',
+  'Nyugati pályaudvar',
+  'Blaha Lujza tér',
+  'Astoria',
+  'Corvin-negyed',
+  'Kálvin tér',
+  'Móricz Zsigmond körtér',
+  'Széll Kálmán tér',
+  'Örs vezér tere',
+  'Kelenföld vasútállomás',
+  'Népliget',
+  'Hősök tere',
+  'Lehel tér',
+  'Batthyány tér',
+  'Margit híd, budai hídfő',
+  'Jászai Mari tér',
+  'Bécsi út / Vörösvári út',
+  'Teleki László tér',
+  'Hidegkuti Nándor Stadion',
+];
+
+function resolve(name) {
+  const target = norm(OVERRIDES[name] || name);
+  const matches = catalog.filter((s) => norm(s.name) === target);
+  const oldId = oldIds.get(norm(name));
+  if (oldId && matches.some((s) => s.id === oldId)) return { id: oldId, name: matches.find((s) => s.id === oldId).name, matched: true };
+  if (matches.length === 1) return { id: matches[0].id, name: matches[0].name, matched: true };
+  if (matches.length > 1) {
+    console.warn(`AMBIGUOUS "${name}" -> ${matches.map((s) => `${s.id} (${s.name})`).join(', ')}; keeping old id ${oldId || 'NONE'}`);
+  } else {
+    console.warn(`NOT FOUND "${name}"; keeping old id ${oldId || 'NONE'}`);
+  }
+  return oldId ? { id: oldId, name, matched: false } : { id: '', name, matched: false };
+}
+
+const curated = [];
+let changed = 0;
+for (const group of ['M1', 'M2', 'M3', 'M4']) {
+  for (const name of LINES[group]) {
+    const r = resolve(name);
+    if (!r.id) {
+      console.warn(`SKIPPING ${group} / ${name} — no id`);
+      continue;
+    }
+    if (oldIds.get(norm(name)) !== r.id) {
+      console.log(`UPDATE ${group} / ${name}: ${oldIds.get(norm(name))} -> ${r.id}`);
+      changed++;
+    }
+    curated.push({ id: r.id, name, group });
+  }
+}
+
+const seen = new Set();
+for (const name of POPULAR) {
+  const r = resolve(name);
+  if (!r.id) continue;
+  if (seen.has(r.id)) continue;
+  seen.add(r.id);
+  curated.push({ id: r.id, name: r.matched ? r.name : name, group: 'POPULAR' });
+}
+console.log(`\n${changed} stale ids fixed; ${curated.length} total stops`);
+
+const metroIds = { M1: 'BKK_5100', M3: 'BKK_5300', M2: 'BKK_5200', M4: 'BKK_5400' };
+
+const ts = `// AUTO-GENERATED by scripts/rebuild-curated-stops.mjs — do not edit manually.\n// Quick-pick stops sourced from the current BKK Futár catalog (public/catalog/stops.json).\n\nexport type TransitStopGroup = 'M1' | 'M2' | 'M3' | 'M4' | 'POPULAR';\n\nexport interface CuratedStop {\n  id: string;\n  name: string;\n  group: TransitStopGroup;\n}\n\n/** Route IDs of the four metro lines (used as a deterministic fallback picker option). */\nexport const METRO_ROUTE_IDS: Record<'M1' | 'M2' | 'M3' | 'M4', string> = ${JSON.stringify(metroIds, null, 2)};\n\nexport const CURATED_STOP_GROUPS: { id: TransitStopGroup; label: string }[] = [\n  { id: 'M1', label: 'METRO LINE M1' },\n  { id: 'M2', label: 'METRO LINE M2' },\n  { id: 'M3', label: 'METRO LINE M3' },\n  { id: 'M4', label: 'METRO LINE M4' },\n  { id: 'POPULAR', label: 'POPULAR STOPS' },\n];\n\nexport const CURATED_STOPS: CuratedStop[] = ${JSON.stringify(curated, null, 2)};\n`;
+
+writeFileSync(join(outDir, 'curated-stops.ts'), ts);
+console.log(`wrote ${curated.length} stops -> src/features/transit/curated-stops.ts`);

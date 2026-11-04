@@ -1,0 +1,35 @@
+version: 2
+# Updates land on dev and ride the normal dev -> staging -> master promotion.
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Patch/minor bumps land in one PR; majors stay separate for review.
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: gomod
+    directory: /backend
+    target-branch: dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: gradle
+    directory: /native
+    target-branch: dev
+    schedule:
+      interval: weekly
+    groups:
+      gradle-minor-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly

@@ -1,0 +1,14 @@
+{
+  "name": "vectra-native-tools",
+  "private": true,
+  "type": "module",
+  "description": "Code generators for the native app's icons and logo.",
+  "scripts": {
+    "icons": "node generate-icons.mjs",
+    "logo": "node generate-logo.mjs && node generate-launcher-icon.mjs && node generate-ios-icon.mjs"
+  },
+  "devDependencies": {
+    "@remixicon/react": "4.9.0",
+    "react": "19.1.0"
+  }
+}

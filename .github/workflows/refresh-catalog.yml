@@ -1,0 +1,105 @@
+# Refresh the BKK transit catalog
+#
+# The Futár API key in use is scoped — routes-for-agency / stops-for-route /
+# stop-search all return "Full authentication is required" — so the full line
+# and stop catalog is generated OFFLINE by scripts/build-catalog.mjs (tiling
+# stops-for-location circles, then one route-details call per route) into
+# web/public/catalog/routes.json + stops.json (+ route-variants.json).
+#
+# This workflow re-runs that generator every 24h and commits any changes. The
+# emitted JSON is served as-is at runtime, so a catalog refresh never changes
+# the frontend bundle or the service worker (no update reload on installed
+# PWAs). The workflow keeps the last good catalog when the feed degrades.
+#
+# The catalog is generated once from master and committed to master, staging
+# and dev, so every branch serves the same data and later merges between them
+# see identical changes (no conflicts). The commits are `chore:`, so they never
+# cut a release, and pushes made with GITHUB_TOKEN don't trigger other workflows.
+#
+# Required GitHub secret (repo → Settings → Secrets and variables → Actions):
+#   FUTAR_API_KEY — the BKK Futár API key (register at opendata.bkk.hu)
+
+name: Refresh BKK Transit Catalog
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # 03:17 UTC daily (~05:17 Budapest) — every 24h
+  workflow_dispatch:
+
+concurrency:
+  group: catalog-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # A hung Futár feed must not hold the runner for the 6h default.
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate the catalog
+        env:
+          FUTAR_API_KEY: ${{ secrets.FUTAR_API_KEY }}
+        run: node scripts/build-catalog.mjs
+
+      - name: Commit changes (if any)
+        run: |
+          if git diff --quiet -- public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json; then
+            echo "Catalog unchanged — nothing to commit."
+            exit 0
+          fi
+          # Belt-and-braces: build-catalog.mjs already aborts below absolute and
+          # relative sanity thresholds, but never ship a suspiciously small
+          # catalog even if a future edit relaxes that guard.
+          ROUTES="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/routes.json','utf8')).length")"
+          STOPS="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/stops.json','utf8')).length")"
+          OLD_ROUTES="$(git show HEAD:web/public/catalog/routes.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+          OLD_STOPS="$(git show HEAD:web/public/catalog/stops.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+          BROKEN=0
+          if [ "${ROUTES}" -lt 100 ] || [ "${STOPS}" -lt 500 ]; then BROKEN=1; fi
+          if [ "${OLD_ROUTES}" -gt 0 ] && [ "${ROUTES}" -lt $(( OLD_ROUTES * 95 / 100 )) ]; then BROKEN=1; fi
+          if [ "${OLD_STOPS}" -gt 0 ] && [ "${STOPS}" -lt $(( OLD_STOPS * 95 / 100 )) ]; then BROKEN=1; fi
+          if [ "$BROKEN" -eq 1 ]; then
+            echo "Regenerated catalog looks degraded (routes=$ROUTES/$OLD_ROUTES, stops=$STOPS/$OLD_STOPS) — keeping the last good catalog."
+            git checkout -- public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json
+            exit 0
+          fi
+          git config user.name "vectra-bot"
+          git config user.email "vectra-bot@users.noreply.github.com"
+          git add public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json
+          git commit -m "chore: refresh BKK transit catalog from Futár feed"
+          git push origin HEAD:master
+          # Same files onto the other long-lived branches.
+          for BRANCH in staging dev; do
+            git worktree add -q "../../$BRANCH" "origin/$BRANCH"
+            cp public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json "../../$BRANCH/web/public/catalog/"
+            (
+              cd "../../$BRANCH/web"
+              if git diff --quiet -- public/catalog; then
+                echo "$BRANCH already has this catalog."
+              else
+                git add public/catalog
+                git commit -q -m "chore: refresh BKK transit catalog from Futár feed"
+                git push origin "HEAD:$BRANCH"
+              fi
+            )
+          done

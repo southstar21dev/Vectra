@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" data-background="aurora" data-accent="purple">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#07080a" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Vectra" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <title>Vectra</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // First-paint appearance: the profile is async, so this tiny script applies
+      // the last-synced appearance (localStorage mirror, written by the app) before
+      // React mounts. No mirror → attributes stay unset → CSS dark defaults.
+      (function () {
+        try {
+          var raw = localStorage.getItem('vectra.appearance');
+          if (!raw) return;
+          var p = JSON.parse(raw);
+          var modes = ['light', 'dark', 'system'];
+          var accents = ['blue', 'indigo', 'purple', 'pink', 'red', 'orange', 'green', 'teal', 'cyan'];
+          var backgrounds = ['mesh', 'flat', 'aurora'];
+          if (modes.indexOf(p.theme) === -1) return;
+          var root = document.documentElement;
+          root.setAttribute('data-theme-mode', p.theme);
+          root.setAttribute('data-accent', accents.indexOf(p.accent) !== -1 ? p.accent : 'purple');
+          root.setAttribute('data-background', backgrounds.indexOf(p.background) !== -1 ? p.background : 'aurora');
+          var dark =
+            p.theme === 'dark' ||
+            (p.theme === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', dark ? '#07080a' : '#f8fafc');
+        } catch (e) {
+          /* defaults apply */
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

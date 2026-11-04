@@ -1,0 +1,30 @@
+# On top of detekt's defaults. Existing findings live in baseline.xml; only new code has to pass.
+style:
+  ForbiddenImport:
+    active: true
+    forbiddenImports:
+      - value: 'androidx.compose.foundation.clickable'
+        reason: 'Use Modifier.tappable, or Modifier.consumeTouches for a scrim. See docs/CONTRIBUTING.md.'
+      - value: 'androidx.compose.foundation.combinedClickable'
+        reason: 'Use Modifier.tappable(onLongClick = ...). See docs/CONTRIBUTING.md.'
+      - value: 'androidx.compose.material.*'
+        reason: 'The app has its own design system; build on core/designsystem.'
+      - value: 'androidx.compose.material3.*'
+        reason: 'The app has its own design system; build on core/designsystem.'
+    excludes: ['**/core/designsystem/theme/Modifiers.kt']
+  # Tokens and constants are PascalCase here (Kotlin's Compose convention).
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: false
+  UnusedImport:
+    active: true
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9]*'
+    propertyPattern: '[A-Za-z][A-Za-z0-9]*'
+  MatchingDeclarationName:
+    active: false

@@ -1,0 +1,473 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:BlobStore.kt:c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '.' || c == '_' || c == '-'</ID>
+    <ID>ComplexCondition:CourseLogic.kt:CourseNames$title.isEmpty() || other.title.isEmpty() || title.contains(other.title) || other.title.contains(title)</ID>
+    <ID>ComplexCondition:DeviceLocation.kt:DeviceLocation$ask != null &amp;&amp; (userInitiated || !prompted) &amp;&amp; !prompting</ID>
+    <ID>ComplexCondition:NearbyExplorerState.kt:sel != null &amp;&amp; sel.routeId == item.routeId &amp;&amp; sel.stopId == item.stopId &amp;&amp; sel.headsign == item.headsign</ID>
+    <ID>ComplexCondition:NearbyStops.kt:!minSpanMeters.isFinite() || minSpanMeters &lt;= 0 || !north.isFinite() || !south.isFinite() || !east.isFinite() || !west.isFinite()</ID>
+    <ID>ComplexCondition:NearbyStops.kt:platform != null &amp;&amp; platform.lat.isFinite() &amp;&amp; platform.lon.isFinite() &amp;&amp; !(platform.lat == 0.0 &amp;&amp; platform.lon == 0.0)</ID>
+    <ID>ComplexCondition:PullToRefresh.kt:PullState$source != NestedScrollSource.UserInput || refreshing || pulled &lt;= 0f || available.y &gt;= 0f</ID>
+    <ID>ComplexCondition:RadarRecolor.kt:isYellow || isRedOrange || isMagenta || isWhite</ID>
+    <ID>ComplexCondition:RouteGeometry.kt:preferredBearing != null &amp;&amp; preferredBearing.isFinite() &amp;&amp; preferredBearing &gt;= 0 &amp;&amp; lenSq &gt; 1e-12</ID>
+    <ID>ComplexCondition:ScheduleConflicts.kt:ordinal == null || start == null || end == null || start == end</ID>
+    <ID>ComplexCondition:SplashScene.kt:xi &lt; 0 || yi &lt; 0 || xi &gt;= cw || yi &gt;= ch</ID>
+    <ID>ComplexCondition:TrackerTypes.kt:a.id.isEmpty() || a.name.isEmpty() || a.earnedPoints &lt; 0 || a.maxPoints &lt; 0</ID>
+    <ID>ComplexCondition:TransitModeFilter.kt:raw is JsonPrimitive &amp;&amp; raw.isString &amp;&amp; raw.content.isNotEmpty() &amp;&amp; raw.content.uppercase() != "ALL"</ID>
+    <ID>ComplexCondition:TransitUtils.kt:!routeMatch(a) &amp;&amp; !(stopMatch(a) &amp;&amp; vehicleTypeMatch(a)) &amp;&amp; !(agencyWide(a) &amp;&amp; vehicleTypeMatch(a))</ID>
+    <ID>ComplexCondition:TransitUtils.kt:normStop.isNotEmpty() &amp;&amp; (normStop == normTarget || normStop.contains(normTarget) || normTarget.contains(normStop))</ID>
+    <ID>ComplexCondition:TransitUtils.kt:normTrip.isNotEmpty() &amp;&amp; (normTrip == normTarget || normTrip.contains(normTarget) || normTarget.contains(normTrip))</ID>
+    <ID>ComplexCondition:WeatherRadarScreen.kt:data !== prevData || (snapToLive &amp;&amp; data != null &amp;&amp; frames.isNotEmpty())</ID>
+    <ID>ComplexCondition:WeatherRepository.kt:WeatherRepository$!force &amp;&amp; sameCoords &amp;&amp; s.data != null &amp;&amp; nowMs() - s.fetchedAt &lt; StaleMs</ID>
+    <ID>ComplexCondition:WeekNavigation.kt:(semesterStatus == "upcoming" || semesterStatus == "past") &amp;&amp; startDate != null &amp;&amp; navDateOffset == 0</ID>
+    <ID>ComplexCondition:WeekNavigation.kt:mon &lt;= last || (index &gt; 0 &amp;&amp; mon.month == targetDate.month &amp;&amp; mon.year == targetDate.year)</ID>
+    <ID>ComposableParamOrder:AttendanceParts.kt:@Composable internal fun DateTile</ID>
+    <ID>ComposableParamOrder:ScheduleChrome.kt:@Composable internal fun ChipButton</ID>
+    <ID>ComposableParamOrder:SettingsSection.kt:@Composable fun SettingsSection</ID>
+    <ID>ComposableParamOrder:SheetForm.kt:@Composable fun FormGroup</ID>
+    <ID>ComposableParamOrder:TrackerChrome.kt:@Composable internal fun DraftField</ID>
+    <ID>ComposableParamOrder:TrackerParts.kt:@Composable internal fun ClippedFormGroup</ID>
+    <ID>ComposableParamOrder:TransitCard.kt:@Composable private fun MonitorGridRow</ID>
+    <ID>ComposableParamOrder:TransitCommon.kt:@Composable fun BoxScope.LoadingOverlay</ID>
+    <ID>CompositionLocalAllowlist:Haptics.kt:val LocalVectraHaptics = staticCompositionLocalOf { VectraHaptics(null) }</ID>
+    <ID>CompositionLocalAllowlist:Misc.kt:/** True once the boot splash has cleared; reveals wait for it. */ val LocalAppPresented = staticCompositionLocalOf { true }</ID>
+    <ID>CompositionLocalAllowlist:NavbarActions.kt:val LocalNavbarActions = staticCompositionLocalOf { NavbarActions() }</ID>
+    <ID>CompositionLocalAllowlist:Overlay.kt:val LocalOverlayHost = staticCompositionLocalOf&lt;OverlayHost&gt; { error("OverlayHost missing") }</ID>
+    <ID>CompositionLocalAllowlist:PageScope.kt:/** * The lifecycle a map on this page follows, when that differs from the page's own: a tab * under a pushed screen stops polling, but a stopped map comes back blank on pop. */ val LocalMapLifecycleOwner = compositionLocalOf&lt;LifecycleOwner?&gt; { null }</ID>
+    <ID>CompositionLocalAllowlist:PageScope.kt:/** False while the page is a hidden (kept-alive) tab or covered by a pushed screen: loops and clocks freeze. */ val LocalPageActive = compositionLocalOf { true }</ID>
+    <ID>CompositionLocalAllowlist:Routes.kt:val LocalNavigator = staticCompositionLocalOf&lt;AppNavigator&gt; { error("AppNavigator missing") }</ID>
+    <ID>CompositionLocalAllowlist:Sheet.kt:/** Whether the surrounding surface runs under the system bars and must pad them itself. */ val LocalSurfaceEdgeToEdge = staticCompositionLocalOf { false }</ID>
+    <ID>CompositionLocalAllowlist:ShellState.kt:val LocalShellState = staticCompositionLocalOf { ShellState() }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalAppearance = compositionLocalOf { AppearancePrefs.Default }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalContentColor = compositionLocalOf { Color.Unspecified }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalReduceMotion = staticCompositionLocalOf { false }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalTextStyle = compositionLocalOf { VType.Body }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalVectraColors = staticCompositionLocalOf { VectraColors.dark(AppearancePrefs.Default.accent) }</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt:val LocalVectraFonts = staticCompositionLocalOf&lt;VectraFonts&gt; { error("VectraTheme missing") }</ID>
+    <ID>CompositionLocalAllowlist:Toaster.kt:val LocalToaster = staticCompositionLocalOf { Toaster() }</ID>
+    <ID>CompositionLocalAllowlist:TransitMap.kt:val LocalMapEnvironment = staticCompositionLocalOf&lt;MapEnvironment&gt; { error("MapEnvironment missing") }</ID>
+    <ID>ContentSlotReused:Misc.kt:content: @Composable () -&gt; Unit</ID>
+    <ID>ContentSlotReused:Overlay.kt:content: @Composable () -&gt; Unit</ID>
+    <ID>CyclomaticComplexMethod:AddAssessmentDialog.kt:@Composable private fun ColumnScope.AssessmentForm</ID>
+    <ID>CyclomaticComplexMethod:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>CyclomaticComplexMethod:AppSplash.kt:@Composable fun AppSplash</ID>
+    <ID>CyclomaticComplexMethod:AppearancePrefs.kt:AppearancePrefs.Companion$fun normalize: AppearancePrefs</ID>
+    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:fun calculateAttendanceStats: AttendanceStats</ID>
+    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
+    <ID>CyclomaticComplexMethod:AttendanceParts.kt:@Composable internal fun AttendanceStandingCard</ID>
+    <ID>CyclomaticComplexMethod:AttendanceParts.kt:@Composable internal fun StatusToggle</ID>
+    <ID>CyclomaticComplexMethod:AttendanceTab.kt:@Composable internal fun AttendanceTab</ID>
+    <ID>CyclomaticComplexMethod:Button.kt:@Composable fun VButton</ID>
+    <ID>CyclomaticComplexMethod:ClassEditorScreen.kt:@Composable private fun ClassEditorContent</ID>
+    <ID>CyclomaticComplexMethod:CourseHubScreen.kt:@Composable private fun CourseHub</ID>
+    <ID>CyclomaticComplexMethod:CourseLogic.kt:CourseRules$fun officialSemesterStart: String?</ID>
+    <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:fun applySetAttendanceStatus: CourseTrackerData</ID>
+    <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:private fun findLegacyTracker: Pair&lt;String, CourseTracker&gt;?</ID>
+    <ID>CyclomaticComplexMethod:Destinations.kt:@Composable fun PushedScreen</ID>
+    <ID>CyclomaticComplexMethod:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
+    <ID>CyclomaticComplexMethod:DirectionStopList.kt:@Composable fun DirectionStopList</ID>
+    <ID>CyclomaticComplexMethod:DirectionStrip.kt:@Composable fun DirectionStrip</ID>
+    <ID>CyclomaticComplexMethod:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>CyclomaticComplexMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
+    <ID>CyclomaticComplexMethod:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
+    <ID>CyclomaticComplexMethod:ItemEditorScreen.kt:@Composable private fun ItemEditorContent</ID>
+    <ID>CyclomaticComplexMethod:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
+    <ID>CyclomaticComplexMethod:LivePosition.kt:fun approachFromVehicle: VehicleApproach?</ID>
+    <ID>CyclomaticComplexMethod:LivePosition.kt:fun routeProgress: RouteProgress</ID>
+    <ID>CyclomaticComplexMethod:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
+    <ID>CyclomaticComplexMethod:LiveTrackerScreen.kt:@Composable internal fun rememberLiveRoute: LiveRoute</ID>
+    <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun ReorderList</ID>
+    <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun TrackerRow</ID>
+    <ID>CyclomaticComplexMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
+    <ID>CyclomaticComplexMethod:NearbyExplorerMap.kt:@Composable fun NearbyExplorerMap</ID>
+    <ID>CyclomaticComplexMethod:NearbyExplorerScreen.kt:@Composable private fun ExplorerShell</ID>
+    <ID>CyclomaticComplexMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildExplorerMapStops: List&lt;ExplorerMapStop&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun parseAllNearbyBoards: List&lt;NearbyDeparture&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun routeNameCompare: Int</ID>
+    <ID>CyclomaticComplexMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
+    <ID>CyclomaticComplexMethod:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
+    <ID>CyclomaticComplexMethod:Pickers.kt:@Composable fun DatePickerSheet</ID>
+    <ID>CyclomaticComplexMethod:PinnedRows.kt:fun buildPinnedRows: List&lt;PinnedRow&gt;</ID>
+    <ID>CyclomaticComplexMethod:PointsCalc.kt:fun calculatePointsSummary: PointsSummary</ID>
+    <ID>CyclomaticComplexMethod:PointsTab.kt:@Composable internal fun PointsTab</ID>
+    <ID>CyclomaticComplexMethod:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
+    <ID>CyclomaticComplexMethod:RadarRecolor.kt:fun recolorRadarPixels</ID>
+    <ID>CyclomaticComplexMethod:RouteGeometry.kt:fun snapToPolyline: SnappedPoint?</ID>
+    <ID>CyclomaticComplexMethod:RouteMap.kt:@Composable fun RouteMap</ID>
+    <ID>CyclomaticComplexMethod:RoutePreviewMap.kt:@Composable fun RoutePreviewMap</ID>
+    <ID>CyclomaticComplexMethod:ScheduleCards.kt:@Composable fun ScheduleCard</ID>
+    <ID>CyclomaticComplexMethod:ScheduleCards.kt:@Composable fun ScheduleItemCard</ID>
+    <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:fun getScheduleConflicts: List&lt;ScheduleConflict&gt;</ID>
+    <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:internal fun classOccursOnDate: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ScheduleItemsStore.kt:fun validateScheduleItem: ScheduleItem?</ID>
+    <ID>CyclomaticComplexMethod:ScheduleItemsStore.kt:internal fun parsePayload: ScheduleItem?</ID>
+    <ID>CyclomaticComplexMethod:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
+    <ID>CyclomaticComplexMethod:ScheduleReconciler.kt:fun reconcileTrackersWithSchedule: ReconcileResult</ID>
+    <ID>CyclomaticComplexMethod:ScheduleScreen.kt:@Composable fun ScheduleScreen</ID>
+    <ID>CyclomaticComplexMethod:ScheduleView.kt:@Composable internal fun ScheduleView</ID>
+    <ID>CyclomaticComplexMethod:SettingsScreen.kt:private fun notificationRows: List&lt;@Composable () -&gt; Unit&gt;</ID>
+    <ID>CyclomaticComplexMethod:SettingsTab.kt:@Composable internal fun SettingsTab</ID>
+    <ID>CyclomaticComplexMethod:Sheet.kt:@Composable fun VSheet</ID>
+    <ID>CyclomaticComplexMethod:SplashScene.kt:SplashScene$private fun drawSkyline</ID>
+    <ID>CyclomaticComplexMethod:StopsProgressVisualizer.kt:@Composable fun StopsProgressVisualizer</ID>
+    <ID>CyclomaticComplexMethod:Tabs.kt:@Composable fun &lt;T&gt; VTabs</ID>
+    <ID>CyclomaticComplexMethod:ThinkingOrb.kt:OrbEngine$private fun rubik</ID>
+    <ID>CyclomaticComplexMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
+    <ID>CyclomaticComplexMethod:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
+    <ID>CyclomaticComplexMethod:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
+    <ID>CyclomaticComplexMethod:TransitCard.kt:@Composable fun TransitCard</ID>
+    <ID>CyclomaticComplexMethod:TransitCommon.kt:@Composable fun RouteBadge</ID>
+    <ID>CyclomaticComplexMethod:TransitMap.kt:@Composable fun TransitMap</ID>
+    <ID>CyclomaticComplexMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
+    <ID>CyclomaticComplexMethod:TransitUtils.kt:fun isHeadsignMatch: Boolean</ID>
+    <ID>CyclomaticComplexMethod:TransitUtils.kt:fun parseAlerts: List&lt;TransitAlert&gt;</ID>
+    <ID>CyclomaticComplexMethod:WeatherCard.kt:@Composable fun WeatherCard</ID>
+    <ID>CyclomaticComplexMethod:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
+    <ID>CyclomaticComplexMethod:WeatherRadarScreen.kt:@Composable private fun ColumnScope.RadarContent</ID>
+    <ID>CyclomaticComplexMethod:WeatherRepository.kt:WeatherRepository$fun refreshWeather</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:NearbyStops.kt:val (north, south, east, west) = bounds</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:TransitCommon.kt:val (minW, h, padX, radius) = when (size) { RouteBadgeSize.Xs2 -&gt; Quad(24.dp, 24.dp, 6.dp, 999.dp) RouteBadgeSize.Xs -&gt; Quad(28.dp, 28.dp, 4.dp, 999.dp) RouteBadgeSize.Sm -&gt; Quad(32.dp, 32.dp, 6.dp, 8.dp) RouteBadgeSize.Lg -&gt; Quad(48.dp, 48.dp, 8.dp, 12.dp) RouteBadgeSize.Md -&gt; Quad(36.dp, 36.dp, 6.dp, 8.dp) }</ID>
+    <ID>EmptyElseBlock:LiveQueryTest.kt:LiveQueryTest$if (++calls == 1) gate.await()</ID>
+    <ID>EmptyElseBlock:RunSuspendCatchingTest.kt:RunSuspendCatchingTest$if (i == 2) this@launch.cancel()</ID>
+    <ID>LambdaParameterEventTrailing:ManageTrackersScreen.kt:onEdit: ((TransitTracker) -&gt; Unit)?</ID>
+    <ID>LambdaParameterEventTrailing:NearbyDeparturesSheet.kt:onClick: () -&gt; Unit</ID>
+    <ID>LambdaParameterInRestartableEffect:AppSplash.kt:onPresented: () -&gt; Unit</ID>
+    <ID>LambdaParameterInRestartableEffect:AttendanceTab.kt:/** Root-space top of the scrolling body's viewport (to centre a ledger row). */ viewportTop: () -&gt; Float</ID>
+    <ID>LambdaParameterInRestartableEffect:PageScope.kt:nowMillis: () -&gt; Long = { Clock.System.now().toEpochMilliseconds() }</ID>
+    <ID>LongMethod:AddAssessmentDialog.kt:@Composable private fun ColumnScope.AssessmentForm</ID>
+    <ID>LongMethod:AddSessionDialog.kt:@Composable private fun ColumnScope.AddSessionForm</ID>
+    <ID>LongMethod:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>LongMethod:AppSplash.kt:@Composable fun AppSplash</ID>
+    <ID>LongMethod:AppearanceSettings.kt:@Composable fun AppearanceSettings</ID>
+    <ID>LongMethod:AttendanceCalc.kt:fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
+    <ID>LongMethod:AttendanceParts.kt:@Composable internal fun AttendanceStandingCard</ID>
+    <ID>LongMethod:AttendanceTab.kt:@Composable internal fun AttendanceTab</ID>
+    <ID>LongMethod:Button.kt:@Composable fun VButton</ID>
+    <ID>LongMethod:ClassEditorScreen.kt:@Composable private fun ClassEditorContent</ID>
+    <ID>LongMethod:CourseHubScreen.kt:@Composable private fun CourseHub</ID>
+    <ID>LongMethod:DashboardScreen.kt:@Composable fun DashboardScreen</ID>
+    <ID>LongMethod:Dialog.kt:@Composable fun VDialog</ID>
+    <ID>LongMethod:DirectionStopList.kt:@Composable fun DirectionStopList</ID>
+    <ID>LongMethod:DirectionStrip.kt:@Composable fun DirectionStrip</ID>
+    <ID>LongMethod:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>LongMethod:HolidayCard.kt:@Composable private fun HolidayRow</ID>
+    <ID>LongMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
+    <ID>LongMethod:ItemEditorScreen.kt:@Composable private fun ItemEditorContent</ID>
+    <ID>LongMethod:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
+    <ID>LongMethod:LineBrowser.kt:@Composable fun ColumnScope.LineStopPicker</ID>
+    <ID>LongMethod:LiquidNavbar.kt:@Composable fun LiquidNavbar</ID>
+    <ID>LongMethod:LiquidTabs.kt:@Composable fun LiquidTabs</ID>
+    <ID>LongMethod:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
+    <ID>LongMethod:LiveTrackerScreen.kt:@Composable internal fun rememberLiveRoute: LiveRoute</ID>
+    <ID>LongMethod:LoginScreen.kt:@Composable private fun LoginForm</ID>
+    <ID>LongMethod:LoginScreen.kt:@Composable private fun SignupForm</ID>
+    <ID>LongMethod:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>LongMethod:ManageTrackersScreen.kt:@Composable private fun ReorderList</ID>
+    <ID>LongMethod:ManageTrackersScreen.kt:@Composable private fun TrackerRow</ID>
+    <ID>LongMethod:Misc.kt:@Composable fun EmptyState</ID>
+    <ID>LongMethod:NearbyDeparturesList.kt:@Composable fun NearbyDeparturesList</ID>
+    <ID>LongMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
+    <ID>LongMethod:NearbyExplorerMap.kt:@Composable fun NearbyExplorerMap</ID>
+    <ID>LongMethod:NearbyExplorerScreen.kt:@Composable private fun ExplorerShell</ID>
+    <ID>LongMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
+    <ID>LongMethod:NearbyMapStrip.kt:@Composable fun NearbyMapStrip</ID>
+    <ID>LongMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
+    <ID>LongMethod:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
+    <ID>LongMethod:Pickers.kt:@Composable fun DatePickerSheet</ID>
+    <ID>LongMethod:PointsTab.kt:@Composable internal fun AssessmentCard</ID>
+    <ID>LongMethod:PointsTab.kt:@Composable internal fun PointsTab</ID>
+    <ID>LongMethod:RouteMap.kt:@Composable fun RouteMap</ID>
+    <ID>LongMethod:RoutePreviewMap.kt:@Composable fun RoutePreviewMap</ID>
+    <ID>LongMethod:ScheduleCards.kt:@Composable fun ScheduleCard</ID>
+    <ID>LongMethod:ScheduleCards.kt:@Composable fun ScheduleItemCard</ID>
+    <ID>LongMethod:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
+    <ID>LongMethod:ScheduleScreen.kt:@Composable fun ScheduleScreen</ID>
+    <ID>LongMethod:ScheduleScreen.kt:@Composable private fun ScheduleActionButtons</ID>
+    <ID>LongMethod:ScheduleView.kt:@Composable internal fun ScheduleToolbar</ID>
+    <ID>LongMethod:ScheduleView.kt:@Composable internal fun ScheduleView</ID>
+    <ID>LongMethod:SettingsTab.kt:@Composable internal fun SettingsTab</ID>
+    <ID>LongMethod:Sheet.kt:@Composable fun VSheet</ID>
+    <ID>LongMethod:StopBrowser.kt:@Composable fun StopRoutePicker</ID>
+    <ID>LongMethod:StopsProgressVisualizer.kt:@Composable fun StopsProgressVisualizer</ID>
+    <ID>LongMethod:Tabs.kt:@Composable fun &lt;T&gt; VTabs</ID>
+    <ID>LongMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
+    <ID>LongMethod:TransitCard.kt:@Composable fun TransitCard</ID>
+    <ID>LongMethod:TransitMap.kt:@Composable fun TransitMap</ID>
+    <ID>LongMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
+    <ID>LongMethod:VectraApp.kt:@Composable fun VectraApp</ID>
+    <ID>LongMethod:WeatherCard.kt:@Composable fun WeatherCard</ID>
+    <ID>LongMethod:WeatherRadarScreen.kt:@Composable private fun ColumnScope.RadarContent</ID>
+    <ID>LoopWithTooManyJumpStatements:AttendanceCalc.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:CourseLogic.kt:CourseRules$for</ID>
+    <ID>LoopWithTooManyJumpStatements:CourseTrackerStore.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:FutarApi.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:IcsParser.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:KeptAliveTabs.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:LivePosition.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:NearbyDeparturesSheet.kt:do</ID>
+    <ID>LoopWithTooManyJumpStatements:NearbyDeparturesSheet.kt:while</ID>
+    <ID>LoopWithTooManyJumpStatements:NearbyLines.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:NearbyStops.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:RadarRecolor.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:RouteVariants.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:ScheduleConflicts.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:ScheduleItemsSync.kt:ScheduleItemsSync$for</ID>
+    <ID>LoopWithTooManyJumpStatements:ScheduleView.kt:while</ID>
+    <ID>LoopWithTooManyJumpStatements:ThinkingOrb.kt:OrbEngine$for</ID>
+    <ID>LoopWithTooManyJumpStatements:TransitUtils.kt:for</ID>
+    <ID>MayBeConstant:WeatherCard.kt:private val Tnum = "tnum"</ID>
+    <ID>ModifierComposed:Modifiers.kt:fun Modifier.pressScale: Modifier</ID>
+    <ID>ModifierComposed:Modifiers.kt:fun Modifier.tappable: Modifier</ID>
+    <ID>ModifierMissing:AccountSettings.kt:@Composable fun DeleteAccountButton</ID>
+    <ID>ModifierMissing:ActionSheet.kt:@Composable fun ActionSheet</ID>
+    <ID>ModifierMissing:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>ModifierMissing:AppShell.kt:@Composable fun AppShell</ID>
+    <ID>ModifierMissing:AppSplash.kt:@Composable fun AppSplash</ID>
+    <ID>ModifierMissing:AppearanceSettings.kt:@Composable fun AppearanceSettings</ID>
+    <ID>ModifierMissing:DashboardScreen.kt:@Composable fun DashboardScreen</ID>
+    <ID>ModifierMissing:Dialog.kt:@Composable fun ConfirmDialog</ID>
+    <ID>ModifierMissing:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>ModifierMissing:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
+    <ID>ModifierMissing:LineBrowser.kt:@Composable fun ColumnScope.LineBrowser</ID>
+    <ID>ModifierMissing:LineBrowser.kt:@Composable fun ColumnScope.LineStopPicker</ID>
+    <ID>ModifierMissing:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
+    <ID>ModifierMissing:LoginScreen.kt:@Composable fun LoginScreen</ID>
+    <ID>ModifierMissing:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>ModifierMissing:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
+    <ID>ModifierMissing:Pickers.kt:@Composable fun DatePickerSheet</ID>
+    <ID>ModifierMissing:Pickers.kt:@Composable fun TimePickerSheet</ID>
+    <ID>ModifierMissing:ScheduleScreen.kt:@Composable fun ScheduleScreen</ID>
+    <ID>ModifierMissing:Select.kt:@Composable fun &lt;T&gt; OptionSheet</ID>
+    <ID>ModifierMissing:SettingsRow.kt:@Composable fun SettingsRow</ID>
+    <ID>ModifierMissing:SettingsScreen.kt:@Composable fun SettingsScreen</ID>
+    <ID>ModifierMissing:StopBrowser.kt:@Composable fun StopBrowser</ID>
+    <ID>ModifierMissing:StopBrowser.kt:@Composable fun StopRoutePicker</ID>
+    <ID>ModifierMissing:TrackerMapScreen.kt:@Composable fun TrackerMapScreen</ID>
+    <ID>ModifierMissing:TransitScreen.kt:@Composable fun TransitScreen</ID>
+    <ID>ModifierMissing:WeatherRadarScreen.kt:@Composable fun WeatherRadarScreen</ID>
+    <ID>ModifierNaming:LiquidTabs.kt:rowModifier: Modifier</ID>
+    <ID>ModifierNotUsedAtRoot:Dialog.kt:Modifier .graphicsLayer { alpha = panelAlpha.value.coerceIn(0f, 1f) scaleX = panelScale.value; scaleY = panelScale.value } .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = this@BoxWithConstraints.maxHeight * 0.9f) .boxShadow(shape, cardDepthShadows(c.isDark)) .background(c.surfaceSecondary, shape) .insetShadow(shape, cardDepthShadows(c.isDark)) .then(if (c.isDark) Modifier.border(1.dp, c.borderSubtle, shape) else Modifier) .consumeTouches() .then(modifier)</ID>
+    <ID>ModifierNotUsedAtRoot:Sheet.kt:modifier .align(Alignment.BottomCenter) .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = maxPanelHeight) .then(if (size != SheetSize.Fit) Modifier.heightIn(min = maxPanelHeight) else Modifier) .onSizeChanged { s -&gt; panelHeight = s.height.toFloat() val hidden = s.height + with(density) { 24.dp.toPx() } val half = (s.height - windowHeight * 0.5f).coerceAtLeast(0f) state.anchors = if (size == SheetSize.Expandable &amp;&amp; half &gt; 0f) listOf(0f, half, hidden) else listOf(0f, hidden) } .offset { IntOffset(0, state.current.takeIf { panelHeight &gt; 0f }?.roundToInt() ?: constraints.maxHeight) } .graphicsLayer { // Predictive back: the sheet shrinks a little and drops with the gesture. val p = back() val s = 1f - 0.06f * p scaleX = s; scaleY = s translationY = p * 32.dp.toPx() transformOrigin = TransformOrigin(0.5f, 1f) } .boxShadow(shape, cardDepthShadows(c.isDark)) .background(c.surfaceSecondary, shape) .consumeTouches() .draggable( rememberDraggableState { delta -&gt; scope.launch { state.dragBy(delta) } }, Orientation.Vertical, onDragStarted = { state.dragging = true }, onDragStopped = { velocity -&gt; release(velocity) }, ) .nestedScroll(nested) .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom))</ID>
+    <ID>ModifierWithoutDefault:AddSessionDialog.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:AppShell.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:HolidayCard.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:LiquidTabs.kt:rowModifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:ManageTrackersScreen.kt:gripModifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:ManageTrackersScreen.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:NearbyDeparturesSheet.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:NearbyExplorerScreen.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:StopsProgressVisualizer.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:TransitScreen.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:WeatherCard.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:WeatherRadarMap.kt:modifier: Modifier</ID>
+    <ID>ModifierWithoutDefault:WeatherRadarScreen.kt:modifier: Modifier</ID>
+    <ID>MutableStateAutoboxing:Toaster.kt:mutableStateOf(0f)</ID>
+    <ID>NestedBlockDepth:CourseTrackerRepository.kt:CourseTrackerRepository$private suspend fun uploadPending</ID>
+    <ID>NestedBlockDepth:NearbyStops.kt:fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
+    <ID>NestedBlockDepth:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
+    <ID>ParameterNaming:AddAssessmentDialog.kt:onExited: () -&gt; Unit</ID>
+    <ID>ParameterNaming:AddSessionDialog.kt:onExited: (() -&gt; Unit)? = null</ID>
+    <ID>ParameterNaming:AddTrackerScreen.kt:onSaved: () -&gt; Unit</ID>
+    <ID>ParameterNaming:AddTrackerScreen.kt:onScrolled: (Boolean) -&gt; Unit</ID>
+    <ID>ParameterNaming:AppSplash.kt:onPresented: () -&gt; Unit</ID>
+    <ID>ParameterNaming:Dialog.kt:onExited: (() -&gt; Unit)? = null</ID>
+    <ID>ParameterNaming:Pickers.kt:onSelected: (Int) -&gt; Unit</ID>
+    <ID>ParameterNaming:ScheduleCards.kt:onToggleTaskCompleted: ((ScheduleItem) -&gt; Unit)? = null</ID>
+    <ID>ParameterNaming:ScheduleView.kt:onToggleTaskCompleted: (ScheduleItem) -&gt; Unit</ID>
+    <ID>ParameterNaming:Sheet.kt:onExited: (() -&gt; Unit)? = null</ID>
+    <ID>ParameterNaming:TransitMap.kt:/** First complete render: style + visible tiles. */ onLoaded: () -&gt; Unit = {}</ID>
+    <ID>ReturnCount:AddTrackerState.kt:AddTrackerState$private fun fallbackRouteFor: FutarRoute?</ID>
+    <ID>ReturnCount:AppearancePrefs.kt:AppearancePrefs.Companion$fun normalize: AppearancePrefs</ID>
+    <ID>ReturnCount:AttendanceCalc.kt:fun getAcademicWeekInfo: AcademicWeekInfo?</ID>
+    <ID>ReturnCount:AttendanceCalc.kt:fun getAttendanceRiskTier: AttendanceRiskTier</ID>
+    <ID>ReturnCount:AuthStore.kt:AuthStore$private fun parseSession: AuthState?</ID>
+    <ID>ReturnCount:Catalog.kt:TransitCatalog$private suspend fun &lt;T&gt; load: T</ID>
+    <ID>ReturnCount:CourseLogic.kt:CourseNames$fun sameCourse: Boolean</ID>
+    <ID>ReturnCount:CourseLogic.kt:CourseRules$fun classKind: ClassKind?</ID>
+    <ID>ReturnCount:CourseLogic.kt:fun extractGroupCode: String?</ID>
+    <ID>ReturnCount:CourseLogic.kt:fun isIntensiveCourseEvents: Boolean</ID>
+    <ID>ReturnCount:CourseLogic.kt:fun normalizeTime: String?</ID>
+    <ID>ReturnCount:CourseTrackerStore.kt:fun findTracker: CourseTracker?</ID>
+    <ID>ReturnCount:CourseTrackerStore.kt:fun findTrackerInStore: TrackerLookup</ID>
+    <ID>ReturnCount:CourseTrackerStore.kt:fun getOrCreateTrackerFromStore: TrackerLookup</ID>
+    <ID>ReturnCount:CourseTrackerStore.kt:fun isSessionHoliday: Boolean</ID>
+    <ID>ReturnCount:CourseTrackerStore.kt:private fun findLegacyTracker: Pair&lt;String, CourseTracker&gt;?</ID>
+    <ID>ReturnCount:DateUtils.kt:fun formatDDMMYYYY: String</ID>
+    <ID>ReturnCount:DateUtils.kt:fun formatTime: String</ID>
+    <ID>ReturnCount:DateUtils.kt:fun parseHourMinute: Pair&lt;Int, Int&gt;?</ID>
+    <ID>ReturnCount:DateUtils.kt:fun parseIsoDate: LocalDate?</ID>
+    <ID>ReturnCount:DeviceLocation.kt:DeviceLocation$private fun restartWatchIfStale</ID>
+    <ID>ReturnCount:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
+    <ID>ReturnCount:DeviceLocation.kt:fun num: Double?</ID>
+    <ID>ReturnCount:DeviceLocation.kt:fun readStoredLocation: WatchLocationState?</ID>
+    <ID>ReturnCount:DragGestureInspector.kt:private suspend inline fun AwaitPointerEventScope.awaitDragOrUp: PointerInputChange?</ID>
+    <ID>ReturnCount:DragGestureInspector.kt:private suspend inline fun AwaitPointerEventScope.drag: PointerInputChange?</ID>
+    <ID>ReturnCount:ExamDetection.kt:fun isExamEvent: Boolean</ID>
+    <ID>ReturnCount:ExamDetection.kt:fun isExamSummary: Boolean</ID>
+    <ID>ReturnCount:FutarApi.kt:FutarApi$suspend fun fetchCombinedRouteDetails: FutarRouteDetailsResponse</ID>
+    <ID>ReturnCount:IcsParser.kt:fun parseIcsDurationMs: Long?</ID>
+    <ID>ReturnCount:IcsParser.kt:fun parseIcsTimestamp: IcsTimestampInfo?</ID>
+    <ID>ReturnCount:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
+    <ID>ReturnCount:IcsParserTest.kt:IcsParserTest$private fun inRange: Boolean</ID>
+    <ID>ReturnCount:LivePosition.kt:fun &lt;T&gt; clipRouteToTrackedStop: ClippedRoute&lt;T&gt;?</ID>
+    <ID>ReturnCount:LivePosition.kt:fun approachFromVehicle: VehicleApproach?</ID>
+    <ID>ReturnCount:LivePosition.kt:fun approximateVehiclePosition: LatLon?</ID>
+    <ID>ReturnCount:LivePosition.kt:fun resolveTrackedStopIndex: Int</ID>
+    <ID>ReturnCount:LivePosition.kt:fun routeProgress: RouteProgress</ID>
+    <ID>ReturnCount:LivePosition.kt:fun stripLabels: StripLabels</ID>
+    <ID>ReturnCount:LiveTrackerScreen.kt:fun variantEntryForArrival: GeoEntry?</ID>
+    <ID>ReturnCount:ManageTrackersScreen.kt:fun checkReorder</ID>
+    <ID>ReturnCount:MapGeo.kt:fun cutLineFeature: JsonObject?</ID>
+    <ID>ReturnCount:MapGeo.kt:fun samePoints: Boolean</ID>
+    <ID>ReturnCount:NavGestures.kt:NavGestures$fun resolve: Result</ID>
+    <ID>ReturnCount:NearbyExplorerMap.kt:fun emitViewport</ID>
+    <ID>ReturnCount:NearbySheetGesture.kt:fun shouldPullSheet: Boolean</ID>
+    <ID>ReturnCount:NearbyStops.kt:fun matchesLineSearch: Boolean</ID>
+    <ID>ReturnCount:NearbyStops.kt:fun routeNameCompare: Int</ID>
+    <ID>ReturnCount:NeptunSettings.kt:internal fun syncCounterText: String</ID>
+    <ID>ReturnCount:NeptunSyncService.kt:NeptunSyncService$fun maybeAutoSync</ID>
+    <ID>ReturnCount:Numbers.kt:fun toFixed: String</ID>
+    <ID>ReturnCount:OpenFreeMapStyle.kt:fun withParkColors: JsonObject</ID>
+    <ID>ReturnCount:OpenFreeMapStyle.kt:internal fun nullSafeExpr: JsonElement</ID>
+    <ID>ReturnCount:PointsCalc.kt:fun tileParts: TileParts?</ID>
+    <ID>ReturnCount:RouteGeometry.kt:fun cutPolylineAtDistance: List&lt;LatLon&gt;</ID>
+    <ID>ReturnCount:RouteGeometry.kt:fun pointAtDistance: LatLon</ID>
+    <ID>ReturnCount:RouteGeometry.kt:fun pointAtFraction: LatLon?</ID>
+    <ID>ReturnCount:RouteGeometry.kt:fun projectVehicleOntoPolyline: PolylineProjection?</ID>
+    <ID>ReturnCount:RouteGeometry.kt:fun snapToPolyline: SnappedPoint?</ID>
+    <ID>ReturnCount:RouteVariants.kt:private fun &lt;T&gt; matchByHeadsign: List&lt;T&gt;</ID>
+    <ID>ReturnCount:Routes.kt:AppNavigator$fun back: Boolean</ID>
+    <ID>ReturnCount:ScheduleBridge.kt:CourseTrackerScheduleHooks$private fun activeSession: AttendanceSession?</ID>
+    <ID>ReturnCount:ScheduleCards.kt:internal fun parseOpaqueHexColor: Color</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:fun conflictIsAcknowledged: Boolean</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:fun getItemIntervals: List&lt;ScheduleInterval&gt;</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:fun isConflictRelevantClass: Boolean</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:internal fun classOccursOnDate: Boolean</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:private fun minuteOfDay: Int?</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:private fun semesterWeekOneStart: String?</ID>
+    <ID>ReturnCount:ScheduleEventsRepository.kt:ScheduleEventsRepository$private suspend fun loadEvents</ID>
+    <ID>ReturnCount:ScheduleItemsCodec.kt:suspend fun decodeScheduleItemRow: StoredScheduleItem?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:fun parseScheduleItemsState: ScheduleItemsState?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:fun resolveScheduleItemSyncConflict: ScheduleItemsState</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:fun validateScheduleItem: ScheduleItem?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:internal fun parsePayload: ScheduleItem?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:private fun parseMutation: ScheduleItemMutation?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:private fun parseStoredItem: StoredScheduleItem?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:private fun parseSyncConflict: Result&lt;ScheduleItemSyncConflict?&gt;</ID>
+    <ID>ReturnCount:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
+    <ID>ReturnCount:ScheduleItemsSync.kt:ScheduleItemsSync$suspend fun refreshItems</ID>
+    <ID>ReturnCount:ScheduleReconciler.kt:fun trackerHasUserWork: Boolean</ID>
+    <ID>ReturnCount:SemesterLogic.kt:fun calculateBreakInfo: BreakInfo?</ID>
+    <ID>ReturnCount:SessionWatchdog.kt:internal fun shouldRefreshSession: Boolean</ID>
+    <ID>ReturnCount:TrackerMonitor.kt:fun formatMonitorTime: String</ID>
+    <ID>ReturnCount:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
+    <ID>ReturnCount:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
+    <ID>ReturnCount:TransitCommon.kt:fun parseHexColor: Color?</ID>
+    <ID>ReturnCount:TransitModeFilter.kt:fun parseModeFilter: List&lt;String&gt;</ID>
+    <ID>ReturnCount:TransitModeFilter.kt:fun selectSingleModeFilter: List&lt;String&gt;</ID>
+    <ID>ReturnCount:TransitRepository.kt:TransitRepository$private suspend fun fetchTrackers: List&lt;TransitTracker&gt;</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun addOrUpdateTrackerStop: List&lt;TrackerStop&gt;</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun findCombinedGroup: CombinedRouteGroup?</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun isHeadsignMatch: Boolean</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun isRouteMatch: Boolean</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun normalizeStopIdToStation: String</ID>
+    <ID>ReturnCount:TransitUtils.kt:fun vehicleTypeMatch: Boolean</ID>
+    <ID>ReturnCount:VehicleAnimMath.kt:fun resolveBearing: Double</ID>
+    <ID>ReturnCount:VehicleAnimMath.kt:fun transitionFor: VehicleTransition</ID>
+    <ID>ReturnCount:WeatherLogic.kt:fun applyErrorState: WeatherLocationState</ID>
+    <ID>ReturnCount:WeatherLogic.kt:fun parseGeoCity: String?</ID>
+    <ID>ReturnCount:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
+    <ID>ReturnCount:WeatherLogic.kt:fun snapshotWithCity: WeatherSnapshot?</ID>
+    <ID>ReturnCount:WeekNavigation.kt:fun computeAcademicWeekInfo: AcademicWeekInfo?</ID>
+    <ID>ReturnCount:WeekNavigation.kt:fun computeSemesterStatus: SemesterStatus</ID>
+    <ID>ReturnCount:WeekNavigation.kt:fun getAcademicWeekInfo: AcademicWeekInfo?</ID>
+    <ID>ReturnCount:WeekNavigation.kt:fun resolveAdjacentWeekIndex: Int</ID>
+    <ID>ReturnCount:WeekNavigation.kt:fun resolveDefaultWeekIndex: Int</ID>
+    <ID>SwallowedException:ScheduleEventsRepository.kt:ScheduleEventsRepository$e: Throwable</ID>
+    <ID>SwallowedException:ScheduleScreen.kt:e: ScheduleItemConflictException</ID>
+    <ID>ThrowingExceptionsWithoutMessageOrCause:ScheduleItemsStore.kt:IllegalArgumentException()</ID>
+    <ID>ThrowsCount:AndroidDevice.kt:AndroidLocationProvider$@SuppressLint("MissingPermission") override suspend fun current: GeoFix</ID>
+    <ID>ThrowsCount:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>ThrowsCount:PocketBase.kt:PocketBaseClient$suspend fun sendText: String</ID>
+    <ID>ThrowsCount:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
+    <ID>TooGenericExceptionCaught:AddTrackerState.kt:AddTrackerState$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ArrivalsLoader.kt:ArrivalsLoader$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:Catalog.kt:TransitCatalog$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:Coroutines.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:CourseTrackerCloud.kt:PocketBaseTrackerCloud$createError: Throwable</ID>
+    <ID>TooGenericExceptionCaught:CryptoClient.kt:CryptoClient$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:DashboardScreen.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:DeviceLocation.kt:DeviceLocation$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:Dialog.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:EditTrackerScreen.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ItemEditorScreen.kt:ex: Throwable</ID>
+    <ID>TooGenericExceptionCaught:LiveQuery.kt:LiveQuery$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ManageTrackersScreen.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ManageTrackersScreen.kt:t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:MapNetworking.kt:KtorMapResources$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:NeptunImportScreen.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:NeptunSettings.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:NeptunSyncService.kt:NeptunSyncService$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:OfflineCache.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:PocketBase.kt:PocketBaseClient$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ScheduleEventsRepository.kt:ScheduleEventsRepository$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ScheduleItemsSync.kt:ScheduleItemsSync$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ScheduleScreen.kt:e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:TrackerActions.kt:t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:TransitRepository.kt:TransitRepository$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:WeatherRepository.kt:WeatherRepository$e: Throwable</ID>
+    <ID>TooManyFunctions:AddTrackerScreen.kt:dev.southstar21.vectra.features.transit.AddTrackerScreen.kt</ID>
+    <ID>TooManyFunctions:AppGraph.kt:AppGraph</ID>
+    <ID>TooManyFunctions:AttendanceParts.kt:dev.southstar21.vectra.features.coursetracker.AttendanceParts.kt</ID>
+    <ID>TooManyFunctions:AuthRepository.kt:AuthRepository</ID>
+    <ID>TooManyFunctions:Chrome.kt:dev.southstar21.vectra.core.designsystem.components.Chrome.kt</ID>
+    <ID>TooManyFunctions:CourseLogic.kt:dev.southstar21.vectra.features.schedule.CourseLogic.kt</ID>
+    <ID>TooManyFunctions:CourseTrackerRepository.kt:CourseTrackerRepository</ID>
+    <ID>TooManyFunctions:CourseTrackerStore.kt:dev.southstar21.vectra.features.coursetracker.CourseTrackerStore.kt</ID>
+    <ID>TooManyFunctions:DateUtils.kt:dev.southstar21.vectra.core.time.DateUtils.kt</ID>
+    <ID>TooManyFunctions:DeviceLocation.kt:DeviceLocation</ID>
+    <ID>TooManyFunctions:IcsParser.kt:dev.southstar21.vectra.features.schedule.IcsParser.kt</ID>
+    <ID>TooManyFunctions:LiveQuery.kt:LiveQuery&lt;K, T&gt;</ID>
+    <ID>TooManyFunctions:NearbyDeparturesSheet.kt:dev.southstar21.vectra.features.transit.NearbyDeparturesSheet.kt</ID>
+    <ID>TooManyFunctions:NearbyStops.kt:dev.southstar21.vectra.features.transit.NearbyStops.kt</ID>
+    <ID>TooManyFunctions:NeptunSyncService.kt:NeptunSyncService</ID>
+    <ID>TooManyFunctions:PointsCalc.kt:dev.southstar21.vectra.features.coursetracker.PointsCalc.kt</ID>
+    <ID>TooManyFunctions:RouteGeometry.kt:dev.southstar21.vectra.core.maps.RouteGeometry.kt</ID>
+    <ID>TooManyFunctions:ScheduleConflicts.kt:dev.southstar21.vectra.features.schedule.ScheduleConflicts.kt</ID>
+    <ID>TooManyFunctions:ScheduleEventsRepository.kt:ScheduleEventsRepository</ID>
+    <ID>TooManyFunctions:ScheduleItemsStore.kt:dev.southstar21.vectra.features.schedule.ScheduleItemsStore.kt</ID>
+    <ID>TooManyFunctions:ScheduleItemsSync.kt:ScheduleItemsSync</ID>
+    <ID>TooManyFunctions:ScheduleRepository.kt:ScheduleRepository</ID>
+    <ID>TooManyFunctions:SplashScene.kt:dev.southstar21.vectra.features.splash.SplashScene.kt</ID>
+    <ID>TooManyFunctions:TransitCommon.kt:dev.southstar21.vectra.features.transit.TransitCommon.kt</ID>
+    <ID>TooManyFunctions:TransitRepository.kt:TransitRepository : SessionListener</ID>
+    <ID>TooManyFunctions:TransitUtils.kt:dev.southstar21.vectra.features.transit.TransitUtils.kt</ID>
+    <ID>TooManyFunctions:WeatherLogic.kt:dev.southstar21.vectra.features.weather.WeatherLogic.kt</ID>
+    <ID>TooManyFunctions:WeatherRepository.kt:WeatherRepository</ID>
+    <ID>TooManyFunctions:WeekNavigation.kt:dev.southstar21.vectra.features.schedule.WeekNavigation.kt</ID>
+    <ID>TopLevelPropertyNaming:AppSplash.kt:private const val REDUCED_EXIT_MS = 200L</ID>
+    <ID>TopLevelPropertyNaming:AppSplash.kt:private const val SPLASH_MIN_VISIBLE_MS = 1000L</ID>
+    <ID>TopLevelPropertyNaming:IcsParser.kt:/** The Google Apps Script proxy: the university blocks datacenter IPs, Google is not blocked. */ const val NEPTUN_ICS_PROXY_URL = "https://script.google.com/macros/s/AKfycbxp_HKH85vTNjtVC5L2d8Ojhwt7BJQzxFVvvOi00UQK1w1G89RrMX11OaAMRHnD-5kj/exec"</ID>
+    <ID>TopLevelPropertyNaming:IcsParser.kt:const val NEPTUN_FETCH_FAILED = "We couldn't download your Neptun calendar — the university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."</ID>
+    <ID>TopLevelPropertyNaming:ScheduleItemsStore.kt:const val SCHEDULE_ITEMS_CACHE_BASE_KEY = "vectra_schedule_items"</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:/** * A faint dotted orb rising over a * dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue, the Rock * Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the * Danube. Shapes live in fixed scene units (260 wide, waterline at B), are * rasterised once and sampled into dots; frames only draw dots, batched. */ const val SCENE_W = 260f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:/** A frame with the city fully lit and the tram mid-bridge, for reduced motion. */ const val STILL_FRAME_ELAPSED = LIGHTS_START_MS + 500 + TRAM_LOOP_MS / 2</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:const val SUNRISE_EXIT_MS = 700f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val LIGHTS_START_MS = 100f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val ORB_CY = B - 81</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val ORB_R = 230f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_H = 8f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_LOOP_MS = 7000f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_W = 30f</ID>
+    <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_Y = B - 16 - TRAM_H</ID>
+    <ID>UnusedParameter:DeviceLocation.kt:current: WatchLocationState</ID>
+    <ID>VariableNaming:AppSplash.kt:val version_ = remember { Animatable(0f) }</ID>
+    <ID>VariableNaming:CourseRulesTest.kt:CourseRulesTest$private val Schedule = Variant(ScheduleCourses, frequencyFromString = false)</ID>
+    <ID>VariableNaming:CourseRulesTest.kt:CourseRulesTest$private val Tracker = Variant(TrackerCourses, frequencyFromString = true)</ID>
+    <ID>VariableNaming:IcsParserTest.kt:IcsParserTest$private val CLASS = "SUMMARY:Calculus I ( - MATH101-E01) - Dr. Example - Tanóra"</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,80 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Brainstorm companion scratch files
+.superpowers/
+
+# Git worktrees
+.worktrees/
+.freebuff/
+
+# Vite PWA dev build output (regenerated on every dev run)
+dev-dist/
+
+# Environment files — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# TypeScript incremental build artifacts (tsconfig.app/node use composite)
+*.tsbuildinfo
+
+# Test coverage output
+coverage/
+
+# Go / PocketBase backend build artifacts
+backend/pb
+backend/pb_data/
+
+# One-off scratch files (kept on disk, not source)
+Export.xlsx
+remove-svg-bg.js
+
+# Windows junk
+Thumbs.db
+desktop.ini
+
+# IntelliJ module files
+*.iml
+
+# Vendored agent skills — reinstallable from skills-lock.json (source + hash per skill)
+.claude/
+.openchamber/
+.codex/
+agent/
+.github/agents/
+.github/hooks/
+.github/skills/
+web/.agents/skills/
+
+# Agent working history — kept on disk, not source
+.impeccable/
+docs/superpowers/
+plans/
+mockups/
+
+# Local tool scratch
+.tachyons/
+.playwright-mcp/

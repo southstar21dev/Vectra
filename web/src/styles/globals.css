@@ -1,0 +1,1148 @@
+@import "tailwindcss";
+
+/* `dark:` follows the app theme (data-theme on <html>), not the OS setting,
+   so a light app on a dark OS never picks up dark-only utility colors. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ============================================
+   VECTRA — Runtime Theme Tokens
+   Switched by data-theme / data-accent on <html>.
+   Dark values are the base (today's look); the
+   light block overrides them. Tailwind 4's
+   @theme inline wires utilities to these vars.
+   ============================================ */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --surface-primary: #07080a;
+  --surface-secondary: #0f1015;
+  --surface-tertiary: #161720;
+  --surface-overlay: rgba(255, 255, 255, 0.035);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-primary: rgba(255, 255, 255, 0.14);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  /* Lifted from #64748b: #64748b sits at ~4.2:1 on the obsidian canvas — below
+     the 4.5:1 AA floor at the 10px instrument-caption size where it's used most. */
+  --text-muted: #7c8aa0;
+  --dialog-scrim: rgba(0, 0, 0, 0.85);
+  --mesh-line: rgba(255, 255, 255, 0.03);
+  --glow-primary: rgba(56, 189, 248, 0.12);
+  --glow-secondary: rgba(168, 85, 247, 0.10);
+
+  /* Glass Surface Tokens. Opaque enough that no backdrop-filter is needed —
+     blur re-samples the backdrop every frame in the Android WebView and killed
+     framerate during scroll/transitions. Every platform renders identically. */
+  --glass-bg: rgba(15, 16, 21, 0.88);
+  --glass-bg-hover: rgba(28, 30, 41, 0.92);
+  --glass-bg-elevated: rgba(18, 19, 26, 0.98);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-specular: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --glass-shadow-elevated: 0 24px 48px -12px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+  /* Map chrome (MapLibre) */
+  --map-surface: #101014;
+  --map-control-bg: #121215;
+  --map-control-hover: #27272e;
+  --map-attribution-bg: rgba(9, 9, 11, 0.7);
+  --map-line-casing: #223a5e;
+  --map-line-casing-secondary: #1f2c45;
+
+  --accent-blue: #38bdf8;
+  --accent-indigo: #818cf8;
+  --accent-purple: #a855f7;
+  --accent-pink: #fb7185;
+  --accent-red: #f43f5e;
+  --accent-orange: #f59e0b;
+  --accent-green: #10b981;
+  --accent-teal: #14b8a6;
+  --accent-cyan: #06b6d4;
+  --accent-primary: var(--accent-purple);
+
+  /* Feature chip tints (identity hues, not user accent) */
+  --tint-blue-bg: rgba(56, 189, 248, 0.15);
+  --tint-blue-border: rgba(56, 189, 248, 0.3);
+  --tint-blue-text: #38bdf8;
+  --tint-purple-bg: rgba(168, 85, 247, 0.15);
+  --tint-purple-border: rgba(168, 85, 247, 0.3);
+  --tint-purple-text: #c084fc;
+  /* Exams need their own hue: they must not read as a Lab (purple) or a
+     Lecture (sky), and the fixed violet-300 utility washed out in light mode. */
+  --tint-violet-bg: rgba(139, 92, 246, 0.15);
+  --tint-violet-border: rgba(139, 92, 246, 0.35);
+  --tint-violet-text: #c4b5fd;
+  --tint-amber-bg: rgba(245, 158, 11, 0.15);
+  --tint-amber-border: rgba(245, 158, 11, 0.3);
+  --tint-amber-text: #fbbf24;
+  --tint-red-bg: rgba(239, 68, 68, 0.15);
+  --tint-red-border: rgba(239, 68, 68, 0.3);
+  --tint-red-text: #f87171;
+  --tint-sky-bg: rgba(14, 165, 233, 0.15);
+  --tint-sky-border: rgba(14, 165, 233, 0.3);
+  --tint-sky-text: #38bdf8;
+  --tint-emerald-bg: rgba(16, 185, 129, 0.15);
+  --tint-emerald-border: rgba(16, 185, 129, 0.3);
+  --tint-emerald-text: #34d399;
+  --tint-green-bg: rgba(34, 197, 94, 0.15);
+  --tint-green-border: rgba(34, 197, 94, 0.3);
+  --tint-green-text: #4ade80;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --surface-primary: #f8fafc;
+  --surface-secondary: #ffffff;
+  --surface-tertiary: #f1f5f9;
+  --surface-overlay: rgba(0, 0, 0, 0.03);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-primary: rgba(0, 0, 0, 0.12);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  /* A full-black scrim behind dialogs reads as a pitch-black screen in light
+     mode; lighten it so the app stays consistent. */
+  --dialog-scrim: rgba(0, 0, 0, 0.45);
+  --mesh-line: rgba(0, 0, 0, 0.05);
+  --glow-primary: rgba(37, 99, 235, 0.08);
+  --glow-secondary: rgba(124, 58, 237, 0.06);
+
+  /* Glass Surface Tokens (see dark block). Light cards stay slightly more
+     opaque and carry deeper slate-tinted shadows so they separate from the
+     near-white background / aurora wash. */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-bg-hover: rgba(255, 255, 255, 0.97);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.98);
+  /* No hairline on light-mode surfaces — a 1px grey border reads as a stroke
+     around the cards. Elevation shadows carry the edge; form controls opt back
+     into a hairline below. */
+  --glass-border: transparent;
+  --glass-border-specular: rgba(255, 255, 255, 0.80);
+  --glass-shadow: 0 0 16px -4px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 20px -6px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-shadow-elevated: 0 0 24px -8px rgba(15, 23, 42, 0.14), 0 2px 4px rgba(15, 23, 42, 0.07), 0 18px 36px -12px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  /* Map chrome (MapLibre) */
+  --map-surface: #e9e9ee;
+  --map-control-bg: #ffffff;
+  --map-control-hover: #f0f0f4;
+  --map-attribution-bg: rgba(255, 255, 255, 0.85);
+  /* Light tiles have white-ish roads, so the halo must be a mid-grey or the
+     route line vanishes into the basemap. */
+  --map-line-casing: rgba(105, 112, 130, 0.9);
+  --map-line-casing-secondary: rgba(105, 112, 130, 0.6);
+
+  --accent-blue: #0284c7;
+  --accent-indigo: #4f46e5;
+  --accent-purple: #7c3aed;
+  --accent-pink: #db2777;
+  --accent-red: #e11d48;
+  --accent-orange: #d97706;
+  --accent-green: #059669;
+  --accent-teal: #0d9488;
+  --accent-cyan: #0891b2;
+  --accent-primary: var(--accent-purple);
+
+  --tint-blue-bg: rgba(59, 130, 246, 0.12);
+  --tint-blue-border: rgba(59, 130, 246, 0.3);
+  --tint-blue-text: #0284c7;
+  --tint-purple-bg: rgba(147, 51, 234, 0.12);
+  --tint-purple-border: rgba(147, 51, 234, 0.3);
+  --tint-purple-text: #7c3aed;
+  --tint-violet-bg: rgba(109, 40, 217, 0.1);
+  --tint-violet-border: rgba(109, 40, 217, 0.28);
+  --tint-violet-text: #6d28d9;
+  --tint-amber-bg: rgba(217, 119, 6, 0.12);
+  --tint-amber-border: rgba(217, 119, 6, 0.3);
+  --tint-amber-text: #b45309;
+  --tint-red-bg: rgba(220, 38, 38, 0.12);
+  --tint-red-border: rgba(220, 38, 38, 0.3);
+  --tint-red-text: #dc2626;
+  --tint-sky-bg: rgba(2, 132, 199, 0.12);
+  --tint-sky-border: rgba(2, 132, 199, 0.3);
+  --tint-sky-text: #0284c7;
+  --tint-emerald-bg: rgba(5, 150, 105, 0.12);
+  --tint-emerald-border: rgba(5, 150, 105, 0.3);
+  --tint-emerald-text: #059669;
+  --tint-green-bg: rgba(22, 163, 74, 0.12);
+  --tint-green-border: rgba(22, 163, 74, 0.3);
+  --tint-green-text: #16a34a;
+}
+
+/* The selected accent preset becomes --accent-primary. Light mode inherits the
+   correct light hex because --accent-<key> is redefined in the light block. */
+html[data-accent='blue'] { --accent-primary: var(--accent-blue); }
+html[data-accent='indigo'] { --accent-primary: var(--accent-indigo); }
+html[data-accent='purple'] { --accent-primary: var(--accent-purple); }
+html[data-accent='pink'] { --accent-primary: var(--accent-pink); }
+html[data-accent='red'] { --accent-primary: var(--accent-red); }
+html[data-accent='orange'] { --accent-primary: var(--accent-orange); }
+html[data-accent='green'] { --accent-primary: var(--accent-green); }
+html[data-accent='teal'] { --accent-primary: var(--accent-teal); }
+html[data-accent='cyan'] { --accent-primary: var(--accent-cyan); }
+
+/* Register accent colors as <color> so multi-layer gradients that reference
+   them (aurora background, background picker previews) substitute correctly.
+   --accent-primary's value is itself a var() — without registration, Chromium
+   drops an entire multi-layer background-image when any layer contains that
+   nested substitution (the aurora thumbnails and aurora body both rendered
+   empty). Single-layer usages (bg-accent-primary, gradient background) work
+   either way. */
+@property --accent-primary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3b82f6;
+}
+
+@property --accent-secondary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #a855f7;
+}
+
+@theme inline {
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-primary: var(--border-primary);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent-primary: var(--accent-primary);
+
+  /* Semantic colors stay fixed (not user-controlled). */
+  --color-accent-secondary: #a855f7;
+  --color-accent-success: #22c55e;
+  --color-accent-warning: #f59e0b;
+  --color-accent-danger: #ef4444;
+
+  --color-tint-blue-bg: var(--tint-blue-bg);
+  --color-tint-blue-border: var(--tint-blue-border);
+  --color-tint-blue-text: var(--tint-blue-text);
+  --color-tint-purple-bg: var(--tint-purple-bg);
+  --color-tint-purple-border: var(--tint-purple-border);
+  --color-tint-purple-text: var(--tint-purple-text);
+  --color-tint-violet-bg: var(--tint-violet-bg);
+  --color-tint-violet-border: var(--tint-violet-border);
+  --color-tint-violet-text: var(--tint-violet-text);
+  --color-tint-amber-bg: var(--tint-amber-bg);
+  --color-tint-amber-border: var(--tint-amber-border);
+  --color-tint-amber-text: var(--tint-amber-text);
+  --color-tint-red-bg: var(--tint-red-bg);
+  --color-tint-red-border: var(--tint-red-border);
+  --color-tint-red-text: var(--tint-red-text);
+  --color-tint-sky-bg: var(--tint-sky-bg);
+  --color-tint-sky-border: var(--tint-sky-border);
+  --color-tint-sky-text: var(--tint-sky-text);
+  --color-tint-emerald-bg: var(--tint-emerald-bg);
+  --color-tint-emerald-border: var(--tint-emerald-border);
+  --color-tint-emerald-text: var(--tint-emerald-text);
+  --color-tint-green-bg: var(--tint-green-bg);
+  --color-tint-green-border: var(--tint-green-border);
+  --color-tint-green-text: var(--tint-green-text);
+
+  /* Property-specific namespaces. Tailwind resolves utilities by namespace,
+     not just --color-*: `text-primary` looks up --text-color-primary,
+     `border-subtle` looks up --border-color-subtle, `bg-tint-blue` looks up
+     --background-color-tint-blue. Without these aliases the utilities are
+     silently dropped and elements fall back to currentColor (the white-outline
+     bug). The --color-* vars above stay for bg-surface-*, divide-border-*,
+     gradient stops and ring utilities. */
+  --text-color-primary: var(--text-primary);
+  --text-color-secondary: var(--text-secondary);
+  --text-color-muted: var(--text-muted);
+  --text-color-accent-primary: var(--accent-primary);
+
+  --border-color-subtle: var(--border-subtle);
+  --border-color-primary: var(--border-primary);
+  --border-color-accent-primary: var(--accent-primary);
+
+  --text-color-tint-blue: var(--tint-blue-text);
+  --background-color-tint-blue: var(--tint-blue-bg);
+  --border-color-tint-blue: var(--tint-blue-border);
+  --text-color-tint-purple: var(--tint-purple-text);
+  --background-color-tint-purple: var(--tint-purple-bg);
+  --border-color-tint-purple: var(--tint-purple-border);
+  --text-color-tint-violet: var(--tint-violet-text);
+  --background-color-tint-violet: var(--tint-violet-bg);
+  --border-color-tint-violet: var(--tint-violet-border);
+  --text-color-tint-amber: var(--tint-amber-text);
+  --background-color-tint-amber: var(--tint-amber-bg);
+  --border-color-tint-amber: var(--tint-amber-border);
+  --text-color-tint-red: var(--tint-red-text);
+  --background-color-tint-red: var(--tint-red-bg);
+  --border-color-tint-red: var(--tint-red-border);
+  --text-color-tint-sky: var(--tint-sky-text);
+  --background-color-tint-sky: var(--tint-sky-bg);
+  --border-color-tint-sky: var(--tint-sky-border);
+  --text-color-tint-emerald: var(--tint-emerald-text);
+  --background-color-tint-emerald: var(--tint-emerald-bg);
+  --border-color-tint-emerald: var(--tint-emerald-border);
+  --text-color-tint-green: var(--tint-green-text);
+  --background-color-tint-green: var(--tint-green-bg);
+  --border-color-tint-green: var(--tint-green-border);
+}
+
+/* Fonts & radius stay static (no runtime switching). */
+@theme {
+  --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+/* ============================================
+   Global Reset & Scrollbar Removal
+   ============================================ */
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: clip;
+  /* No stretch/glow/scroll-chaining when reaching the page edge — otherwise
+     overscroll warps fixed UI (the bottom nav)
+     along with the viewport edge. */
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch feel: no tap highlight, no font boosting, and
+   no text selection/long-press on app chrome (inputs stay selectable). Scoped to
+   coarse pointers so desktop/mouse keeps text selection. */
+@media (pointer: coarse) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable='true'],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  img {
+    -webkit-user-drag: none;
+  }
+
+  button,
+  a,
+  [role='button'],
+  label,
+  select {
+    touch-action: manipulation;
+  }
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Element resets live in @layer base so Tailwind utilities (e.g. mt-3 on a
+   <p>) can override them — unlayered rules would beat every layered utility. */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.2;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  /* Light mode: a faint white lift keeps headings crisp where they sit over
+     the tinted aurora background; invisible on white card surfaces. Only
+     headings get it — body/small text stays shadow-free for sharpness. */
+  html[data-theme='light'] h1,
+  html[data-theme='light'] h2,
+  html[data-theme='light'] h3,
+  html[data-theme='light'] h4,
+  html[data-theme='light'] h5,
+  html[data-theme='light'] h6 {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  p {
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+
+/* ============================================
+   App background - aurora is the default (today's look);
+   mesh stays as the unset fallback. The shell/login/loader
+   divs are transparent; the body owns the look so every
+   route gets it.
+   ============================================ */
+
+body {
+  background-color: var(--surface-primary);
+  background-image:
+    linear-gradient(var(--mesh-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mesh-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+html[data-background='flat'] body {
+  background-image: none;
+}
+
+/* Aurora - accent-tinted gradient glows. Painted on a fixed pseudo-element
+   so the blobs are anchored to the viewport: they never move when content
+   height changes (e.g. switching days on the schedule tab) or when the page
+   scrolls. The base color moves to <html> so the transparent body lets the
+   fixed layer show through (negative z-index paints below body content). */
+html[data-background='aurora'] {
+  background-color: var(--surface-primary);
+}
+
+html[data-background='aurora'] body {
+  background-color: transparent;
+  background-image: none;
+}
+
+html[data-background='aurora'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(80% 60% at 15% 0%, color-mix(in srgb, var(--accent-primary) 16%, transparent) 0%, transparent 60%),
+    radial-gradient(70% 55% at 90% 100%, color-mix(in srgb, var(--accent-secondary) 14%, transparent) 0%, transparent 60%);
+}
+
+/* The brand owl is a white-filled SVG — on light surfaces it would vanish,
+   so flip it to a dark owl there. */
+html[data-theme='light'] img[src$='favicon.svg'] {
+  filter: invert(1);
+}
+
+/* Bottom fade behind the mobile nav — follows the surface color so it works
+   in both themes (was a hardcoded dark gradient). */
+.mobile-nav-fade {
+  background: linear-gradient(
+    to top,
+    var(--surface-primary) 0%,
+    color-mix(in srgb, var(--surface-primary) 95%, transparent) 30%,
+    color-mix(in srgb, var(--surface-primary) 60%, transparent) 60%,
+    color-mix(in srgb, var(--surface-primary) 20%, transparent) 85%,
+    transparent 100%
+  );
+}
+
+/* Top fade behind the status bar on mobile — mirrors the bottom fade so
+   content scrolling up under the status bar area fades out instead of
+   overlapping the status bar text. */
+.mobile-nav-fade-top {
+  background: linear-gradient(
+    to bottom,
+    var(--surface-primary) 0%,
+    color-mix(in srgb, var(--surface-primary) 95%, transparent) 30%,
+    color-mix(in srgb, var(--surface-primary) 60%, transparent) 60%,
+    color-mix(in srgb, var(--surface-primary) 20%, transparent) 85%,
+    transparent 100%
+  );
+}
+
+/* Mini previews for the BACKGROUND picker (same visuals, scaled down). */
+.bg-preview-mesh {
+  background-color: var(--surface-secondary);
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.bg-preview-flat { background-color: var(--surface-secondary); }
+.bg-preview-aurora {
+  background-color: var(--surface-secondary);
+  background-image:
+    radial-gradient(120% 90% at 20% 20%, color-mix(in srgb, var(--accent-primary) 60%, transparent) 0%, transparent 55%),
+    radial-gradient(120% 90% at 85% 80%, color-mix(in srgb, var(--accent-secondary) 55%, transparent) 0%, transparent 55%);
+}
+/* Hide scrollbars globally */
+*::-webkit-scrollbar,
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+*, html, body, .no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Registered so the trip sheets' edge fades can transition (sheet-chrome.tsx). */
+@property --sheet-fade-top { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --sheet-fade-bottom { syntax: '<length>'; inherits: false; initial-value: 0px; }
+
+/* ============================================
+   Safe-area insets (edge-to-edge)
+   ============================================ */
+
+:root {
+  /* Edge-to-edge top inset. iOS PWA (standalone with viewport-fit=cover) and
+     the Android WebView both report the real inset via env(); desktop/web = 0. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+
+  /* Motion curves — mirror src/components/ui/motion-tokens.ts for CSS use. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Page content starts below the status bar / camera cutout on edge-to-edge
+   platforms, keeping the original 1rem (1.5rem on sm+) top spacing on top of
+   it. The body background stays full-bleed behind the bar. */
+.safe-area-content-top {
+  padding-top: calc(var(--safe-area-top, 0px) + 1rem);
+}
+
+@media (min-width: 640px) {
+  .safe-area-content-top {
+    padding-top: calc(var(--safe-area-top, 0px) + 1.5rem);
+  }
+}
+
+
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+/* Sync Now button — subtle breathing glow while idle, so the button is
+   visually alive even when there is nothing to do. */
+@keyframes sync-idle {
+  0%, 100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+  50% { box-shadow: 0 0 16px rgba(59, 130, 246, 0.45); }
+}
+
+/* Live-signal wifi icon — each streak fades in/out so the signal looks like
+   it radiates outward from the dot (streaks are staggered via inline delays). */
+@keyframes wifi-streak {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+/* Sleeping Zzz (no service) — each letter drifts up and fades out, staggered
+   via inline delays so the Zzz builds big → small, holds, then clears.
+   Transform + opacity only, so it stays on the compositor. */
+@keyframes zzz-drift {
+  0% { opacity: 0; transform: translate(-1px, 1.5px); }
+  20%, 70% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(1px, -1.5px); }
+}
+
+.zzz-letter {
+  animation: zzz-drift 2.4s ease-in-out infinite both;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zzz-letter {
+    animation: none;
+  }
+}
+
+/* Shimmer sweep — a light band scans left-to-right across gradient-clipped
+   text (live countdown + suggested departure times). The gradient is sized
+   300% with the band at its middle; with a 300% background each 100% of
+   background-position shifts by 2/3 of a tile, so the seamless loop is exactly
+   150% (one full 3× tile). The band is off-text at both ends of the cycle,
+   which keeps the restart invisible. */
+@keyframes text-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: 0% 0; }
+}
+
+/* prefers-reduced-motion: drop movement and looping decoration; keep
+   opacity/colour feedback. Spinners (animate-spin) stay — they are essential
+   loading feedback, not decoration. Declarations here are unlayered, so they
+   beat Tailwind's @layer utilities. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce {
+    animation: none;
+  }
+
+  /* Entrances keep a short opacity fade, lose the rise/scale. */
+  .animate-fade-in,
+  .animate-scale-in {
+    animation: reduced-fade-in 0.2s ease-out forwards;
+  }
+}
+
+@keyframes reduced-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================
+   Signature card treatment (UI refresh)
+   Layered depth (no border) + soft washes +
+   glowing icon chips + glass panels.
+   ============================================ */
+.card-depth {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08),
+              0 1px 2px rgba(0, 0, 0, 0.35),
+              0 16px 36px -14px rgba(0, 0, 0, 0.7);
+}
+html[data-theme='light'] .card-depth {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+              0 0 16px -4px rgba(15, 23, 42, 0.12),
+              0 1px 3px rgba(15, 23, 42, 0.09),
+              0 14px 30px -12px rgba(15, 23, 42, 0.22);
+}
+
+/* Dialogs get the same light-mode treatment as cards: no hairline stroke,
+   elevation shadows define the surface. */
+html[data-theme='light'] .dialog-depth {
+  border-color: transparent;
+}
+.card-candy {
+  --candy-wash: none;
+  --candy-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                  0 1px 2px rgba(0, 0, 0, 0.35),
+                  0 16px 36px -14px rgba(0, 0, 0, 0.7);
+  position: relative;
+  isolation: isolate;
+  border-radius: 1.25rem;
+  box-shadow: var(--candy-shadow);
+}
+/* Wash renders on its own rounded layer so it follows the corner radius
+   cleanly instead of being clipped by overflow — no edge artifacts. It
+   sits at z-index -1 (within the card's isolated stacking context), so
+   it tints the card surface but never paints over the content. */
+.card-candy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: var(--candy-wash);
+  pointer-events: none;
+}
+html[data-theme='light'] .card-candy {
+  --candy-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+                  0 0 16px -4px rgba(15, 23, 42, 0.12),
+                  0 1px 3px rgba(15, 23, 42, 0.09),
+                  0 14px 30px -12px rgba(15, 23, 42, 0.22);
+  box-shadow: var(--candy-shadow);
+}
+
+/* Soft feature washes (rendered via .card-candy::before) */
+.wash-amber  { --candy-wash: linear-gradient(150deg, rgba(245, 158, 11, 0.12), transparent 45%); }
+.wash-blue   { --candy-wash: linear-gradient(150deg, rgba(59, 130, 246, 0.12), transparent 45%); }
+.wash-purple { --candy-wash: linear-gradient(150deg, rgba(168, 85, 247, 0.10), transparent 45%); }
+html[data-theme='light'] .wash-amber  { --candy-wash: linear-gradient(150deg, rgba(245, 158, 11, 0.10), transparent 45%); }
+html[data-theme='light'] .wash-blue   { --candy-wash: linear-gradient(150deg, rgba(59, 130, 246, 0.09), transparent 45%); }
+html[data-theme='light'] .wash-purple { --candy-wash: linear-gradient(150deg, rgba(168, 85, 247, 0.08), transparent 45%); }
+
+/* Icon-chip glow (added on top of existing tint bg/border/text classes) */
+.icon-glow-amber  { box-shadow: 0 0 20px rgba(245, 158, 11, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.icon-glow-blue   { box-shadow: 0 0 20px rgba(59, 130, 246, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.icon-glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.icon-glow-emerald { box-shadow: 0 0 20px rgba(52, 211, 153, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+
+/* Glass inner panel */
+.panel-glass {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+html[data-theme='light'] .panel-glass {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   VisionOS Luminous Glass Utilities
+   ============================================ */
+.card-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Fading-arc spinner: a comet-tail ring in the user's accent. Pair with
+   animate-spin; reduced motion slows it rather than freezing the only sign
+   that something is still loading. */
+.spinner-arc {
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 10%,
+    color-mix(in srgb, var(--accent-primary) 15%, transparent) 30%,
+    var(--accent-primary) 92%,
+    transparent 92%
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner-arc { animation-duration: 2.4s; }
+}
+
+/* Transit monitor: the stop-display panels for trackers and trips. The
+   surface is the schedule cards' glass (pair with .card-glass-interactive for
+   fill, specular edge, shadow and hover lift); this only adds the display ink.
+   Bright amber = live, dim amber = timetable. */
+.transit-monitor {
+  --monitor-live: #ffd24a;
+  --monitor-sched: #a08a4a;
+  --monitor-text: var(--text-primary);
+  --monitor-muted: var(--text-secondary);
+  --monitor-rule: var(--border-subtle);
+  --monitor-hover: var(--surface-overlay);
+  --monitor-chip: var(--surface-overlay);
+  border-radius: 14px;
+  color: var(--monitor-text);
+}
+html[data-theme='light'] .transit-monitor {
+  --monitor-live: #b45309;
+  --monitor-sched: #8a6d3b;
+}
+
+
+/* Weather card sky: a soft condition tint layered over the glass fill (the
+   glass background colour stays underneath, so both themes keep their base). */
+.weather-sky-clear,
+.weather-sky-partly { background-image: linear-gradient(160deg, var(--tint-sky-bg), var(--tint-amber-bg)); }
+.weather-sky-cloudy,
+.weather-sky-fog { background-image: linear-gradient(160deg, var(--surface-overlay), var(--tint-sky-bg)); }
+.weather-sky-rain { background-image: linear-gradient(160deg, var(--tint-blue-bg), var(--tint-sky-bg)); }
+.weather-sky-snow { background-image: linear-gradient(160deg, var(--tint-sky-bg), var(--surface-overlay)); }
+.weather-sky-storm { background-image: linear-gradient(160deg, var(--tint-violet-bg), var(--tint-blue-bg)); }
+
+.card-glass-interactive {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  box-shadow: var(--glass-shadow);
+  transition: transform 0.25s var(--ease-out),
+              background-color 0.25s var(--ease-out),
+              border-color 0.25s var(--ease-out),
+              box-shadow 0.25s var(--ease-out);
+}
+
+/* Hover lift only exists where hovering exists — on touch, tapping an element
+   fires :hover, so an ungated lift would stick on the tapped card. */
+@media (hover: hover) and (pointer: fine) {
+  .card-glass-interactive:hover {
+    background: var(--glass-bg-hover);
+    border-color: rgba(255, 255, 255, 0.16);
+    border-top-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  html[data-theme='light'] .card-glass-interactive:hover {
+    border-color: transparent;
+    border-top-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 20px -6px rgba(15, 23, 42, 0.14), 0 2px 5px rgba(15, 23, 42, 0.07), 0 18px 36px -10px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* Cards that sit flush with the view's edges also sit flush with the page gutter, and
+   there the light-mode glass shadow reads as a band that stops dead at the card's sides:
+   the token spills ~4px sideways but ~12px below, so the shadow's horizontal end lands
+   right on the card's own edge. Those cards get a halo layer with comparable reach on all
+   four sides instead, so it fades out instead of being cut. Their shadow is otherwise the
+   same shape and weight — the gap shadows above and below cards are untouched. Inset
+   surfaces (pills, inputs, the break capsule) keep the token as-is. */
+html[data-theme='light'] .schedule-flush-card {
+  box-shadow:
+    0 0 24px -2px rgba(15, 23, 42, 0.11),
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 8px 20px -6px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Form controls keep a hairline so their edge stays defined on white cards;
+   large surfaces rely on elevation only. */
+html[data-theme='light'] input.card-glass,
+html[data-theme='light'] button.card-glass,
+html[data-theme='light'] .glass-pill {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.glass-popup {
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  box-shadow: var(--glass-shadow-elevated);
+}
+
+.glass-pill {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  border-radius: 9999px;
+}
+
+.glow-halo {
+  position: relative;
+}
+
+.glow-halo::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0%, var(--glow-primary), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   Mobile nav accent glow — follows the user's
+   selected accent via color-mix.
+   ============================================ */
+.nav-glow {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35),
+              0 0 25px color-mix(in srgb, var(--accent-primary) 12%, transparent),
+              inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+.nav-pill-glow {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-primary) 35%, transparent),
+              0 4px 12px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+/* Nav pill depth, performance-first: one inset specular highlight + one soft
+   accent glow, drawn on the pill's own composited layer (it is transform-
+   animated and carries `will-change`), so gliding it between tabs never
+   repaints the shadow. No extra gradient/beam child layers — the depth comes
+   from a single element. */
+.nav-pill-depth {
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 70%, white 30%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 14px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+}
+.nav-icon-glow {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent-primary) 80%, transparent));
+}
+.nav-beam {
+  background: radial-gradient(
+    ellipse at top,
+    color-mix(in srgb, var(--accent-primary) 40%, transparent),
+    transparent 70%
+  );
+}
+.nav-desktop-glow {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35),
+              0 18px 44px -18px rgba(0, 0, 0, 0.8),
+              0 0 22px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+}
+
+/* ============================================
+   Vision Glass Depth Utilities for Pills & Buttons
+   Matches the specular depth & luminous glow of mobile-nav-pill
+   ============================================ */
+.pill-depth-accent {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 70%, white 30%) !important;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-primary) 35%, transparent),
+              0 4px 12px color-mix(in srgb, var(--accent-primary) 25%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.pill-depth-emerald {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(110, 231, 183, 0.6) !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35),
+              0 4px 12px rgba(16, 185, 129, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.pill-depth-blue {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(147, 197, 253, 0.6) !important;
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.35),
+              0 4px 12px rgba(37, 99, 235, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.pill-depth-gray {
+  background-color: #475569 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  box-shadow: 0 0 16px rgba(71, 85, 105, 0.35),
+              0 4px 12px rgba(71, 85, 105, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.pill-depth-destructive {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(252, 165, 165, 0.6) !important;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.35),
+              0 4px 12px rgba(239, 68, 68, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+html[data-theme='light'] .pill-depth-accent {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 35%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+html[data-theme='light'] .pill-depth-emerald {
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35),
+              0 1px 3px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+html[data-theme='light'] .pill-depth-blue {
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35),
+              0 1px 3px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+html[data-theme='light'] .pill-depth-gray {
+  background-color: #475569 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(100, 116, 139, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(71, 85, 105, 0.35),
+              0 1px 3px rgba(0, 0, 0, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+html[data-theme='light'] .pill-depth-destructive {
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35),
+              0 1px 3px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.pill-depth-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Course tracker attendance marks. A lit mark is the pill-depth recipe in its
+   status colour without the outer bloom, in fills deep enough for white labels
+   to hold contrast; an idle mark is the glass pill, which keeps a hairline in
+   light mode the way form controls do. */
+.mark-depth {
+  --mark-fill: #475569;
+  background-color: var(--mark-fill);
+  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--mark-fill) 55%, white 45%);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--mark-fill) 25%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.mark-depth-present { --mark-fill: #047857; }
+.mark-depth-absent { --mark-fill: #dc2626; }
+.mark-depth-excused { --mark-fill: #b45309; }
+.mark-depth-cancelled { --mark-fill: #475569; }
+
+.mark-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid var(--glass-border-specular);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+html[data-theme='light'] .mark-glass {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+/* ============================================
+   MapLibre GL map chrome (tokens — both themes)
+   ============================================ */
+
+.maplibregl-map {
+  font-family: var(--font-mono);
+}
+
+/* Hide the MapLibre logo watermark */
+.maplibregl-ctrl-logo {
+  display: none !important;
+}
+
+/* Zoom + / - buttons */
+.maplibregl-ctrl-group {
+  background: var(--map-control-bg) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  width: 34px !important;
+  height: 34px !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .maplibregl-ctrl-group button:hover {
+    background: var(--map-control-hover) !important;
+  }
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border-subtle) !important;
+}
+
+/* Zoom button +/- icons */
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.75);
+}
+
+/* The provider style's long attribution is replaced by the shared compact
+   attribution element rendered by each map wrapper. */
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+.map-attribution {
+  color: var(--text-muted);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--surface-primary) 85%, transparent);
+}
+
+.map-attribution a {
+  color: inherit;
+  pointer-events: auto;
+}
+
+/* The radar overlay panels read as solid instrument surfaces, not translucent
+   glass — the map must not show through the playback controls. */
+.radar-glass-solid {
+  background: var(--surface-secondary);
+}
+
+/* Nearby explorer: keep the always-visible attribution bar just above the
+   departures sheet at both snap positions (the dialog reports its coverage
+   through --explorer-sheet-height). Links stay pointer-events:auto from
+   maplibre's own .maplibregl-ctrl rule. */
+/* Keep each nearby ETA's icon and value as one atomic horizontal unit. */
+.nearby-eta-row {
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.explorer-map-shell .maplibregl-ctrl-bottom-right {
+  right: auto !important;
+  left: 8px !important;
+  bottom: calc(var(--explorer-sheet-height, 0px) + 8px) !important;
+  z-index: 31 !important;
+  transition: none !important;
+}
+
+.explorer-map-shell .map-attribution {
+  left: 8px !important;
+  bottom: calc(var(--explorer-sheet-height, 0px) + 8px) !important;
+  z-index: 31 !important;
+}
+
+/* Stop-name labels pinned above stop dots (only the visible window is labelled,
+   so with the close-zoom framing they never collide). The dark text-shadow
+   keeps labels legible on tiles in both themes. */
+.route-stop-label {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-secondary) !important;
+  font-size: 10px !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.95);
+  padding: 0 2px;
+}
+
+/* Light theme: labels sit on light tiles, so the dark shadow halo becomes a
+   muddy outline — flip it to a light halo that keeps text legible instead. */
+html[data-theme='light'] .route-stop-label {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.95), 0 0 6px rgba(255, 255, 255, 0.95);
+}
+
+.route-vehicle-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* MapLibre GL popup theme styling (replaces default white rectangle) */
+.maplibregl-popup-content {
+  background: var(--bg-card, #18181b) !important;
+  color: var(--text-primary, #f4f4f5) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--bg-card, #18181b) !important;
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--bg-card, #18181b) !important;
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--bg-card, #18181b) !important;
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--bg-card, #18181b) !important;
+}

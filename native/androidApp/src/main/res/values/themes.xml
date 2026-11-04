@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark surfacePrimary token in VectraColors -->
+    <color name="vectra_surface_primary">#07080A</color>
+    <!-- Background of the launcher icon -->
+    <color name="vectra_icon_background">#0C0C0E</color>
+
+    <style name="Theme.Vectra" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/vectra_surface_primary</item>
+    </style>
+
+    <style name="Theme.Vectra.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/vectra_surface_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Vectra</item>
+    </style>
+</resources>

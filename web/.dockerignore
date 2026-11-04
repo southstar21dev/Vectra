@@ -1,0 +1,26 @@
+# Never send these into the Docker build context: they are large, build-local,
+# or contain secrets that must not be baked into image layers via `COPY . .`.
+node_modules
+dist
+dev-dist
+coverage
+.git
+.github
+.worktrees
+.freebuff
+.superpowers
+
+# Secrets & local config — Vite client vars are passed as build ARGs instead.
+.env
+.env.*
+!.env.example
+
+# Native build output is not part of the web image.
+assets
+
+# Docs, mockups and agent tooling are irrelevant to the image.
+docs
+.agents
+.DS_Store
+*.log
+*.tsbuildinfo

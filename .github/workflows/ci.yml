@@ -1,0 +1,121 @@
+# Verification for every PR, and the gate in front of every release.
+#
+# Pushes to master, staging and dev run this through release.yml (workflow_call), so a release is
+# only cut from a commit that passed. A job is skipped when its folder didn't change, so a PR that
+# only touches web/ doesn't build the native app.
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      backend: ${{ steps.filter.outputs.backend }}
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'web/**'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            native:
+              - 'native/**'
+              - '.github/workflows/ci.yml'
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      # The app's schedule/transit logic reasons in Budapest wall-clock time;
+      # pin the test timezone so results are identical on UTC runners.
+      TZ: Europe/Budapest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Build
+        env:
+          # Build-time placeholder: the CI build only verifies the bundle
+          # compiles; real values are injected via Docker build args.
+          VITE_POCKETBASE_URL: http://placeholder.pocketbase.local
+        run: npm run build
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache-dependency-path: backend/go.sum
+
+      - run: go vet ./...
+      - run: go test ./...
+
+  native:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tasks: :shared:testAndroidHostTest detekt :androidApp:assembleDebug :androidApp:lint
+          # iOS stays a compile check here; release.yml builds the IPA.
+          - os: macos-latest
+            tasks: :shared:compileKotlinIosSimulatorArm64
+    runs-on: ${{ matrix.os }}
+    env:
+      # Same reason as above: the shared tests reason in Budapest wall-clock time.
+      TZ: Europe/Budapest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify
+        working-directory: native
+        run: ./gradlew ${{ matrix.tasks }}

@@ -1,0 +1,50 @@
+# Local dev backend: one service running the built Vectra PocketBase binary.
+#
+#   docker compose up --build
+#
+# The binary is built inside the container from this directory (multi-stage
+# build inline, so there is no separate Dockerfile to keep in sync), and the
+# `pb_data` named volume persists the SQLite database between runs.
+#
+# Secrets are env-only. The values below are DEV PLACEHOLDERS and are safe to
+# commit; real secrets are never written here. Override any of them with a
+# gitignored `.env` file or by exporting them before `docker compose up`, e.g.
+#
+#   NEPTUN_ENCRYPTION_KEY=$(openssl rand -hex 32) docker compose up --build
+services:
+  pocketbase:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM golang:1.27-alpine AS build
+        WORKDIR /src
+        COPY go.mod go.sum ./
+        RUN go mod download
+        COPY . .
+        RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pb .
+
+        FROM alpine:3.20
+        RUN apk add --no-cache ca-certificates tzdata
+        WORKDIR /app
+        COPY --from=build /out/pb ./pb
+        EXPOSE 8090
+        ENTRYPOINT ["./pb"]
+        CMD ["serve", "--http=0.0.0.0:8090"]
+    ports:
+      - "8090:8090"
+    volumes:
+      - pb_data:/app/pb_data
+    environment:
+      # --- Secrets (dev placeholders; override for anything real) ---
+      NEPTUN_ENCRYPTION_KEY: "${NEPTUN_ENCRYPTION_KEY:-dev-neptun-encryption-key-change-me}"
+      FUTAR_API_KEY: "${FUTAR_API_KEY:-dev-futar-api-key-change-me}"
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-dev-vapid-public-key-change-me}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-dev-vapid-private-key-change-me}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:dev@example.com}"
+      # --- Passkey (WebAuthn) relying-party config ---
+      WEBAUTHN_RP_DISPLAY_NAME: "${WEBAUTHN_RP_DISPLAY_NAME:-Vectra (dev)}"
+      WEBAUTHN_RP_ID: "${WEBAUTHN_RP_ID:-localhost}"
+      WEBAUTHN_RP_ORIGINS: "${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}"
+
+volumes:
+  pb_data:

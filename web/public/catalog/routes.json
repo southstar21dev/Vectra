@@ -1,0 +1,5482 @@
+[
+  {
+    "id": "BKK_3010",
+    "shortName": "1",
+    "description": "Kelenföld vasútállomás M | Bécsi út / Vörösvári út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3011",
+    "shortName": "1A",
+    "description": "Népliget M | Bécsi út / Vörösvári út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3020",
+    "shortName": "2",
+    "description": "Jászai Mari tér | Közvágóhíd H",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_2",
+    "shortName": "2",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_2A",
+    "shortName": "2A",
+    "description": "Gödöllő, Klapka utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3022",
+    "shortName": "2B",
+    "description": "Jászai Mari tér | P.erzsébet, Pacsirtatelep",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3030",
+    "shortName": "3",
+    "description": "Mexikói út M | Gubacsi út / Határ út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3040",
+    "shortName": "4",
+    "description": "Újbuda-központ M | Széll Kálmán tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP04",
+    "shortName": "4",
+    "description": "Corvin-negyed M | Újbuda-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_4",
+    "shortName": "4",
+    "description": "Vác, autóbusz-állomás | Vác, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3046",
+    "shortName": "4-6",
+    "description": "Újbuda-központ M | Széll Kálmán tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP46",
+    "shortName": "4-6",
+    "description": "Móricz Zs. körtér M | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_4A",
+    "shortName": "4A",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, Királytelep autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0050",
+    "shortName": "5",
+    "description": "Rákospalota, Kossuth utca | Pasaréti tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_5",
+    "shortName": "5",
+    "description": "Gödöllő, Hegy utca autóbusz-forduló | Vác, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3060",
+    "shortName": "6",
+    "description": "Móricz Zs. körtér M | Széll Kálmán tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0070",
+    "shortName": "7",
+    "description": "Újpalota, Nyírpalota út | Albertfalva vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0075",
+    "shortName": "7E",
+    "description": "Újpalota, Nyírpalota út | Blaha Lujza tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0081",
+    "shortName": "8A",
+    "description": "Keleti pályaudvar M | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0085",
+    "shortName": "8E",
+    "description": "Újpalota, Nyírpalota út | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0090",
+    "shortName": "9",
+    "description": "Kőbánya alsó vasútáll. | Óbuda, Bogdáni út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_9",
+    "shortName": "9",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, Gépgyár",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0100",
+    "shortName": "10",
+    "description": "Hungexpo | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0110",
+    "shortName": "11",
+    "description": "Nagybányai út | Batthyány tér M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3120",
+    "shortName": "12",
+    "description": "Rákospalota, Kossuth utca | Lehel tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_12",
+    "shortName": "12",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3121",
+    "shortName": "12A",
+    "description": "Rákospalota, Kossuth utca | Angyalföld kocsiszín",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0130",
+    "shortName": "13",
+    "description": "Diósd, Búzavirág u. | Budatétény vá. (Campona)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0131",
+    "shortName": "13A",
+    "description": "Diósd, Sashegyi út | Budatétény vá. (Campona)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3140",
+    "shortName": "14",
+    "description": "Káp.megyer, Megyeri út | Lehel tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_14",
+    "shortName": "14",
+    "description": "Gödöllő, Királytelep autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0150",
+    "shortName": "15",
+    "description": "Gyöngyösi utca M | Kálvin tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0160",
+    "shortName": "16",
+    "description": "Deák Ferenc tér M | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0161",
+    "shortName": "16A",
+    "description": "Budai Vár (Dísz tér) | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3170",
+    "shortName": "17",
+    "description": "Savoya Park | Bécsi út / Vörösvári út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3190",
+    "shortName": "19",
+    "description": "Móricz Zs. körtér M | Bécsi út / Vörösvári út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP19",
+    "shortName": "19",
+    "description": "Móricz Zs. körtér M | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0205",
+    "shortName": "20E",
+    "description": "Keleti pályaudvar M | Káp.megyer, Szilas-patak",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0210",
+    "shortName": "21",
+    "description": "Széll Kálmán tér M | Normafa",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0211",
+    "shortName": "21A",
+    "description": "Széll Kálmán tér M | Svábhegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0220",
+    "shortName": "22",
+    "description": "Budakeszi, Tesco áruház | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0221",
+    "shortName": "22A",
+    "description": "Budakeszi, Dózsa Gy. tér | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3230",
+    "shortName": "23",
+    "description": "Jászai Mari tér | Keleti pályaudvar M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3240",
+    "shortName": "24",
+    "description": "Keleti pályaudvar M | Közvágóhíd H",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_24",
+    "shortName": "24",
+    "description": "Gödöllő, Klapka utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0250",
+    "shortName": "25",
+    "description": "Újpest-központ M | Mexikói út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0260",
+    "shortName": "26",
+    "description": "Göncz Árpád városkp. M | Nyugati pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0270",
+    "shortName": "27",
+    "description": "Citadella - Sánc utca | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3280",
+    "shortName": "28",
+    "description": "Izraelita temető | Blaha Lujza tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP28",
+    "shortName": "28",
+    "description": "Blaha Lujza tér M (Népszínház utca) | Blaha Lujza tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3281",
+    "shortName": "28A",
+    "description": "Új köztemető (Kozma u.) | Blaha Lujza tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3285",
+    "shortName": "28E",
+    "description": "Új köztemető | Keleti pályaudvar M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0290",
+    "shortName": "29",
+    "description": "Hűvösvölgy | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0300",
+    "shortName": "30",
+    "description": "Káp.megyer, Mogyoródi-p. | Keleti pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0301",
+    "shortName": "30A",
+    "description": "Megyer, Szondi utca | Keleti pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0310",
+    "shortName": "31",
+    "description": "Árpádföld | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0320",
+    "shortName": "32",
+    "description": "Göncz Árpád városkp. M | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0330",
+    "shortName": "33",
+    "description": "Nagytétény-Diósd vá. | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0331",
+    "shortName": "33A",
+    "description": "Móricz Zsigmond körtér M | Kondorosi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0340",
+    "shortName": "34",
+    "description": "B.megyer, Újmegyeri tér | Göncz Árpád városkp. M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_34",
+    "shortName": "34",
+    "description": "Gödöllő, Királytelep autóbusz-forduló | Gödöllő, vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0350",
+    "shortName": "35",
+    "description": "Csepel, Csillagtelep | Szentlőrinci úti ltp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0360",
+    "shortName": "36",
+    "description": "Csepel, Csillagtelep | Pestszentlőrinc vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0362",
+    "shortName": "36B",
+    "description": "Szentlőrinci úti ltp. | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3370",
+    "shortName": "37",
+    "description": "Új köztemető (Kozma u.) | Blaha Lujza tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3371",
+    "shortName": "37A",
+    "description": "Sörgyár | Blaha Lujza tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0380",
+    "shortName": "38",
+    "description": "Szigetszentmiklós | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0381",
+    "shortName": "38A",
+    "description": "Lakihegy, Cseresznyés u. | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0390",
+    "shortName": "39",
+    "description": "Kissvábhegy | Batthyány tér M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0400",
+    "shortName": "40",
+    "description": "Budaörsi lakótelep | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0402",
+    "shortName": "40B",
+    "description": "Budaörsi lakótelep | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0405",
+    "shortName": "40E",
+    "description": "Budaörsi lakótelep | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3410",
+    "shortName": "41",
+    "description": "Kamaraerdei Ifj. Park | Bécsi út / Vörösvári út",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3420",
+    "shortName": "42",
+    "description": "Kispest, Tulipán utca | Határ út M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0440",
+    "shortName": "44",
+    "description": "Centenáriumi lakótelep | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_44",
+    "shortName": "44",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_44A",
+    "shortName": "44A",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, Királytelep autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0450",
+    "shortName": "45",
+    "description": "Cinkota, Lassú utca | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_45",
+    "shortName": "45",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0460",
+    "shortName": "46",
+    "description": "Helikopter lakópark | Újpalota, Nyírpalota út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3471",
+    "shortName": "47",
+    "description": "Városház tér | Batthyány tér M+H",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3470",
+    "shortName": "47",
+    "description": "Városház tér | Deák Ferenc tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3480",
+    "shortName": "48",
+    "description": "Savoya Park | Deák Ferenc tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3490",
+    "shortName": "49",
+    "description": "Móricz Zs. körtér M | Deák Ferenc tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3500",
+    "shortName": "50",
+    "description": "Pestszentlőrinc, Béke tér | Határ út M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3510",
+    "shortName": "51",
+    "description": "Erzsébetfalva | Mester utca/Ferenc körút",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3511",
+    "shortName": "51A",
+    "description": "Koppány utca | Mester utca/Ferenc körút",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3520",
+    "shortName": "52",
+    "description": "P.erzsébet, Pacsirtatelep | Határ út M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP52",
+    "shortName": "52",
+    "description": "P.erzsébet, Pacsirtatelep | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0530",
+    "shortName": "53",
+    "description": "Mindszenty J. bíboros tér | Újbuda-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0540",
+    "shortName": "54",
+    "description": "Péterimajor, Víztorony tér | Boráros tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0550",
+    "shortName": "55",
+    "description": "Gyál, Vecsési út | Vecsési út-Boráros tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3560",
+    "shortName": "56",
+    "description": "Városház tér | Hűvösvölgy",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3561",
+    "shortName": "56A",
+    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0570",
+    "shortName": "57",
+    "description": "Máriaremete | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0580",
+    "shortName": "58",
+    "description": "Móricz Zs. körtér M | Balatoni út / Háros utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3590",
+    "shortName": "59",
+    "description": "Márton Áron tér | Szent János Kórház",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3591",
+    "shortName": "59A",
+    "description": "Márton Áron tér | Széll Kálmán tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3592",
+    "shortName": "59B",
+    "description": "Hűvösvölgy | Márton Áron tér",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3600",
+    "shortName": "60",
+    "description": "Széchenyi-hegy | Városmajor",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP60",
+    "shortName": "60",
+    "description": "Széchenyi-hegy | Svábhegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_VP601",
+    "shortName": "60A",
+    "description": "Szent János Kórház | Pethényi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0602",
+    "shortName": "60B",
+    "description": "Széchenyi-hegy | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3610",
+    "shortName": "61",
+    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3611",
+    "shortName": "61",
+    "description": "Hűvösvölgy | Budagyöngye",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_VP61",
+    "shortName": "61",
+    "description": "Hűvösvölgy | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3612",
+    "shortName": "61B",
+    "description": "Savoya Park | Széll Kálmán tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3620",
+    "shortName": "62",
+    "description": "Rákospalota, MÁV-telep | Blaha Lujza tér M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_3621",
+    "shortName": "62A",
+    "description": "Rákospalota, MÁV-telep | Kőbánya alsó vasútáll.",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_0630",
+    "shortName": "63",
+    "description": "Nagykovácsi, Tisza I. tér | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0640",
+    "shortName": "64",
+    "description": "Solymár, Auchan áruház | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0641",
+    "shortName": "64A",
+    "description": "Solymár, Templom tér | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0642",
+    "shortName": "64B",
+    "description": "Solymár vasútállomás | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0650",
+    "shortName": "65",
+    "description": "Szépvölgyi dűlő | Kolosy tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0651",
+    "shortName": "65A",
+    "description": "Fenyőgyöngye | Kolosy tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0660",
+    "shortName": "66",
+    "description": "Soroksár, közp. raktárak | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0662",
+    "shortName": "66B",
+    "description": "Soroksár, BILK | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0665",
+    "shortName": "66E",
+    "description": "Soroksár, BILK | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0670",
+    "shortName": "67",
+    "description": "Madárdomb | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0680",
+    "shortName": "68",
+    "description": "Akadémiaújtelep, 525. tér | Kispest, Vas Gereben utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0682",
+    "shortName": "68B",
+    "description": "Új köztemető | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_3690",
+    "shortName": "69",
+    "description": "Újpalota, Erdőkerülő utca | Mexikói út M",
+    "type": "TRAM",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_4700",
+    "shortName": "70",
+    "description": "Kossuth Lajos tér M | Erzsébet k.né útja, alulj.",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0710",
+    "shortName": "71",
+    "description": "Szentmiklósi út | Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4720",
+    "shortName": "72",
+    "description": "Zugló vasútállomás | Orczy tér",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4730",
+    "shortName": "73",
+    "description": "Nyugati pályaudvar M | Kápolna tér",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4740",
+    "shortName": "74",
+    "description": "Astoria M | Csáktornya park",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4750",
+    "shortName": "75",
+    "description": "Jászai Mari tér | Puskás Ferenc Stadion M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4760",
+    "shortName": "76",
+    "description": "Jászai Mari tér | Keleti pályaudvar M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4770",
+    "shortName": "77",
+    "description": "Öv utca / Egressy út | Puskás Ferenc Stadion M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4780",
+    "shortName": "78",
+    "description": "Kossuth Lajos tér M | Keleti pályaudvar M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4790",
+    "shortName": "79",
+    "description": "Dagály utcai lakótelep | Keleti pályaudvar M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4800",
+    "shortName": "80",
+    "description": "Örs vezér tere M H | Keleti pályaudvar M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4810",
+    "shortName": "81",
+    "description": "Örs vezér tere M H | Dózsa György út M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4820",
+    "shortName": "82",
+    "description": "Örs vezér tere M H | Mexikói út M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_4830",
+    "shortName": "83",
+    "description": "Fővám tér M | Népliget M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0845",
+    "shortName": "84E",
+    "description": "Gyál, Deák Ferenc utca | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0850",
+    "shortName": "85",
+    "description": "Kőbánya-Kispest M | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0855",
+    "shortName": "85E",
+    "description": "Kőbánya-Kispest M | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0870",
+    "shortName": "87",
+    "description": "Mechanikai Művek | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0871",
+    "shortName": "87A",
+    "description": "Kamaraerdő | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0880",
+    "shortName": "88",
+    "description": "Budatétény vá. (Campona) | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0881",
+    "shortName": "88A",
+    "description": "Törökbálint, Márta utca | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0895",
+    "shortName": "89E",
+    "description": "Gyál, Bem József utca | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0910",
+    "shortName": "91",
+    "description": "Széll Kálmán tér M | Nyugati pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0920",
+    "shortName": "92",
+    "description": "Kistarcsa - Auchan Liget | Rákosszentmihály vá.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0921",
+    "shortName": "92A",
+    "description": "Kistarcsa, kórház H | Rákosszentmihály vá.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0930",
+    "shortName": "93",
+    "description": "Szemeretelep vasútáll. | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0931",
+    "shortName": "93A",
+    "description": "Fedezék utca | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0945",
+    "shortName": "94E",
+    "description": "Gyál, Vecsési út | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0950",
+    "shortName": "95",
+    "description": "Felsőcsatári köz | Puskás Ferenc Stadion M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0960",
+    "shortName": "96",
+    "description": "Újpest, Fóti út | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0975",
+    "shortName": "97E",
+    "description": "Rákoskert sugárút | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0980",
+    "shortName": "98",
+    "description": "Rákoscsaba vasútállomás | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0985",
+    "shortName": "98E",
+    "description": "Rákoshegy vasútállomás | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_0990",
+    "shortName": "99",
+    "description": "Mátyás király tér | Blaha Lujza tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1005",
+    "shortName": "100E",
+    "description": "Liszt Ferenc Airport 2 | Deák F. tér (City centre)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1012",
+    "shortName": "101B",
+    "description": "Baross Gábor-telep | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1015",
+    "shortName": "101E",
+    "description": "Budatétény vá. (Campona) | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1020",
+    "shortName": "102",
+    "description": "Mártonhegy | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1040",
+    "shortName": "104",
+    "description": "Dunakeszi, Auchan áruház | Rákospalota, Kossuth utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1041",
+    "shortName": "104A",
+    "description": "Székesdűlő, ipartelep | Rákospalota, Kossuth utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1050",
+    "shortName": "105",
+    "description": "Gyöngyösi utca M | Apor Vilmos tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1060",
+    "shortName": "106",
+    "description": "Római úti lakótelep | Göncz Árpád városkp. M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1070",
+    "shortName": "107",
+    "description": "Infopark - BudaPart | Keleti pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1085",
+    "shortName": "108E",
+    "description": "Újpalota, Nyírpalota út | Gazdagréti tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1100",
+    "shortName": "110",
+    "description": "Rákospatak u./Csömöri út | Thomán István utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1110",
+    "shortName": "111",
+    "description": "Óbuda, Bogdáni út | Batthyány tér M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1120",
+    "shortName": "112",
+    "description": "Rákospatak u./Csömöri út | Thomán István utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1130",
+    "shortName": "113",
+    "description": "Diósd, Sashegyi út | Budatétény vá. (Campona)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1131",
+    "shortName": "113A",
+    "description": "Angeli u. / Nagytétényi út | Budatétény vá. (Campona)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1140",
+    "shortName": "114",
+    "description": "Baross Gábor-telep | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1160",
+    "shortName": "116",
+    "description": "Budai Vár (Dísz tér) | Fény utcai piac",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1170",
+    "shortName": "117",
+    "description": "Újhegyi lakótelep | Kőbánya alsó vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1180",
+    "shortName": "118",
+    "description": "Óbudai autóbuszgarázs | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1190",
+    "shortName": "119",
+    "description": "Zodony utca | Gubacsi út / Határ út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1200",
+    "shortName": "120",
+    "description": "Újpest-központ M | Göncz Árpád városkp. M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1210",
+    "shortName": "121",
+    "description": "Újpest-városkapu M | Káp.megyer, Szilas-patak",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1225",
+    "shortName": "122E",
+    "description": "Káp.megyer, Mogyoródi-p. | Újpest-városkapu M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1230",
+    "shortName": "123",
+    "description": "Soroksár, IKEA áruház | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1231",
+    "shortName": "123A",
+    "description": "Szentlőrinci úti ltp. | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1240",
+    "shortName": "124",
+    "description": "Rákospalota, Bogáncs u. | Bosnyák tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1250",
+    "shortName": "125",
+    "description": "Rákospalota, MEDIMPEX | Bosnyák tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1260",
+    "shortName": "126",
+    "description": "Dunakeszi, Auchan áruház | Káp.megyer, Szilas-patak",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1280",
+    "shortName": "128",
+    "description": "Regőczi István tér | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1282",
+    "shortName": "128B",
+    "description": "Szent János Kórház | Szent János Kórház",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1290",
+    "shortName": "129",
+    "description": "Kurucles | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1300",
+    "shortName": "130",
+    "description": "Újpalota, Sárfű utca | Puskás Ferenc Stadion M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1310",
+    "shortName": "131",
+    "description": "Kisszentmihály, Baross u. | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1325",
+    "shortName": "132E",
+    "description": "Szent Lőrinc-telep | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1335",
+    "shortName": "133E",
+    "description": "Újpalota, Nyírpalota út | Nagytétény, ipartelep",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1340",
+    "shortName": "134",
+    "description": "B.megyer, Újmegyeri tér | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1350",
+    "shortName": "135",
+    "description": "Soroksár, IKEA áruház | Millenniumtelep H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1360",
+    "shortName": "136",
+    "description": "Havanna-lakótelep | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1370",
+    "shortName": "137",
+    "description": "Erdőalja út-Máramaros út | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1380",
+    "shortName": "138",
+    "description": "Budatétény vá. (Campona) | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1381",
+    "shortName": "138A",
+    "description": "Hárosi csárda | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1390",
+    "shortName": "139",
+    "description": "Széll Kálmán tér M | Gazdagréti tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1400",
+    "shortName": "140",
+    "description": "Törökbálint, bevásárlókp. | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1401",
+    "shortName": "140A",
+    "description": "Budaörsi lakótelep | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1402",
+    "shortName": "140B",
+    "description": "Budaörsi lakótelep | Törökbálint, bevásárlókp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1410",
+    "shortName": "141",
+    "description": "Savoya Park | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1425",
+    "shortName": "142E",
+    "description": "Gloriett-lakótelep | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1440",
+    "shortName": "144",
+    "description": "Rákosszentmihály | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1460",
+    "shortName": "146",
+    "description": "Újpalota, Nyírpalota út | Rákoskeresztúr, városkp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1461",
+    "shortName": "146A",
+    "description": "Cinkotai autóbuszgarázs | Rákoskeresztúr, városkp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1470",
+    "shortName": "147",
+    "description": "Megyer, Julianus barát u. | Újpest-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1480",
+    "shortName": "148",
+    "description": "Csepel, Soroksári rév | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1490",
+    "shortName": "149",
+    "description": "Fenyves utca | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1500",
+    "shortName": "150",
+    "description": "Budatétény vá. (Campona) | Újbuda-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1502",
+    "shortName": "150B",
+    "description": "Budatétény vá. (Campona) | Újbuda-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1510",
+    "shortName": "151",
+    "description": "Kőbánya alsó vasútáll. | Csepel, Határ utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1520",
+    "shortName": "152",
+    "description": "Hollandi út | Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1530",
+    "shortName": "153",
+    "description": "Infopark | Gazdagréti tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1540",
+    "shortName": "154",
+    "description": "Infopark - BudaPart | Gazdagréti tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1550",
+    "shortName": "155",
+    "description": "Fácános tér | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1560",
+    "shortName": "156",
+    "description": "Dániel út | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1570",
+    "shortName": "157",
+    "description": "Solymár, Kerekhegy | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1571",
+    "shortName": "157A",
+    "description": "Budaliget, Géza f. útja | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1580",
+    "shortName": "158",
+    "description": "Savoya Park | Balatoni út / Háros utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1582",
+    "shortName": "158B",
+    "description": "Budafoki temető | Savoya Park",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1590",
+    "shortName": "159",
+    "description": "Szent László utcai ltp. | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1600",
+    "shortName": "160",
+    "description": "Békásmegyer H | Óbudai rendelőintézet",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1610",
+    "shortName": "161",
+    "description": "Rákoscsaba | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1611",
+    "shortName": "161A",
+    "description": "Rákoskeresztúr, városkp. | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1615",
+    "shortName": "161E",
+    "description": "Rákoscsaba | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1620",
+    "shortName": "162",
+    "description": "Maglód, Auchan áruház | Kőbánya alsó vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1640",
+    "shortName": "164",
+    "description": "Solymár, PEMÜ | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1642",
+    "shortName": "164B",
+    "description": "Solymár, PEMÜ | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1650",
+    "shortName": "165",
+    "description": "Remetehegyi út | Kolosy tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1660",
+    "shortName": "166",
+    "description": "Ferihegy vasútállomás | Gubacsi út / Határ út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1685",
+    "shortName": "168E",
+    "description": "Rákoshegy | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1695",
+    "shortName": "169E",
+    "description": "Pécel, Kun József utca | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1700",
+    "shortName": "170",
+    "description": "Rákospalota, Csömöri-p. | Újpest-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1720",
+    "shortName": "172",
+    "description": "Törökbálint, Nyár utca | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1730",
+    "shortName": "173",
+    "description": "Törökbálint vasútállomás | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1740",
+    "shortName": "174",
+    "description": "Cinkota H | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1750",
+    "shortName": "175",
+    "description": "Cinkota H | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1765",
+    "shortName": "176E",
+    "description": "Rákoscsaba-Újtelep | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1780",
+    "shortName": "178",
+    "description": "Naphegy tér | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1790",
+    "shortName": "179",
+    "description": "Közvágóhíd H | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1810",
+    "shortName": "181",
+    "description": "Ecseri út M-József A. ltp. | Ecseri út M - Aszódi utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1820",
+    "shortName": "182",
+    "description": "Alacskai úti lakótelep | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1821",
+    "shortName": "182A",
+    "description": "Gilice tér (Varjú utca) | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1830",
+    "shortName": "183",
+    "description": "Szemeretelep vasútáll. | Szarvas csárda tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1840",
+    "shortName": "184",
+    "description": "Pestszentimre | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1850",
+    "shortName": "185",
+    "description": "Újhegy | Kőbánya alsó vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1870",
+    "shortName": "187",
+    "description": "Kamaraerdő | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1880",
+    "shortName": "188",
+    "description": "Budakeszi, Honfoglalás s. | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1885",
+    "shortName": "188E",
+    "description": "Budakeszi, Honfoglalás s. | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1910",
+    "shortName": "191",
+    "description": "Szemlőhegy | Nyugati pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1935",
+    "shortName": "193E",
+    "description": "Market Central Ferihegy | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1940",
+    "shortName": "194",
+    "description": "Gloriett-lakótelep | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1942",
+    "shortName": "194B",
+    "description": "Gloriett-lakótelep | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1950",
+    "shortName": "195",
+    "description": "Rákoskeresztúr, városkp. | Puskás Ferenc Stadion M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1960",
+    "shortName": "196",
+    "description": "Káp.megyer, Szilas-patak | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1961",
+    "shortName": "196A",
+    "description": "Újpest-városkapu M | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1970",
+    "shortName": "197",
+    "description": "Sáránd utca-Kucorgó tér | Rákoskert vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1980",
+    "shortName": "198",
+    "description": "Rákoscsaba-Újtelep | Dél-pesti autóbuszgarázs",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2005",
+    "shortName": "200E",
+    "description": "Cargo C.-Liszt F. Airport 2 | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2025",
+    "shortName": "202E",
+    "description": "Rákoscsaba | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2040",
+    "shortName": "204",
+    "description": "B.megyer, Újmegyeri tér | Rákospalota, Kossuth utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2100",
+    "shortName": "210",
+    "description": "Gyöngyösi utca M | Svábhegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2102",
+    "shortName": "210B",
+    "description": "Gyöngyösi utca M | Normafa",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2120",
+    "shortName": "212",
+    "description": "Boráros tér H | Normafa",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2121",
+    "shortName": "212A",
+    "description": "Boráros tér H | Svábhegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2122",
+    "shortName": "212B",
+    "description": "Boráros tér H | Csillebérc, KFKI",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2130",
+    "shortName": "213",
+    "description": "Donát-hegy | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2140",
+    "shortName": "214",
+    "description": "Baross Gábor-telep | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2160",
+    "shortName": "216",
+    "description": "Dísz tér | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2170",
+    "shortName": "217",
+    "description": "Szarvas csárda tér | Kőbánya alsó vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2175",
+    "shortName": "217E",
+    "description": "Szarvas csárda tér | Blaha Lujza tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2180",
+    "shortName": "218",
+    "description": "Pilisborosjenő | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2181",
+    "shortName": "218A",
+    "description": "Óbudai autóbuszgarázs | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2190",
+    "shortName": "219",
+    "description": "Aranyhegy | Csillaghegy H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2200",
+    "shortName": "220",
+    "description": "Izzó utcai lakótelep | Újpest-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2210",
+    "shortName": "221",
+    "description": "Széll Kálmán tér M | Csillebérc, KFKI",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2220",
+    "shortName": "222",
+    "description": "Budakeszi, Honfoglalás s. | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2235",
+    "shortName": "223E",
+    "description": "Kálvin tér M | Gubacsi út / Határ út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2240",
+    "shortName": "224",
+    "description": "Boráros tér H | Szentlőrinci úti ltp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2245",
+    "shortName": "224E",
+    "description": "Boráros tér H | Szentlőrinci úti ltp.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2250",
+    "shortName": "225",
+    "description": "R.palota, Székely Elek út | Mexikói út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2300",
+    "shortName": "230",
+    "description": "Káp.megyer, Aquaworld | Keleti pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2310",
+    "shortName": "231",
+    "description": "Rákospalota, Kossuth utca | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2312",
+    "shortName": "231B",
+    "description": "Rákospalota, Kossuth utca | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2360",
+    "shortName": "236",
+    "description": "Havanna-lakótelep | Market Central Ferihegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2361",
+    "shortName": "236A",
+    "description": "Havanna-lakótelep | Ferihegy vá. - Ganztelep",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2370",
+    "shortName": "237",
+    "description": "Jablonka út | Szentlélek tér H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2380",
+    "shortName": "238",
+    "description": "Szigetszentmiklós | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2400",
+    "shortName": "240",
+    "description": "Móricz Zs. körtér M | Budaörsi lakótelep",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2430",
+    "shortName": "243",
+    "description": "Donát utca | Békásmegyer H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2440",
+    "shortName": "244",
+    "description": "Centenáriumi lakótelep | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2500",
+    "shortName": "250",
+    "description": "Savoya Park | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2502",
+    "shortName": "250B",
+    "description": "Savoyai Jenő tér | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2510",
+    "shortName": "251",
+    "description": "Savoya Park | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2511",
+    "shortName": "251A",
+    "description": "Városház tér | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2515",
+    "shortName": "251E",
+    "description": "Városház tér | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2530",
+    "shortName": "253",
+    "description": "Madárhegy | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2545",
+    "shortName": "254E",
+    "description": "Népliget M | Alacskai úti lakótelep",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2555",
+    "shortName": "255E",
+    "description": "Boráros tér H | Alacskai úti lakótelep",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2570",
+    "shortName": "257",
+    "description": "Pesthidegkút | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2600",
+    "shortName": "260",
+    "description": "Harsánylejtő | Óbudai rendelőintézet",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2615",
+    "shortName": "261E",
+    "description": "Liget sor | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2620",
+    "shortName": "262",
+    "description": "Rákoskert | Kőbánya alsó vasútáll.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2640",
+    "shortName": "264",
+    "description": "Solymár, PEMÜ | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2660",
+    "shortName": "266",
+    "description": "Ferihegy vá. - Ganztelep | Ferihegy vá.-Pszt.imre vá.",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2680",
+    "shortName": "268",
+    "description": "Akadémiaújtelep, 525. tér | Kispest, Vas Gereben utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2690",
+    "shortName": "269",
+    "description": "Színes utca | Rákoscsaba vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2700",
+    "shortName": "270",
+    "description": "Rákospalota, Csömöri-p. | Újpest-központ M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2720",
+    "shortName": "272",
+    "description": "Törökbálint, Márta utca | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2740",
+    "shortName": "274",
+    "description": "Árpádföld, Bekecs utca | Cinkota H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2750",
+    "shortName": "275",
+    "description": "Piski utca | Rákoscsaba vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2765",
+    "shortName": "276E",
+    "description": "R.csaba-Újtelep, Naplás út | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2770",
+    "shortName": "277",
+    "description": "Bosnyák tér | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2780",
+    "shortName": "278",
+    "description": "Szigetszentmiklós | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2790",
+    "shortName": "279",
+    "description": "Szigetszentmiklós | Auchan Sziget áruház",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2792",
+    "shortName": "279B",
+    "description": "Szigetszentmiklós | Szabadság utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2800",
+    "shortName": "280",
+    "description": "Szigetszentmiklós | Lakihegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2802",
+    "shortName": "280B",
+    "description": "Szigetszentmiklós | Lakihegy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2810",
+    "shortName": "281",
+    "description": "Ferencvárosi rendelőint. | Aszódi utca",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2825",
+    "shortName": "282E",
+    "description": "Alacskai úti lakótelep | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2845",
+    "shortName": "284E",
+    "description": "Pestszentimre | Kőbánya-Kispest M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2870",
+    "shortName": "287",
+    "description": "Budaörsi lakótelep | Budatétény vá. (Campona)",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2910",
+    "shortName": "291",
+    "description": "Zugliget, Libegő | Nyugati pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2945",
+    "shortName": "294E",
+    "description": "Gyál, Vecsési út | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2960",
+    "shortName": "296",
+    "description": "B.megyer, Újmegyeri tér | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2961",
+    "shortName": "296A",
+    "description": "Káp.megyer, Mogyoródi-p. | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2970",
+    "shortName": "297",
+    "description": "Nyeremény utca | R.csaba-Újt. vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_2980",
+    "shortName": "298",
+    "description": "Zimonyi utca | Rákoscsaba vasútállomás",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_300",
+    "shortName": "300",
+    "description": "Vác, autóbusz-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_301",
+    "shortName": "301",
+    "description": "Göd, Duna út | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_302",
+    "shortName": "302",
+    "description": "Dunakeszi, Horányi rév | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_303",
+    "shortName": "303",
+    "description": "Budapest, Újpest-Városkapu XIII. kerület | Dunakeszi, Templom",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_305",
+    "shortName": "305",
+    "description": "Dunakeszi, Horányi rév | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_306",
+    "shortName": "306",
+    "description": "Dunakeszi, Barátság útja 9. | Dunakeszi, Auchan Áruház",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_308",
+    "shortName": "308",
+    "description": "Budapest, Újpest-Városkapu XIII. kerület | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_309",
+    "shortName": "309",
+    "description": "Budapest, Újpest-Városkapu XIII. kerület | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_310",
+    "shortName": "310",
+    "description": "Budapest, Újpest-Városkapu IV. kerület | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_311",
+    "shortName": "311",
+    "description": "Fót, autóbusz-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_312",
+    "shortName": "312",
+    "description": "Nézsa, gyógyszertár | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_313",
+    "shortName": "313",
+    "description": "Püspökszilágy, Általános iskola | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_314",
+    "shortName": "314",
+    "description": "Vác, autóbusz-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_315",
+    "shortName": "315",
+    "description": "Püspökszilágy, Általános iskola | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_316",
+    "shortName": "316",
+    "description": "Bercel, kisáruház | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_317",
+    "shortName": "317",
+    "description": "Aszód, vasútállomás | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_318",
+    "shortName": "318",
+    "description": "Galgamácsa, Újtelep | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_319",
+    "shortName": "319",
+    "description": "Erdőkertes, Háromház autóbusz-forduló | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_320",
+    "shortName": "320",
+    "description": "Mogyoród, HÉV-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_321",
+    "shortName": "321",
+    "description": "Mogyoród, HÉV-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_324",
+    "shortName": "324",
+    "description": "Gödöllő, autóbusz-állomás | Dunakeszi, Barátság útja 39.",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_325",
+    "shortName": "325",
+    "description": "Mogyoród, HÉV-állomás | Dunakeszi, Barátság útja 39.",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_326",
+    "shortName": "326",
+    "description": "Mogyoród, HÉV-állomás | Fót, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_327",
+    "shortName": "327",
+    "description": "Gödöllő, autóbusz-állomás | Fót, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_390",
+    "shortName": "390",
+    "description": "Budapest, Stadion autóbusz-pályaudvar | Csomád, Veresegyházi elágazás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_396",
+    "shortName": "396",
+    "description": "Veresegyház, autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_397",
+    "shortName": "397",
+    "description": "Veresegyház, autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_398",
+    "shortName": "398",
+    "description": "Őrbottyán, Rákóczi Ferenc utca autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_399",
+    "shortName": "399",
+    "description": "Őrbottyán, Rákóczi Ferenc utca autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_400",
+    "shortName": "400",
+    "description": "Tura, vasútállomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_401",
+    "shortName": "401",
+    "description": "Tura, vasútállomás | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_402",
+    "shortName": "402",
+    "description": "Tura, vasútállomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_404",
+    "shortName": "404",
+    "description": "Tura, vasútállomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_405",
+    "shortName": "405",
+    "description": "Tura, vasútállomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_406",
+    "shortName": "406",
+    "description": "Hatvan, autóbusz-pályaudvar | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_407",
+    "shortName": "407",
+    "description": "Hatvan, autóbusz-pályaudvar | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_410",
+    "shortName": "410",
+    "description": "Hatvan, autóbusz-pályaudvar | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_411",
+    "shortName": "411",
+    "description": "Gyöngyös, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_412",
+    "shortName": "412",
+    "description": "Hatvan, autóbusz-pályaudvar | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_413",
+    "shortName": "413",
+    "description": "Gyöngyös, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_414",
+    "shortName": "414",
+    "description": "Hatvan, autóbusz-pályaudvar | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_415",
+    "shortName": "415",
+    "description": "Hort, Hősök tere 1. | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_416",
+    "shortName": "416",
+    "description": "Gödöllő, autóbusz-állomás | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_419",
+    "shortName": "419",
+    "description": "Csömör, Laky park | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_422",
+    "shortName": "422",
+    "description": "Kartal, autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_424",
+    "shortName": "424",
+    "description": "Erdőkürt, Kossuth Lajos út | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_426",
+    "shortName": "426",
+    "description": "Erdőtarcsa, községháza | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_430",
+    "shortName": "430",
+    "description": "Bér, Fő tér | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_431",
+    "shortName": "431",
+    "description": "Kartal, autóbusz-forduló | Budapest, Újpest-Városkapu IV. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_432",
+    "shortName": "432",
+    "description": "Buják, iskola | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_433",
+    "shortName": "433",
+    "description": "Erdőtarcsa, községháza | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_434",
+    "shortName": "434",
+    "description": "Buják, iskola | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_435",
+    "shortName": "435",
+    "description": "Buják, iskola | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_436",
+    "shortName": "436",
+    "description": "Buják, iskola | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_437",
+    "shortName": "437",
+    "description": "Bér, Fő tér | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_438",
+    "shortName": "438",
+    "description": "Palotás, Templom tér | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_439",
+    "shortName": "439",
+    "description": "Hollókő, autóbusz-váróterem | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_440",
+    "shortName": "440",
+    "description": "Tóalmás, Újtelep | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_441",
+    "shortName": "441",
+    "description": "Jászfényszaru, Wesselényi utca | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_442",
+    "shortName": "442",
+    "description": "Jászfényszaru, Wesselényi utca | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_444",
+    "shortName": "444",
+    "description": "Zsámbok, Vásár tér | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_446",
+    "shortName": "446",
+    "description": "Kóka, autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_447",
+    "shortName": "447",
+    "description": "Dány, autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_448",
+    "shortName": "448",
+    "description": "Kistarcsa, Megyei kórház | Dány, autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_449",
+    "shortName": "449",
+    "description": "Gödöllő, autóbusz-állomás | Csömör, Laky park",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_450",
+    "shortName": "450",
+    "description": "Veresegyház, autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_451",
+    "shortName": "451",
+    "description": "Gödöllő, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_452",
+    "shortName": "452",
+    "description": "Őrbottyán, Rákóczi Ferenc utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_453",
+    "shortName": "453",
+    "description": "Galgamácsa, Újtelep | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_454",
+    "shortName": "454",
+    "description": "Váckisújfalu, Petőfi utca | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_455",
+    "shortName": "455",
+    "description": "Vác, autóbusz-állomás | Gödöllő, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_461",
+    "shortName": "461",
+    "description": "Gödöllő, autóbusz-állomás | Galgamácsa, Újtelep",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_480",
+    "shortName": "480",
+    "description": "Nagytarcsa, Kistemplom | Budapest, Cinkota HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_482",
+    "shortName": "482",
+    "description": "Budapest, Rákoscsaba vasútállomás | Budapest, Cinkota HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_484",
+    "shortName": "484",
+    "description": "Dány, autóbusz-forduló | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_485",
+    "shortName": "485",
+    "description": "Tápiószentmárton, Vízmű | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_486",
+    "shortName": "486",
+    "description": "Szentlőrinckáta, autóbusz-forduló | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_504",
+    "shortName": "504",
+    "description": "Monor, autóbusz-állomás | Kistarcsa, Megyei kórház",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_505",
+    "shortName": "505",
+    "description": "Monor, autóbusz-állomás | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_506",
+    "shortName": "506",
+    "description": "Maglód, autóbusz-forduló | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_508",
+    "shortName": "508",
+    "description": "Gyömrő, Harmónia-Uszoda | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_509",
+    "shortName": "509",
+    "description": "Monor, autóbusz-állomás | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_510",
+    "shortName": "510",
+    "description": "Gyömrő, Harmónia-Uszoda | Budapest, Örs vezér tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_575",
+    "shortName": "575",
+    "description": "Budapest, Kőbánya-Kispest | Gyömrő, városháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_576",
+    "shortName": "576",
+    "description": "Vecsés, Erzsébet tér | Budapest, Kőbánya-Kispest",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_577",
+    "shortName": "577",
+    "description": "Budapest, Kőbánya-Kispest | Vecsés, Erzsébet tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_578",
+    "shortName": "578",
+    "description": "Budapest, Kőbánya-Kispest | Budapest, Kőbánya-Kispest",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_580",
+    "shortName": "580",
+    "description": "Monor, autóbusz-állomás | Budapest, Kőbánya-Kispest",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_581",
+    "shortName": "581",
+    "description": "Üllő, Ipari Park | Budapest, Kőbánya-Kispest",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_599",
+    "shortName": "599",
+    "description": "Budapest, Astoria | Üllő, városháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_607",
+    "shortName": "607",
+    "description": "Újlengyel, autóbusz-forduló | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_608",
+    "shortName": "608",
+    "description": "Újhartyán, Szerviz | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_616",
+    "shortName": "616",
+    "description": "Örkény, Aranyfürt Csárda | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_625",
+    "shortName": "625",
+    "description": "Kecskemét, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_626",
+    "shortName": "626",
+    "description": "Dabas, Gyón tatárszentgyörgyi elágazás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_627",
+    "shortName": "627",
+    "description": "Dabas, Gyón tatárszentgyörgyi elágazás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_628",
+    "shortName": "628",
+    "description": "Ladánybene, autóbusz-váróterem | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_629",
+    "shortName": "629",
+    "description": "Kunpeszér, Középpeszér | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_630",
+    "shortName": "630",
+    "description": "Bugyi, Ipari Park | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_631",
+    "shortName": "631",
+    "description": "Alsónémedi, Ócsai elágazás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_632",
+    "shortName": "632",
+    "description": "Bugyi, Ipari Park | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_633",
+    "shortName": "633",
+    "description": "Alsónémedi, Ócsai elágazás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_635",
+    "shortName": "635",
+    "description": "Ócsa, Akácos utca | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_636",
+    "shortName": "636",
+    "description": "Ócsa, Akácos utca | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_637",
+    "shortName": "637",
+    "description": "Ócsa, Akácos utca | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_648",
+    "shortName": "648",
+    "description": "Kiskunlacháza, Birka Csárda | Kiskunlacháza, vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_650",
+    "shortName": "650",
+    "description": "Kiskunhalas, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_652",
+    "shortName": "652",
+    "description": "Dunavarsány, vasútállomás | Majosháza, Rév-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_653",
+    "shortName": "653",
+    "description": "Kunszentmiklós, vasútállomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_654",
+    "shortName": "654",
+    "description": "Kunszentmiklós, vasútállomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_655",
+    "shortName": "655",
+    "description": "Délegyháza, autóbusz-forduló | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_656",
+    "shortName": "656",
+    "description": "Délegyháza, autóbusz-forduló | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_657",
+    "shortName": "657",
+    "description": "Délegyháza, autóbusz-forduló | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_659",
+    "shortName": "659",
+    "description": "Budapest, Népliget autóbusz-pályaudvar | Dömsöd, Kossuth Lajos utca 136.",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_660",
+    "shortName": "660",
+    "description": "Dömsöd, Kossuth Lajos utca 136. | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_661",
+    "shortName": "661",
+    "description": "Makád, községháza | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_662",
+    "shortName": "662",
+    "description": "Taksony, Baross tér | Dunavarsány, vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_663",
+    "shortName": "663",
+    "description": "Taksony, vasútállomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_664",
+    "shortName": "664",
+    "description": "Délegyháza, Alsódélegyháza | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_665",
+    "shortName": "665",
+    "description": "Ráckeve, HÉV-állomás | Szigetszentmiklós-Gyártelep, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_667",
+    "shortName": "667",
+    "description": "Áporka, autóbusz-forduló | Szigetszentmiklós-Gyártelep, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_668",
+    "shortName": "668",
+    "description": "Kiskunlacháza, Ráckevei elágazás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_669",
+    "shortName": "669",
+    "description": "Dömsöd, Kossuth Lajos utca 136. | Ráckeve, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_670",
+    "shortName": "670",
+    "description": "Kiskunlacháza, vasútállomás | Ráckeve, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_671",
+    "shortName": "671",
+    "description": "Apaj, Állami gazdaság központ | Ráckeve, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_672",
+    "shortName": "672",
+    "description": "Halásztelek, Ady Endre utca | Budapest, Vermes Miklós utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_673",
+    "shortName": "673",
+    "description": "Tököl, Alkotmány tér | Budapest, Vermes Miklós utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_674",
+    "shortName": "674",
+    "description": "Szigethalom, autóbusz-állomás | Budapest, Vermes Miklós utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_675",
+    "shortName": "675",
+    "description": "Ráckeve, autóbusz-forduló | Budapest, Vermes Miklós utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_676",
+    "shortName": "676",
+    "description": "Ráckeve, HÉV-állomás | Budapest, Vermes Miklós utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_677",
+    "shortName": "677",
+    "description": "Halásztelek, Somogyi Béla utca | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_678",
+    "shortName": "678",
+    "description": "Szigetszentmiklós, városháza | Szigetszentmiklós, városháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_679",
+    "shortName": "679",
+    "description": "Dunaharaszti, HÉV-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_681",
+    "shortName": "681",
+    "description": "Szigetszentmiklós, Csépi út | Halásztelek, Somogyi Béla utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_682",
+    "shortName": "682",
+    "description": "Szigetszentmiklós, városháza | Szigetszentmiklós, városháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_683",
+    "shortName": "683",
+    "description": "Szigetszentmiklós, Szebeni utca | Szigetszentmiklós, Szebeni utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_684",
+    "shortName": "684",
+    "description": "Szigethalom, autóbusz-állomás | Szigetszentmiklós, városháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_686",
+    "shortName": "686",
+    "description": "Budapest, Kelenföld vasútállomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_688",
+    "shortName": "688",
+    "description": "Halásztelek, Kossuth Lajos utca | Budapest, Csepel, Szent Imre tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_689",
+    "shortName": "689",
+    "description": "Szigethalom, autóbusz-állomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_690",
+    "shortName": "690",
+    "description": "Szigethalom, autóbusz-állomás | Budapest, Csepel, Szent Imre tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_691",
+    "shortName": "691",
+    "description": "Szigethalom, autóbusz-állomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_692",
+    "shortName": "692",
+    "description": "Szigethalom, autóbusz-állomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_693",
+    "shortName": "693",
+    "description": "Szigethalom, autóbusz-állomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_694",
+    "shortName": "694",
+    "description": "Szigethalom, autóbusz-állomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_695",
+    "shortName": "695",
+    "description": "Szigethalom, autóbusz-állomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_696",
+    "shortName": "696",
+    "description": "Szigethalom, autóbusz-állomás | Szigethalom, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_697",
+    "shortName": "697",
+    "description": "Makád, községháza | Ráckeve, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_698",
+    "shortName": "698",
+    "description": "Lórév, községháza | Ráckeve, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_699",
+    "shortName": "699",
+    "description": "Budapest, Népliget autóbusz-pályaudvar | Dabas, Sári okmányhivatal",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_700",
+    "shortName": "700",
+    "description": "Érd, autóbusz-állomás | Budapest, Budatétény vasútállomás (Campona)",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_705",
+    "shortName": "705",
+    "description": "Dunaújváros, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_710",
+    "shortName": "710",
+    "description": "Százhalombatta, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_712",
+    "shortName": "712",
+    "description": "Százhalombatta, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_715",
+    "shortName": "715",
+    "description": "Százhalombatta, Régészeti Park | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_720",
+    "shortName": "720",
+    "description": "Érd, autóbusz-állomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_722",
+    "shortName": "722",
+    "description": "Pusztazámor, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_724",
+    "shortName": "724",
+    "description": "Pusztazámor, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_725",
+    "shortName": "725",
+    "description": "Budapest, Kelenföld vasútállomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_727",
+    "shortName": "727",
+    "description": "Budapest, Kelenföld vasútállomás | Diósd, Búzavirág utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_729",
+    "shortName": "729",
+    "description": "Budapest, Móricz Zsigmond körtér | Budapest, Móricz Zsigmond körtér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_731",
+    "shortName": "731",
+    "description": "Érd, autóbusz-állomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_732",
+    "shortName": "732",
+    "description": "Érd, Bem tér | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_734",
+    "shortName": "734",
+    "description": "Érd, autóbusz-állomás | Érd, Bem tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_735",
+    "shortName": "735",
+    "description": "Érd, autóbusz-állomás | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_736",
+    "shortName": "736",
+    "description": "Érd, autóbusz-állomás | Érd, Bem tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_739",
+    "shortName": "739",
+    "description": "Érd, autóbusz-állomás | Budapest, Móricz Zsigmond körtér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_755",
+    "shortName": "755",
+    "description": "Érd, autóbusz-állomás | Budaörs, Lakótelep",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_756",
+    "shortName": "756",
+    "description": "Százhalombatta, vasútállomás | Budapest, Waldorf általános iskola",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_760",
+    "shortName": "760",
+    "description": "Etyek, Botpuszta | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_762",
+    "shortName": "762",
+    "description": "Sóskút, Iskola | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_763",
+    "shortName": "763",
+    "description": "Etyek, Botpuszta | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_764",
+    "shortName": "764",
+    "description": "Biatorbágy, Tópark | Budapest, Kelenföld vá. (Őrmező)",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_766",
+    "shortName": "766",
+    "description": "Biatorbágy, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_767",
+    "shortName": "767",
+    "description": "Etyek, Botpuszta | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_769",
+    "shortName": "769",
+    "description": "Budapest, Kelenföld vasútállomás | Pusztazámor, autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_770",
+    "shortName": "770",
+    "description": "Kisbér, autóbusz-állomás | Budapest, Déli pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_773",
+    "shortName": "773",
+    "description": "Budajenő, Petőfi Sándor utca | Budapest, Kelenföld vá. (Őrmező)",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_774",
+    "shortName": "774",
+    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vá. (Őrmező)",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_775",
+    "shortName": "775",
+    "description": "Gyermely, Semmelweis utca | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_777",
+    "shortName": "777",
+    "description": "Nagysáp, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_779",
+    "shortName": "779",
+    "description": "Nyergesújfalu, gimnázium | Budapest, Kelenföld vá. (Őrmező)",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_780",
+    "shortName": "780",
+    "description": "Zsámbék, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_781",
+    "shortName": "781",
+    "description": "Páty, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_782",
+    "shortName": "782",
+    "description": "Biatorbágy, autóbusz-forduló | Budakeszi, Dózsa György tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_783",
+    "shortName": "783",
+    "description": "Zsámbék, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_784",
+    "shortName": "784",
+    "description": "Bicske, vasútállomás | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_785",
+    "shortName": "785",
+    "description": "Gyermely, Semmelweis utca | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_786",
+    "shortName": "786",
+    "description": "Tardos, autóbusz-váróterem | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_787",
+    "shortName": "787",
+    "description": "Nagysáp, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_788",
+    "shortName": "788",
+    "description": "Herceghalom, vasútállomás | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_789",
+    "shortName": "789",
+    "description": "Zsámbék, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_793",
+    "shortName": "793",
+    "description": "Budapest, Széll Kálmán tér | Budajenő, Petőfi Sándor utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_794",
+    "shortName": "794",
+    "description": "Perbál, Központ | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_795",
+    "shortName": "795",
+    "description": "Zsámbék, autóbusz-forduló | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_796",
+    "shortName": "796",
+    "description": "Herceghalom, vasútállomás | Budapest, Széll Kálmán tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_797",
+    "shortName": "797",
+    "description": "Budakeszi, Dózsa György tér | Nagykovácsi, Tisza István tér",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_798",
+    "shortName": "798",
+    "description": "Perbál, Központ | Budapest, Kelenföld vasútállomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_799",
+    "shortName": "799",
+    "description": "Pilisvörösvár, vasútállomás | Zsámbék, autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_800",
+    "shortName": "800",
+    "description": "Esztergom, vasútállomás | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_820",
+    "shortName": "820",
+    "description": "Pilisszántó, autóbusz-forduló | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_821",
+    "shortName": "821",
+    "description": "Pilisszántó, autóbusz-forduló | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_830",
+    "shortName": "830",
+    "description": "Pilisszántó, autóbusz-forduló | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_832",
+    "shortName": "832",
+    "description": "Piliscsaba, vasútállomás | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_835",
+    "shortName": "835",
+    "description": "Pilisborosjenő, autóbusz-forduló | Pilisszántó, autóbusz-forduló",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_840",
+    "shortName": "840",
+    "description": "Pilisborosjenő, autóbusz-forduló | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_848",
+    "shortName": "848",
+    "description": "Pilisborosjenő, autóbusz-forduló | Budapest, Árpád híd autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_855",
+    "shortName": "855",
+    "description": "Csobánka, Plandics tér | Pomáz, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_856",
+    "shortName": "856",
+    "description": "Pilisvörösvár, vasútállomás | Pomáz, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_860",
+    "shortName": "860",
+    "description": "Dobogókő, hegytető | Pomáz, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_861",
+    "shortName": "861",
+    "description": "Pilisszentkereszt, autóbusz-forduló | Pomáz, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_862",
+    "shortName": "862",
+    "description": "Esztergom, Kórház | Pomáz, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_869",
+    "shortName": "869",
+    "description": "Budapest, Heltai Jenő tér | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_870",
+    "shortName": "870",
+    "description": "Pilisszentlászló, községháza | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_871",
+    "shortName": "871",
+    "description": "Leányfalu, Alszeghy Kálmán tér | Pilisszentlászló, községháza",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_872",
+    "shortName": "872",
+    "description": "Szentendre, autóbusz-állomás | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_873",
+    "shortName": "873",
+    "description": "Szentendre, Ösvény utca | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_874",
+    "shortName": "874",
+    "description": "Szentendre, Sportpálya | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_875",
+    "shortName": "875",
+    "description": "Szentendre, Sportpálya | Szentendre, Ösvény utca",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_876",
+    "shortName": "876",
+    "description": "Szentendre, autóbusz-állomás | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_878",
+    "shortName": "878",
+    "description": "Szentendre, autóbusz-állomás | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_879",
+    "shortName": "879",
+    "description": "Szentendre, autóbusz-állomás | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_880",
+    "shortName": "880",
+    "description": "Esztergom, vasútállomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_882",
+    "shortName": "882",
+    "description": "Visegrád, Újtelep | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_884",
+    "shortName": "884",
+    "description": "Dunabogdány, községháza | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_889",
+    "shortName": "889",
+    "description": "Pilismarót, községháza | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_890",
+    "shortName": "890",
+    "description": "Tahitótfalu, Váci rév | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_892",
+    "shortName": "892",
+    "description": "Szigetmonostor, Pásztor rév | Tahitótfalu, Hősök tere",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_893",
+    "shortName": "893",
+    "description": "Pócsmegyer, Ady Endre út | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_895",
+    "shortName": "895",
+    "description": "Szigetmonostor, faluház | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_897",
+    "shortName": "897",
+    "description": "Szigetmonostor, faluház | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_898",
+    "shortName": "898",
+    "description": "Kisoroszi, Hősök tere | Szentendre, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_9010",
+    "shortName": "901",
+    "description": "Bécsi út / Vörösvári út | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9050",
+    "shortName": "905",
+    "description": "Máriaremete | Rákospalota, MEDIMPEX",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9051",
+    "shortName": "905A",
+    "description": "Hűvösvölgy | Rákospalota, Kossuth utca",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9070",
+    "shortName": "907",
+    "description": "Örs vezér tere M H | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9071",
+    "shortName": "907A",
+    "description": "Astoria M | Bosnyák tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9080",
+    "shortName": "908",
+    "description": "Rákoscsaba-Újtelep | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9081",
+    "shortName": "908A",
+    "description": "Astoria M | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9090",
+    "shortName": "909",
+    "description": "Örs vezér tere M H | Óbuda, Bogdáni út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9100",
+    "shortName": "910",
+    "description": "Zugló vasútállomás | Csillebérc",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9120",
+    "shortName": "912",
+    "description": "Mártonhegy | Csáktornya park",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9140",
+    "shortName": "914",
+    "description": "Dél-pesti autóbuszgarázs | Káp.megyer, Mogyoródi-p.",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9141",
+    "shortName": "914A",
+    "description": "Határ út M | Újpest-központ M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9170",
+    "shortName": "917",
+    "description": "Békásmegyer H | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9171",
+    "shortName": "917A",
+    "description": "Móricz Zsigmond körtér M | Bécsi út / Vörösvári út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9180",
+    "shortName": "918",
+    "description": "Óbudai autóbuszgarázs | Közvágóhíd H",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9220",
+    "shortName": "922",
+    "description": "Törökbálint | Budakeszi, Dózsa Gy. tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9222",
+    "shortName": "922B",
+    "description": "Törökbálint | Zsámbék",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9230",
+    "shortName": "923",
+    "description": "Békásmegyer H | Dél-pesti autóbuszgarázs",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9300",
+    "shortName": "930",
+    "description": "Megyer, Szondi utca | Újpest-központ M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9310",
+    "shortName": "931",
+    "description": "Árpádföld | Pasaréti tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9330",
+    "shortName": "933",
+    "description": "Nagytétény, ipartelep | Újpalota, Nyírpalota út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9331",
+    "shortName": "933A",
+    "description": "Budatétény vá. (Campona) | Újpalota, Nyírpalota út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9340",
+    "shortName": "934",
+    "description": "Békásmegyer | Pesterzsébet",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9370",
+    "shortName": "937",
+    "description": "Tábor-hegy | Szentlélek tér H",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9380",
+    "shortName": "938",
+    "description": "Szigetszentmiklós | Csepel, Szent Imre tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9400",
+    "shortName": "940",
+    "description": "Budaörsi lakótelep | Móricz Zs. körtér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9410",
+    "shortName": "941",
+    "description": "Budatétény | Rákosszentmihály vá.",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9430",
+    "shortName": "943",
+    "description": "Szentendre H | Óbudai autóbuszgarázs",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9460",
+    "shortName": "946",
+    "description": "Dél-pesti autóbuszgarázs | Újpalota, Nyírpalota út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9480",
+    "shortName": "948",
+    "description": "Csepel-Királyerdő | Dél-pesti autóbuszgarázs",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9500",
+    "shortName": "950",
+    "description": "Pestszentimre vasútáll. | Újpalota, Szentmihályi út",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9501",
+    "shortName": "950A",
+    "description": "Újpalota, Szentmihályi út | Szarvas csárda tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9550",
+    "shortName": "955",
+    "description": "Fácános tér | Széll Kálmán tér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9580",
+    "shortName": "958",
+    "description": "Arany János utcai ltp. | Boráros tér H",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9600",
+    "shortName": "960",
+    "description": "Harsánylejtő | Szentlélek tér H",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9630",
+    "shortName": "963",
+    "description": "Nagykovácsi, Tisza I. tér | Hűvösvölgy",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9640",
+    "shortName": "964",
+    "description": "Solymár, PEMÜ | Hűvösvölgy",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9660",
+    "shortName": "966",
+    "description": "Millenniumtelep H | Kolosy tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9690",
+    "shortName": "969",
+    "description": "Pécel | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9720",
+    "shortName": "972",
+    "description": "Deák Ferenc tér M | Orczy tér",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9790",
+    "shortName": "979",
+    "description": "Csepel, Csillagtelep | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9800",
+    "shortName": "980",
+    "description": "Örs vezér tere M H | Deák Ferenc tér M",
+    "type": "TROLLEYBUS",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9830",
+    "shortName": "983",
+    "description": "Pestszentimre | Szarvas csárda tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9840",
+    "shortName": "984",
+    "description": "Kőbánya alsó vasútáll. | Káp.megyer, Mogyoródi-p.",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9850",
+    "shortName": "985",
+    "description": "Kőbánya alsó vasútáll. | Rákospalota, Mélyfúró u.",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9870",
+    "shortName": "987",
+    "description": "Kőérberek | Kelenföld vasútállomás M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9880",
+    "shortName": "988",
+    "description": "Törökbálint | Budakeszi, Dózsa Gy. tér",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9920",
+    "shortName": "992",
+    "description": "Gödöllő H | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9940",
+    "shortName": "994",
+    "description": "Gyál, Bem J. u.-Vecsési út | Határ út M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9950",
+    "shortName": "995",
+    "description": "Rákoscsaba | Puskás Ferenc Stadion M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_9970",
+    "shortName": "997",
+    "description": "Rákoskert sugárút | Deák Ferenc tér M",
+    "type": "BUS",
+    "color": "000000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_1010",
+    "shortName": "1010",
+    "description": "Salgótarján, autóbusz-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1011",
+    "shortName": "1011",
+    "description": "Litke, Kultúrház | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1013",
+    "shortName": "1013",
+    "description": "Balassagyarmat, autóbusz-állomás | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1014",
+    "shortName": "1014",
+    "description": "Hont, Ipoly utca 56. | Budapest, Újpest-Városkapu XIII. kerület",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1052",
+    "shortName": "1052",
+    "description": "Budapest, Stadion autóbusz-pályaudvar | Eger, autóbusz-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1070",
+    "shortName": "1070",
+    "description": "Jászberény, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1075",
+    "shortName": "1075",
+    "description": "Heves, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1076",
+    "shortName": "1076",
+    "description": "Jászberény, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1077",
+    "shortName": "1077",
+    "description": "Szolnok, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1078",
+    "shortName": "1078",
+    "description": "Jászalsószentgyörgy, községháza | Budapest, Stadion autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1110",
+    "shortName": "1110",
+    "description": "Baja, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1111",
+    "shortName": "1111",
+    "description": "Jánoshalma, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1113",
+    "shortName": "1113",
+    "description": "Bácsalmás, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1115",
+    "shortName": "1115",
+    "description": "Kiskunhalas, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1251",
+    "shortName": "1251",
+    "description": "Bakonybél, üdülő bejárati út | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1253",
+    "shortName": "1253",
+    "description": "Mór, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_1254",
+    "shortName": "1254",
+    "description": "Kisbér, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_8140",
+    "shortName": "D14",
+    "description": "Csepel-Királyerdő | Soroksár, Molnár-sziget",
+    "type": "FERRY",
+    "color": "D0033F",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_EC",
+    "shortName": "EC",
+    "description": "EuroCity",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_EN",
+    "shortName": "EN",
+    "description": "EuroNight",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_Ex",
+    "shortName": "Ex",
+    "description": "Nyíregyháza | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G10",
+    "shortName": "G10",
+    "description": "Hegyeshalom | Budapest-Déli",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G40",
+    "shortName": "G40",
+    "description": "Dombóvár | Budapest-Déli",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G43",
+    "shortName": "G43",
+    "description": "Székesfehérvár | Kőbánya-Kispest",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G44",
+    "shortName": "G44",
+    "description": "Székesfehérvár | Budapest-Déli",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G50",
+    "shortName": "G50",
+    "description": "Szolnok | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G60",
+    "shortName": "G60",
+    "description": "Szolnok | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G70",
+    "shortName": "G70",
+    "description": "Szob | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G71",
+    "shortName": "G71",
+    "description": "Vác | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_G80",
+    "shortName": "G80",
+    "description": "Isaszeg | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "AACD46",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_H5",
+    "shortName": "H5",
+    "description": "Szentendre | Batthyány tér",
+    "type": "SUBURBAN_RAILWAY",
+    "color": "8A236C",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_H6",
+    "shortName": "H6",
+    "description": "Ráckeve | Közvágóhíd",
+    "type": "SUBURBAN_RAILWAY",
+    "color": "7B4400",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_H6",
+    "shortName": "H6",
+    "description": "Ráckeve, HÉV-állomás | Tököl, HÉV-állomás",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_H7",
+    "shortName": "H7",
+    "description": "Csepel | Boráros tér",
+    "type": "SUBURBAN_RAILWAY",
+    "color": "EE7101",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_H8",
+    "shortName": "H8",
+    "description": "Gödöllő | Örs vezér tere",
+    "type": "SUBURBAN_RAILWAY",
+    "color": "ED6E86",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_HP61",
+    "shortName": "H8",
+    "description": "Cinkota H | Örs vezér tere M H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_H8",
+    "shortName": "H8",
+    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_H8A",
+    "shortName": "H8A",
+    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "volan_H8E",
+    "shortName": "H8E",
+    "description": "Kerepes H | Budapest, Örs vezér tere M+H",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_H9",
+    "shortName": "H9",
+    "description": "Csömör | Örs vezér tere",
+    "type": "SUBURBAN_RAILWAY",
+    "color": "ED6E86",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "volan_H9",
+    "shortName": "H9",
+    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
+    "type": "COACH",
+    "color": "F9AB13",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_IC",
+    "shortName": "IC",
+    "description": "InterCity",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_IR",
+    "shortName": "IR",
+    "description": "InterRegió",
+    "type": "RAIL",
+    "color": "008000",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_5100",
+    "shortName": "M1",
+    "description": "Mexikói út | Vörösmarty tér",
+    "type": "SUBWAY",
+    "color": "FFD800",
+    "textColor": "000000"
+  },
+  {
+    "id": "BKK_5200",
+    "shortName": "M2",
+    "description": "Örs vezér tere | Déli pályaudvar",
+    "type": "SUBWAY",
+    "color": "E41F18",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_MP52",
+    "shortName": "M2",
+    "description": "Deák Ferenc tér M | Déli pályaudvar M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_5300",
+    "shortName": "M3",
+    "description": "Kőbánya-Kispest | Újpest-központ",
+    "type": "SUBWAY",
+    "color": "005CA5",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_5400",
+    "shortName": "M4",
+    "description": "Kelenföld vasútállomás | Keleti pályaudvar",
+    "type": "SUBWAY",
+    "color": "4CA22F",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_MOZG",
+    "shortName": "MOZG",
+    "description": "Különjárat | Különjárat",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_N3620",
+    "shortName": "N62",
+    "description": "Örs vezér tere M+H | Rákospalota, MÁV-telep",
+    "type": "TRAM",
+    "color": "FF9900",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_N3630",
+    "shortName": "N63",
+    "description": "Mexikói út M | Örs vezér tere M H",
+    "type": "TRAM",
+    "color": "FF9900",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_N3691",
+    "shortName": "N69A",
+    "description": "Rákospalota, MÁV-telep | Mexikói út M",
+    "type": "TRAM",
+    "color": "FF9900",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_rjx",
+    "shortName": "rjx",
+    "description": "München Hbf | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S",
+    "shortName": "S",
+    "description": "Sebesvonat",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S10",
+    "shortName": "S10",
+    "description": "Győr | Budapest-Déli",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S12",
+    "shortName": "S12",
+    "description": "Oroszlány | Budapest-Déli",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S21",
+    "shortName": "S21",
+    "description": "Lajosmizse | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S30",
+    "shortName": "S30",
+    "description": "Siófok | Budapest-Déli",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S36",
+    "shortName": "S36",
+    "description": "Tárnok | Budapest-Kelenföld",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S40",
+    "shortName": "S40",
+    "description": "Dombóvár | Budapest-Déli",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S42",
+    "shortName": "S42",
+    "description": "Dunaújváros | Budapest-Déli",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S50",
+    "shortName": "S50",
+    "description": "Monor | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S60",
+    "shortName": "S60",
+    "description": "Szolnok | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S70",
+    "shortName": "S70",
+    "description": "Vác | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S71",
+    "shortName": "S71",
+    "description": "Vác | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S72",
+    "shortName": "S72",
+    "description": "Esztergom | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S76",
+    "shortName": "S76",
+    "description": "Pilisvörösvár | Rákos",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_S80",
+    "shortName": "S80",
+    "description": "Gödöllő | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "00AFF0",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_Sz",
+    "shortName": "Sz",
+    "description": "Személyvonat",
+    "type": "RAIL",
+    "color": "2E5EA8",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_Z30",
+    "shortName": "Z30",
+    "description": "Székesfehérvár | Budapest-Déli",
+    "type": "RAIL",
+    "color": "FFCD28",
+    "textColor": "3C3C3C"
+  },
+  {
+    "id": "BKK_Z50",
+    "shortName": "Z50",
+    "description": "Cegléd | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "FFCD28",
+    "textColor": "3C3C3C"
+  },
+  {
+    "id": "BKK_Z60",
+    "shortName": "Z60",
+    "description": "Szolnok | Budapest-Keleti",
+    "type": "RAIL",
+    "color": "FFCD28",
+    "textColor": "3C3C3C"
+  },
+  {
+    "id": "BKK_Z72",
+    "shortName": "Z72",
+    "description": "Esztergom | Budapest-Nyugati",
+    "type": "RAIL",
+    "color": "FFCD28",
+    "textColor": "3C3C3C"
+  }
+]

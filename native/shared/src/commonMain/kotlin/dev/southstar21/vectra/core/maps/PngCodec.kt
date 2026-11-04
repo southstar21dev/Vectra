@@ -1,0 +1,9 @@
+package dev.southstar21.vectra.core.maps
+
+/** Decoded image as unpremultiplied ARGB pixels. */
+class ArgbImage(val width: Int, val height: Int, val pixels: IntArray)
+
+/** Decode a PNG/JPEG, scaled to [size]×[size]. */
+expect fun decodeImage(bytes: ByteArray, size: Int): ArgbImage?
+
+expect fun encodePng(image: ArgbImage): ByteArray?
