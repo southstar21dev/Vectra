@@ -25,7 +25,7 @@
         {
           "version": "1.1.0",
           "buildVersion": "1010099",
-          "date": "2026-11-03T23:57:37.091Z",
+          "date": "2026-11-03T23:57:37Z",
           "localizedDescription": "1.1.0\n\n## [1.1.0](https://github.com/southstar21dev/Vectra/compare/v1.0.2...v1.1.0) (2026-11-03)\n\n### Features\n\n* one repo for web, native and backend, with semantic releases ([3fa510e](https://github.com/southstar21dev/Vectra/commit/3fa510eb1f586e8d4177c10d2ab326be584c447c))",
           "downloadURL": "https://github.com/southstar21dev/Vectra/releases/download/v1.1.0/Vectra-1.1.0.ipa",
           "size": 25006679,
