@@ -63,35 +63,47 @@ jobs:
 
       - name: Commit changes (if any)
         run: |
-          if git diff --quiet -- public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json; then
-            echo "Catalog unchanged — nothing to commit."
-            exit 0
-          fi
-          # Belt-and-braces: build-catalog.mjs already aborts below absolute and
-          # relative sanity thresholds, but never ship a suspiciously small
-          # catalog even if a future edit relaxes that guard.
-          ROUTES="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/routes.json','utf8')).length")"
-          STOPS="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/stops.json','utf8')).length")"
-          OLD_ROUTES="$(git show HEAD:web/public/catalog/routes.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
-          OLD_STOPS="$(git show HEAD:web/public/catalog/stops.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
-          BROKEN=0
-          if [ "${ROUTES}" -lt 100 ] || [ "${STOPS}" -lt 500 ]; then BROKEN=1; fi
-          if [ "${OLD_ROUTES}" -gt 0 ] && [ "${ROUTES}" -lt $(( OLD_ROUTES * 95 / 100 )) ]; then BROKEN=1; fi
-          if [ "${OLD_STOPS}" -gt 0 ] && [ "${STOPS}" -lt $(( OLD_STOPS * 95 / 100 )) ]; then BROKEN=1; fi
-          if [ "$BROKEN" -eq 1 ]; then
-            echo "Regenerated catalog looks degraded (routes=$ROUTES/$OLD_ROUTES, stops=$STOPS/$OLD_STOPS) — keeping the last good catalog."
-            git checkout -- public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json
-            exit 0
-          fi
+          FILES="public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json"
           git config user.name "vectra-bot"
           git config user.email "vectra-bot@users.noreply.github.com"
-          git add public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json
-          git commit -m "chore: refresh BKK transit catalog from Futár feed"
-          git push origin HEAD:master
-          # Same files onto the other long-lived branches.
+          # GitHub occasionally rejects a push server-side (e.g. "fatal error in
+          # commit_refs"); retry a few times before failing the run.
+          push_with_retry() {
+            for i in 1 2 3 4; do
+              git push origin "HEAD:$1" && return 0
+              echo "Push to $1 failed (attempt $i); retrying..."
+              sleep $(( i * 10 ))
+            done
+            return 1
+          }
+          if git diff --quiet -- $FILES; then
+            echo "Catalog unchanged on master — nothing to commit."
+          else
+            # Belt-and-braces: build-catalog.mjs already aborts below absolute and
+            # relative sanity thresholds, but never ship a suspiciously small
+            # catalog even if a future edit relaxes that guard.
+            ROUTES="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/routes.json','utf8')).length")"
+            STOPS="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/stops.json','utf8')).length")"
+            OLD_ROUTES="$(git show HEAD:web/public/catalog/routes.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+            OLD_STOPS="$(git show HEAD:web/public/catalog/stops.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+            BROKEN=0
+            if [ "${ROUTES}" -lt 100 ] || [ "${STOPS}" -lt 500 ]; then BROKEN=1; fi
+            if [ "${OLD_ROUTES}" -gt 0 ] && [ "${ROUTES}" -lt $(( OLD_ROUTES * 95 / 100 )) ]; then BROKEN=1; fi
+            if [ "${OLD_STOPS}" -gt 0 ] && [ "${STOPS}" -lt $(( OLD_STOPS * 95 / 100 )) ]; then BROKEN=1; fi
+            if [ "$BROKEN" -eq 1 ]; then
+              echo "Regenerated catalog looks degraded (routes=$ROUTES/$OLD_ROUTES, stops=$STOPS/$OLD_STOPS) — keeping the last good catalog."
+              git checkout -- $FILES
+            else
+              git add $FILES
+              git commit -m "chore: refresh BKK transit catalog from Futár feed"
+              push_with_retry master
+            fi
+          fi
+          # Always sync master's catalog onto the other long-lived branches, so a
+          # branch left behind by an earlier failed push catches up on the next run.
           for BRANCH in staging dev; do
             git worktree add -q "../../$BRANCH" "origin/$BRANCH"
-            cp public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json "../../$BRANCH/web/public/catalog/"
+            cp $FILES "../../$BRANCH/web/public/catalog/"
             (
               cd "../../$BRANCH/web"
               if git diff --quiet -- public/catalog; then
@@ -99,7 +111,7 @@ jobs:
               else
                 git add public/catalog
                 git commit -q -m "chore: refresh BKK transit catalog from Futár feed"
-                git push origin "HEAD:$BRANCH"
+                push_with_retry "$BRANCH"
               fi
             )
           done
