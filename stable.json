@@ -1,0 +1,38 @@
+{
+  "name": "Vectra",
+  "identifier": "dev.southstar21.vectra.source",
+  "subtitle": "Stable releases of Vectra.",
+  "website": "https://github.com/southstar21dev/Vectra",
+  "iconURL": "https://raw.githubusercontent.com/southstar21dev/Vectra/master/native/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "tintColor": "8B5CF6",
+  "apps": [
+    {
+      "name": "Vectra",
+      "bundleIdentifier": "dev.southstar21.vectra",
+      "developerName": "southstar21",
+      "subtitle": "Your timetable and Budapest transit in one place.",
+      "localizedDescription": "Your Neptun timetable, live Budapest public transport with nearby departures and route maps, and the weather, in one app.",
+      "iconURL": "https://raw.githubusercontent.com/southstar21dev/Vectra/master/native/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "tintColor": "8B5CF6",
+      "category": "utilities",
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSLocationWhenInUseUsageDescription": "Vectra uses your location to find nearby stops and departures and to show local weather."
+        }
+      },
+      "versions": [
+        {
+          "version": "1.1.0",
+          "buildVersion": "1010099",
+          "date": "2026-11-03T23:57:37.091Z",
+          "localizedDescription": "1.1.0\n\n## [1.1.0](https://github.com/southstar21dev/Vectra/compare/v1.0.2...v1.1.0) (2026-11-03)\n\n### Features\n\n* one repo for web, native and backend, with semantic releases ([3fa510e](https://github.com/southstar21dev/Vectra/commit/3fa510eb1f586e8d4177c10d2ab326be584c447c))",
+          "downloadURL": "https://github.com/southstar21dev/Vectra/releases/download/v1.1.0/Vectra-1.1.0.ipa",
+          "size": 25006679,
+          "minOSVersion": "18.5"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
