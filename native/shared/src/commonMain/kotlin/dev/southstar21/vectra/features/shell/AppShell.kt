@@ -51,6 +51,7 @@ import dev.southstar21.vectra.core.designsystem.components.navFadeBrush
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.features.navbar.LiquidNavbar
+import dev.southstar21.vectra.features.navbar.LocalSystemNavbar
 import dev.southstar21.vectra.features.navbar.LocalNavbarActions
 import dev.southstar21.vectra.features.navbar.NavbarActions
 import dev.southstar21.vectra.navigation.AppNavigator
@@ -89,6 +90,7 @@ fun AppShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, screen:
             },
             covered = navigator.screens.size > 1,
             fullyCovered = fullyCovered,
+            coverFraction = { cover.fraction },
         )
         // Dim the shell as a screen slides over it.
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = cover.fraction * 0.35f }.background(Color.Black))
@@ -143,16 +145,25 @@ private fun ShellCoverTracker(cover: ShellCover, navigator: AppNavigator) {
 }
 
 @Composable
-private fun TabShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, modifier: Modifier, covered: Boolean, fullyCovered: Boolean) {
+private fun TabShell(
+    navigator: AppNavigator,
+    page: @Composable (Route) -> Unit,
+    modifier: Modifier,
+    covered: Boolean,
+    fullyCovered: Boolean,
+    coverFraction: () -> Float,
+) {
     val c = Vectra.colors
     val shell = remember { ShellState() }
     val navbarActions = remember { NavbarActions() }
+    // A platform bar (iOS's system tab bar) draws its own glass: no page backdrop to record.
+    val systemNavbar = LocalSystemNavbar.current
     val backdrop = rememberLayerBackdrop()
 
     CompositionLocalProvider(LocalShellState provides shell, LocalNavbarActions provides navbarActions) {
         Box(modifier.fillMaxSize()) {
             // The fades are recorded with the page, so the navbar glass refracts the faded edge.
-            Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+            Box(Modifier.fillMaxSize().then(if (systemNavbar == null) Modifier.layerBackdrop(backdrop) else Modifier)) {
                 AppBackground()
                 CompositionLocalProvider(LocalPageActive provides !covered) {
                     KeptAliveTabs(navigator.current, PrimaryRoutes, fullyCovered, page)
@@ -175,7 +186,11 @@ private fun TabShell(navigator: AppNavigator, page: @Composable (Route) -> Unit,
             // Back from a tab goes Home first, then leaves the app. Registered before the
             // navbar so its open actions menu takes back first.
             VBackHandler(enabled = !covered && navigator.backStack.size > 1) { navigator.back() }
-            LiquidNavbar(navigator.current, { navigator.navigate(it) }, backdrop)
+            if (systemNavbar == null) {
+                LiquidNavbar(navigator.current, { navigator.navigate(it) }, backdrop)
+            } else {
+                SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction)
+            }
         }
     }
 }

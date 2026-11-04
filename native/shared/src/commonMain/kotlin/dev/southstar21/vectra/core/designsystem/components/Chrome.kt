@@ -259,6 +259,29 @@ private fun rememberEdgeFades(
     LaunchedEffect(scrollKey) {
         snapshotFlow { pastTopNow() }.distinctUntilChanged().collect { latest?.invoke(it) }
     }
+    if (nativeViewsUnderCanvas) {
+        // iOS: a DstIn mask needs an offscreen layer, which would hide the maps in the body
+        // (see nativeViewsUnderCanvas). Fade into the surface colour instead; screens and sheets
+        // sit on it, so it looks the same.
+        val surface = Vectra.colors.surfaceSecondary
+        return Modifier.drawWithContent {
+            drawContent()
+            val f = EdgeFade.toPx()
+            if (fadeTop > 0f) {
+                drawRect(
+                    Brush.verticalGradient(0f to surface.copy(alpha = fadeTop), 1f to surface.copy(alpha = 0f), startY = 0f, endY = f),
+                    size = Size(size.width, f),
+                )
+            }
+            if (fadeBot > 0f) {
+                drawRect(
+                    Brush.verticalGradient(0f to surface.copy(alpha = 0f), 1f to surface.copy(alpha = fadeBot), startY = size.height - f, endY = size.height),
+                    topLeft = Offset(0f, size.height - f),
+                    size = Size(size.width, f),
+                )
+            }
+        }
+    }
     return Modifier
         .graphicsLayer {
             // The fades punch through with DstIn, which needs an offscreen; skip it when neither shows.

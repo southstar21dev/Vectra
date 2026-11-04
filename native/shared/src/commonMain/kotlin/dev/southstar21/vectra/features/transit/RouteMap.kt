@@ -24,6 +24,8 @@ import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
 import dev.southstar21.vectra.core.maps.MapControls
 import dev.southstar21.vectra.core.maps.MapFontStack
+import dev.southstar21.vectra.core.maps.VehicleLayers
+import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 import dev.southstar21.vectra.core.maps.MapStop
 import dev.southstar21.vectra.core.maps.MapStopKind
 import dev.southstar21.vectra.core.maps.TransitMap
@@ -315,8 +317,11 @@ fun RouteMap(
                 textHaloColor = const(labelHalo),
                 textHaloWidth = const(1.2.dp),
             )
+            // iOS: vehicles live in the map so they stay pinned while it pans.
+            if (!composeOverlaysTrackMap) VehicleLayers("live", rememberVehicleAnimations(animVehicles))
         },
         overlay = {
+            if (!composeOverlaysTrackMap) return@TransitMap
             // Per-frame state is read only here, so gliding never recomposes the layers.
             val frames = rememberVehicleAnimations(animVehicles)
             AnimatedVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 })
