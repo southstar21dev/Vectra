@@ -68,7 +68,8 @@ const entry = {
   // iOS wants x.y.z; the full prerelease name goes in the notes, and the build number orders them.
   version: VERSION.split('-')[0],
   buildVersion: build,
-  date: new Date().toISOString(),
+  // No milliseconds: AltStore/SideStore parse dates with ISO8601DateFormatter, which rejects them.
+  date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
   localizedDescription: `${VERSION}\n\n${NOTES}`.trim(),
   downloadURL: IPA_URL,
   size: Number(IPA_SIZE),
@@ -76,7 +77,8 @@ const entry = {
 };
 app.versions = [entry, ...app.versions.filter((v) => v.buildVersion !== build)]
   .sort((a, b) => Number(b.buildVersion) - Number(a.buildVersion))
-  .slice(0, KEEP);
+  .slice(0, KEEP)
+  .map((v) => ({ ...v, date: v.date.replace(/\.\d{3}Z$/, 'Z') }));
 
 writeFileSync(file, `${JSON.stringify(source, null, 2)}\n`);
 console.log(`${file}: Vectra ${VERSION} (build ${build}), ${app.versions.length} versions listed`);
