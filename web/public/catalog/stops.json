@@ -924,12 +924,6 @@
     "lon": 19.00148
   },
   {
-    "id": "BKK_CS011493",
-    "name": "Baross kocsiszín (Baross kapu)",
-    "lat": 47.489618,
-    "lon": 19.090158
-  },
-  {
     "id": "BKK_CSF01441",
     "name": "Baross utca",
     "lat": 47.441549,
@@ -1076,8 +1070,8 @@
   {
     "id": "BKK_CSF00680",
     "name": "Bécsi út / Vörösvári út",
-    "lat": 47.548364,
-    "lon": 19.029241
+    "lat": 47.548323,
+    "lon": 19.029197
   },
   {
     "id": "BKK_CS123833",
@@ -2540,8 +2534,8 @@
   {
     "id": "BKK_CS011732",
     "name": "Deák Ferenc tér",
-    "lat": 47.497933,
-    "lon": 19.054349
+    "lat": 47.497843,
+    "lon": 19.054509
   },
   {
     "id": "BKK_CSF00876",
@@ -2588,8 +2582,8 @@
   {
     "id": "BKK_CSF00025",
     "name": "Déli pályaudvar",
-    "lat": 47.500326,
-    "lon": 19.024664
+    "lat": 47.500291,
+    "lon": 19.024778
   },
   {
     "id": "BKK_CS044076",
@@ -4218,6 +4212,12 @@
     "lon": 19.346673
   },
   {
+    "id": "BKK_CS234741",
+    "name": "Gödöllő, Szőlő utca 47.",
+    "lat": 47.608086,
+    "lon": 19.349388
+  },
+  {
     "id": "AREA_CS777931_1",
     "name": "Gödöllő, Táncsics Mihály úti óvoda",
     "lat": 47.597545,
@@ -4262,8 +4262,8 @@
   {
     "id": "BKK_CS123405",
     "name": "Göncz Árpád városközpont",
-    "lat": 47.532814,
-    "lon": 19.066855
+    "lat": 47.532756,
+    "lon": 19.066947
   },
   {
     "id": "BKK_CSF04195",
@@ -4634,8 +4634,8 @@
   {
     "id": "BKK_CS009041",
     "name": "Haller utca / Soroksári út",
-    "lat": 47.475206,
-    "lon": 19.070344
+    "lat": 47.475171,
+    "lon": 19.070351
   },
   {
     "id": "BKK_CSF01729",
@@ -6010,6 +6010,12 @@
     "name": "Kelemen utca",
     "lat": 47.477092,
     "lon": 19.132108
+  },
+  {
+    "id": "BKK_CS009639",
+    "name": "Kelenföld kocsiszín (Csóka kapu)",
+    "lat": 47.470139,
+    "lon": 19.027137
   },
   {
     "id": "BKK_CS007896",
@@ -9944,8 +9950,8 @@
   {
     "id": "BKK_CSF03104",
     "name": "Rákospalota, MÁV-telep",
-    "lat": 47.541816,
-    "lon": 19.121694
+    "lat": 47.54187,
+    "lon": 19.121741
   },
   {
     "id": "BKK_CSF02984",
@@ -11090,8 +11096,8 @@
   {
     "id": "BKK_CS008642",
     "name": "Székesdűlő",
-    "lat": 47.611326,
-    "lon": 19.104748
+    "lat": 47.611338,
+    "lon": 19.104743
   },
   {
     "id": "BKK_CS008649",
@@ -11108,8 +11114,8 @@
   {
     "id": "BKK_CS070997",
     "name": "Széll Kálmán tér",
-    "lat": 47.507087,
-    "lon": 19.024389
+    "lat": 47.507073,
+    "lon": 19.024448
   },
   {
     "id": "BKK_CSF03820",
@@ -11217,7 +11223,7 @@
     "id": "BKK_CS041095",
     "name": "Szent Imre tér",
     "lat": 47.431021,
-    "lon": 19.069602
+    "lon": 19.06968
   },
   {
     "id": "BKK_CS048506",
@@ -12662,8 +12668,8 @@
   {
     "id": "BKK_CSF01781",
     "name": "Terebesi utca",
-    "lat": 47.493823,
-    "lon": 19.140866
+    "lat": 47.493936,
+    "lon": 19.140919
   },
   {
     "id": "BKK_CS008895",
@@ -13142,8 +13148,8 @@
   {
     "id": "BKK_CSF01866",
     "name": "Új köztemető",
-    "lat": 47.473571,
-    "lon": 19.177804
+    "lat": 47.47369,
+    "lon": 19.177801
   },
   {
     "id": "BKK_CSF01999",
