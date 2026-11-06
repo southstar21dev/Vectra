@@ -1,13 +1,21 @@
 # semantic-release for the native apps.
 #
-#   master  -> 1.4.0         stable: GitHub release + AltStore source stable.json
-#   staging -> 1.4.0-rc.N    prerelease: GitHub prerelease + AltStore source beta.json
-#   dev     -> 1.4.0-dev.N   prerelease: GitHub prerelease + AltStore source beta.json
+#   master  -> 1.4.0         stable: GitHub release
+#   staging -> 1.4.0-rc.N    prerelease: GitHub prerelease
+#   dev     -> 1.4.0-dev.N   prerelease: GitHub prerelease
 #
 # The version comes from Conventional Commits since the last tag (feat: minor, fix:/perf: patch,
 # `!` or BREAKING CHANGE: major; chore:/docs:/refactor: etc. release nothing). Every push runs CI
 # first; then a dry run decides the version, the APK and IPA are built with it, and only then is the
 # tag and GitHub release created with both attached, so a failed build never leaves a bare release.
+#
+# Obtainium (Android) watches the releases directly. AltStore/SideStore (iOS) read the sources the
+# `pages` job rebuilds from the releases and publishes to GitHub Pages with the install page:
+#   https://southstar21dev.github.io/Vectra/                    install page
+#   https://southstar21dev.github.io/Vectra/altstore.json       master releases
+#   https://southstar21dev.github.io/Vectra/altstore-beta.json  also dev and staging prereleases
+# Run the workflow by hand (gh workflow run release.yml --ref master) to republish them without
+# releasing, e.g. after editing a release's notes.
 #
 # The web app and the backend deploy from master through Coolify; they aren't built here.
 #
@@ -18,6 +26,8 @@ name: Release
 on:
   push:
     branches: [master, staging, dev]
+  # Republishes the AltStore/SideStore sources without releasing.
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -31,6 +41,7 @@ env:
 
 jobs:
   ci:
+    if: github.event_name == 'push'
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -197,31 +208,43 @@ jobs:
             exit 1
           fi
 
-      - name: Update the AltStore source
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          case "$GITHUB_REF_NAME" in
-            master) CHANNEL=stable ;;
-            *) CHANNEL=beta ;;
-          esac
-          IPA="release-assets/Vectra-$VERSION.ipa"
-          IPA_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION/Vectra-$VERSION.ipa"
-          IPA_SIZE="$(stat -c%s "$IPA")"
-          NOTES="$(gh release view "v$VERSION" --json body -q .body)"
-          export CHANNEL VERSION IPA_URL IPA_SIZE NOTES
+  pages:
+    name: AltStore/SideStore sources
+    needs: publish
+    # Runs after every release attempt (and on its own when dispatched); cheap even when nothing was
+    # released, since it only rebuilds the sources from the existing releases.
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-          git config user.name "vectra-bot"
-          git config user.email "vectra-bot@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin altstore >/dev/null; then
-            git fetch -q origin altstore
-            git worktree add -q "$RUNNER_TEMP/altstore" origin/altstore
-          else
-            git worktree add -q --detach "$RUNNER_TEMP/altstore"
-            (cd "$RUNNER_TEMP/altstore" && git checkout -q --orphan altstore && git rm -rqf .)
-          fi
-          node .github/scripts/altstore-source.mjs "$RUNNER_TEMP/altstore/$CHANNEL.json"
-          cd "$RUNNER_TEMP/altstore"
-          git add "$CHANNEL.json"
-          git commit -qm "chore: Vectra $VERSION in the $CHANNEL AltStore source"
-          git push -q origin HEAD:altstore
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build the sources from the GitHub Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/scripts/altstore-source.mjs site
+          cp .github/pages/index.html site/
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

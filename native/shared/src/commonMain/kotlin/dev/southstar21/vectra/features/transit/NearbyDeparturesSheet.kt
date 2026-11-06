@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,6 +40,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -63,7 +65,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.NativeSegmentedControl
 import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.hasNativeSegmentedControl
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
@@ -249,6 +253,12 @@ private fun BoxScope.SheetBody(
             .graphicsLayer { translationY = y.floatValue * density.density }
             .boxShadow(sheetShape, listOf(BoxShadow(y = -24f, blur = 60f, color = Color.Black.copy(alpha = if (c.isDark) 0.5f else 0.22f))))
             .background(c.surfaceSecondary, sheetShape)
+            // A skirt of sheet surface below the bottom edge: the elastic drag and a fast fling's
+            // spring can carry the sheet above its expanded snap, which would otherwise lift its
+            // bottom off the screen edge and show the map through the gap.
+            .drawBehind {
+                drawRect(c.surfaceSecondary, topLeft = Offset(0f, size.height - 1f), size = Size(size.width, size.height))
+            }
             .topBorder(if (c.isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.1f), 28f)
             .pointerInput(Unit) {
                 val px = density.density
@@ -452,11 +462,21 @@ private fun Modifier.topFadeMask(fadeDp: Float): Modifier = this
  */
 @Composable
 private fun ModeTabs(modeFilter: List<String>, onToggleMode: (String) -> Unit, modifier: Modifier) {
+    val selected = if (modeFilter.isEmpty()) 0 else ModeChips.indexOfFirst { it.id in modeFilter }.coerceAtLeast(0)
+    // iOS: the system segmented control (Liquid Glass on iOS 26) instead of the Compose glass tabs.
+    if (hasNativeSegmentedControl) {
+        NativeSegmentedControl(
+            labels = ModeChips.map { it.label },
+            selectedIndex = selected,
+            onSelect = { index -> onToggleMode(ModeChips[index].id) },
+            modifier = modifier.height(36.dp),
+        )
+        return
+    }
     val c = Vectra.colors
     val haptics = Vectra.haptics
     val frosted = !isRenderEffectSupported()
     val backdrop = rememberLayerBackdrop()
-    val selected = if (modeFilter.isEmpty()) 0 else ModeChips.indexOfFirst { it.id in modeFilter }.coerceAtLeast(0)
     Box(modifier) {
         // What the glass sees: the sheet's own surface, recorded beside (not inside) the tabs.
         Box(Modifier.matchParentSize().layerBackdrop(backdrop).background(c.surfaceSecondary))
@@ -596,7 +616,8 @@ internal fun RowScope.NearbyDepartureCardBody(
 ) {
     val c = Vectra.colors
     Spacer(Modifier.width(12.dp))
-    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+    // At least the badge's square, but wide names (28/28A, 240E) widen it instead of clipping.
+    Box(Modifier.widthIn(min = 48.dp).height(48.dp), contentAlignment = Alignment.Center) {
         RouteBadge(shortName, color, textColor, size = RouteBadgeSize.Lg)
     }
     Spacer(Modifier.width(12.dp))

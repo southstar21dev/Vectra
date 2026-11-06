@@ -9,11 +9,13 @@
 /* Begin PBXBuildFile section */
 		22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F543015C899423D4B01CEB2E /* Assets.xcassets */; };
 		307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668CECA83ACC03A83C85A623 /* iOSApp.swift */; };
+		7871DB6DA5B777642626F950 /* TabBarHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA422B8A44BD67512E3715F2 /* TabBarHost.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		668CECA83ACC03A83C85A623 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		86038AE1032E284E79B32AD6 /* iosApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA422B8A44BD67512E3715F2 /* TabBarHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarHost.swift; sourceTree = "<group>"; };
 		C117AD187833E2513BD2F553 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C49B0B02429FBBC9F867DDE1 /* iosApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iosApp.entitlements; sourceTree = "<group>"; };
 		F543015C899423D4B01CEB2E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -27,6 +29,7 @@
 				C117AD187833E2513BD2F553 /* Info.plist */,
 				C49B0B02429FBBC9F867DDE1 /* iosApp.entitlements */,
 				668CECA83ACC03A83C85A623 /* iOSApp.swift */,
+				BA422B8A44BD67512E3715F2 /* TabBarHost.swift */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -162,6 +165,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7871DB6DA5B777642626F950 /* TabBarHost.swift in Sources */,
 				307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -84,6 +84,8 @@ fun LiquidTabs(
     accent: Color,
     container: Color,
     modifier: Modifier = Modifier,
+    /** The resting fill of the selection drop. */
+    selection: Color = accent.copy(alpha = 0.25f),
     height: Dp = 64.dp,
     frosted: Boolean = false,
     /** The drop crossed onto another item: a detent, for a haptic tick. */
@@ -186,9 +188,12 @@ fun LiquidTabs(
                     shape = { Capsule() },
                     effects = {
                         if (frosted) blur(32.dp.toPx()) else {
-                            vibrancy(); blur(2.dp.toPx()); lens(24.dp.toPx(), 34.dp.toPx())
+                            // iOS's bar material scatters what's behind it well past legibility.
+                            vibrancy(); blur(10.dp.toPx()); lens(20.dp.toPx(), 28.dp.toPx())
                         }
                     },
+                    // A faint rim: the system bar's edge barely catches the light.
+                    highlight = { Highlight.Default.copy(alpha = 0.3f) },
                     layerBlock = {
                         val s = lerp(1f, 1f + 16.dp.toPx() / size.width, drag.pressProgress)
                         scaleX = s; scaleY = s
@@ -229,7 +234,9 @@ fun LiquidTabs(
                             onDrawSurface = { drawRect(container) },
                         )
                     } else {
-                        Modifier.background(container, Capsule())
+                        // Seen only through the resting pill, which doesn't blur: nearly opaque, so
+                        // the page doesn't show sharp through it.
+                        Modifier.background(container.copy(alpha = container.alpha.coerceAtLeast(0.94f)), Capsule())
                     },
                 )
                 .then(highlight.modifier)
@@ -250,13 +257,15 @@ fun LiquidTabs(
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, itemsBackdrop),
                     shape = { Capsule() },
+                    // At rest the selection is a flat pill, as on iOS; it only turns into a lensing
+                    // drop of glass while held.
                     effects = {
-                        val p = lerp(0.6f, 1f, drag.pressProgress)
-                        lens(10.dp.toPx() * p, 14.dp.toPx() * p, chromaticAberration = true)
+                        val p = drag.pressProgress
+                        if (p > 0f) lens(10.dp.toPx() * p, 14.dp.toPx() * p, chromaticAberration = true)
                     },
-                    highlight = { Highlight.Default.copy(alpha = lerp(0.8f, 1f, drag.pressProgress)) },
-                    shadow = { Shadow(radius = 8.dp, alpha = lerp(0.35f, 1f, drag.pressProgress)) },
-                    innerShadow = { InnerShadow(radius = 3.dp + 5.dp * drag.pressProgress, alpha = lerp(0.5f, 1f, drag.pressProgress)) },
+                    highlight = { Highlight.Default.copy(alpha = drag.pressProgress) },
+                    shadow = { Shadow(radius = 8.dp, alpha = drag.pressProgress) },
+                    innerShadow = { InnerShadow(radius = 3.dp + 5.dp * drag.pressProgress, alpha = drag.pressProgress) },
                     layerBlock = {
                         scaleX = drag.scaleX
                         scaleY = drag.scaleY
@@ -266,7 +275,7 @@ fun LiquidTabs(
                     },
                     onDrawSurface = {
                         val p = drag.pressProgress
-                        drawRect(accent.copy(alpha = 0.25f), alpha = 1f - p)
+                        drawRect(selection, alpha = 1f - p)
                         drawRect(Color.Black.copy(alpha = 0.054f * p))
                     },
                 )
