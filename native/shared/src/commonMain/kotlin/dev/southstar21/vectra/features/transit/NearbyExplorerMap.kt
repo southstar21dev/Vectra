@@ -71,6 +71,10 @@ import org.maplibre.compose.map.MapState
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import dev.southstar21.vectra.core.maps.MapColors
+import dev.southstar21.vectra.core.maps.SelectedStopLayers
+import dev.southstar21.vectra.core.maps.UserLocationLayers
+import dev.southstar21.vectra.core.maps.VehicleLayers
+import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 
 @Immutable
 data class ExplorerCameraRequest(val lat: Double, val lon: Double, val zoom: Double? = null, val nonce: Long)
@@ -322,8 +326,17 @@ fun NearbyExplorerMap(
                 strokeColor = feature["color"].convertToColor(),
                 strokeWidth = const(3.dp),
             )
+            if (!composeOverlaysTrackMap) {
+                // iOS: markers live in the map so they stay pinned while it pans.
+                VehicleLayers("explorer", rememberVehicleAnimations(animatedVehicles))
+                if (user != null) UserLocationLayers("explorer", LatLon(user.lat, user.lon))
+                if (selectedStop != null) {
+                    SelectedStopLayers("explorer", LatLon(selectedStop.lat, selectedStop.lon), selectedStop.name, colors.isLight)
+                }
+            }
         },
         overlay = {
+            if (!composeOverlaysTrackMap) return@TransitMap
             if (user != null) {
                 Box(Modifier.placedAt(LatLon(user.lat, user.lon).position)) { NearbyUserDot(hidePingOnReducedMotion = false) }
             }

@@ -6,3 +6,5 @@ import org.maplibre.compose.map.MapUiOptions
 actual fun MapUiOptions.Builder.drawInPage() {
     renderMode = AndroidRenderMode.Texture
 }
+
+actual val composeOverlaysTrackMap: Boolean = true

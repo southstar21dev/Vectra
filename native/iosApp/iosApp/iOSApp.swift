@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 /// The iOS shell. Everything the user sees is the shared Compose app (shared/), the same code
-/// androidApp runs; this file only hosts it, as MainActivity does on Android.
+/// androidApp runs, except the tab bar, which is the system's (TabBarHost.swift).
 @main
 struct VectraIOSApp: App {
     init() {
@@ -21,7 +21,7 @@ struct VectraIOSApp: App {
 
 private struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        IosAppKt.MainViewController()
+        RootViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}

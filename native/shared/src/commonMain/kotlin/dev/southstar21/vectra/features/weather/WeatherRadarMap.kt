@@ -7,12 +7,15 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import dev.southstar21.vectra.core.designsystem.theme.NoIndication
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -111,13 +114,17 @@ fun WeatherRadarMap(
             state.events.first { it is MapEvent.StyleLoaded || it is MapEvent.FrameRendered || it is MapEvent.StyleLoadFailed }
             ready()
         }
-        MaplibreMap(
-            modifier = Modifier.fillMaxSize(),
-            state = state,
-            cameraConstraints = constraints,
-            uiOptions = ui,
-        ) {
-            LocationPin(Modifier.placedAt(Position(longitude = center.longitude, latitude = center.latitude), Alignment.Center))
+        // No press highlight: the map's input layer reports a press on the first touch, which
+        // the app's highlight would draw as a wash over the whole map.
+        CompositionLocalProvider(LocalIndication provides NoIndication) {
+            MaplibreMap(
+                modifier = Modifier.fillMaxSize(),
+                state = state,
+                cameraConstraints = constraints,
+                uiOptions = ui,
+            ) {
+                LocationPin(Modifier.placedAt(Position(longitude = center.longitude, latitude = center.latitude), Alignment.Center))
+            }
         }
     }
 }
