@@ -125,7 +125,7 @@ jobs:
           cp "$OUT/androidApp-universal-release.apk" "release-assets/Vectra-$VERSION.apk"
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android
           path: release-assets/
@@ -164,7 +164,7 @@ jobs:
           cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Vectra.app" "$RUNNER_TEMP/ipa/Payload/"
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios
           path: release-assets/
@@ -186,7 +186,7 @@ jobs:
         with:
           node-version: 22
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
