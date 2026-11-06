@@ -288,14 +288,6 @@
     "textColor": "000000"
   },
   {
-    "id": "BKK_OP19",
-    "shortName": "19",
-    "description": "Kelenföld vasútállomás M | Bécsi út / Vörösvári út",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
     "id": "BKK_VP19",
     "shortName": "19",
     "description": "Móricz Zs. körtér M | Kelenföld vasútállomás M",
@@ -402,7 +394,7 @@
   {
     "id": "BKK_VP28",
     "shortName": "28",
-    "description": "II. János Pál pápa tér M | Blaha Lujza tér M",
+    "description": "Teleki László tér | Blaha Lujza tér M",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -736,6 +728,14 @@
     "textColor": "000000"
   },
   {
+    "id": "BKK_OP56",
+    "shortName": "56",
+    "description": "Városház tér | Hűvösvölgy",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
     "id": "BKK_3561",
     "shortName": "56A",
     "description": "Móricz Zs. körtér M | Hűvösvölgy",
@@ -816,17 +816,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3611",
+    "id": "BKK_3610",
     "shortName": "61",
-    "description": "Budagyöngye | Hűvösvölgy",
+    "description": "Móricz Zs. körtér M | Hűvösvölgy",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3610",
+    "id": "BKK_3611",
     "shortName": "61",
-    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "description": "Budagyöngye | Hűvösvölgy",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -842,7 +842,7 @@
   {
     "id": "BKK_3612",
     "shortName": "61B",
-    "description": "Üres kijelző | Üres kijelző",
+    "description": "Savoya Park | Széll Kálmán tér M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -5173,14 +5173,6 @@
     "description": "Csömör | Örs vezér tere",
     "type": "SUBURBAN_RAILWAY",
     "color": "ED6E86",
-    "textColor": "FFFFFF"
-  },
-  {
-    "id": "BKK_HP615",
-    "shortName": "H9",
-    "description": "Cinkota H | Örs vezér tere M H",
-    "type": "BUS",
-    "color": "009EE3",
     "textColor": "FFFFFF"
   },
   {
