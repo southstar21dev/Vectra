@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- Published to GitHub Pages by .github/workflows/release.yml, next to altstore.json and altstore-beta.json. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Get Vectra</title>
+  <meta name="description" content="Install Vectra with AltStore, SideStore or Obtainium." />
+  <style>
+    :root {
+      --accent: #7C3AED; --accent-top: #9B6BFA; --ink: #17151F; --muted: #5F5B70; --bg: #F3F1F8;
+      --glow: #E4DCF8; --card-top: rgba(255,255,255,.85); --card-bottom: rgba(255,255,255,.55);
+      --card-edge: rgba(255,255,255,.9); --tint: rgba(124,58,237,.08); --tint-edge: rgba(124,58,237,.18);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent: #8B5CF6; --accent-top: #A78BFA; --ink: #F4F3F8; --muted: #A4A0B5; --bg: #0C0B11;
+        --glow: #231A3B; --card-top: rgba(34,31,46,.85); --card-bottom: rgba(24,22,33,.65);
+        --card-edge: rgba(255,255,255,.08); --tint: rgba(167,139,250,.12); --tint-edge: rgba(167,139,250,.25);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink);
+      background: radial-gradient(120% 80% at 20% 0%, var(--glow) 0%, var(--bg) 55%), var(--bg);
+    }
+    main {
+      width: 100%; max-width: 420px; padding: 32px 24px; border-radius: 32px; text-align: center;
+      background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+      border: 1px solid var(--card-edge);
+      box-shadow: 0 20px 50px -20px rgba(91,33,182,.35);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 24px -10px rgba(91,33,182,.6); }
+    h1 { margin: 16px 0 4px; font-size: 28px; letter-spacing: -.02em; }
+    p { margin: 0 0 24px; color: var(--muted); }
+    h2 { margin: 24px 0 10px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    a.button {
+      display: block; margin: 10px 0; padding: 14px 18px; border-radius: 999px; text-decoration: none; font-weight: 600;
+      color: #fff; background: linear-gradient(180deg, var(--accent-top), var(--accent));
+      box-shadow: 0 8px 20px -8px rgba(91,33,182,.7);
+    }
+    a.button.secondary { color: var(--accent-top); background: var(--tint); border: 1px solid var(--tint-edge); box-shadow: none; }
+    @media (prefers-color-scheme: light) { a.button.secondary { color: var(--accent); } }
+    small { display: block; margin-top: 20px; color: var(--muted); word-break: break-all; }
+    small a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="https://raw.githubusercontent.com/southstar21dev/Vectra/master/native/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png" alt="Vectra app icon" />
+    <h1>Vectra</h1>
+    <p>Your timetable and Budapest transit in one place.</p>
+
+    <h2>iPhone</h2>
+    <a class="button" id="altstore" href="#">Add to AltStore</a>
+    <a class="button" id="sidestore" href="#">Add to SideStore</a>
+    <a class="button secondary" id="altstore-beta" href="#">AltStore, with prereleases</a>
+    <a class="button secondary" id="sidestore-beta" href="#">SideStore, with prereleases</a>
+
+    <h2>Android</h2>
+    <a class="button" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/southstar21dev/Vectra">Add to Obtainium</a>
+    <a class="button secondary" href="https://github.com/southstar21dev/Vectra/releases/latest">Download the APK</a>
+
+    <small>Source URL: <a id="source-url" href="altstore.json">altstore.json</a></small>
+  </main>
+  <script>
+    const base = new URL(".", location.href).href;
+    const stable = base + "altstore.json";
+    const beta = base + "altstore-beta.json";
+    const link = (id, scheme, url) => (document.getElementById(id).href = scheme + "://source?url=" + encodeURIComponent(url));
+    link("altstore", "altstore", stable);
+    link("sidestore", "sidestore", stable);
+    link("altstore-beta", "altstore", beta);
+    link("sidestore-beta", "sidestore", beta);
+    const source = document.getElementById("source-url");
+    source.textContent = stable;
+    source.href = stable;
+  </script>
+</body>
+</html>

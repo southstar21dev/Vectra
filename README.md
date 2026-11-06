@@ -20,6 +20,7 @@ attendance you can actually keep track of. Built for students at Corvinus in Bud
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/southstar21dev/Vectra"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="64" alt="Get it on Obtainium" /></a>
 <a href="https://github.com/southstar21dev/Vectra/releases/latest"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" height="64" alt="Get it on GitHub" /></a>
 <a href="https://southstar21dev.github.io/Vectra/"><img src=".github/readme/badge-altstore.png" height="64" alt="Get it on AltStore" /></a>
+<a href="https://southstar21dev.github.io/Vectra/"><img src=".github/readme/badge-sidestore.png" height="64" alt="Get it on SideStore" /></a>
 
 <br />
 
@@ -129,26 +130,27 @@ Requires Android 8 or newer.
 
 ### iPhone
 
-Vectra installs through [AltStore](https://altstore.io), which signs it with your own Apple ID.
-On your iPhone, tap the **Get it on AltStore** badge above (or open
-[southstar21dev.github.io/Vectra](https://southstar21dev.github.io/Vectra/)) to add the source. Or, in
-AltStore, go to **Browse → Sources → +** and add:
+Vectra installs through [AltStore](https://altstore.io) or [SideStore](https://sidestore.io), which
+sign it with your own Apple ID. On your iPhone, tap the **AltStore** or **SideStore** badge above (it
+opens [southstar21dev.github.io/Vectra](https://southstar21dev.github.io/Vectra/)) and tap *Add to
+AltStore* or *Add to SideStore*. Or add the source by hand (**Browse → Sources → +** in AltStore):
 
 ```
-https://raw.githubusercontent.com/southstar21dev/Vectra/altstore/stable.json
+https://southstar21dev.github.io/Vectra/altstore.json
 ```
 
-Requires iOS 18.5 or newer. You can also download `Vectra-<version>.ipa` from a release and open it
-in AltStore or SideStore.
+Both then offer each new release as an update. With a free Apple ID, the app has to be refreshed every
+7 days (AltStore/SideStore do this in the background). Requires iOS 18.5 or newer. You can also
+download `Vectra-<version>.ipa` from a release and open it in AltStore or SideStore.
 
 ### Betas
 
 Pre-releases are built from the `dev` (`-dev.N`) and `staging` (`-rc.N`) branches. On Android,
-enable *Include prereleases* in Obtainium. On iPhone, add the beta source instead (or tap
-[*Add the beta source*](https://southstar21dev.github.io/Vectra/#beta) on the install page):
+enable *Include prereleases* in Obtainium. On iPhone, tap *AltStore/SideStore, with prereleases* on
+the [install page](https://southstar21dev.github.io/Vectra/), or add the beta source instead:
 
 ```
-https://raw.githubusercontent.com/southstar21dev/Vectra/altstore/beta.json
+https://southstar21dev.github.io/Vectra/altstore-beta.json
 ```
 
 ## How it's built
@@ -217,7 +219,7 @@ environment variables.
 CI passes, and versions from [Conventional Commits](https://www.conventionalcommits.org/):
 `feat:` is a minor release, `fix:` and `perf:` are patches, and `!` or `BREAKING CHANGE:` is a major.
 `chore:`, `docs:`, `refactor:`, `test:` and `ci:` release nothing. Each release ships a signed APK, an
-unsigned IPA and an updated AltStore source.
+unsigned IPA and updated AltStore/SideStore sources.
 
 ## License
 
