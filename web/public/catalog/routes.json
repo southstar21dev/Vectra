@@ -530,7 +530,7 @@
   {
     "id": "BKK_0390",
     "shortName": "39",
-    "description": "Kissvábhegy | Batthyány tér M H",
+    "description": "Batthyány tér M H | Kissvábhegy",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -728,17 +728,9 @@
     "textColor": "000000"
   },
   {
-    "id": "BKK_OP56",
-    "shortName": "56",
-    "description": "Városház tér | Hűvösvölgy",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
     "id": "BKK_3561",
     "shortName": "56A",
-    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "description": "Móricz Zs. körtér M | Széll Kálmán tér M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -818,7 +810,7 @@
   {
     "id": "BKK_3610",
     "shortName": "61",
-    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "description": "Városház tér | Széll Kálmán tér M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -1354,7 +1346,7 @@
   {
     "id": "BKK_1140",
     "shortName": "114",
-    "description": "Baross Gábor-telep | Móricz Zs. körtér M",
+    "description": "Baross G.-telep, Ispiláng u. | Móricz Zs. körtér M",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -2138,7 +2130,7 @@
   {
     "id": "BKK_2175",
     "shortName": "217E",
-    "description": "Szarvas csárda tér | Blaha Lujza tér M",
+    "description": "Üres kijelző | Üres kijelző",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -5237,14 +5229,6 @@
     "description": "Kelenföld vasútállomás | Keleti pályaudvar",
     "type": "SUBWAY",
     "color": "4CA22F",
-    "textColor": "FFFFFF"
-  },
-  {
-    "id": "BKK_MOZG",
-    "shortName": "MOZG",
-    "description": "Különjárat | Különjárat",
-    "type": "BUS",
-    "color": "009EE3",
     "textColor": "FFFFFF"
   },
   {
