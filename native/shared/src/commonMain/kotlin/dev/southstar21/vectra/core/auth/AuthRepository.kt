@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonElement
@@ -53,7 +55,19 @@ class AuthRepository(
         _sessionExpired.value = false
     }
 
-    suspend fun restore() = store.restore()
+    private val restoreLock = Mutex()
+    private var restored = false
+
+    /**
+     * Reads the stored session, once per process. The UI does it at startup; work that runs with
+     * no screen (boot, widget redraws, background refresh) calls it too, or it would see no session.
+     */
+    suspend fun restore() = restoreLock.withLock {
+        if (!restored) {
+            store.restore()
+            restored = true
+        }
+    }
 
     suspend fun login(email: String, password: String) {
         pb.authWithPassword(email, password)
