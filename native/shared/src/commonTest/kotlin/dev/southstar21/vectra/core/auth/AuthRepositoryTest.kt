@@ -12,9 +12,11 @@ import dev.southstar21.vectra.features.coursetracker.FakeDataStore
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -169,6 +171,15 @@ class AuthRepositoryTest {
         assertTrue(r.sessionExpired.value)
         r.consumeSessionExpired()
         assertFalse(r.sessionExpired.value)
+    }
+
+    @Test fun aPasswordResetAsksForTheEmailWithoutSigningIn() = runTest {
+        var body = ""
+        val r = repo { req -> body = (req.body as TextContent).text; respond("", HttpStatusCode.NoContent) }
+        r.requestPasswordReset("a@b.c")
+        assertEquals(listOf("/api/collections/users/request-password-reset"), requests)
+        assertEquals("""{"email":"a@b.c"}""", body)
+        assertNull(store.current)
     }
 
     @Test fun deletingTheAccountWipes() = runTest {

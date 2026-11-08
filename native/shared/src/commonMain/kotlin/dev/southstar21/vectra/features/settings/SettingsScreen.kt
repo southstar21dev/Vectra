@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
@@ -45,6 +46,9 @@ import kotlinx.coroutines.launch
 /** Settings rows read as a narrow column, narrower than `ContentMaxWidth`. */
 private val SettingsColumnWidth = 448.dp
 
+/** Published by .github/workflows/release.yml from .github/pages/privacy.html. */
+const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
+
 /**
  * The settings page. The Neptun card and the location row belong to the schedule
  * and weather features; they are passed in as slots.
@@ -73,6 +77,14 @@ fun SettingsScreen(
                     {
                         SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
                             VText("${graph.config.appVersion}-android", style = vtext(TypeScale.Body), color = c.textSecondary)
+                        }
+                    },
+                    {
+                        val uri = LocalUriHandler.current
+                        SettingsRow(RemixIcons.ExternalLinkLine, c.tints.purple.bg, c.tints.purple.text, "Privacy policy", "What Vectra stores and how to remove it") {
+                            VButton(onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
+                                VText("Open", style = vtext(TypeScale.Caption, Weight.Bold))
+                            }
                         }
                     },
                     {

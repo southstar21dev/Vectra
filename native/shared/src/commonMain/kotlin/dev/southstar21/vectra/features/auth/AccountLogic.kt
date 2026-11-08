@@ -36,6 +36,13 @@ object AccountLogic {
         return message.ifEmpty { "Could not sign in. Try again." }
     }
 
+    /** Why a password-reset request failed, worded for the person waiting on the email. */
+    fun resetErrorMessage(err: Throwable?): String = when ((err as? PocketBaseException)?.status) {
+        0 -> "Couldn't reach Vectra. Check your connection and try again."
+        429 -> "Too many attempts. Wait a minute and try again."
+        else -> fieldErrorMessage(err) ?: "Couldn't send the reset email. Try again later."
+    }
+
     /** "Email: The email is invalid or already in use." style message for the first field error. */
     fun fieldErrorMessage(err: Throwable?): String? {
         val (field, message) = (err as? PocketBaseException)?.fieldErrors?.entries?.firstOrNull() ?: return null
