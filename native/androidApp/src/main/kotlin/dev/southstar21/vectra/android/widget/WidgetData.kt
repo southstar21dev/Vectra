@@ -56,7 +56,7 @@ internal object WidgetStore {
         snapshot == null || System.currentTimeMillis() - snapshot.generatedAtMs > StaleMs
 
     private val widgets: List<GlanceAppWidget>
-        get() = listOf(NextClassWidget(), TodayWidget(), WeekWidget(), AgendaWidget())
+        get() = listOf(NextClassWidget(), TodayWidget(), WeekWidget(), AgendaWidget(), LockScreenWidget())
 
     /** Redraws every placed widget and books the next redraw. */
     suspend fun redraw(context: Context) {
@@ -109,6 +109,7 @@ internal object WidgetStore {
         TodayReceiver::class.java,
         WeekReceiver::class.java,
         AgendaReceiver::class.java,
+        LockScreenReceiver::class.java,
     )
 }
 
@@ -147,7 +148,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
     }
 }
 
-/** Shared by the four widget receivers: a newly placed widget also books the next redraw. */
+/** Shared by the widget receivers: a newly placed widget also books the next redraw. */
 abstract class VectraWidgetReceiver : GlanceAppWidgetReceiver() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
@@ -169,4 +170,8 @@ class WeekReceiver : VectraWidgetReceiver() {
 
 class AgendaReceiver : VectraWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = AgendaWidget()
+}
+
+class LockScreenReceiver : VectraWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = LockScreenWidget()
 }
