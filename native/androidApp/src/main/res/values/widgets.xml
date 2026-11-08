@@ -8,4 +8,6 @@
     <string name="widget_week_description">Your week at a glance, with the next exam.</string>
     <string name="widget_agenda_label">Today</string>
     <string name="widget_agenda_description">Today\'s classes, tasks and shifts.</string>
+    <string name="widget_lock_screen_label">Next class (lock screen)</string>
+    <string name="widget_lock_screen_description">The next class in white type for the lock screen.</string>
 </resources>

@@ -97,6 +97,18 @@
                 android:resource="@xml/widget_agenda" />
         </receiver>
 
+        <receiver
+            android:name=".widget.LockScreenReceiver"
+            android:exported="false"
+            android:label="@string/widget_lock_screen_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_lock_screen" />
+        </receiver>
+
         <!-- Widget redraws at session boundaries and midnight, and after clock changes and reboots. -->
         <receiver
             android:name=".widget.WidgetRefreshReceiver"

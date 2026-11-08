@@ -54,7 +54,7 @@ internal object WidgetPreviews {
         val prefs = context.getSharedPreferences(Prefs, Context.MODE_PRIVATE)
         if (prefs.getString(PublishedFor, null) == appVersion) return
         val manager = GlanceAppWidgetManager(context)
-        val results = listOf(NextClassReceiver::class, TodayReceiver::class, WeekReceiver::class, AgendaReceiver::class)
+        val results = listOf(NextClassReceiver::class, TodayReceiver::class, WeekReceiver::class, AgendaReceiver::class, LockScreenReceiver::class)
             .map { manager.setWidgetPreviews(it) }
         if (results.all { it == GlanceAppWidgetManager.SET_WIDGET_PREVIEWS_RESULT_SUCCESS }) {
             prefs.edit { putString(PublishedFor, appVersion) }
