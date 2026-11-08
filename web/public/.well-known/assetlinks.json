@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.southstar21.vectra",
+      "sha256_cert_fingerprints": [
+        "F0:A7:A9:5C:3D:C4:AB:AA:DB:46:9C:0B:90:C7:E8:49:16:85:F1:54:8A:63:05:8D:16:8E:70:9B:D2:31:B0:53",
+        "33:D6:18:06:91:AF:BC:87:47:D0:66:A2:35:0D:4E:0A:E9:39:65:EC:8D:5E:34:6F:60:43:6A:D8:97:D6:A5:F1"
+      ]
+    }
+  }
+]
