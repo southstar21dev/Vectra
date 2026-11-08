@@ -71,6 +71,18 @@ class AuthRepository(
         pb.authWithPassword(email, password)
     }
 
+    /**
+     * Emails a reset link. PocketBase answers the same whether or not the address has an account, and
+     * the link opens its own confirm-password-reset page, so the new password is set in the browser.
+     */
+    suspend fun requestPasswordReset(email: String) {
+        pb.send(
+            "/api/collections/users/request-password-reset",
+            HttpMethod.Post,
+            JsonObject(mapOf("email" to JsonPrimitive(email))),
+        )
+    }
+
     /** Save a token + record obtained elsewhere (passkey login). */
     suspend fun adoptSession(token: String, record: JsonObject) = store.save(AuthState(token, record))
 

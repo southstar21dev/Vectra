@@ -1,0 +1,147 @@
+<!doctype html>
+<!--
+  Published to GitHub Pages by .github/workflows/release.yml, next to the install page.
+  Linked from the app (Settings > About) and from the Play Console and App Store Connect listings.
+  Keep it in step with native/iosApp/iosApp/PrivacyInfo.xcprivacy and the store privacy forms.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vectra Privacy Policy</title>
+  <meta name="description" content="What the Vectra app collects, why, who else sees it, and how to delete it." />
+  <style>
+    :root {
+      --accent: #7C3AED; --ink: #17151F; --muted: #5F5B70; --bg: #F3F1F8; --glow: #E4DCF8;
+      --card-top: rgba(255,255,255,.85); --card-bottom: rgba(255,255,255,.55); --card-edge: rgba(255,255,255,.9);
+      --tint: rgba(124,58,237,.08); --tint-edge: rgba(124,58,237,.18); --rule: rgba(23,21,31,.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent: #A78BFA; --ink: #F4F3F8; --muted: #A4A0B5; --bg: #0C0B11; --glow: #231A3B;
+        --card-top: rgba(34,31,46,.85); --card-bottom: rgba(24,22,33,.65); --card-edge: rgba(255,255,255,.08);
+        --tint: rgba(167,139,250,.12); --tint-edge: rgba(167,139,250,.25); --rule: rgba(255,255,255,.08);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px 16px; color: var(--ink);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(120% 60% at 20% 0%, var(--glow) 0%, var(--bg) 55%) fixed, var(--bg);
+    }
+    main {
+      max-width: 720px; margin: 0 auto; padding: 32px 28px; border-radius: 32px;
+      background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+      border: 1px solid var(--card-edge); box-shadow: 0 20px 50px -20px rgba(91,33,182,.35);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    header { display: flex; gap: 16px; align-items: center; margin-bottom: 8px; }
+    header img { width: 56px; height: 56px; border-radius: 14px; }
+    h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; line-height: 1.2; }
+    .updated { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+    h2 { margin: 32px 0 8px; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 19px; letter-spacing: -.01em; }
+    p, li { color: var(--ink); }
+    ul { padding-left: 20px; }
+    li { margin: 6px 0; }
+    a { color: var(--accent); }
+    .summary { margin: 20px 0 0; padding: 16px 18px; border-radius: 18px; background: var(--tint); border: 1px solid var(--tint-edge); }
+    .summary p { margin: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--rule); }
+    th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+    .table-wrap { overflow-x: auto; }
+    footer { margin-top: 32px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 480px) { main { padding: 24px 18px; border-radius: 24px; } h1 { font-size: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="https://raw.githubusercontent.com/southstar21dev/Vectra/master/native/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png" alt="" />
+      <div>
+        <h1>Vectra Privacy Policy</h1>
+        <p class="updated">Last updated 8 November 2026</p>
+      </div>
+    </header>
+
+    <div class="summary">
+      <p><strong>In short:</strong> Vectra keeps your account and your timetable so they sync between
+      devices. It doesn't show ads, doesn't use analytics or tracking, and never sells or shares
+      your data for marketing. You can delete your account and everything in it from Settings at any
+      time.</p>
+    </div>
+
+    <h2>Who is responsible</h2>
+    <p>Vectra is an independent app made by one developer (southstar21). It isn't run by your
+    university, by Neptun's developer or by BKK. For anything about your data, email
+    <a href="mailto:support@southstar21.dev">support@southstar21.dev</a>.</p>
+
+    <h2>What Vectra stores</h2>
+    <p>These are kept on the Vectra server, tied to your account, for as long as the account exists:</p>
+    <ul>
+      <li><strong>Account:</strong> your email address, the nickname you choose, and your password
+        (stored only as a secure hash). If you add a passkey, its public key and a name for it.</li>
+      <li><strong>Timetable:</strong> your Neptun calendar link, the classes and exams from it, classes
+        you add yourself, and your shifts and tasks. Course names, rooms and instructors are encrypted
+        before they're stored.</li>
+      <li><strong>Course tracker:</strong> attendance, grades, points and each course's rules.</li>
+      <li><strong>Transit and settings:</strong> the lines and stops you track, and your app preferences.</li>
+    </ul>
+    <p>We use this data only to run the app: to show your schedule, keep it in sync and work out
+    breaks, clashes and how many classes you can still skip.</p>
+
+    <h2>Location</h2>
+    <p>Vectra asks for your location only while you're using it, and only if you allow it. It's used to
+    find stops and departures near you and to show local weather. Your coordinates go out with those
+    requests (see below) but are <strong>not stored</strong> on the Vectra server or tied to your account.
+    You can turn location off in your phone's settings and the rest of the app keeps working.</p>
+
+    <h2>Services Vectra talks to</h2>
+    <p>Some features need data from other services. Each one receives only what it needs for that request,
+    and, like any website, sees your device's IP address.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Service</th><th>What for</th><th>What it receives</th></tr></thead>
+        <tbody>
+          <tr><td>Google Apps Script</td><td>Downloading your Neptun calendar (the university's servers block many networks, Google's are allowed)</td><td>Your Neptun calendar link</td></tr>
+          <tr><td>BKK Futár, through the Vectra server</td><td>Departures, vehicles, routes and service alerts</td><td>Stops, lines and, for nearby stops, your location</td></tr>
+          <tr><td>Open-Meteo</td><td>Weather and forecast</td><td>Your approximate location</td></tr>
+          <tr><td>BigDataCloud</td><td>The name of the place you're in, for the weather card</td><td>Your approximate location</td></tr>
+          <tr><td>RainViewer</td><td>Rain radar</td><td>Which map area is on screen</td></tr>
+          <tr><td>OpenFreeMap</td><td>Map tiles</td><td>Which map area is on screen</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>There are no advertising, analytics or crash-reporting services in the app. Vectra doesn't sell
+    your data or share it with anyone for marketing.</p>
+
+    <h2>Security</h2>
+    <p>All traffic is encrypted (HTTPS). Sensitive timetable fields are encrypted on the server, and
+    your sign-in token on the phone is kept in the system's secure storage. The server keeps
+    short-lived technical records, such as request counts per IP address, to stop abuse.</p>
+
+    <h2>How long data is kept, and deleting it</h2>
+    <p>Your data stays as long as your account does. To delete it, open <strong>Settings → About →
+    Delete account</strong> in the app. Your account and everything in it is removed straight away
+    and can't be recovered. If you can't sign in any more, email
+    <a href="mailto:support@southstar21.dev">support@southstar21.dev</a> from your account's address and
+    we'll delete it for you. Signing out removes the copy on your phone.</p>
+
+    <h2>Your rights</h2>
+    <p>If you're in the EU (Vectra is made in Hungary), the GDPR lets you see a copy of your data, have
+    it corrected or deleted, get it in a portable format, and object to or restrict how it's used. The
+    legal basis is that we need this data to provide the service you signed up for. Email
+    <a href="mailto:support@southstar21.dev">support@southstar21.dev</a> to use any of these rights. You
+    can also complain to the Hungarian data protection authority,
+    <a href="https://naih.hu/">NAIH</a>, or the authority where you live.</p>
+
+    <h2>Children</h2>
+    <p>Vectra is made for university students and isn't meant for children under 16.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version is posted here with a new date.</p>
+
+    <footer>Vectra · <a href="./">Install the app</a> · <a href="https://github.com/southstar21dev/Vectra">Source code</a></footer>
+  </main>
+</body>
+</html>

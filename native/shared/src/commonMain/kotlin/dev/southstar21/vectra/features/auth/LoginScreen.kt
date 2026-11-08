@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -158,14 +159,14 @@ interface PasskeyActions {
 }
 
 @Composable
-private fun Banner(text: String, tint: Tint, fill: Color) {
+private fun Banner(text: String, tint: Tint, fill: Color, icon: ImageVector = RemixIcons.ErrorWarningLine) {
     val shape = Radius.Control
     Row(
         Modifier.fillMaxWidth().background(fill, shape).border(1.dp, tint.border, shape).padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        VIcon(RemixIcons.ErrorWarningLine, tint = tint.text)
+        VIcon(icon, tint = tint.text)
         VText(text, style = vtext(TypeScale.Caption), color = tint.text)
     }
 }
@@ -195,7 +196,13 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     var error by remember { mutableStateOf<Throwable?>(null) }
     var passkeyPending by remember { mutableStateOf(false) }
     var passkeyError by remember { mutableStateOf<String?>(null) }
+    var resetting by remember { mutableStateOf(false) }
     val sessionExpired = remember { auth.sessionExpired.value.also { auth.consumeSessionExpired() } }
+
+    if (resetting) {
+        ResetPasswordForm(auth, email) { resetting = false }
+        return
+    }
 
     val submit = {
         if (!pending && email.isNotBlank() && password.isNotEmpty()) {
@@ -244,9 +251,77 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 trailing = { PasswordToggle(show) { show = !show } },
             )
+            VText(
+                "Forgot password?",
+                Modifier.align(Alignment.End).tappable(onClick = { resetting = true }).padding(vertical = 4.dp),
+                vtext(TypeScale.Caption, Weight.Bold),
+                c.tints.purple.text,
+            )
         }
         VButton(onClick = { submit() }, modifier = Modifier.fillMaxWidth(), variant = ButtonVariant.Primary, enabled = !pending) {
             if (pending) InlineLoader() else VText("Sign in")
+        }
+    }
+}
+
+/** Asks PocketBase to email a reset link; the new password is then set on the page the link opens. */
+@Composable
+private fun ResetPasswordForm(auth: AuthRepository, initialEmail: String, onBack: () -> Unit) {
+    val c = Vectra.colors
+    val scope = rememberCoroutineScope()
+    var email by remember { mutableStateOf(initialEmail.trim()) }
+    var pending by remember { mutableStateOf(false) }
+    var sentTo by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val submit = {
+        val address = email.trim()
+        when {
+            pending -> Unit
+            !AccountLogic.isValidEmail(address) -> error = "Enter the email address you signed up with."
+            else -> {
+                pending = true
+                error = null
+                scope.launchCatching({ auth.requestPasswordReset(address); sentTo = address; pending = false }) {
+                    pending = false
+                    error = AccountLogic.resetErrorMessage(it)
+                }
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            VText("Reset your password", style = vtext(TypeScale.Body, Weight.Bold))
+            VText(
+                "We'll email you a link to choose a new one.",
+                style = vtext(TypeScale.Caption),
+                color = c.textMuted,
+            )
+        }
+        sentTo?.let {
+            Banner(
+                "If $it has a Vectra account, a reset link is on its way. Check your spam folder too.",
+                c.tints.emerald,
+                Palette.Emerald500.copy(alpha = 0.1f),
+                RemixIcons.CheckboxCircleLine,
+            )
+        }
+        error?.let { Banner(it, c.tints.red, Palette.Red500.copy(alpha = 0.1f)) }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            FieldLabel("Email address")
+            VInput(
+                email, { email = it; sentTo = null }, placeholder = "name@example.com", icon = RemixIcons.MailLine,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+            )
+        }
+        VButton(onClick = { submit() }, modifier = Modifier.fillMaxWidth(), variant = ButtonVariant.Primary, enabled = !pending) {
+            if (pending) InlineLoader() else VText(if (sentTo == null) "Send reset link" else "Send again")
+        }
+        VButton(onClick = onBack, modifier = Modifier.fillMaxWidth(), variant = ButtonVariant.Ghost) {
+            VIcon(RemixIcons.ArrowLeftLine)
+            VText("Back to sign in", style = vtext(TypeScale.Caption, Weight.Bold))
         }
     }
 }

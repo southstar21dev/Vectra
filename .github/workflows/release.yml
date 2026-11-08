@@ -102,7 +102,8 @@ jobs:
       - name: Set the version
         run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
 
-      - name: Build the signed APKs
+      # The APKs are for Obtainium and direct download; the AAB is what Google Play takes.
+      - name: Build the signed APKs and AAB
         working-directory: native
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -111,12 +112,17 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          ./gradlew :androidApp:assembleRelease \
-            -Pvectra.keystore="$RUNNER_TEMP/release.jks" \
-            -Pvectra.storePassword="$KEYSTORE_PASSWORD" \
-            -Pvectra.keyAlias="$KEY_ALIAS" \
+          trap 'rm -f "$RUNNER_TEMP/release.jks"' EXIT
+          SIGNING=(
+            -Pvectra.keystore="$RUNNER_TEMP/release.jks"
+            -Pvectra.storePassword="$KEYSTORE_PASSWORD"
+            -Pvectra.keyAlias="$KEY_ALIAS"
             -Pvectra.keyPassword="$KEY_PASSWORD"
-          rm "$RUNNER_TEMP/release.jks"
+          )
+          # Two invocations: androidApp turns the ABI splits off whenever a bundle task is
+          # requested, so a combined run would build one plain APK instead of universal + arm64.
+          ./gradlew :androidApp:assembleRelease "${SIGNING[@]}"
+          ./gradlew :androidApp:bundleRelease "${SIGNING[@]}"
 
       - name: Collect
         run: |
@@ -124,8 +130,9 @@ jobs:
           OUT=native/androidApp/build/outputs/apk/release
           cp "$OUT/androidApp-universal-release.apk" "release-assets/Vectra-$VERSION.apk"
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
+          cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android
           path: release-assets/
@@ -164,7 +171,7 @@ jobs:
           cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Vectra.app" "$RUNNER_TEMP/ipa/Payload/"
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios
           path: release-assets/
@@ -186,7 +193,7 @@ jobs:
         with:
           node-version: 22
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
@@ -236,7 +243,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node .github/scripts/altstore-source.mjs site
-          cp .github/pages/index.html site/
+          cp .github/pages/index.html .github/pages/privacy.html site/
 
       - uses: actions/configure-pages@v5
         with:

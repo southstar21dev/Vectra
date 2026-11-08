@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
@@ -39,11 +40,16 @@ import dev.southstar21.vectra.core.time.formatDDMMYYYY
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
+import dev.southstar21.vectra.features.reminders.classReminderRows
+import dev.southstar21.vectra.features.reminders.commuteRows
 import dev.southstar21.vectra.features.shell.VectraPage
 import kotlinx.coroutines.launch
 
 /** Settings rows read as a narrow column, narrower than `ContentMaxWidth`. */
 private val SettingsColumnWidth = 448.dp
+
+/** Published by .github/workflows/release.yml from .github/pages/privacy.html. */
+const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
 
 /**
  * The settings page. The Neptun card and the location row belong to the schedule
@@ -66,13 +72,27 @@ fun SettingsScreen(
             }
             if (neptunSection != null) Reveal(2) { neptunSection() }
             Reveal(3) {
-                SettingsSection("Permissions", tilt = StampTilt.Right, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
+                SettingsSection("Class reminders", tilt = StampTilt.Left, rows = classReminderRows(graph.reminders, graph.notifier))
             }
             Reveal(4) {
-                SettingsSection("About", tilt = StampTilt.Left, rows = listOf(
+                SettingsSection("Commute", tilt = StampTilt.Right, rows = commuteRows(graph.reminders, graph.transitRepository, graph.notifier))
+            }
+            Reveal(5) {
+                SettingsSection("Permissions", tilt = StampTilt.Left, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
+            }
+            Reveal(6) {
+                SettingsSection("About", tilt = StampTilt.Right, rows = listOf(
                     {
                         SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
                             VText("${graph.config.appVersion}-android", style = vtext(TypeScale.Body), color = c.textSecondary)
+                        }
+                    },
+                    {
+                        val uri = LocalUriHandler.current
+                        SettingsRow(RemixIcons.ExternalLinkLine, c.tints.purple.bg, c.tints.purple.text, "Privacy policy", "What Vectra stores and how to remove it") {
+                            VButton(onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
+                                VText("Open", style = vtext(TypeScale.Caption, Weight.Bold))
+                            }
                         }
                     },
                     {

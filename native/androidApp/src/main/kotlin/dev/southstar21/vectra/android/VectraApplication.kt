@@ -10,6 +10,7 @@ import dev.southstar21.vectra.platform.AndroidNotifier
 import dev.southstar21.vectra.platform.AndroidLocationProvider
 import dev.southstar21.vectra.platform.AndroidPasskeyAuthenticator
 import dev.southstar21.vectra.platform.KeystoreSecretCipher
+import dev.southstar21.vectra.platform.ReminderRuntime
 import dev.southstar21.vectra.platform.createAndroidHttpClient
 import dev.southstar21.vectra.platform.createBlobStore
 import dev.southstar21.vectra.platform.createDataStore
@@ -23,10 +24,13 @@ class VectraApplication : Application() {
     /** Builds the graph and loads preferences ahead of the first frame, which would otherwise do both on Main. */
     override fun onCreate() {
         super.onCreate()
+        // Reminder alarms can start the process with no activity; the receiver reaches the graph through this.
+        ReminderRuntime.scheduler = { graph.reminders }
         thread(name = "vectra-warmup", priority = Thread.NORM_PRIORITY) {
             runCatching {
                 graph.auth
                 runBlocking { graph.kv.get("vectra.appearance") }
+                graph.reminders.start()
             }
         }
     }

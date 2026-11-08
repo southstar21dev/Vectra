@@ -31,6 +31,9 @@ targets:
         NSLocationWhenInUseUsageDescription: Vectra uses your location to find nearby stops and departures and to show local weather.
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Background refresh keeps the week of class reminders and their departure times current.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [dev.southstar21.vectra.reminders]
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]

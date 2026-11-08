@@ -1,0 +1,220 @@
+<!doctype html>
+<!--
+  Served by resetpage.Handler at /reset-password. The password-reset email links here with the
+  token in the fragment (#token), so it never reaches a server log or a Referer header.
+  {{NONCE}} is replaced per request; the CSP only runs scripts and styles carrying it.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Reset password · Vectra</title>
+  <link rel="icon" href="/reset-password/icon.png" />
+  <style nonce="{{NONCE}}">
+    :root {
+      --accent: #8B5CF6; --accent-top: #A78BFA; --accent-text: #7C3AED;
+      --ink: #17151F; --muted: #5F5B70; --bg: #F3F1F8; --glow: #E4DCF8;
+      --card-top: rgba(255,255,255,.88); --card-bottom: rgba(255,255,255,.6); --card-edge: rgba(255,255,255,.9);
+      --field: rgba(255,255,255,.75); --field-edge: rgba(23,21,31,.12); --focus: rgba(139,92,246,.35);
+      --red: #DC2626; --red-bg: rgba(239,68,68,.08); --red-edge: rgba(239,68,68,.3);
+      --green: #059669; --green-bg: rgba(16,185,129,.08); --green-edge: rgba(16,185,129,.3);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent-text: #C4B5FD; --ink: #F4F3F8; --muted: #A4A0B5; --bg: #0C0B11; --glow: #231A3B;
+        --card-top: rgba(34,31,46,.88); --card-bottom: rgba(24,22,33,.7); --card-edge: rgba(255,255,255,.08);
+        --field: rgba(255,255,255,.04); --field-edge: rgba(255,255,255,.12);
+        --red: #F87171; --red-bg: rgba(239,68,68,.1); --red-edge: rgba(248,113,113,.3);
+        --green: #34D399; --green-bg: rgba(16,185,129,.1); --green-edge: rgba(52,211,153,.3);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink);
+      background: radial-gradient(120% 70% at 50% 0%, var(--glow) 0%, var(--bg) 60%) fixed, var(--bg);
+    }
+    .wrap { width: 100%; max-width: 420px; }
+    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+    .brand img { width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 12px 30px -10px rgba(91,33,182,.6); }
+    .brand span { margin-top: 10px; font-weight: 700; letter-spacing: -.01em; color: var(--muted); }
+    main {
+      padding: 28px 24px; border-radius: 28px;
+      background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+      border: 1px solid var(--card-edge); box-shadow: 0 24px 60px -24px rgba(91,33,182,.45);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.02em; line-height: 1.25; }
+    .lede { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
+    label { display: block; margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+    .field { position: relative; margin-bottom: 18px; }
+    input {
+      width: 100%; height: 52px; padding: 0 48px 0 16px; border-radius: 16px; font: inherit; color: var(--ink);
+      background: var(--field); border: 1px solid var(--field-edge); outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--focus); }
+    .toggle {
+      position: absolute; right: 6px; top: 6px; width: 40px; height: 40px; border: 0; border-radius: 12px;
+      background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    }
+    .toggle:focus-visible { outline: 2px solid var(--accent); }
+    .toggle svg { width: 20px; height: 20px; fill: currentColor; }
+    .hint { margin: -10px 0 18px; font-size: 13px; color: var(--muted); }
+    button.primary {
+      width: 100%; height: 52px; border: 0; border-radius: 999px; font: inherit; font-weight: 700; color: #fff; cursor: pointer;
+      background: linear-gradient(180deg, var(--accent-top), var(--accent)); box-shadow: 0 10px 24px -10px rgba(91,33,182,.8);
+    }
+    button.primary:disabled { opacity: .6; cursor: default; }
+    button.primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .banner { display: flex; gap: 10px; align-items: flex-start; padding: 14px; border-radius: 16px; font-size: 14px; margin-bottom: 18px; }
+    .banner svg { flex: none; width: 20px; height: 20px; fill: currentColor; margin-top: 1px; }
+    .banner.error { color: var(--red); background: var(--red-bg); border: 1px solid var(--red-edge); }
+    .banner.success { color: var(--green); background: var(--green-bg); border: 1px solid var(--green-edge); }
+    .state { text-align: center; }
+    .state .badge { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 18px; display: grid; place-items: center; }
+    .state .badge svg { width: 28px; height: 28px; fill: currentColor; }
+    .state.ok .badge { color: var(--green); background: var(--green-bg); border: 1px solid var(--green-edge); }
+    .state.bad .badge { color: var(--red); background: var(--red-bg); border: 1px solid var(--red-edge); }
+    .state p { margin: 0; color: var(--muted); }
+    [hidden] { display: none !important; }
+    footer { margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); }
+    footer a { color: var(--accent-text); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <img src="/reset-password/icon.png" alt="" />
+      <span>Vectra</span>
+    </div>
+
+    <main>
+      <form id="form" novalidate>
+        <h1>Choose a new password</h1>
+        <p class="lede">Use at least 8 characters. You'll sign in with it on every device.</p>
+
+        <div class="banner error" id="error" role="alert" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-1-5h2v2h-2v-2Zm0-8h2v6h-2V7Z"/></svg>
+          <span id="error-text"></span>
+        </div>
+
+        <label for="password">New password</label>
+        <div class="field">
+          <input id="password" type="password" autocomplete="new-password" minlength="8" required autofocus />
+          <button type="button" class="toggle" data-for="password" aria-label="Show password"></button>
+        </div>
+
+        <label for="confirm">Repeat it</label>
+        <div class="field">
+          <input id="confirm" type="password" autocomplete="new-password" minlength="8" required />
+          <button type="button" class="toggle" data-for="confirm" aria-label="Show password"></button>
+        </div>
+
+        <button class="primary" id="submit" type="submit">Save new password</button>
+      </form>
+
+      <div class="state ok" id="done" hidden>
+        <div class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm-.997-6 7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16Z"/></svg></div>
+        <h1>Password changed</h1>
+        <p>Go back to Vectra and sign in with your new password. You've been signed out everywhere else.</p>
+      </div>
+
+      <div class="state bad" id="dead" hidden>
+        <div class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm0-11.414L9.172 7.757 7.757 9.172 10.586 12l-2.829 2.828 1.415 1.415L12 13.414l2.828 2.829 1.415-1.415L13.414 12l2.829-2.828-1.415-1.415L12 10.586Z"/></svg></div>
+        <h1 id="dead-title">This link has expired</h1>
+        <p id="dead-text">Reset links work for 30 minutes and only once. In Vectra, tap <strong>Forgot password?</strong> on the sign-in screen to get a new one.</p>
+      </div>
+    </main>
+
+    <footer>Need help? <a href="mailto:support@southstar21.dev">support@southstar21.dev</a></footer>
+  </div>
+
+  <script nonce="{{NONCE}}">
+    (function () {
+      var MIN = 8;
+      var EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3Zm0 16a9.005 9.005 0 0 0 8.777-7 9.005 9.005 0 0 0-17.554 0A9.005 9.005 0 0 0 12 19Zm0-2.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Zm0-2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg>';
+      var EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.882 19.297A10.949 10.949 0 0 1 12 21c-5.392 0-9.878-3.88-10.819-9a10.982 10.982 0 0 1 3.34-6.066L1.392 2.808l1.415-1.415 19.799 19.8-1.415 1.414-3.31-3.31ZM5.935 7.35A8.965 8.965 0 0 0 3.223 12a9.005 9.005 0 0 0 13.201 5.838l-2.028-2.028A4.5 4.5 0 0 1 8.19 9.604L5.935 7.35Zm6.979 6.978-3.242-3.242a2.5 2.5 0 0 0 3.241 3.241Zm7.893 2.264-1.431-1.43A8.935 8.935 0 0 0 20.777 12 9.005 9.005 0 0 0 9.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.947 10.947 0 0 1-2.012 4.592Zm-9.084-9.084a4.5 4.5 0 0 1 4.769 4.769l-4.77-4.769Z"/></svg>';
+
+      var $ = function (id) { return document.getElementById(id); };
+      var token = decodeURIComponent(location.hash.replace(/^#/, ''));
+      // Keep the token out of the address bar, history and anything the person copies or shares.
+      if (token) history.replaceState(null, '', location.pathname);
+
+      function dead(title, text) {
+        $('form').hidden = true;
+        if (title) $('dead-title').textContent = title;
+        if (text) $('dead-text').textContent = text;
+        $('dead').hidden = false;
+      }
+      function showError(text) {
+        $('error-text').textContent = text;
+        $('error').hidden = false;
+      }
+
+      // A JWT's payload says when it expires; check it up front instead of after typing a password.
+      function expired(jwt) {
+        try {
+          var part = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+          var exp = JSON.parse(atob(part)).exp;
+          return typeof exp === 'number' && exp * 1000 < Date.now();
+        } catch (e) { return false; }
+      }
+
+      if (!token || token.split('.').length !== 3) {
+        dead('This link is incomplete', 'Open the reset link straight from the email, or ask for a new one in Vectra with Forgot password? on the sign-in screen.');
+        return;
+      }
+      if (expired(token)) { dead(); return; }
+
+      Array.prototype.forEach.call(document.querySelectorAll('.toggle'), function (btn) {
+        var input = $(btn.getAttribute('data-for'));
+        btn.innerHTML = EYE;
+        btn.addEventListener('click', function () {
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          btn.innerHTML = show ? EYE_OFF : EYE;
+          btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      });
+
+      $('form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        $('error').hidden = true;
+        var password = $('password').value;
+        var confirm = $('confirm').value;
+        if (password.length < MIN) { showError('Use at least ' + MIN + ' characters.'); $('password').focus(); return; }
+        if (password !== confirm) { showError("The two passwords don't match."); $('confirm').focus(); return; }
+
+        var submit = $('submit');
+        submit.disabled = true;
+        submit.textContent = 'Saving…';
+        fetch('/api/collections/users/confirm-password-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token, password: password, passwordConfirm: confirm }),
+        }).then(function (res) {
+          if (res.ok) {
+            $('form').hidden = true;
+            $('done').hidden = false;
+            return;
+          }
+          return res.json().catch(function () { return {}; }).then(function (body) {
+            var data = (body && body.data) || {};
+            if (data.token) { dead(); return; }
+            if (res.status === 429) { showError('Too many attempts. Wait a minute and try again.'); return; }
+            var field = data.password || data.passwordConfirm;
+            showError(field && field.message ? field.message : "Couldn't save your new password. Try again.");
+          });
+        }).catch(function () {
+          showError("Couldn't reach Vectra. Check your connection and try again.");
+        }).then(function () {
+          submit.disabled = false;
+          submit.textContent = 'Save new password';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

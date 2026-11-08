@@ -88,6 +88,38 @@ func TestRouteBindings(t *testing.T) {
 			BeforeTestFunc:  register,
 		},
 		{
+			Name:               "reset page is public and locked down",
+			Method:             http.MethodGet,
+			URL:                "/reset-password",
+			ExpectedStatus:     http.StatusOK,
+			ExpectedContent:    []string{"Choose a new password", "/api/collections/users/confirm-password-reset"},
+			NotExpectedContent: []string{"{{NONCE}}"},
+			AfterTestFunc: func(t testing.TB, _ *tests.TestApp, res *http.Response) {
+				for k, v := range map[string]string{"Referrer-Policy": "no-referrer", "Cache-Control": "no-store"} {
+					if got := res.Header.Get(k); got != v {
+						t.Errorf("%s = %q, want %q", k, got, v)
+					}
+				}
+				if csp := res.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'nonce-") {
+					t.Errorf("missing nonce CSP: %q", csp)
+				}
+			},
+			BeforeTestFunc: register,
+		},
+		{
+			Name:               "reset page icon",
+			Method:             http.MethodGet,
+			URL:                "/reset-password/icon.png",
+			ExpectedStatus:     http.StatusOK,
+			NotExpectedContent: []string{"<html"},
+			AfterTestFunc: func(t testing.TB, _ *tests.TestApp, res *http.Response) {
+				if ct := res.Header.Get("Content-Type"); ct != "image/png" {
+					t.Errorf("Content-Type = %q", ct)
+				}
+			},
+			BeforeTestFunc: register,
+		},
+		{
 			Name:            "passkey login start is public",
 			Method:          http.MethodPost,
 			URL:             "/api/vectra/passkeys/login/start",
