@@ -230,9 +230,10 @@ unsigned IPA and updated AltStore/SideStore sources.
 >   (the company behind Neptun), Corvinus University of Budapest or any other university, or
 >   BKK (Budapesti Közlekedési Központ). Neptun, BKK Futár and other product names and logos belong to
 >   their owners and appear here only to say what Vectra works with.
-> - **Your data.** Vectra has its own backend: it fetches your Neptun calendar link on your behalf
->   and stores your timetable with course names, rooms and instructors encrypted. Your data is never
->   sold or shared with third parties, and the app has no ads or analytics.
+> - **Your data.** Your Neptun calendar is downloaded through a Google Apps Script relay, and your
+>   timetable is kept on Vectra's own server with course names, rooms and instructors encrypted. Your
+>   data is never sold or shared for marketing, and the app has no ads or analytics. See the
+>   [privacy policy](https://southstar21dev.github.io/Vectra/privacy.html).
 > - **Not the official source.** What Vectra shows is for convenience only. Timetables, exams,
 >   departures and weather can be late, incomplete or wrong. Neptun and your university are the
 >   only authoritative source for anything academic, and BKK for transit. Vectra and its developer

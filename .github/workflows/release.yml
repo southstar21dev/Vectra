@@ -102,7 +102,8 @@ jobs:
       - name: Set the version
         run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
 
-      - name: Build the signed APKs
+      # The APKs are for Obtainium and direct download; the AAB is what Google Play takes.
+      - name: Build the signed APKs and AAB
         working-directory: native
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -111,7 +112,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          ./gradlew :androidApp:assembleRelease \
+          ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease \
             -Pvectra.keystore="$RUNNER_TEMP/release.jks" \
             -Pvectra.storePassword="$KEYSTORE_PASSWORD" \
             -Pvectra.keyAlias="$KEY_ALIAS" \
@@ -124,6 +125,7 @@ jobs:
           OUT=native/androidApp/build/outputs/apk/release
           cp "$OUT/androidApp-universal-release.apk" "release-assets/Vectra-$VERSION.apk"
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
+          cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -236,7 +238,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node .github/scripts/altstore-source.mjs site
-          cp .github/pages/index.html site/
+          cp .github/pages/index.html .github/pages/privacy.html site/
 
       - uses: actions/configure-pages@v5
         with:
