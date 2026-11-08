@@ -1,0 +1,63 @@
+# Installs a release APK on an emulator, launches it and fails if it crashes. Catches what only the
+# shrunk release build gets wrong (R8 stripping something the app needs), which the debug builds CI
+# tests can't: v1.5.0 shipped one that crashed before the first screen.
+#
+# release.yml runs it on the APK it just built, before publishing. Run it by hand to check an
+# existing release: gh workflow run android-launch.yml -f tag=v1.5.1
+name: Android launch check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose APK to check (e.g. v1.5.1)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Get the APK from this run
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/download-artifact@v8
+        with:
+          name: android
+          path: apk
+
+      - name: Get the APK from the release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release download "$TAG" --pattern 'Vectra-*.apk' --dir apk
+
+      # The universal APK carries x86_64 for the emulator; the arm64 one doesn't.
+      - name: Pick the universal APK
+        run: |
+          APK=$(find apk -name 'Vectra-*.apk' ! -name '*-arm64.apk' | head -1)
+          [ -n "$APK" ] || { echo "::error::No universal APK found"; exit 1; }
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          # The action runs each script line on its own, so the check lives in a file.
+          script: bash .github/scripts/android-launch-check.sh "$APK"
