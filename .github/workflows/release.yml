@@ -304,7 +304,7 @@ jobs:
           node .github/scripts/altstore-source.mjs site
           cp .github/pages/index.html .github/pages/privacy.html site/
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         with:
           enablement: true
 
