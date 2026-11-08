@@ -10,6 +10,7 @@ import (
 	"vectra/pb/internal/neptun"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/push"
+	"vectra/pb/internal/resetpage"
 )
 
 func Register(se *core.ServeEvent) {
@@ -38,4 +39,8 @@ func Register(se *core.ServeEvent) {
 	g.POST("/passkeys/register/verify", passkeys.RegistrationVerifyHandler).Bind(apis.RequireAuth("users"))
 	se.Router.POST("/api/vectra/passkeys/login/start", passkeys.LoginStartHandler)
 	se.Router.POST("/api/vectra/passkeys/login/verify", passkeys.LoginVerifyHandler)
+	// Public: the page reset emails link to (the token travels in the URL fragment, never to the
+	// server); it posts to PocketBase's own confirm-password-reset endpoint.
+	se.Router.GET(resetpage.Path, resetpage.Handler)
+	se.Router.GET(resetpage.Path+"/icon.png", resetpage.IconHandler)
 }
