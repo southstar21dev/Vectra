@@ -221,6 +221,24 @@ CI passes, and versions from [Conventional Commits](https://www.conventionalcomm
 `chore:`, `docs:`, `refactor:`, `test:` and `ci:` release nothing. Each release ships a signed APK, an
 unsigned IPA and updated AltStore/SideStore sources.
 
+## Disclaimer
+
+> [!IMPORTANT]
+> **Vectra is an unofficial, independent student project.**
+>
+> - **No affiliation.** Vectra isn't made, endorsed, sponsored or approved by Campus Codeworks Zrt.
+>   (the company behind Neptun), Corvinus University of Budapest or any other university, or
+>   BKK (Budapesti Közlekedési Központ). Neptun, BKK Futár and other product names and logos belong to
+>   their owners and appear here only to say what Vectra works with.
+> - **Your data.** Vectra has its own backend: it fetches your Neptun calendar link on your behalf
+>   and stores your timetable with course names, rooms and instructors encrypted. Your data is never
+>   sold or shared with third parties, and the app has no ads or analytics.
+> - **Not the official source.** What Vectra shows is for convenience only. Timetables, exams,
+>   departures and weather can be late, incomplete or wrong. Neptun and your university are the
+>   only authoritative source for anything academic, and BKK for transit. Vectra and its developer
+>   aren't responsible for missed classes, exams, deadlines or connections, or for outages and
+>   mismatched data.
+
 ## License
 
 Copyright © 2026 southstar21. **All rights reserved.** The source is published for reference; it
