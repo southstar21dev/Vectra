@@ -11,6 +11,9 @@
 # A push to master whose tree is identical to dev's head, where CI already passed, skips CI: the
 # promotion merge changes nothing that was tested.
 #
+# When every commit since the last release has a "Platforms: android" line, only Android is built
+# and released; iPhones stay on the previous version (the AltStore source lists IPA releases only).
+#
 # Obtainium (Android) watches the releases directly. AltStore/SideStore (iOS) read the sources the
 # `pages` job rebuilds from the releases and publishes to GitHub Pages with the install page:
 #   https://southstar21dev.github.io/Vectra/                    install page
@@ -96,6 +99,7 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.plan.outputs.version }}
+      ios: ${{ steps.platforms.outputs.ios }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -110,6 +114,23 @@ jobs:
           # $SEMANTIC_RELEASE is a list of packages: split on purpose.
           # shellcheck disable=SC2086
           npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel" $SEMANTIC_RELEASE
+
+      # An Android-only fix skips the iOS build: when every commit since the last release carries a
+      # "Platforms: android" line, the release gets the APKs and AAB only. The AltStore source lists
+      # releases that have an IPA, so iPhones simply stay on the previous version.
+      - id: platforms
+        name: Decide the platforms
+        run: |
+          LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          RANGE=${LAST:+$LAST..}HEAD
+          TOTAL=$(git rev-list --no-merges --count "$RANGE")
+          ANDROID=$(git rev-list --no-merges --grep '^Platforms: android$' --count "$RANGE")
+          if [ "$TOTAL" -gt 0 ] && [ "$TOTAL" = "$ANDROID" ]; then
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+            echo "Android only: every commit since ${LAST:-the start} is marked Platforms: android." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - id: plan
         name: Decide the version
@@ -181,7 +202,7 @@ jobs:
 
   ios:
     needs: plan
-    if: needs.plan.outputs.version != ''
+    if: needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true'
     runs-on: macos-latest
     env:
       VERSION: ${{ needs.plan.outputs.version }}
@@ -250,7 +271,7 @@ jobs:
     if: >-
       ${{ !cancelled()
       && needs.android.result == 'success'
-      && needs.ios.result == 'success'
+      && (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.plan.outputs.ios == 'false'))
       && (needs.ci.result == 'success'
           || (needs.ci.result == 'skipped' && needs.verified.outputs.skip-ci == 'true')) }}
     runs-on: ubuntu-latest
