@@ -112,6 +112,28 @@ fun <T> OptionSheet(
     value: T,
     onDismiss: () -> Unit,
     onPick: (T) -> Unit,
+) = OptionList(open, title, options, { it == value }, Role.RadioButton, onDismiss, onPick)
+
+/** A sheet listing [options] with a check against each one in [values]; tapping one toggles it and leaves the sheet open. */
+@Composable
+fun <T> MultiOptionSheet(
+    open: Boolean,
+    title: String?,
+    options: List<SelectOption<T>>,
+    values: Set<T>,
+    onDismiss: () -> Unit,
+    onToggle: (T) -> Unit,
+) = OptionList(open, title, options, { it in values }, Role.Checkbox, onDismiss, onToggle)
+
+@Composable
+private fun <T> OptionList(
+    open: Boolean,
+    title: String?,
+    options: List<SelectOption<T>>,
+    selected: (T) -> Boolean,
+    role: Role,
+    onDismiss: () -> Unit,
+    onPick: (T) -> Unit,
 ) {
     val haptics = Vectra.haptics
     VSheet(open, onDismiss) {
@@ -123,7 +145,7 @@ fun <T> OptionSheet(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             for (opt in options) {
-                val isSelected = opt.value == value
+                val isSelected = selected(opt.value)
                 val c = Vectra.colors
                 val rowShape = Radius.Row
                 Row(
@@ -131,7 +153,7 @@ fun <T> OptionSheet(
                         .fillMaxWidth()
                         .heightIn(min = 52.dp)
                         .semantics { this.selected = isSelected }
-                        .tappable(rowShape, role = Role.RadioButton) {
+                        .tappable(rowShape, role = role) {
                             haptics.tick()
                             onPick(opt.value)
                         }

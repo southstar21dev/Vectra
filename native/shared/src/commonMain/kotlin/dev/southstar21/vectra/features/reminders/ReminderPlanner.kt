@@ -15,28 +15,30 @@ const val NextClassWarningMinutes = 5
  * departures when it's over.
  */
 fun planReminders(sessions: List<ReminderSession>, prefs: ReminderPrefs, nowMs: Long): List<ScheduledNotification> {
-    val toUni = prefs.toUni?.query?.takeIf { prefs.departures }
-    val backHome = prefs.backHome?.query?.takeIf { prefs.departures }
+    // Paired lines (28 / 28A) picked at one stop are fetched together already: one line of times.
+    val toUni = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList()
+    val backHome = if (prefs.departures) prefs.backHome.distinctBy { it.pickKey }.map { it.query } else emptyList()
     val stretches = splitIntoStretches(sessions)
     val out = stretches.flatMapIndexed { i, stretch ->
         val after = stretches.getOrNull(i + 1)?.first()?.takeIf { it.day == stretch.first().day }
         listOfNotNull(arrivalReminder(stretch.first(), prefs, toUni)) +
             insideReminders(stretch, prefs) +
-            listOfNotNull(backHome?.let { homeReminder(stretch, after, it) })
+            listOfNotNull(backHome.takeIf { it.isNotEmpty() }?.let { homeReminder(stretch, after, it) })
     }
     return out.filter { it.atMs > nowMs + 30_000 }.distinctBy { it.id }.sortedBy { it.atMs }
 }
 
 /** Arriving: the room ahead of time, and the departures to get there. */
-private fun arrivalReminder(first: ReminderSession, prefs: ReminderPrefs, toUni: DepartureQuery?): ScheduledNotification? {
+private fun arrivalReminder(first: ReminderSession, prefs: ReminderPrefs, toUni: List<DepartureQuery>): ScheduledNotification? {
     val classOn = prefs.beforeClass && first.kind.allowedBy(prefs)
-    return if (!classOn && toUni == null) null else ScheduledNotification(
+    val commute = toUni.isNotEmpty()
+    return if (!classOn && !commute) null else ScheduledNotification(
         id = "rem:before:${first.key}",
         atMs = first.startMs - prefs.leadMinutes * MinuteMs,
         title = if (classOn) "${first.title} ${leadLabel(prefs.leadMinutes)}" else "Leave for ${first.title}",
         body = details(roomOf(first), first.typeLabel, formatBudapestHm(first.startMs)),
-        url = if (toUni != null) "/transit" else "/schedule",
-        channel = if (toUni != null) ReminderChannel.Commute else ReminderChannel.Classes,
+        url = if (commute) "/transit" else "/schedule",
+        channel = if (commute) ReminderChannel.Commute else ReminderChannel.Classes,
         departures = toUni,
         expiresAtMs = first.startMs,
     )
@@ -76,7 +78,7 @@ private fun nextClassWarning(cur: ReminderSession, next: ReminderSession): Sched
 }
 
 /** Leaving: the way home when the stretch's last session ends ([after] = the day's next stretch, if any). */
-private fun homeReminder(stretch: List<ReminderSession>, after: ReminderSession?, backHome: DepartureQuery): ScheduledNotification {
+private fun homeReminder(stretch: List<ReminderSession>, after: ReminderSession?, backHome: List<DepartureQuery>): ScheduledNotification {
     val last = stretch.maxBy { it.endMs }
     return ScheduledNotification(
         id = "rem:home:${last.key}",

@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.reminders
 
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.Profile
 import dev.southstar21.vectra.core.auth.SessionListener
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.VectraJson
@@ -31,11 +32,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Keeps the system's scheduled reminders in step with the schedule, the "No class" marks and
  * [prefs]: a week ahead, replanned whenever any of them changes. Everything is scheduled on the
  * device, so reminders fire offline and with the app closed.
+ *
+ * [prefs] are also kept in the profile (`preferences.reminders`): a device that hasn't held this
+ * account's settings yet (a reinstall, a new phone) takes them from there; after that the device's
+ * own copy wins and every change is pushed back.
  */
 class ReminderScheduler(
     private val kv: KeyValueStore,
@@ -52,6 +58,9 @@ class ReminderScheduler(
     private val loaded = CompletableDeferred<Unit>()
     private val replanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val lock = Mutex()
+    private val pushLock = Mutex()
+    /** The account whose profile was compared with [prefs] in this process. */
+    private var syncedFor: String? = null
     private val departures = DepartureLookup(transit)
     private var started = false
 
@@ -62,6 +71,40 @@ class ReminderScheduler(
         scope.launch {
             _prefs.value = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
             loaded.complete(Unit)
+            auth.profile.collect { profile -> if (profile != null) runSuspendCatching { syncWith(profile) } }
+        }
+    }
+
+    /** Once per account and process: take the profile's settings on a fresh device, otherwise push ours if they differ. */
+    private suspend fun syncWith(profile: Profile) {
+        if (syncedFor == profile.id) return
+        syncedFor = profile.id
+        val remote = profile.preferences?.get(ProfileKey)
+            ?.let { runCatching { VectraJson.decodeFromJsonElement(ReminderPrefs.serializer(), it) }.getOrNull() }
+        val owner = kv.get(OwnerKey)
+        if (owner != profile.id) {
+            kv.set(OwnerKey, profile.id)
+            when {
+                remote != null -> return store(remote)
+                // Another account's settings; with no owner yet they are this account's, from before syncing.
+                owner != null -> store(ReminderPrefs())
+            }
+        }
+        if (remote != _prefs.value) push()
+    }
+
+    private suspend fun store(next: ReminderPrefs) {
+        _prefs.value = next
+        kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next))
+    }
+
+    /** Writes the latest [prefs] into the profile, beside the other preferences there. */
+    private suspend fun push() = pushLock.withLock {
+        if (auth.session.value == null) return@withLock
+        runSuspendCatching {
+            val current = auth.profile.value?.preferences ?: JsonObject(emptyMap())
+            val mine = VectraJson.encodeToJsonElement(ReminderPrefs.serializer(), _prefs.value)
+            if (current[ProfileKey] != mine) auth.updateProfile(mapOf("preferences" to JsonObject(current + (ProfileKey to mine))))
         }
     }
 
@@ -91,7 +134,10 @@ class ReminderScheduler(
     fun update(transform: (ReminderPrefs) -> ReminderPrefs) {
         val next = transform(_prefs.value)
         _prefs.value = next
-        scope.launch { kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next)) }
+        scope.launch {
+            kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next))
+            push()
+        }
     }
 
     /**
@@ -142,18 +188,22 @@ class ReminderScheduler(
             body = next?.let { listOfNotNull(it.location.ifEmpty { null }, it.typeLabel).joinToString(" · ") }?.ifEmpty { null }
                 ?: "This is what a reminder looks like.",
             url = "/schedule",
-            departures = prefs.toUni?.query?.takeIf { prefs.departures },
+            departures = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList(),
         )
         val ready = if (notifier.resolvesAtFireTime) test else departures.bake(listOf(test), now).first()
         lock.withLock { notifier.replaceScheduled(planned.filter { it.id != test.id } + ready) }
     }
 
-    /** "Tram 6 from Blaha Lujza tér: 09:08 · 09:13 · …" with live times, for a reminder firing now. */
-    suspend fun liveDepartures(query: DepartureQuery): LiveDepartures {
+    /**
+     * "Tram 6 from Blaha Lujza tér: 09:08 · 09:13 · …", a line per query, with live times for a
+     * reminder firing now. [LiveDepartures.firstMs] is the latest of the lines' next departures, so
+     * the times stay fresh while any of them can still be caught.
+     */
+    suspend fun liveDepartures(queries: List<DepartureQuery>): LiveDepartures {
         withTimeoutOrNull(3_000) { auth.session.first { it != null } }
-        val times = departures.times(query, nowMs())
-        return if (times == null) LiveDepartures(departuresFallbackLine(query), null)
-        else LiveDepartures(departuresLine(query, times), times.firstOrNull())
+        val times = departures.timesEach(queries, nowMs())
+        val lines = queries.zip(times) { q, t -> if (t == null) departuresFallbackLine(q) else departuresLine(q, t) }
+        return LiveDepartures(lines.joinToString("\n"), times.mapNotNull { it?.firstOrNull() }.maxOrNull())
     }
 
     data class LiveDepartures(val line: String, val firstMs: Long?)
@@ -166,10 +216,20 @@ class ReminderScheduler(
 
     override suspend fun beforeSignOut() = lock.withLock { apply(emptyList()) }
 
-    override suspend fun onSessionCleared() = lock.withLock { apply(emptyList()) }
+    override suspend fun onSessionCleared() {
+        lock.withLock { apply(emptyList()) }
+        // The next account brings its own settings from its profile.
+        syncedFor = null
+        kv.set(OwnerKey, null)
+        store(ReminderPrefs())
+    }
 
     companion object {
         const val PrefsKey = "vectra.reminders"
+        /** The account [PrefsKey] belongs to. */
+        private const val OwnerKey = "vectra.reminders.owner"
+        /** Where they live in the profile's `preferences`. */
+        private const val ProfileKey = "reminders"
         const val HorizonDays = 7
         /** iOS keeps at most 64 pending notifications per app. */
         const val MaxScheduled = 60

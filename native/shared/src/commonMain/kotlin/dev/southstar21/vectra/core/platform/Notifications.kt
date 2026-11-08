@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.core.platform
 
+import dev.southstar21.vectra.core.network.OneOrManySerializer
 import kotlinx.serialization.Serializable
 
 /** System notifications. */
@@ -32,8 +33,9 @@ data class ScheduledNotification(
     val body: String,
     val url: String? = null,
     val channel: ReminderChannel = ReminderChannel.Classes,
-    /** Departures to add below [body] when it fires; null when the body is already complete. */
-    val departures: DepartureQuery? = null,
+    /** Departures to add below [body] when it fires, a line each; empty when the body is already complete. */
+    @Serializable(with = DepartureQueryList::class)
+    val departures: List<DepartureQuery> = emptyList(),
     /** When it stops being useful (its class has started); Android removes it then. */
     val expiresAtMs: Long? = null,
 )
@@ -48,6 +50,9 @@ data class DepartureQuery(
     /** "Tram 6", "M4". */
     val lineLabel: String,
 )
+
+/** Alarms set before several lines were allowed carry a single query. */
+object DepartureQueryList : OneOrManySerializer<DepartureQuery>(DepartureQuery.serializer())
 
 /**
  * Native push registration (FCM on Android). The backend's push route sends Web
