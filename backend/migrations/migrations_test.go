@@ -1,10 +1,12 @@
 package migrations_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/mails"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
 )
@@ -367,4 +369,55 @@ func TestRateLimitsEnabled(t *testing.T) {
 	}
 	require.EqualValues(t, 2, labels["*:auth"].MaxRequests)
 	require.EqualValues(t, 3, labels["*:auth"].Duration)
+}
+
+// TestVectraEmails: migration 1700000011 replaces PocketBase's "Acme" placeholder name and sends
+// the reset link to the Vectra page instead of the superuser dashboard.
+func TestVectraEmails(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	// The test app ships its own name ("acme_test"), which the migration leaves alone; only
+	// PocketBase's untouched "Acme" default is renamed.
+	require.NotEqual(t, "Acme", app.Settings().Meta.AppName)
+
+	users, err := app.FindCollectionByNameOrId("users")
+	require.NoError(t, err)
+	user := core.NewRecord(users)
+	user.SetEmail("reset@test.local")
+	user.SetPassword("password123")
+	require.NoError(t, app.Save(user))
+
+	app.TestMailer.Reset()
+	require.NoError(t, mails.SendRecordPasswordReset(app, user))
+	msg := app.TestMailer.LastMessage()
+	require.Equal(t, "Reset your Vectra password", msg.Subject)
+	require.False(t, users.AuthAlert.Enabled, "the new-sign-in alert email is off")
+	appURL := app.Settings().Meta.AppURL
+	require.Contains(t, msg.HTML, appURL+"/reset-password#")
+	require.NotContains(t, msg.HTML, "/_/#/auth/")
+	require.NotContains(t, msg.HTML, "Acme")
+	require.False(t, strings.Contains(msg.HTML, "{TOKEN}"), "the token placeholder must be filled in")
+}
+
+// TestPasswordResetRateLimits: migration 1700000012 adds per-IP limits for the reset endpoints,
+// which `*:auth` doesn't cover, and PocketBase picks them for those requests.
+func TestPasswordResetRateLimits(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	rl := app.Settings().RateLimits
+	require.True(t, rl.Enabled)
+
+	request, ok := rl.FindRateLimitRule([]string{"users:requestPasswordReset", "*:requestPasswordReset", "/api/"})
+	require.True(t, ok)
+	require.Equal(t, "*:requestPasswordReset", request.Label)
+	require.EqualValues(t, 3, request.MaxRequests)
+	require.EqualValues(t, 60, request.Duration)
+
+	confirm, ok := rl.FindRateLimitRule([]string{"users:confirmPasswordReset", "*:confirmPasswordReset", "/api/"})
+	require.True(t, ok)
+	require.Equal(t, "*:confirmPasswordReset", confirm.Label)
 }
