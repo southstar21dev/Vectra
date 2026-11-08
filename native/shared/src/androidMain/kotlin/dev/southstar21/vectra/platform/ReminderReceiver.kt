@@ -57,11 +57,10 @@ class ReminderReceiver : BroadcastReceiver() {
         val n = intent.getStringExtra(AndroidNotifier.EXTRA_PAYLOAD)
             ?.let { runCatching { VectraJson.decodeFromString(ScheduledNotification.serializer(), it) }.getOrNull() } ?: return
         val refresh = intent.getIntExtra(EXTRA_REFRESH, 0)
-        val query = n.departures
-        if (query == null) {
+        if (n.departures.isEmpty()) {
             notifier.post(n, n.body, silent = false)
         } else {
-            val live = scheduler.liveDepartures(query)
+            val live = scheduler.liveDepartures(n.departures)
             notifier.post(n, n.body + "\n" + live.line, silent = refresh > 0)
             // Refresh the times every minute until the first one has left (at most ten times).
             val first = live.firstMs

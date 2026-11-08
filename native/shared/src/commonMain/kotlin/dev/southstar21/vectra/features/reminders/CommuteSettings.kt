@@ -1,64 +1,47 @@
 package dev.southstar21.vectra.features.reminders
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.southstar21.vectra.core.designsystem.components.ButtonSize
-import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
-import dev.southstar21.vectra.core.designsystem.components.InlineLoader
-import dev.southstar21.vectra.core.designsystem.components.LocalToaster
-import dev.southstar21.vectra.core.designsystem.components.OptionSheet
+import dev.southstar21.vectra.core.designsystem.components.MultiOptionSheet
 import dev.southstar21.vectra.core.designsystem.components.SelectOption
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
-import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
-import dev.southstar21.vectra.core.designsystem.components.VTabs
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Notifier
-import dev.southstar21.vectra.core.platform.PermissionKind
-import dev.southstar21.vectra.core.platform.rememberPermissionRequester
-import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.TransitRepository
 import dev.southstar21.vectra.features.transit.TransitTracker
 import dev.southstar21.vectra.features.transit.collect
 import dev.southstar21.vectra.features.transit.getTrackerStops
-import kotlinx.coroutines.launch
 
-/** The "Commute" settings group: which saved tracker gets you to uni and back. */
+/** The "Commute" settings group: which saved trackers get you to uni and back. */
 fun commuteRows(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier): List<@Composable () -> Unit> = listOf(
     { CommutePicker(scheduler, transit, notifier, home = false) },
     { CommutePicker(scheduler, transit, notifier, home = true) },
@@ -77,7 +60,7 @@ private fun DeparturesRow(scheduler: ReminderScheduler, notifier: Notifier) {
     }
 }
 
-/** Every stop of every saved tracker, as a commute leg to pick. */
+/** Every stop of every saved tracker, as a commute leg to pick; paired lines (28 / 28A) at one stop are one leg. */
 private fun commuteLegs(trackers: List<TransitTracker>): List<CommuteLeg> = trackers.flatMap { t ->
     val stops = getTrackerStops(t)
     stops.map { s ->
@@ -94,11 +77,15 @@ private fun commuteLegs(trackers: List<TransitTracker>): List<CommuteLeg> = trac
             headsign = s.headsign?.ifEmpty { null } ?: t.headsign.ifEmpty { null }?.takeIf { stops.size == 1 },
         )
     }
-}
+}.distinctBy { it.key() }
 
-private fun CommuteLeg?.key() = this?.let { "${it.trackerId}|${it.stopId}" } ?: ""
+private fun CommuteLeg.key() = pickKey
 
 private fun CommuteLeg.describe() = stopName + (headsign?.let { " → $it" } ?: "")
+
+/** One leg: its stop and direction; several: "28 / 28A, 37 / 37A from Teleki László tér". */
+private fun describe(legs: List<CommuteLeg>): String = legs.singleOrNull()?.describe()
+    ?: (legs.map { it.displayName }.distinct().joinToString(", ") + " from " + legs.map { it.stopName }.distinct().joinToString(", "))
 
 @Composable
 private fun CommutePicker(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier, home: Boolean) {
@@ -106,40 +93,49 @@ private fun CommutePicker(scheduler: ReminderScheduler, transit: TransitReposito
     val trackers = transit.trackersQuery.collect(Unit).data.orEmpty()
     val enable = rememberEnabler(notifier)
     var open by remember { mutableStateOf(false) }
-    val current = if (home) prefs.backHome else prefs.toUni
-    val legs = remember(trackers) { commuteLegs(trackers) }
+    val current = (if (home) prefs.backHome else prefs.toUni).distinctBy { it.key() }
+    val saved = remember(trackers) { commuteLegs(trackers) }
+    // A picked line whose tracker is gone stays listed, so it can still be unticked.
+    val legs = saved + current.filter { c -> saved.none { it.key() == c.key() } }
     val title = if (home) "Back home" else "To uni"
     val subtitle = when {
-        current != null -> current.describe()
+        current.isNotEmpty() -> describe(current)
         legs.isEmpty() -> "Save a line on the Transit tab first"
-        else -> "Pick one of your saved lines"
+        else -> "Pick the lines you take"
     }
     CommuteRow(current, home, title, subtitle) { open = true }
 
-    val options = listOf(SelectOption("", "None")) + legs.map { SelectOption(it.key(), "${it.lineLabel} · ${it.describe()}") }
-    OptionSheet(open, title, options, current.key(), onDismiss = { open = false }) { key ->
-        open = false
-        val leg = legs.firstOrNull { it.key() == key }
-        val set = { scheduler.update { if (home) it.copy(backHome = leg) else it.copy(toUni = leg) } }
-        if (leg != null) enable(set) else set()
+    val options = legs.map { SelectOption(it.key(), "${it.lineLabel} · ${it.describe()}") }
+    MultiOptionSheet(open, title, options, current.map { it.key() }.toSet(), onDismiss = { open = false }) { key ->
+        val picked = current.any { it.key() == key }
+        val leg = legs.firstOrNull { it.key() == key } ?: return@MultiOptionSheet
+        fun set(transform: (List<CommuteLeg>) -> List<CommuteLeg>) =
+            scheduler.update { if (home) it.copy(backHome = transform(it.backHome)) else it.copy(toUni = transform(it.toUni)) }
+        if (picked) set { list -> list.filterNot { it.key() == key } }
+        else enable { set { list -> list.filterNot { it.key() == key } + leg } }
     }
 }
 
-/** A settings row led by the picked line's badge, opening the picker. */
+/** A settings row led by the picked lines' badges, opening the picker. */
 @Composable
-private fun CommuteRow(current: CommuteLeg?, home: Boolean, title: String, subtitle: String, onClick: () -> Unit) {
+private fun CommuteRow(current: List<CommuteLeg>, home: Boolean, title: String, subtitle: String, onClick: () -> Unit) {
     val c = Vectra.colors
     Row(
         Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 56.dp)
-            .tappable(role = Role.DropdownList, onClickLabel = "Choose the line", onClick = onClick)
+            .tappable(role = Role.DropdownList, onClickLabel = "Choose the lines", onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (current != null) {
-            RouteBadge(current.routeShortName, current.routeColor, current.routeTextColor, size = RouteBadgeSize.Xs)
+        if (current.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                current.take(MaxBadges).forEach { RouteBadge(it.displayName, it.routeColor, it.routeTextColor, size = RouteBadgeSize.Xs) }
+                if (current.size > MaxBadges) {
+                    VText("+${current.size - MaxBadges}", style = vtext(TypeScale.Caption, Weight.Semibold), color = c.textSecondary)
+                }
+            }
         } else {
             Box(Modifier.size(28.dp).background(c.surfaceOverlay, Radius.Chip), contentAlignment = Alignment.Center) {
                 VIcon(if (home) RemixIcons.Home5Line else RemixIcons.WalkLine, size = 14.dp, tint = c.textSecondary)
@@ -153,3 +149,5 @@ private fun CommuteRow(current: CommuteLeg?, home: Boolean, title: String, subti
     }
 }
 
+/** Badges shown in a row before the rest fold into "+n". */
+private const val MaxBadges = 3

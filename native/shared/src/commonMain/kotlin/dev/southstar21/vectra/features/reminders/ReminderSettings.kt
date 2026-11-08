@@ -25,9 +25,11 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import dev.southstar21.vectra.core.designsystem.components.HairlineDivider
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.OptionSheet
@@ -92,6 +94,7 @@ private fun BeforeClassRows(scheduler: ReminderScheduler, notifier: Notifier) {
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
     Column {
+        PermissionLostRow(prefs, notifier)
         SettingsRow(RemixIcons.TimeLine, c.tints.sky.bg, c.tints.sky.text, "Before class", "Which class and room, ahead of time") {
             VToggle(prefs.beforeClass, { on ->
                 if (on) enable { scheduler.update { it.copy(beforeClass = true) } } else scheduler.update { it.copy(beforeClass = false) }
@@ -112,6 +115,28 @@ private fun BeforeClassRows(scheduler: ReminderScheduler, notifier: Notifier) {
             }
         }
     }
+}
+
+/**
+ * Settings that came back with the account (a reinstall, a new phone) arrive without the system
+ * permission, so they would stay silent: offer to allow notifications again.
+ */
+@Composable
+private fun PermissionLostRow(prefs: ReminderPrefs, notifier: Notifier) {
+    val c = Vectra.colors
+    var granted by remember { mutableStateOf(notifier.permissionGranted()) }
+    LifecycleResumeEffect(notifier) {
+        granted = notifier.permissionGranted()
+        onPauseOrDispose { }
+    }
+    val enable = rememberEnabler(notifier)
+    if (granted || !prefs.anyOn) return
+    SettingsRow(RemixIcons.NotificationOffLine, c.tints.red.bg, c.tints.red.text, "Notifications are off", "Your reminders are set but can't appear") {
+        VButton(onClick = { enable { granted = true } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
+            VText("Allow", style = vtext(TypeScale.Caption, Weight.Bold))
+        }
+    }
+    HairlineDivider()
 }
 
 @Composable

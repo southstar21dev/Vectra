@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.reminders
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.SessionListener
 import dev.southstar21.vectra.core.data.KeyValueStore
-import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.platform.DepartureQuery
 import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.ScheduledNotification
@@ -18,9 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
@@ -36,9 +33,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Keeps the system's scheduled reminders in step with the schedule, the "No class" marks and
  * [prefs]: a week ahead, replanned whenever any of them changes. Everything is scheduled on the
  * device, so reminders fire offline and with the app closed.
+ * [prefs] are kept on the device and in the profile by [ReminderPrefsStore].
  */
 class ReminderScheduler(
-    private val kv: KeyValueStore,
+    kv: KeyValueStore,
     private val schedule: ScheduleRepository,
     private val courseTracker: CourseTrackerRepository,
     private val transit: TransitRepository,
@@ -46,8 +44,8 @@ class ReminderScheduler(
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
 ) : SessionListener {
-    private val _prefs = MutableStateFlow(ReminderPrefs())
-    val prefs: StateFlow<ReminderPrefs> = _prefs.asStateFlow()
+    private val store = ReminderPrefsStore(kv, auth, scope)
+    val prefs: StateFlow<ReminderPrefs> = store.prefs
 
     private val loaded = CompletableDeferred<Unit>()
     private val replanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -59,10 +57,7 @@ class ReminderScheduler(
     private var planned: List<ScheduledNotification> = emptyList()
 
     init {
-        scope.launch {
-            _prefs.value = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
-            loaded.complete(Unit)
-        }
+        scope.launch { store.load { loaded.complete(Unit) } }
     }
 
     /** Starts following the inputs. Safe to call more than once (app start, boot, background refresh). */
@@ -88,11 +83,7 @@ class ReminderScheduler(
         replanRequests.tryEmit(Unit)
     }
 
-    fun update(transform: (ReminderPrefs) -> ReminderPrefs) {
-        val next = transform(_prefs.value)
-        _prefs.value = next
-        scope.launch { kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next)) }
-    }
+    fun update(transform: (ReminderPrefs) -> ReminderPrefs) = store.update(transform)
 
     /**
      * For a cold start with no screen (boot, background refresh): waits for the cached schedule,
@@ -108,7 +99,7 @@ class ReminderScheduler(
 
     suspend fun reschedule() = lock.withLock {
         loaded.await()
-        val prefs = _prefs.value
+        val prefs = prefs.value
         if (auth.session.value == null || !prefs.anyOn) {
             apply(emptyList())
             return@withLock
@@ -130,7 +121,7 @@ class ReminderScheduler(
 
     /** A sample reminder in a few seconds, so the user can see one without waiting for class. */
     suspend fun sendTest() {
-        val prefs = _prefs.value
+        val prefs = prefs.value
         val now = nowMs()
         val next = withContext(Dispatchers.Default) {
             expandSessions(schedule.events.value, emptyList(), false, nowInBudapest().date, HorizonDays).firstOrNull { it.startMs > now }
@@ -142,18 +133,22 @@ class ReminderScheduler(
             body = next?.let { listOfNotNull(it.location.ifEmpty { null }, it.typeLabel).joinToString(" · ") }?.ifEmpty { null }
                 ?: "This is what a reminder looks like.",
             url = "/schedule",
-            departures = prefs.toUni?.query?.takeIf { prefs.departures },
+            departures = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList(),
         )
         val ready = if (notifier.resolvesAtFireTime) test else departures.bake(listOf(test), now).first()
         lock.withLock { notifier.replaceScheduled(planned.filter { it.id != test.id } + ready) }
     }
 
-    /** "Tram 6 from Blaha Lujza tér: 09:08 · 09:13 · …" with live times, for a reminder firing now. */
-    suspend fun liveDepartures(query: DepartureQuery): LiveDepartures {
+    /**
+     * "Tram 6 from Blaha Lujza tér: 09:08 · 09:13 · …", a line per query, with live times for a
+     * reminder firing now. [LiveDepartures.firstMs] is the latest of the lines' next departures, so
+     * the times stay fresh while any of them can still be caught.
+     */
+    suspend fun liveDepartures(queries: List<DepartureQuery>): LiveDepartures {
         withTimeoutOrNull(3_000) { auth.session.first { it != null } }
-        val times = departures.times(query, nowMs())
-        return if (times == null) LiveDepartures(departuresFallbackLine(query), null)
-        else LiveDepartures(departuresLine(query, times), times.firstOrNull())
+        val times = departures.timesEach(queries, nowMs())
+        val lines = queries.zip(times) { q, t -> if (t == null) departuresFallbackLine(q) else departuresLine(q, t) }
+        return LiveDepartures(lines.joinToString("\n"), times.mapNotNull { it?.firstOrNull() }.maxOrNull())
     }
 
     data class LiveDepartures(val line: String, val firstMs: Long?)
@@ -166,10 +161,12 @@ class ReminderScheduler(
 
     override suspend fun beforeSignOut() = lock.withLock { apply(emptyList()) }
 
-    override suspend fun onSessionCleared() = lock.withLock { apply(emptyList()) }
+    override suspend fun onSessionCleared() {
+        lock.withLock { apply(emptyList()) }
+        store.reset()
+    }
 
     companion object {
-        const val PrefsKey = "vectra.reminders"
         const val HorizonDays = 7
         /** iOS keeps at most 64 pending notifications per app. */
         const val MaxScheduled = 60

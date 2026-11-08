@@ -1,9 +1,18 @@
 package dev.southstar21.vectra.features.reminders
 
 import dev.southstar21.vectra.core.platform.DepartureQuery
+import dev.southstar21.vectra.features.transit.findCombinedGroup
+import dev.southstar21.vectra.features.transit.formatRouteDisplayName
+import dev.southstar21.vectra.core.network.OneOrManySerializer
 import kotlinx.serialization.Serializable
 
-/** This device's reminder settings. Off until the user turns them on (they need the permission). */
+/** Settings saved when each leg held a single line. */
+object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
+
+/**
+ * The reminder settings. Off until the user turns them on (they need the permission). Kept on the
+ * device and in the profile's `preferences.reminders`, so they come back after a reinstall.
+ */
 @Serializable
 data class ReminderPrefs(
     /** Before the first class of the day (and the first after a long break): the room, [leadMinutes] ahead. */
@@ -20,10 +29,13 @@ data class ReminderPrefs(
     val personalItems: Boolean = false,
     /** Departures of [toUni] / [backHome] in the reminders of the day's first and last sessions. */
     val departures: Boolean = true,
-    val toUni: CommuteLeg? = null,
-    val backHome: CommuteLeg? = null,
+    /** Every line that gets you there ("28A / 37A / 62"), in the order picked; each gets its own line of times. */
+    @Serializable(with = CommuteLegList::class)
+    val toUni: List<CommuteLeg> = emptyList(),
+    @Serializable(with = CommuteLegList::class)
+    val backHome: List<CommuteLeg> = emptyList(),
 ) {
-    val anyOn: Boolean get() = beforeClass || nextClass || (departures && (toUni != null || backHome != null))
+    val anyOn: Boolean get() = beforeClass || nextClass || (departures && (toUni.isNotEmpty() || backHome.isNotEmpty()))
 
     companion object {
         val LeadOptions = listOf(15, 30, 60)
@@ -46,17 +58,23 @@ data class CommuteLeg(
     val routeTextColor: String = "",
     val headsign: String? = null,
 ) {
-    /** "Tram 6", "Bus 7"; metro and HÉV names ("M4", "H5") already say what they are. */
+    /** The name the Transit tab shows: paired lines read as one ("28 / 28A", "37 / 37A"). */
+    val displayName: String get() = formatRouteDisplayName(routeShortName, routeId)
+
+    /** Paired lines share it, so a stop served by 28 and 28A is one pick. */
+    val pickKey: String get() = "${findCombinedGroup(routeId, routeShortName)?.name ?: routeId}|$stopId|${headsign.orEmpty()}"
+
+    /** "Tram 6", "Tram 28 / 28A"; metro and HÉV names ("M4", "H5") already say what they are. */
     val lineLabel: String
         get() = LineTypeLabels[routeType]
             ?.takeUnless { SelfDescribing.matches(routeShortName) }
-            ?.let { "$it $routeShortName" }
-            ?: routeShortName
+            ?.let { "$it $displayName" }
+            ?: displayName
 
     val query: DepartureQuery get() = DepartureQuery(stopId, stopName, routeId, headsign?.ifEmpty { null }, lineLabel)
 
-    private companion object {
-        val LineTypeLabels = mapOf("TRAM" to "Tram", "BUS" to "Bus", "TROLLEYBUS" to "Trolley", "FERRY" to "Boat")
-        val SelfDescribing = Regex("^[MH]\\d+[A-Z]?$")
+    companion object {
+        private val LineTypeLabels = mapOf("TRAM" to "Tram", "BUS" to "Bus", "TROLLEYBUS" to "Trolley", "FERRY" to "Boat")
+        private val SelfDescribing = Regex("^[MH]\\d+[A-Z]?$")
     }
 }
