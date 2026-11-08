@@ -2,6 +2,8 @@ package dev.southstar21.vectra.android
 
 import android.app.Application
 import dev.southstar21.vectra.AppGraph
+import dev.southstar21.vectra.android.widget.AndroidWidgetHost
+import dev.southstar21.vectra.android.widget.WidgetPreviews
 import dev.southstar21.vectra.core.config.VectraConfig
 import dev.southstar21.vectra.platform.AndroidConnectivity
 import dev.southstar21.vectra.core.platform.NoPush
@@ -31,6 +33,8 @@ class VectraApplication : Application() {
                 graph.auth
                 runBlocking { graph.kv.get("vectra.appearance") }
                 graph.reminders.start()
+                graph.widgets.start()
+                runBlocking { WidgetPreviews.publishIfNeeded(this@VectraApplication, BuildConfig.VERSION_NAME) }
             }
         }
     }
@@ -53,6 +57,7 @@ class VectraApplication : Application() {
             passkeyAuthenticator = passkeys,
             notifier = AndroidNotifier(this, R.drawable.ic_stat_vectra, MainActivity::class.java),
             push = NoPush,
+            widgetHost = AndroidWidgetHost(this),
         )
     }
 }

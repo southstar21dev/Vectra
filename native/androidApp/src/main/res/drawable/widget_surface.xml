@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Vectra canvas: surface plus the aurora glows (accent top-left, violet bottom-right). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <solid android:color="#F8FAFC" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <gradient android:type="radial" android:centerX="0.1" android:centerY="0" android:gradientRadius="140%"
+                android:startColor="#1F0284C7" android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <gradient android:type="radial" android:centerX="0.95" android:centerY="1" android:gradientRadius="120%"
+                android:startColor="#1A7C3AED" android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <stroke android:width="1dp" android:color="#1A0F172A" />
+        </shape>
+    </item>
+</layer-list>

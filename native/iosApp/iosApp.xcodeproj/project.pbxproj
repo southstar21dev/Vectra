@@ -7,19 +7,66 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		078A64CFC83369CE7BE11F53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 414F5282B43476C2812E8066 /* Assets.xcassets */; };
 		09FED4B446BD58DF150C455A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C6D2DD7FE2E0BF5DB2A96B4B /* PrivacyInfo.xcprivacy */; };
+		0F217E46244124D5D0B36C7E /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
 		22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F543015C899423D4B01CEB2E /* Assets.xcassets */; };
 		307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668CECA83ACC03A83C85A623 /* iOSApp.swift */; };
+		375FFF0A61FAE6816EFC83BF /* jetbrains_mono_variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CAB297C7C1221AC1E7A5E80A /* jetbrains_mono_variable.ttf */; };
+		4EEDC0B2CB8436DEAD01BCAF /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBEBBB1783F2F7051D6187E /* Model.swift */; };
+		6BC82F36E01D00FB758F883F /* VectraWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 233554DAFCA9B8DFE951680A /* VectraWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		736AF7C8DA78976E2FCDFBE2 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
 		7871DB6DA5B777642626F950 /* TabBarHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA422B8A44BD67512E3715F2 /* TabBarHost.swift */; };
+		7A3E7A26A4B808BB39F0A259 /* inter_variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 64B7F111600D0D41D6230059 /* inter_variable.ttf */; };
+		87AF8551F9234A666DA6ED09 /* DayWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930F1BC906755445B7FE7AA /* DayWidgets.swift */; };
+		AAC19793CF29621C09C7D6C5 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */; };
+		B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733197A7CAF9CB77355E077B /* VectraWidgets.swift */; };
+		FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA668872F5CEDF745B4E7AC3 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		0DD7A61D37D4E40002527565 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 242FB5348943441C388468CE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A58BDD7B0C5B57E1AB6C3569;
+			remoteInfo = VectraWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E99160E501832DB2CECE6CFF /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6BC82F36E01D00FB758F883F /* VectraWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		233554DAFCA9B8DFE951680A /* VectraWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VectraWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VectraWidgets.entitlements; sourceTree = "<group>"; };
+		40F27D365D73FEFE0E40ADA4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		414F5282B43476C2812E8066 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4B99CAC96177D06EE9613178 /* AppGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroup.swift; sourceTree = "<group>"; };
+		64B7F111600D0D41D6230059 /* inter_variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = inter_variable.ttf; sourceTree = "<group>"; };
 		668CECA83ACC03A83C85A623 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
+		733197A7CAF9CB77355E077B /* VectraWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectraWidgets.swift; sourceTree = "<group>"; };
 		86038AE1032E284E79B32AD6 /* iosApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A930F1BC906755445B7FE7AA /* DayWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayWidgets.swift; sourceTree = "<group>"; };
+		AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BA422B8A44BD67512E3715F2 /* TabBarHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarHost.swift; sourceTree = "<group>"; };
 		C117AD187833E2513BD2F553 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C49B0B02429FBBC9F867DDE1 /* iosApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iosApp.entitlements; sourceTree = "<group>"; };
 		C6D2DD7FE2E0BF5DB2A96B4B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		CAB297C7C1221AC1E7A5E80A /* jetbrains_mono_variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetbrains_mono_variable.ttf; sourceTree = "<group>"; };
+		DA668872F5CEDF745B4E7AC3 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		EFBEBBB1783F2F7051D6187E /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 		F543015C899423D4B01CEB2E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -33,24 +80,101 @@
 				668CECA83ACC03A83C85A623 /* iOSApp.swift */,
 				C6D2DD7FE2E0BF5DB2A96B4B /* PrivacyInfo.xcprivacy */,
 				BA422B8A44BD67512E3715F2 /* TabBarHost.swift */,
+				AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */,
 			);
 			path = iosApp;
+			sourceTree = "<group>";
+		};
+		25165BA53EB7FBB757EF436C /* font */ = {
+			isa = PBXGroup;
+			children = (
+				64B7F111600D0D41D6230059 /* inter_variable.ttf */,
+				CAB297C7C1221AC1E7A5E80A /* jetbrains_mono_variable.ttf */,
+			);
+			path = font;
 			sourceTree = "<group>";
 		};
 		38B69C3F79CD97858CF7B609 = {
 			isa = PBXGroup;
 			children = (
 				1DB4B685CAEE8BEFEBBAEF94 /* iosApp */,
+				E47A271F162A3E0AB4CF02C2 /* native */,
+				D729CB25B4FA03B3484F4F1E /* Shared */,
+				DD1225287C654684D6C4182F /* VectraWidgets */,
 				94C98B8B3A2BFC1966447269 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		5AAE927BD97CBE88F055E4CE /* composeResources */ = {
+			isa = PBXGroup;
+			children = (
+				25165BA53EB7FBB757EF436C /* font */,
+			);
+			path = composeResources;
 			sourceTree = "<group>";
 		};
 		94C98B8B3A2BFC1966447269 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				86038AE1032E284E79B32AD6 /* iosApp.app */,
+				233554DAFCA9B8DFE951680A /* VectraWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B040C786A7FE4A1669F36626 /* commonMain */ = {
+			isa = PBXGroup;
+			children = (
+				5AAE927BD97CBE88F055E4CE /* composeResources */,
+			);
+			path = commonMain;
+			sourceTree = "<group>";
+		};
+		C692C9E7E7ABE0B8E0FEE6F9 /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				E0E3907322AC621CA8C08A75 /* src */,
+			);
+			path = shared;
+			sourceTree = "<group>";
+		};
+		D729CB25B4FA03B3484F4F1E /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				4B99CAC96177D06EE9613178 /* AppGroup.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		DD1225287C654684D6C4182F /* VectraWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				414F5282B43476C2812E8066 /* Assets.xcassets */,
+				A930F1BC906755445B7FE7AA /* DayWidgets.swift */,
+				40F27D365D73FEFE0E40ADA4 /* Info.plist */,
+				EFBEBBB1783F2F7051D6187E /* Model.swift */,
+				DA668872F5CEDF745B4E7AC3 /* Theme.swift */,
+				248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */,
+				733197A7CAF9CB77355E077B /* VectraWidgets.swift */,
+			);
+			path = VectraWidgets;
+			sourceTree = "<group>";
+		};
+		E0E3907322AC621CA8C08A75 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				B040C786A7FE4A1669F36626 /* commonMain */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		E47A271F162A3E0AB4CF02C2 /* native */ = {
+			isa = PBXGroup;
+			children = (
+				C692C9E7E7ABE0B8E0FEE6F9 /* shared */,
+			);
+			name = native;
+			path = ..;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -64,10 +188,12 @@
 				458C440C0A3302CF3B2904F4 /* Compile Kotlin framework */,
 				297B59D9CE634556D6007C40 /* Sources */,
 				1623B02D10928C8101C1F806 /* Resources */,
+				E99160E501832DB2CECE6CFF /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				0700BE12264FC43E86FAA418 /* PBXTargetDependency */,
 			);
 			name = iosApp;
 			packageProductDependencies = (
@@ -75,6 +201,25 @@
 			productName = iosApp;
 			productReference = 86038AE1032E284E79B32AD6 /* iosApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A58BDD7B0C5B57E1AB6C3569 /* VectraWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D2F35AF458C70B76ABD76ACA /* Build configuration list for PBXNativeTarget "VectraWidgets" */;
+			buildPhases = (
+				D478399EBD9F22053A9C1D70 /* Version from Gradle */,
+				4B45230AB0E09927E5E58479 /* Sources */,
+				3E5D1FE7C6358424F6DAA9A3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VectraWidgets;
+			packageProductDependencies = (
+			);
+			productName = VectraWidgets;
+			productReference = 233554DAFCA9B8DFE951680A /* VectraWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -86,6 +231,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					78B53CC79860CBFC2F5543C6 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					A58BDD7B0C5B57E1AB6C3569 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -106,6 +255,7 @@
 			projectRoot = "";
 			targets = (
 				78B53CC79860CBFC2F5543C6 /* iosApp */,
+				A58BDD7B0C5B57E1AB6C3569 /* VectraWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -117,6 +267,16 @@
 			files = (
 				22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */,
 				09FED4B446BD58DF150C455A /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3E5D1FE7C6358424F6DAA9A3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				078A64CFC83369CE7BE11F53 /* Assets.xcassets in Resources */,
+				7A3E7A26A4B808BB39F0A259 /* inter_variable.ttf in Resources */,
+				375FFF0A61FAE6816EFC83BF /* jetbrains_mono_variable.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,6 +322,26 @@
 			shellPath = /bin/sh;
 			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
 		};
+		D478399EBD9F22053A9C1D70 /* Version from Gradle */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Version from Gradle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/VectraVersion.h",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -169,12 +349,34 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0F217E46244124D5D0B36C7E /* AppGroup.swift in Sources */,
 				7871DB6DA5B777642626F950 /* TabBarHost.swift in Sources */,
+				AAC19793CF29621C09C7D6C5 /* WidgetBridge.swift in Sources */,
 				307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4B45230AB0E09927E5E58479 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				736AF7C8DA78976E2FCDFBE2 /* AppGroup.swift in Sources */,
+				87AF8551F9234A666DA6ED09 /* DayWidgets.swift in Sources */,
+				4EEDC0B2CB8436DEAD01BCAF /* Model.swift in Sources */,
+				FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */,
+				B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0700BE12264FC43E86FAA418 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A58BDD7B0C5B57E1AB6C3569 /* VectraWidgets */;
+			targetProxy = 0DD7A61D37D4E40002527565 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		11814011E7D6EC822BFBC66D /* Release */ = {
@@ -362,6 +564,54 @@
 			};
 			name = Release;
 		};
+		B55F16CB918858B3A96E6787 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"ARCHS[sdk=iphonesimulator*]" = arm64;
+				CODE_SIGN_ENTITLEMENTS = VectraWidgets/VectraWidgets.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = VectraWidgets/Info.plist;
+				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
+				INFOPLIST_PREPROCESS = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.widgets;
+				PRODUCT_NAME = VectraWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		C76A461C8FBBFC19592E6303 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"ARCHS[sdk=iphonesimulator*]" = arm64;
+				CODE_SIGN_ENTITLEMENTS = VectraWidgets/VectraWidgets.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = VectraWidgets/Info.plist;
+				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
+				INFOPLIST_PREPROCESS = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.widgets;
+				PRODUCT_NAME = VectraWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -370,6 +620,15 @@
 			buildConfigurations = (
 				9221A1FDC06803E8A2FC6E61 /* Debug */,
 				AF835BFF1220CA5AB5B867E4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D2F35AF458C70B76ABD76ACA /* Build configuration list for PBXNativeTarget "VectraWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C76A461C8FBBFC19592E6303 /* Debug */,
+				B55F16CB918858B3A96E6787 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

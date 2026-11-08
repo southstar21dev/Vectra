@@ -99,6 +99,8 @@ class ReminderScheduler(
      * then replans once.
      */
     suspend fun rescheduleWhenReady(timeoutMs: Long = 20_000) {
+        // After a reboot no screen has read the stored session; without this every reminder is dropped.
+        auth.restore()
         start()
         withTimeoutOrNull(timeoutMs) { schedule.localReady.first { it } }
         reschedule()

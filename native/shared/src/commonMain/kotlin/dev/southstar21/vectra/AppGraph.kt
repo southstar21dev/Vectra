@@ -19,6 +19,7 @@ import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.PasskeyAuthenticator
 import dev.southstar21.vectra.core.platform.PushRegistrar
 import dev.southstar21.vectra.core.platform.SecretCipher
+import dev.southstar21.vectra.core.platform.WidgetHost
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerScheduleHooks
@@ -27,6 +28,7 @@ import dev.southstar21.vectra.features.coursetracker.CryptoTrackerCipher
 import dev.southstar21.vectra.features.coursetracker.PocketBaseTrackerCloud
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.ReminderScheduler
+import dev.southstar21.vectra.features.widgets.WidgetPublisher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
@@ -80,6 +82,7 @@ interface AppGraph {
     val deviceLocation: DeviceLocation
     val weatherRepository: WeatherRepository
     val reminders: ReminderScheduler
+    val widgets: WidgetPublisher
 
     @SingleIn(AppScope::class)
     @Provides
@@ -131,6 +134,7 @@ interface AppGraph {
         notifications: NotificationsRepository,
         stopPicks: TrackerStopPicks,
         reminders: ReminderScheduler,
+        widgets: WidgetPublisher,
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
@@ -139,6 +143,7 @@ interface AppGraph {
         notifications,
         stopPicks,
         reminders,
+        widgets,
     )
 
     @SingleIn(AppScope::class)
@@ -177,6 +182,16 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
     ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope)
+
+    @SingleIn(AppScope::class)
+    @Provides
+    fun provideWidgets(
+        schedule: ScheduleRepository,
+        courseTracker: CourseTrackerRepository,
+        auth: AuthRepository,
+        host: WidgetHost,
+        scope: CoroutineScope,
+    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -267,6 +282,7 @@ interface AppGraph {
             @Provides passkeyAuthenticator: PasskeyAuthenticator,
             @Provides notifier: Notifier,
             @Provides push: PushRegistrar,
+            @Provides widgetHost: WidgetHost,
         ): AppGraph
     }
 }
