@@ -122,7 +122,7 @@
   {
     "id": "volan_5",
     "shortName": "5",
-    "description": "Gödöllő, Hegy utca autóbusz-forduló | Vác, autóbusz-állomás",
+    "description": "Gödöllő, Hegy utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -624,17 +624,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3471",
+    "id": "BKK_3470",
     "shortName": "47",
-    "description": "Városház tér | Batthyány tér M+H",
+    "description": "Városház tér | Deák Ferenc tér M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3470",
+    "id": "BKK_3471",
     "shortName": "47",
-    "description": "Városház tér | Deák Ferenc tér M",
+    "description": "Városház tér | Batthyány tér M+H",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -3762,7 +3762,7 @@
   {
     "id": "volan_697",
     "shortName": "697",
-    "description": "Makád, községháza | Ráckeve, HÉV-állomás",
+    "description": "Makád, községháza | Tököl, HÉV-állomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -4010,7 +4010,7 @@
   {
     "id": "volan_774",
     "shortName": "774",
-    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vá. (Őrmező)",
+    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5138,7 +5138,7 @@
   {
     "id": "volan_H8",
     "shortName": "H8",
-    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
+    "description": "Kerepes H | Budapest, Örs vezér tere M+H",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5170,7 +5170,7 @@
   {
     "id": "volan_H9",
     "shortName": "H9",
-    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
+    "description": "Csömör, Gorkij fasor H | Budapest, Örs vezér tere M+H",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
