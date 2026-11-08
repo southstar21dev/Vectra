@@ -11,6 +11,9 @@
 # A push to master whose tree is identical to dev's head, where CI already passed, skips CI: the
 # promotion merge changes nothing that was tested.
 #
+# The release APK is also launched on an emulator first (android-launch.yml), so a crash that only
+# the shrunk release build has stops the release.
+#
 # When every commit since the last release has a "Platforms: android" line, only Android is built
 # and released; iPhones stay on the previous version (the AltStore source lists IPA releases only).
 #
@@ -200,6 +203,11 @@ jobs:
           path: release-assets/
           if-no-files-found: error
 
+  # Opens the release APK on an emulator before anything is published (android-launch.yml).
+  android-launch:
+    needs: android
+    uses: ./.github/workflows/android-launch.yml
+
   ios:
     needs: plan
     if: needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true'
@@ -266,11 +274,12 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [verified, ci, plan, android, ios]
+    needs: [verified, ci, plan, android, android-launch, ios]
     # CI must have passed here, or been skipped because this tree already passed on dev.
     if: >-
       ${{ !cancelled()
       && needs.android.result == 'success'
+      && needs.android-launch.result == 'success'
       && (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.plan.outputs.ios == 'false'))
       && (needs.ci.result == 'success'
           || (needs.ci.result == 'skipped' && needs.verified.outputs.skip-ci == 'true')) }}
