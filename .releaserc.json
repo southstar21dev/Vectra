@@ -1,7 +1,6 @@
 {
   "branches": [
     "master",
-    { "name": "staging", "prerelease": "rc", "channel": "rc" },
     { "name": "dev", "prerelease": "dev", "channel": "dev" }
   ],
   "tagFormat": "v${version}",

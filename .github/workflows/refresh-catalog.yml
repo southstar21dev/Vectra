@@ -11,8 +11,8 @@
 # the frontend bundle or the service worker (no update reload on installed
 # PWAs). The workflow keeps the last good catalog when the feed degrades.
 #
-# The catalog is generated once from master and committed to master, staging
-# and dev, so every branch serves the same data and later merges between them
+# The catalog is generated once from master and committed to master and dev,
+# so every branch serves the same data and later merges between them
 # see identical changes (no conflicts). The commits are `chore:`, so they never
 # cut a release, and pushes made with GITHUB_TOKEN don't trigger other workflows.
 #
@@ -101,7 +101,7 @@ jobs:
           fi
           # Always sync master's catalog onto the other long-lived branches, so a
           # branch left behind by an earlier failed push catches up on the next run.
-          for BRANCH in staging dev; do
+          for BRANCH in dev; do
             git worktree add -q "../../$BRANCH" "origin/$BRANCH"
             cp $FILES "../../$BRANCH/web/public/catalog/"
             (

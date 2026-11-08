@@ -2,7 +2,7 @@
 // Writes the AltStore/SideStore sources into the directory given as the first argument, built from
 // the repo's GitHub Releases (every release with an .ipa asset):
 //   altstore.json       releases from master only
-//   altstore-beta.json  also the prereleases from staging (-rc.N) and dev (-dev.N)
+//   altstore-beta.json  also the prereleases from dev (-dev.N), and any older -rc.N ones
 // Rebuilding from the releases each time keeps the sources in step with what's actually published,
 // so nothing has to be committed back to the repo. Needs GITHUB_REPOSITORY and GITHUB_TOKEN.
 //
@@ -71,7 +71,7 @@ function source({ beta, versions }) {
   return {
     name: beta ? 'Vectra (beta)' : 'Vectra',
     identifier: beta ? 'dev.southstar21.vectra.source.beta' : 'dev.southstar21.vectra.source',
-    subtitle: beta ? 'Releases and prereleases from dev and staging.' : 'Stable releases of Vectra.',
+    subtitle: beta ? 'Releases and prereleases from dev.' : 'Stable releases of Vectra.',
     description: beta
       ? 'Vectra releases and prereleases, straight from GitHub.'
       : 'Vectra releases, straight from GitHub.',

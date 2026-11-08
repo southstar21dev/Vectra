@@ -1,19 +1,21 @@
 # semantic-release for the native apps.
 #
 #   master  -> 1.4.0         stable: GitHub release
-#   staging -> 1.4.0-rc.N    prerelease: GitHub prerelease
 #   dev     -> 1.4.0-dev.N   prerelease: GitHub prerelease
 #
 # The version comes from Conventional Commits since the last tag (feat: minor, fix:/perf: patch,
-# `!` or BREAKING CHANGE: major; chore:/docs:/refactor: etc. release nothing). Every push runs CI
-# first; then a dry run decides the version, the APK and IPA are built with it, and only then is the
-# tag and GitHub release created with both attached, so a failed build never leaves a bare release.
+# `!` or BREAKING CHANGE: major; chore:/docs:/refactor: etc. release nothing). A dry run decides the
+# version and the APK and IPA are built with it while CI runs alongside; only once CI and both builds
+# pass is the tag and GitHub release created, so a failed build or test never leaves a release.
+#
+# A push to master whose tree is identical to dev's head, where CI already passed, skips CI: the
+# promotion merge changes nothing that was tested.
 #
 # Obtainium (Android) watches the releases directly. AltStore/SideStore (iOS) read the sources the
 # `pages` job rebuilds from the releases and publishes to GitHub Pages with the install page:
 #   https://southstar21dev.github.io/Vectra/                    install page
 #   https://southstar21dev.github.io/Vectra/altstore.json       master releases
-#   https://southstar21dev.github.io/Vectra/altstore-beta.json  also dev and staging prereleases
+#   https://southstar21dev.github.io/Vectra/altstore-beta.json  also dev prereleases
 # Run the workflow by hand (gh workflow run release.yml --ref master) to republish them without
 # releasing, e.g. after editing a release's notes.
 #
@@ -25,7 +27,7 @@ name: Release
 
 on:
   push:
-    branches: [master, staging, dev]
+    branches: [master, dev]
   # Republishes the AltStore/SideStore sources without releasing.
   workflow_dispatch:
 
@@ -40,15 +42,54 @@ env:
   SEMANTIC_RELEASE: semantic-release@24.2.3 @semantic-release/exec@7.0.3 conventional-changelog-conventionalcommits@8.0.0
 
 jobs:
-  ci:
+  # Decides whether CI can be skipped because this exact tree already passed on dev.
+  verified:
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      skip-ci: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          [ "$GITHUB_REF" = refs/heads/master ] || exit 0
+          DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$(git rev-parse 'HEAD^{tree}')" != "$(git rev-parse "$DEV_SHA^{tree}")" ]; then
+            echo "Tree differs from dev ($DEV_SHA); running CI." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Every CI job on dev's head must have finished green (success or skipped as unchanged).
+          # Anything still running, failed or missing means CI runs here.
+          GREEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$DEV_SHA/check-runs?per_page=100" --jq '
+            [.check_runs[] | select(.name | startswith("ci / "))]
+            | length > 0 and all(.conclusion == "success" or .conclusion == "skipped")')"
+          if [ "$GREEN" = true ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Same tree as dev ($DEV_SHA), where CI passed; skipping CI." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Same tree as dev ($DEV_SHA), but CI there isn't green yet; running CI." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  ci:
+    needs: verified
+    if: needs.verified.outputs.skip-ci != 'true'
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
       pull-requests: read
 
+  # Runs alongside CI; publish waits for both.
   plan:
-    needs: ci
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       # The dry run verifies it could push the tag.
@@ -152,6 +193,17 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
+      # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
+      - id: kotlin
+        name: Read the Kotlin version
+        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Set the version
@@ -178,7 +230,14 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [plan, android, ios]
+    needs: [verified, ci, plan, android, ios]
+    # CI must have passed here, or been skipped because this tree already passed on dev.
+    if: >-
+      ${{ !cancelled()
+      && needs.android.result == 'success'
+      && needs.ios.result == 'success'
+      && (needs.ci.result == 'success'
+          || (needs.ci.result == 'skipped' && needs.verified.outputs.skip-ci == 'true')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

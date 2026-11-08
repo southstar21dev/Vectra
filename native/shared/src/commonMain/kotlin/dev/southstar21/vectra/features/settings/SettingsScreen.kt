@@ -35,6 +35,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.PermissionKind
+import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
 import dev.southstar21.vectra.core.time.formatDDMMYYYY
 import dev.southstar21.vectra.core.util.runSuspendCatching
@@ -84,7 +85,7 @@ fun SettingsScreen(
                 SettingsSection("About", tilt = StampTilt.Right, rows = listOf(
                     {
                         SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
-                            VText("${graph.config.appVersion}-android", style = vtext(TypeScale.Body), color = c.textSecondary)
+                            VText("${graph.config.appVersion}-$platformName", style = vtext(TypeScale.Body), color = c.textSecondary)
                         }
                     },
                     {
