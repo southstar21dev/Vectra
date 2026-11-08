@@ -145,7 +145,7 @@ download `Vectra-<version>.ipa` from a release and open it in AltStore or SideSt
 
 ### Betas
 
-Pre-releases are built from the `dev` (`-dev.N`) and `staging` (`-rc.N`) branches. On Android,
+Pre-releases (`-dev.N`) are built from the `dev` branch. On Android,
 enable *Include prereleases* in Obtainium. On iPhone, tap *AltStore/SideStore, with prereleases* on
 the [install page](https://southstar21dev.github.io/Vectra/), or add the beta source instead:
 
@@ -212,7 +212,6 @@ environment variables.
 | Branch | Purpose | Releases |
 |---|---|---|
 | `dev` | Day-to-day work; feature branches and Dependabot PRs merge here. | `1.4.0-dev.N` |
-| `staging` | Release candidates. | `1.4.0-rc.N` |
 | `master` | Production; the backend and web deploy from here. | `1.4.0` |
 
 [semantic-release](https://semantic-release.gitbook.io/) runs on every push to these branches once

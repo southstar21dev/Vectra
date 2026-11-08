@@ -1,5 +1,5 @@
 version: 2
-# Updates land on dev and ride the normal dev -> staging -> master promotion.
+# Updates land on dev and ride the normal dev -> master promotion.
 updates:
   - package-ecosystem: npm
     directory: /web

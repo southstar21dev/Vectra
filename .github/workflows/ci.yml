@@ -1,6 +1,6 @@
 # Verification for every PR, and the gate in front of every release.
 #
-# Pushes to master, staging and dev run this through release.yml (workflow_call), so a release is
+# Pushes to master and dev run this through release.yml (workflow_call), so a release is
 # only cut from a commit that passed. A job is skipped when its folder didn't change, so a PR that
 # only touches web/ doesn't build the native app.
 name: CI
@@ -113,6 +113,19 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+
+      # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
+      # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
+      - id: kotlin
+        if: runner.os == 'macOS'
+        name: Read the Kotlin version
+        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        if: runner.os == 'macOS'
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
 
       - uses: gradle/actions/setup-gradle@v6
 

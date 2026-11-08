@@ -97,7 +97,7 @@ The backend is a single Go binary in `backend/` that embeds PocketBase and regis
 The full BKK line/stop catalog lives in `public/catalog/*.json`
 (`routes.json`, `stops.json`, `route-variants.json`), generated from the BKK
 Futár feed by `scripts/build-catalog.mjs` and refreshed daily by
-`.github/workflows/refresh-catalog.yml` (on master, staging and dev). The app fetches it at runtime (it is
+`.github/workflows/refresh-catalog.yml` (on master and dev). The app fetches it at runtime (it is
 not bundled and not precached), so daily data refreshes never change the JS
 bundle or the service worker — installed PWAs pick up the current catalog
 without an update reload. Do not hand-edit the JSON. Regenerate locally with
