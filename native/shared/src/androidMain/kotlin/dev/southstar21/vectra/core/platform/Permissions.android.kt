@@ -9,10 +9,12 @@ import androidx.compose.runtime.remember
 
 @Composable
 actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequester {
-    var pending: ((Boolean) -> Unit)? = null
+    // Remembered: the screen recomposes while the system dialog is up, and a plain local would
+    // leave the result callback reading a fresh, empty one.
+    val pending = remember { PendingResult() }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        pending?.invoke(result.values.any { it })
-        pending = null
+        pending.callback?.invoke(result.values.any { it })
+        pending.callback = null
     }
     return remember(kind) {
         PermissionRequester { onResult ->
@@ -22,9 +24,13 @@ actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequeste
                     if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.POST_NOTIFICATIONS) else emptyArray()
             }
             if (perms.isEmpty()) onResult(true) else {
-                pending = onResult
+                pending.callback = onResult
                 launcher.launch(perms)
             }
         }
     }
+}
+
+private class PendingResult {
+    var callback: ((Boolean) -> Unit)? = null
 }
