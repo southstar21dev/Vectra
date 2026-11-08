@@ -24,6 +24,17 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>VECTRA_VERSION_NAME</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.southstar21.vectra</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vectra</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>VECTRA_VERSION_CODE</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

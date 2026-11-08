@@ -17,6 +17,11 @@ targets:
     platform: iOS
     sources:
       - path: iosApp
+      - path: Shared
+    dependencies:
+      - target: VectraWidgets
+        embed: true
+        codeSign: true
     # xcodegen writes Info.plist and the entitlements from these; edit here, not the generated files.
     info:
       path: iosApp/Info.plist
@@ -33,6 +38,10 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         # Background refresh keeps the week of class reminders and their departure times current.
         UIBackgroundModes: [fetch]
+        # vectra://open/<path> opens a screen; the widgets use it to land on Schedule.
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.southstar21.vectra
+            CFBundleURLSchemes: [vectra]
         BGTaskSchedulerPermittedIdentifiers: [dev.southstar21.vectra.reminders]
         UILaunchScreen:
           UIColorName: LaunchBackground
@@ -43,6 +52,9 @@ targets:
         # Passkeys: the domain must serve apple-app-site-association listing
         # <TeamID>.dev.southstar21.vectra under webcredentials (docs/BACKEND_CHANGES.md).
         com.apple.developer.associated-domains: ["webcredentials:vectra.southstar21.dev"]
+        # Shared with VectraWidgets: the app writes the widget snapshot here. A sideloading store
+        # renames it to group.dev.southstar21.vectra.<TeamID>; Shared/AppGroup.swift finds either.
+        com.apple.security.application-groups: [group.dev.southstar21.vectra]
     settings:
       base:
         PRODUCT_NAME: Vectra
@@ -90,3 +102,59 @@ targets:
           fi
           cd "$SRCROOT/.."
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+  # Home-screen and Lock Screen widgets. Pure SwiftUI: it reads the JSON snapshot the app writes to
+  # the App Group (shared/…/features/widgets) and never links the Kotlin framework.
+  VectraWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: VectraWidgets
+      - path: Shared
+      # The app's own Inter and JetBrains Mono files, bundled as they are (no copies in the repo).
+      - path: ../shared/src/commonMain/composeResources/font
+        buildPhase: resources
+    info:
+      path: VectraWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Vectra
+        # The app's version (same macros): an extension must never trail its app.
+        CFBundleShortVersionString: VECTRA_VERSION_NAME
+        CFBundleVersion: VECTRA_VERSION_CODE
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: VectraWidgets/VectraWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.dev.southstar21.vectra]
+    settings:
+      base:
+        PRODUCT_NAME: VectraWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_PREPROCESS: YES
+        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+        "ARCHS[sdk=iphonesimulator*]": arm64
+        SKIP_INSTALL: YES
+    preBuildScripts:
+      - name: Version from Gradle
+        basedOnDependencyAnalysis: false
+        shell: /bin/sh
+        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
+        script: |
+          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
+          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
+          set -e
+          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
+          NAME=${FULL%%-*}
+          CODE=$(echo "$FULL" | awk -F'[.-]' '{
+            b = 99
+            if ($4 == "dev") b = ($5 > 49 ? 49 : $5)
+            if ($4 == "rc") b = 50 + ($5 > 48 ? 48 : $5)
+            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
+          }')
+          mkdir -p "$DERIVED_FILE_DIR"
+          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_next_class_label">Next class</string>
+    <string name="widget_next_class_description">The class you\'re in or the next one, with a countdown.</string>
+    <string name="widget_today_label">Now and later today</string>
+    <string name="widget_today_description">The current or next class and the rest of your day.</string>
+    <string name="widget_week_label">This week</string>
+    <string name="widget_week_description">Your week at a glance, with the next exam.</string>
+    <string name="widget_agenda_label">Today</string>
+    <string name="widget_agenda_description">Today\'s classes, tasks and shifts.</string>
+</resources>

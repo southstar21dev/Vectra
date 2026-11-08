@@ -27,6 +27,8 @@ data class ReminderSession(
     val kind: SessionKind,
     val startMs: Long,
     val endMs: Long,
+    /** The course colour (#rrggbb) for a class; empty otherwise. */
+    val color: String = "",
 ) {
     val day: String get() = key.substringAfterLast('@')
 }
@@ -102,7 +104,7 @@ fun expandSessions(
             .mapNotNull { e ->
                 val kind = sessionKind(e)
                 timeRange(date, e.startTime, e.endTime)?.let { (s, end) ->
-                    ReminderSession("${e.id}@$ymd", e.courseName.trim(), e.location.trim(), kind.label(), kind, s, end)
+                    ReminderSession("${e.id}@$ymd", e.courseName.trim(), e.location.trim(), kind.label(), kind, s, end, e.color.trim())
                 }
             }
     }

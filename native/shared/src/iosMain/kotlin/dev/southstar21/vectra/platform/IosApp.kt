@@ -5,6 +5,7 @@ import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.VectraApp
 import dev.southstar21.vectra.core.config.VectraConfig
 import dev.southstar21.vectra.core.platform.NoPush
+import dev.southstar21.vectra.navigation.DeepLinks
 import dev.zacsweers.metro.createGraphFactory
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.launch
@@ -43,7 +44,17 @@ object IosApp {
             passkeyAuthenticator = IosPasskeyAuthenticator(),
             notifier = notifier,
             push = NoPush,
+            widgetHost = IosWidgets,
         )
+    }
+
+    /**
+     * A `vectra://open/<path>` link (the widgets use `vectra://open/schedule`): queues `/<path>` for
+     * the shell like a notification tap. Anything else is ignored.
+     */
+    fun openUrl(url: String) {
+        val path = url.removePrefix("vectra://open").takeIf { it != url && it.startsWith("/") } ?: return
+        DeepLinks.pending.value = path
     }
 
     /** Called from the Swift app's init, before launch finishes, so cold-start notification taps arrive. */
@@ -55,6 +66,7 @@ object IosApp {
         center.addObserverForName(UIApplicationDidBecomeActiveNotification, null, NSOperationQueue.mainQueue) { _ ->
             graph.reminders.start()
             graph.reminders.requestReplan()
+            graph.widgets.start()
         }
         center.addObserverForName(UIApplicationDidEnterBackgroundNotification, null, NSOperationQueue.mainQueue) { _ ->
             scheduleReminderRefresh()
@@ -71,6 +83,8 @@ object IosApp {
             scheduleReminderRefresh()
             val job = graph.scope.launch {
                 runCatching { graph.reminders.rescheduleWhenReady() }
+                // Background refresh also rolls the widgets over to a new day when the app isn't opened.
+                runCatching { graph.widgets.publishWhenReady() }
                 refresh.setTaskCompletedWithSuccess(true)
             }
             refresh.expirationHandler = {

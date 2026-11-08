@@ -144,6 +144,7 @@ dependencies {
     baselineProfile(projects.baselineprofile)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.compose.ui)
 }

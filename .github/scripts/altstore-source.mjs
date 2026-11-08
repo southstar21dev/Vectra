@@ -93,7 +93,8 @@ function source({ beta, versions }) {
         // AltStore treats the first version as the latest, so order by build number.
         versions: versions.slice(0, KEEP).map(({ prerelease, ...version }) => version),
         appPermissions: {
-          entitlements: [],
+          // The widgets share the app's data through an App Group (release.yml signs it in).
+          entitlements: ['com.apple.security.application-groups'],
           privacy: {
             NSLocationWhenInUseUsageDescription:
               'Vectra uses your location to find nearby stops and departures and to show local weather.',

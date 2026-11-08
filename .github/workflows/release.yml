@@ -220,7 +220,22 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/dd" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
           mkdir -p "$RUNNER_TEMP/ipa/Payload" release-assets
-          cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Vectra.app" "$RUNNER_TEMP/ipa/Payload/"
+          APP="$RUNNER_TEMP/ipa/Payload/Vectra.app"
+          cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Vectra.app" "$APP"
+          # Ad-hoc signatures that carry the App Group the widgets share with the app. SideStore and
+          # AltStore read the entitlements from the binaries and register the group (renamed with
+          # the installing user's team) when they re-sign; an unsigned binary has none to read.
+          # Only the App Group: a free Apple ID can't have associated domains.
+          cat > "$RUNNER_TEMP/sideload.entitlements" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>com.apple.security.application-groups</key><array><string>group.dev.southstar21.vectra</string></array>
+          </dict></plist>
+          PLIST
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/sideload.entitlements" "$APP/PlugIns/VectraWidgets.appex"
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/sideload.entitlements" "$APP"
+          codesign -d --entitlements - "$APP/PlugIns/VectraWidgets.appex" | grep -q application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
       - uses: actions/upload-artifact@v7

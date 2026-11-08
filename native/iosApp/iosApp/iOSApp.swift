@@ -7,6 +7,8 @@ import UIKit
 @main
 struct VectraIOSApp: App {
     init() {
+        // Before start(): the first snapshot is published as soon as the schedule loads.
+        IosWidgets.shared.attach(bridge: WidgetBridge())
         IosApp.shared.start()
     }
 
@@ -15,6 +17,8 @@ struct VectraIOSApp: App {
             ComposeView()
                 .ignoresSafeArea()
                 .background(Color("LaunchBackground"))
+                // Widget taps (vectra://open/schedule) land on the screen they show.
+                .onOpenURL { IosApp.shared.openUrl(url: $0.absoluteString) }
         }
     }
 }
