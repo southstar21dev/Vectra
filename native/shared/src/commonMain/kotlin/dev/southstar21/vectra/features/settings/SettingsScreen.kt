@@ -40,6 +40,8 @@ import dev.southstar21.vectra.core.time.formatDDMMYYYY
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
+import dev.southstar21.vectra.features.reminders.classReminderRows
+import dev.southstar21.vectra.features.reminders.commuteRows
 import dev.southstar21.vectra.features.shell.VectraPage
 import kotlinx.coroutines.launch
 
@@ -70,10 +72,16 @@ fun SettingsScreen(
             }
             if (neptunSection != null) Reveal(2) { neptunSection() }
             Reveal(3) {
-                SettingsSection("Permissions", tilt = StampTilt.Right, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
+                SettingsSection("Class reminders", tilt = StampTilt.Left, rows = classReminderRows(graph.reminders, graph.notifier))
             }
             Reveal(4) {
-                SettingsSection("About", tilt = StampTilt.Left, rows = listOf(
+                SettingsSection("Commute", tilt = StampTilt.Right, rows = commuteRows(graph.reminders, graph.transitRepository, graph.notifier))
+            }
+            Reveal(5) {
+                SettingsSection("Permissions", tilt = StampTilt.Left, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
+            }
+            Reveal(6) {
+                SettingsSection("About", tilt = StampTilt.Right, rows = listOf(
                     {
                         SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
                             VText("${graph.config.appVersion}-android", style = vtext(TypeScale.Body), color = c.textSecondary)

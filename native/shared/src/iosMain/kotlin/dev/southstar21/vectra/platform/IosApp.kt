@@ -6,6 +6,17 @@ import dev.southstar21.vectra.VectraApp
 import dev.southstar21.vectra.core.config.VectraConfig
 import dev.southstar21.vectra.core.platform.NoPush
 import dev.zacsweers.metro.createGraphFactory
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.launch
+import platform.BackgroundTasks.BGAppRefreshTask
+import platform.BackgroundTasks.BGAppRefreshTaskRequest
+import platform.BackgroundTasks.BGTaskScheduler
+import platform.Foundation.NSDate
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
+import platform.Foundation.dateWithTimeIntervalSinceNow
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
+import platform.UIKit.UIApplicationDidEnterBackgroundNotification
 import platform.UIKit.UIViewController
 import kotlin.experimental.ExperimentalNativeApi
 
@@ -38,7 +49,45 @@ object IosApp {
     /** Called from the Swift app's init, before launch finishes, so cold-start notification taps arrive. */
     fun start() {
         installNotificationTaps()
+        registerReminderRefresh()
+        val center = NSNotificationCenter.defaultCenter
+        // Each foregrounding replans, which also refreshes the timetable times baked into reminders.
+        center.addObserverForName(UIApplicationDidBecomeActiveNotification, null, NSOperationQueue.mainQueue) { _ ->
+            graph.reminders.start()
+            graph.reminders.requestReplan()
+        }
+        center.addObserverForName(UIApplicationDidEnterBackgroundNotification, null, NSOperationQueue.mainQueue) { _ ->
+            scheduleReminderRefresh()
+        }
     }
+
+    /**
+     * Background refresh tops up the week of reminders and their departure times when the app
+     * isn't opened. iOS decides when it actually runs (typically a few times a day).
+     */
+    private fun registerReminderRefresh() {
+        BGTaskScheduler.sharedScheduler.registerForTaskWithIdentifier(ReminderRefreshTask, null) { task ->
+            val refresh = task as? BGAppRefreshTask ?: return@registerForTaskWithIdentifier
+            scheduleReminderRefresh()
+            val job = graph.scope.launch {
+                runCatching { graph.reminders.rescheduleWhenReady() }
+                refresh.setTaskCompletedWithSuccess(true)
+            }
+            refresh.expirationHandler = {
+                job.cancel()
+                refresh.setTaskCompletedWithSuccess(false)
+            }
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun scheduleReminderRefresh() {
+        val request = BGAppRefreshTaskRequest(ReminderRefreshTask)
+        request.earliestBeginDate = NSDate.dateWithTimeIntervalSinceNow(60.0 * 60)
+        BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null)
+    }
+
+    private const val ReminderRefreshTask = "dev.southstar21.vectra.reminders"
 }
 
 /** The whole app, hosted by iosApp's SwiftUI scene. */

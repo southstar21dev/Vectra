@@ -26,6 +26,7 @@ import dev.southstar21.vectra.features.coursetracker.CourseTrackerScheduleSync
 import dev.southstar21.vectra.features.coursetracker.CryptoTrackerCipher
 import dev.southstar21.vectra.features.coursetracker.PocketBaseTrackerCloud
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
+import dev.southstar21.vectra.features.reminders.ReminderScheduler
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
@@ -78,6 +79,7 @@ interface AppGraph {
     val trackerStopPicks: TrackerStopPicks
     val deviceLocation: DeviceLocation
     val weatherRepository: WeatherRepository
+    val reminders: ReminderScheduler
 
     @SingleIn(AppScope::class)
     @Provides
@@ -128,6 +130,7 @@ interface AppGraph {
         transit: TransitRepository,
         notifications: NotificationsRepository,
         stopPicks: TrackerStopPicks,
+        reminders: ReminderScheduler,
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
@@ -135,6 +138,7 @@ interface AppGraph {
         transit,
         notifications,
         stopPicks,
+        reminders,
     )
 
     @SingleIn(AppScope::class)
@@ -161,6 +165,18 @@ interface AppGraph {
         notifier: Notifier,
         push: PushRegistrar,
     ): NotificationsRepository = NotificationsRepository(pb, auth, kv, notifier, push)
+
+    @SingleIn(AppScope::class)
+    @Provides
+    fun provideReminders(
+        kv: KeyValueStore,
+        schedule: ScheduleRepository,
+        courseTracker: CourseTrackerRepository,
+        transit: TransitRepository,
+        notifier: Notifier,
+        auth: AuthRepository,
+        scope: CoroutineScope,
+    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope)
 
     @SingleIn(AppScope::class)
     @Provides

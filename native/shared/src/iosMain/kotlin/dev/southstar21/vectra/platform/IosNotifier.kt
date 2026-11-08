@@ -1,9 +1,12 @@
 package dev.southstar21.vectra.platform
 
 import dev.southstar21.vectra.core.platform.Notifier
+import dev.southstar21.vectra.core.platform.ScheduledNotification
+import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.navigation.DeepLinks
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UserNotifications.UNAuthorizationStatusAuthorized
 import platform.UserNotifications.UNAuthorizationStatusEphemeral
@@ -17,6 +20,7 @@ import platform.UserNotifications.UNNotificationPresentationOptions
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNNotificationSound
+import platform.UserNotifications.UNTimeIntervalNotificationTrigger
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
 import platform.darwin.NSObject
@@ -64,8 +68,36 @@ class IosNotifier : Notifier {
         return true
     }
 
+    /**
+     * Pending requests, in the system's queue until they fire. iOS runs no app code then, so
+     * the body is final here (departures were filled in by the scheduler).
+     */
+    override fun replaceScheduled(notifications: List<ScheduledNotification>) {
+        val defaults = NSUserDefaults.standardUserDefaults
+        @Suppress("UNCHECKED_CAST")
+        val previous = (defaults.stringArrayForKey(IDS_KEY) as? List<String>).orEmpty()
+        if (previous.isNotEmpty()) center.removePendingNotificationRequestsWithIdentifiers(previous)
+        val now = nowMs()
+        val added = notifications.mapNotNull { n ->
+            val seconds = (n.atMs - now) / 1000.0
+            if (seconds < 1) return@mapNotNull null
+            val content = UNMutableNotificationContent().apply {
+                setTitle(n.title)
+                setBody(n.body)
+                setSound(UNNotificationSound.defaultSound)
+                setThreadIdentifier(n.channel.name)
+                if (n.url != null) setUserInfo(mapOf(URL_KEY to n.url))
+            }
+            val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(seconds, repeats = false)
+            center.addNotificationRequest(UNNotificationRequest.requestWithIdentifier(n.id, content, trigger), null)
+            n.id
+        }
+        defaults.setObject(added, IDS_KEY)
+    }
+
     companion object {
         const val URL_KEY = "vectra.url"
+        private const val IDS_KEY = "vectra.reminders.ids"
     }
 }
 
