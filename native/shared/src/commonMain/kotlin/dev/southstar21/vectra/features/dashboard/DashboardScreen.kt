@@ -28,7 +28,9 @@ import androidx.compose.ui.zIndex
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.OfflineBanner
+import dev.southstar21.vectra.core.designsystem.components.PileCard
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
+import dev.southstar21.vectra.core.designsystem.components.ScrollPile
 import dev.southstar21.vectra.core.designsystem.components.Reveal
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
@@ -109,68 +111,76 @@ fun DashboardScreen(graph: AppGraph) {
         },
     ) {
         if (!online) OfflineBanner(message = "No internet connection — Dashboard operating in cached offline mode")
-        Reveal(0) { WeatherCard(graph.weatherRepository) }
-        Reveal(1) { HolidayCard() }
-
-        // Today's classes: the date as a postage stamp stuck over the card's top-right corner.
-        Reveal(2) {
-            // A 40dp gap above, less the 24dp the holiday card already leaves below itself.
-            Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp)) {
-                Column(Modifier.fillMaxWidth().glass(Radius.Card).padding(16.dp)) {
-                    ScheduleDayTimeline(
-                        events = todayEvents,
-                        tracker = graph.courseTrackerHooks,
-                        items = todayItems,
-                        dateStr = todayStr,
-                        onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.push(Screen.CourseHub(resolveCourseKey(e))) },
-                        onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
-                        onToggleTaskCompleted = { item ->
-                            scope.launch {
-                                try {
-                                    schedule.toggleTaskCompleted(item)
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: ScheduleItemConflictException) {
-                                    navigator.push(Screen.ItemEditor(item.id, item.type, reopen = true))
-                                } catch (e: Throwable) {
-                                    toaster.error(e.message ?: "Could not update task.")
-                                }
+        // The cards pile up under each other as the page scrolls (see ScrollPile).
+        ScrollPile(
+            cards = listOf(
+                PileCard("weather", "weather", bottomInset = 24.dp) { Reveal(0) { WeatherCard(graph.weatherRepository) } },
+                PileCard("holidays", "holidays", bottomInset = 24.dp) { Reveal(1) { HolidayCard() } },
+                // Today's classes: the date as a postage stamp stuck over the card's top-right corner.
+                PileCard("today", "today's schedule", topInset = 16.dp, bottomInset = 24.dp) {
+                    Reveal(2) {
+                        // A 40dp gap above, less the 24dp the holiday card already leaves below itself.
+                        Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp)) {
+                            Column(Modifier.fillMaxWidth().glass(Radius.Card).padding(16.dp)) {
+                                ScheduleDayTimeline(
+                                    events = todayEvents,
+                                    tracker = graph.courseTrackerHooks,
+                                    items = todayItems,
+                                    dateStr = todayStr,
+                                    onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.push(Screen.CourseHub(resolveCourseKey(e))) },
+                                    onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
+                                    onToggleTaskCompleted = { item ->
+                                        scope.launch {
+                                            try {
+                                                schedule.toggleTaskCompleted(item)
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (_: ScheduleItemConflictException) {
+                                                navigator.push(Screen.ItemEditor(item.id, item.type, reopen = true))
+                                            } catch (e: Throwable) {
+                                                toaster.error(e.message ?: "Could not update task.")
+                                            }
+                                        }
+                                    },
+                                    onResolveSyncConflict = { id, res -> schedule.resolveSyncConflict(id, res) },
+                                    syncConflictIds = syncIds,
+                                    needsAcknowledgmentIds = needsAck,
+                                    itemConflictsById = remember(conflicts) {
+                                        buildMap<String, MutableList<ScheduleConflict>> {
+                                            for (cf in conflicts) for (id in listOfNotNull(cf.itemId, cf.otherItemId)) getOrPut("${cf.date}:$id") { mutableListOf() } += cf
+                                        }
+                                    },
+                                    classConflictsByEventId = remember(conflicts) { conflicts.filter { it.classId != null }.groupBy { "${it.date}:${it.classId}" } },
+                                    intensiveCourses = intensive,
+                                    emptyPlaceholder = { NoScheduleToday() },
+                                )
                             }
-                        },
-                        onResolveSyncConflict = { id, res -> schedule.resolveSyncConflict(id, res) },
-                        syncConflictIds = syncIds,
-                        needsAcknowledgmentIds = needsAck,
-                        itemConflictsById = remember(conflicts) {
-                            buildMap<String, MutableList<ScheduleConflict>> {
-                                for (cf in conflicts) for (id in listOfNotNull(cf.itemId, cf.otherItemId)) getOrPut("${cf.date}:$id") { mutableListOf() } += cf
+                            PostageStamp(
+                                Modifier.align(Alignment.TopEnd).offset(x = (-16).dp, y = (-36).dp).rotate(6f).zIndex(1f),
+                                innerModifier = Modifier.size(56.dp, 62.dp),
+                            ) {
+                                VText(monthName(now.month).take(3).uppercase(), style = vtext(11.sp to 11.sp, Weight.Extrabold, 0.08.em), color = c.accentPrimary)
+                                VText(now.day.toString(), style = vtext(22.sp to 22.sp, Weight.Extrabold).tnum(), color = c.textPrimary)
+                                VText(getDayName(now.dayOfWeek).take(3), style = vtext(11.sp to 11.sp, Weight.Semibold), color = c.textSecondary)
                             }
-                        },
-                        classConflictsByEventId = remember(conflicts) { conflicts.filter { it.classId != null }.groupBy { "${it.date}:${it.classId}" } },
-                        intensiveCourses = intensive,
-                        emptyPlaceholder = { NoScheduleToday() },
-                    )
-                }
-                PostageStamp(
-                    Modifier.align(Alignment.TopEnd).offset(x = (-16).dp, y = (-36).dp).rotate(6f).zIndex(1f),
-                    innerModifier = Modifier.size(56.dp, 62.dp),
-                ) {
-                    VText(monthName(now.month).take(3).uppercase(), style = vtext(11.sp to 11.sp, Weight.Extrabold, 0.08.em), color = c.accentPrimary)
-                    VText(now.day.toString(), style = vtext(22.sp to 22.sp, Weight.Extrabold).tnum(), color = c.textPrimary)
-                    VText(getDayName(now.dayOfWeek).take(3), style = vtext(11.sp to 11.sp, Weight.Semibold), color = c.textSecondary)
-                }
-            }
-        }
-        Reveal(3) {
-            TransitDashboardWidget(
-                graph.transitRepository,
-                graph.deviceLocation,
-                graph.auth,
-                favorites = favorites,
-                onOpenTracker = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
-                onOpenTransit = { navigator.navigate(Route.Transit) },
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
-        }
+                        }
+                    }
+                },
+                PileCard("transit", "transit", bottomInset = 24.dp) {
+                    Reveal(3) {
+                        TransitDashboardWidget(
+                            graph.transitRepository,
+                            graph.deviceLocation,
+                            graph.auth,
+                            favorites = favorites,
+                            onOpenTracker = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
+                            onOpenTransit = { navigator.navigate(Route.Transit) },
+                            modifier = Modifier.padding(bottom = 24.dp),
+                        )
+                    }
+                },
+            ),
+        )
     }
 
 }

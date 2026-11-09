@@ -37,7 +37,10 @@
     <ID>CompositionLocalAllowlist:PageScope.kt:/** * The lifecycle a map on this page follows, when that differs from the page's own: a tab * under a pushed screen stops polling, but a stopped map comes back blank on pop. */ val LocalMapLifecycleOwner = compositionLocalOf&lt;LifecycleOwner?&gt; { null }</ID>
     <ID>CompositionLocalAllowlist:PageScope.kt:/** False while the page is a hidden (kept-alive) tab or covered by a pushed screen: loops and clocks freeze. */ val LocalPageActive = compositionLocalOf { true }</ID>
     <ID>CompositionLocalAllowlist:Routes.kt:val LocalNavigator = staticCompositionLocalOf&lt;AppNavigator&gt; { error("AppNavigator missing") }</ID>
+    <ID>CompositionLocalAllowlist:ScrollPile.kt:/** * Inside a piled card: 1 while the card scrolls freely, fading to 0 as it settles into the pile. * Things stuck over a card's edge (a [PostageStamp]) fade with it so the pile's edges stay clean. */ val LocalPileApproach = staticCompositionLocalOf&lt;(() -&gt; Float)?&gt; { null }</ID>
+    <ID>CompositionLocalAllowlist:ScrollPile.kt:val LocalPageScroll = staticCompositionLocalOf&lt;PageScrollInfo?&gt; { null }</ID>
     <ID>CompositionLocalAllowlist:Sheet.kt:/** Whether the surrounding surface runs under the system bars and must pad them itself. */ val LocalSurfaceEdgeToEdge = staticCompositionLocalOf { false }</ID>
+    <ID>CompositionLocalAllowlist:ShellState.kt:/** * Whether this page's tab is the selected one. Unlike LocalPageActive it stays true under a pushed * screen, so a page can reset itself when the user moves to another tab but not on a quick push and pop. */ val LocalTabSelected = compositionLocalOf { true }</ID>
     <ID>CompositionLocalAllowlist:ShellState.kt:val LocalShellState = staticCompositionLocalOf { ShellState() }</ID>
     <ID>CompositionLocalAllowlist:Theme.kt:val LocalAppearance = compositionLocalOf { AppearancePrefs.Default }</ID>
     <ID>CompositionLocalAllowlist:Theme.kt:val LocalContentColor = compositionLocalOf { Color.Unspecified }</ID>
@@ -64,7 +67,6 @@
     <ID>CyclomaticComplexMethod:CourseLogic.kt:CourseRules$fun officialSemesterStart: String?</ID>
     <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:fun applySetAttendanceStatus: CourseTrackerData</ID>
     <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:private fun findLegacyTracker: Pair&lt;String, CourseTracker&gt;?</ID>
-    <ID>CyclomaticComplexMethod:Destinations.kt:@Composable fun PushedScreen</ID>
     <ID>CyclomaticComplexMethod:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
     <ID>CyclomaticComplexMethod:DirectionStopList.kt:@Composable fun DirectionStopList</ID>
     <ID>CyclomaticComplexMethod:DirectionStrip.kt:@Composable fun DirectionStrip</ID>
@@ -134,7 +136,6 @@
     <ID>EmptyElseBlock:LiveQueryTest.kt:LiveQueryTest$if (++calls == 1) gate.await()</ID>
     <ID>EmptyElseBlock:RunSuspendCatchingTest.kt:RunSuspendCatchingTest$if (i == 2) this@launch.cancel()</ID>
     <ID>LambdaParameterEventTrailing:ManageTrackersScreen.kt:onEdit: ((TransitTracker) -&gt; Unit)?</ID>
-    <ID>LambdaParameterEventTrailing:NearbyDeparturesSheet.kt:onClick: () -&gt; Unit</ID>
     <ID>LambdaParameterInRestartableEffect:AppSplash.kt:onPresented: () -&gt; Unit</ID>
     <ID>LambdaParameterInRestartableEffect:AttendanceTab.kt:/** Root-space top of the scrolling body's viewport (to centre a ledger row). */ viewportTop: () -&gt; Float</ID>
     <ID>LambdaParameterInRestartableEffect:PageScope.kt:nowMillis: () -&gt; Long = { Clock.System.now().toEpochMilliseconds() }</ID>
@@ -216,7 +217,6 @@
     <ID>LoopWithTooManyJumpStatements:RouteVariants.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:ScheduleConflicts.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:ScheduleItemsSync.kt:ScheduleItemsSync$for</ID>
-    <ID>LoopWithTooManyJumpStatements:ScheduleView.kt:while</ID>
     <ID>LoopWithTooManyJumpStatements:ThinkingOrb.kt:OrbEngine$for</ID>
     <ID>LoopWithTooManyJumpStatements:TransitUtils.kt:for</ID>
     <ID>MayBeConstant:WeatherCard.kt:private val Tnum = "tnum"</ID>
@@ -241,7 +241,6 @@
     <ID>ModifierMissing:Pickers.kt:@Composable fun DatePickerSheet</ID>
     <ID>ModifierMissing:Pickers.kt:@Composable fun TimePickerSheet</ID>
     <ID>ModifierMissing:ScheduleScreen.kt:@Composable fun ScheduleScreen</ID>
-    <ID>ModifierMissing:Select.kt:@Composable fun &lt;T&gt; OptionSheet</ID>
     <ID>ModifierMissing:SettingsRow.kt:@Composable fun SettingsRow</ID>
     <ID>ModifierMissing:SettingsScreen.kt:@Composable fun SettingsScreen</ID>
     <ID>ModifierMissing:StopBrowser.kt:@Composable fun StopBrowser</ID>

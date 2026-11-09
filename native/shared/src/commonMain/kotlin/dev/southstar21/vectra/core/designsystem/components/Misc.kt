@@ -111,8 +111,12 @@ fun PostageStamp(modifier: Modifier = Modifier, innerModifier: Modifier = Modifi
     val c = Vectra.colors
     val outer = Radius.Tag
     val dash = c.accentPrimary.copy(alpha = 0.55f)
+    // On a card in a ScrollPile the stamp fades as the card settles, keeping the pile's edges clean.
+    // The fade wraps the caller's modifier too, so a glow it adds (today's stamp) fades with the stamp.
+    val approach = LocalPileApproach.current
     Box(
-        modifier
+        (if (approach != null) Modifier.fadeLayer { alpha = approach() } else Modifier)
+            .then(modifier)
             .boxShadow(outer, listOf(BoxShadow(y = 6f, blur = 16f, color = rgba(15, 23, 42, 0.14f))))
             .background(c.surfaceSecondary, outer)
             .padding(4.dp),
