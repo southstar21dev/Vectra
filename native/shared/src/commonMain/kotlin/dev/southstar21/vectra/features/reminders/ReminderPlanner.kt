@@ -12,13 +12,14 @@ const val NextClassWarningMinutes = 5
  * Every reminder [sessions] call for under [prefs], from [nowMs] on. Per stretch of the day
  * (split at breaks over [LongBreakMinutes]): a before-class reminder for its first session with the
  * to-uni departures, a next-class warning before each class inside it ends, and the back-home
- * departures when it's over.
+ * departures when it's over. Kinds switched off in [prefs] are left out entirely: no class reminder
+ * and no commute around them either.
  */
 fun planReminders(sessions: List<ReminderSession>, prefs: ReminderPrefs, nowMs: Long): List<ScheduledNotification> {
     // Paired lines (28 / 28A) picked at one stop are fetched together already: one line of times.
     val toUni = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList()
     val backHome = if (prefs.departures) prefs.backHome.distinctBy { it.pickKey }.map { it.query } else emptyList()
-    val stretches = splitIntoStretches(sessions)
+    val stretches = splitIntoStretches(sessions.filter { it.kind.allowedBy(prefs) })
     val out = stretches.flatMapIndexed { i, stretch ->
         val after = stretches.getOrNull(i + 1)?.first()?.takeIf { it.day == stretch.first().day }
         listOfNotNull(arrivalReminder(stretch.first(), prefs, toUni)) +
@@ -30,7 +31,7 @@ fun planReminders(sessions: List<ReminderSession>, prefs: ReminderPrefs, nowMs: 
 
 /** Arriving: the room ahead of time, and the departures to get there. */
 private fun arrivalReminder(first: ReminderSession, prefs: ReminderPrefs, toUni: List<DepartureQuery>): ScheduledNotification? {
-    val classOn = prefs.beforeClass && first.kind.allowedBy(prefs)
+    val classOn = prefs.beforeClass
     val commute = toUni.isNotEmpty()
     return if (!classOn && !commute) null else ScheduledNotification(
         id = "rem:before:${first.key}",
@@ -47,7 +48,6 @@ private fun arrivalReminder(first: ReminderSession, prefs: ReminderPrefs, toUni:
 /** Inside a stretch: what's next and where before each class ends (or, with that off, the before-class one). */
 private fun insideReminders(stretch: List<ReminderSession>, prefs: ReminderPrefs): List<ScheduledNotification> =
     stretch.zipWithNext()
-        .filter { (_, next) -> next.kind.allowedBy(prefs) }
         .mapNotNull { (cur, next) ->
             when {
                 prefs.nextClass -> nextClassWarning(cur, next)
