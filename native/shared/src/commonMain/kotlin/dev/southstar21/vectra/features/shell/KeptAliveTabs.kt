@@ -106,6 +106,7 @@ fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, pa
             ) {
                 CompositionLocalProvider(
                     LocalPageActive provides (active && shellVisible),
+                    LocalTabSelected provides active,
                     LocalLifecycleOwner provides owner,
                     LocalMapLifecycleOwner provides mapOwner,
                 ) {

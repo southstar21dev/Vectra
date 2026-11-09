@@ -31,6 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import dev.southstar21.vectra.features.shell.LocalTabSelected
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.PileCard
+import dev.southstar21.vectra.core.designsystem.components.ScrollPile
 import dev.southstar21.vectra.core.designsystem.components.LocalAppPresented
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.Reveal
@@ -329,6 +333,14 @@ internal fun ScheduleView(
     val selectedSemester = remember(semesters, currentSemester) { resolveSelectedSemester(semesters, currentSemester) }
     val nav = rememberWeekNavigation(events, selectedSemester, todayStr)
     var selectedDay by remember { mutableStateOf<Int?>(null) }
+    // Leaving the tab brings the next visit back to this week with every day shown.
+    val tabSelected = LocalTabSelected.current
+    val latestNav by rememberUpdatedState(nav)
+    LaunchedEffect(tabSelected) {
+        if (tabSelected) return@LaunchedEffect
+        selectedDay = null
+        if (!latestNav.isAtDefaultWeek) latestNav.onReset()
+    }
     val hasAnyScheduleItems = events.isNotEmpty() || scheduleItems.isNotEmpty()
     val plainItems = remember(scheduleItems) { scheduleItems.map { it.toItem() } }
     val intensiveKeys = remember(events) { ScheduleCourses.intensiveCourseKeys(events) }
@@ -417,48 +429,52 @@ internal fun ScheduleView(
                     )
                 } else {
                     val days = if (selectedDay != null) agenda else activeDays
-                    for (agendaDay in days) {
-                        val day = agendaDay.day
-                        val info = agendaDay.info
-                        val dayEvents = agendaDay.events
-                        val dayItems = agendaDay.items
-                        if (agendaDay.isEmpty) {
-                            if (selectedDay != null) {
-                                Column(
-                                    Modifier.fillMaxWidth().daySwipe(swipe).flushGlass(Radius.Card).padding(32.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    VText(
-                                        if (hasAnyScheduleItems) "Nothing scheduled on ${getDayName(day)}" else "You don't have any schedule items",
-                                        style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary, align = TextAlign.Center,
-                                    )
-                                    VText("Swipe left or right to browse other days", Modifier.padding(top = 8.dp), vtext(TypeScale.Micro), c.textMuted, align = TextAlign.Center)
+                    // Each day piles under the next as the page scrolls; the 24dp above a day's glass is its stamp.
+                    ScrollPile(
+                        spacing = 16.dp,
+                        cards = days.mapNotNull { agendaDay ->
+                            val day = agendaDay.day
+                            val info = agendaDay.info
+                            when {
+                                agendaDay.isEmpty && selectedDay == null -> null
+                                agendaDay.isEmpty -> PileCard(day, getDayName(day)) {
+                                    Column(
+                                        Modifier.fillMaxWidth().daySwipe(swipe).flushGlass(Radius.Card).padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        VText(
+                                            if (hasAnyScheduleItems) "Nothing scheduled on ${getDayName(day)}" else "You don't have any schedule items",
+                                            style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary, align = TextAlign.Center,
+                                        )
+                                        VText("Swipe left or right to browse other days", Modifier.padding(top = 8.dp), vtext(TypeScale.Micro), c.textMuted, align = TextAlign.Center)
+                                    }
+                                }
+                                else -> PileCard(day, getDayName(day), topInset = 24.dp) {
+                                    DayCard(
+                                        day = day,
+                                        info = info,
+                                        modifier = Modifier.daySwipe(swipe),
+                                    ) {
+                                        ScheduleDayTimeline(
+                                            events = agendaDay.events,
+                                            tracker = tracker,
+                                            items = agendaDay.items,
+                                            dateStr = info.dateStr,
+                                            onEventClick = onEventClick,
+                                            onItemClick = onItemClick,
+                                            onToggleTaskCompleted = onToggleTaskCompleted,
+                                            onResolveSyncConflict = onResolveSyncConflict,
+                                            syncConflictIds = viewSyncIds,
+                                            needsAcknowledgmentIds = needsAck,
+                                            itemConflictsById = byItemDate,
+                                            classConflictsByEventId = byEventDate,
+                                            intensiveCourses = intensiveKeys,
+                                        )
+                                    }
                                 }
                             }
-                            continue
-                        }
-                        DayCard(
-                            day = day,
-                            info = info,
-                            modifier = Modifier.daySwipe(swipe),
-                        ) {
-                            ScheduleDayTimeline(
-                                events = dayEvents,
-                                tracker = tracker,
-                                items = dayItems,
-                                dateStr = info.dateStr,
-                                onEventClick = onEventClick,
-                                onItemClick = onItemClick,
-                                onToggleTaskCompleted = onToggleTaskCompleted,
-                                onResolveSyncConflict = onResolveSyncConflict,
-                                syncConflictIds = viewSyncIds,
-                                needsAcknowledgmentIds = needsAck,
-                                itemConflictsById = byItemDate,
-                                classConflictsByEventId = byEventDate,
-                                intensiveCourses = intensiveKeys,
-                            )
-                        }
-                    }
+                        },
+                    )
                 }
             }
         }
