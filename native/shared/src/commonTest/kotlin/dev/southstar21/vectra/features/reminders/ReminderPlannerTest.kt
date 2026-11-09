@@ -63,7 +63,17 @@ class ReminderPlannerTest {
         val out = plan(day, everything.copy(seminars = false))
         val ids = out.map { it.id.substringBefore('@') }
         assertTrue("rem:next:alg" !in ids && "rem:next:la" !in ids)
-        assertTrue("rem:next:db" in ids)
+        // Without the seminars the lab is a trip of its own: home after the lecture, back for the lab.
+        assertEquals(listOf("rem:before:ds", "rem:home:ds", "rem:before:db", "rem:home:db"), ids)
+    }
+
+    @Test fun switchedOffTypesGetNoCommuteRemindersEither() {
+        val lecturesOnly = day.filter { it.id == "ds" }
+        assertTrue(plan(lecturesOnly, everything.copy(lectures = false)).isEmpty())
+        assertTrue(plan(lecturesOnly, ReminderPrefs(lectures = false, toUni = listOf(tram6), backHome = listOf(m4))).isEmpty())
+        val home = plan(day, everything.copy(labs = false)).last()
+        assertEquals("rem:home:la", home.id.substringBefore('@'))
+        assertEquals("Linear Algebra ended at 14:45", home.body)
     }
 
     @Test fun commuteOnlyStillSaysWhenToLeave() {
