@@ -12,9 +12,11 @@ import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.BlobStore
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.platform.SecretCipher
+import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemTemporaryDirectory
 import okhttp3.Cache
 import okhttp3.Dispatcher
 import okio.Path.Companion.toPath
@@ -35,6 +37,16 @@ fun createDataStore(context: Context): DataStore<Preferences> =
 
 /** Large values, one file each, in the same private directory as the preferences file. */
 fun createBlobStore(context: Context): BlobStore = BlobStore(Path(context.filesDir.resolve("vectra-blobs").absolutePath))
+
+/**
+ * The transit catalog's offline copy, in app files (excluded from backup by data_extraction_rules)
+ * rather than the cache directory, which Android empties under storage pressure. Older builds kept
+ * it in the temp dir (the cache directory); [CatalogDiskCache] moves that copy over.
+ */
+fun createCatalogCache(context: Context): CatalogDiskCache = CatalogDiskCache(
+    dir = Path(context.filesDir.resolve("vectra-catalog").absolutePath),
+    legacyDir = Path(SystemTemporaryDirectory, "vectra-catalog"),
+)
 
 private const val HttpCacheBytes = 50L * 1024 * 1024
 

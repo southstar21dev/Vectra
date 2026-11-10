@@ -61,10 +61,11 @@ class TransitRepository(
     val location: LocationProvider,
     http: HttpClient,
     catalogOrigin: String,
+    catalogCache: CatalogDiskCache,
     val scope: CoroutineScope,
 ) : SessionListener {
     val api = FutarApi(pb)
-    val catalog = TransitCatalog(http, catalogOrigin, scope)
+    val catalog = TransitCatalog(http, catalogOrigin, scope, catalogCache)
     private val cache = OfflineCache(kv, "vectra_transit_trackers_cache", ListSerializer(TransitTracker.serializer()))
     private var cachedTrackers: Pair<String, List<TransitTracker>>? = null
 

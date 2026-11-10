@@ -47,6 +47,7 @@ object IosApp {
             ),
             dataStore = createDataStore(),
             blobs = createBlobStore(),
+            catalogCache = createCatalogCache(),
             http = createIosHttpClient(),
             cipher = KeychainSecretCipher(),
             connectivity = IosConnectivity(),
