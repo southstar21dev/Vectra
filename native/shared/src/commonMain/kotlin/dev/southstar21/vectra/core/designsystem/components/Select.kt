@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +60,8 @@ fun <T> VSelect(
     title: String? = null,
 ) {
     val c = Vectra.colors
-    var open by remember { mutableStateOf(false) }
+    // Saveable, so the sheet stays open when Android recreates the activity (dark mode, font scale).
+    var open by rememberSaveable { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
     val chevron by animateFloatAsState(if (open) 180f else 0f, VectraSprings.snappy(), label = "chevron")
     val lit by animateFloatAsState(if (open) 1f else 0f, tween(150, easing = VectraEasing.Fade), label = "selectOpen")

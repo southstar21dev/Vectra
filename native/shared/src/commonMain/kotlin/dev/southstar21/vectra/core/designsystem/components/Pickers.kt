@@ -26,6 +26,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -94,7 +96,8 @@ fun DateField(
     placeholder: String = "Pick a date",
     onClear: (() -> Unit)? = null,
 ) {
-    var open by remember { mutableStateOf(false) }
+    // Saveable here and in the sheets below: Android recreates the activity on a dark-mode or font-scale change.
+    var open by rememberSaveable { mutableStateOf(false) }
     val date = runCatching { LocalDate.parse(value) }.getOrNull()
     PickerField(date?.let(::formatLongDate) ?: placeholder, date == null, RemixIcons.CalendarLine, { open = true }, modifier)
     DatePickerSheet(
@@ -105,6 +108,9 @@ fun DateField(
         onClear = onClear?.let { clear -> { clear(); open = false } },
     )
 }
+
+/** A [LocalDate] as its ISO text, which a saved instance state can hold. */
+internal val LocalDateSaver = Saver<LocalDate, String>(save = { it.toString() }, restore = LocalDate::parse)
 
 /** "Fri, 30 Oct 2026". */
 fun formatLongDate(date: LocalDate): String =
@@ -122,7 +128,9 @@ fun DatePickerSheet(
     val c = Vectra.colors
     val haptics = Vectra.haptics
     val today = nowInBudapest().date
-    var month by remember(open) { mutableStateOf((selected ?: today).let { LocalDate(it.year, it.month, 1) }) }
+    var month by rememberSaveable(open, stateSaver = LocalDateSaver) {
+        mutableStateOf((selected ?: today).let { LocalDate(it.year, it.month, 1) })
+    }
     val swipeThreshold = with(LocalDensity.current) { 56.dp.toPx() }
     fun shift(months: Int) {
         haptics.tick()
@@ -199,7 +207,7 @@ fun DatePickerSheet(
 /** A time as `HH:mm` (or empty), picked on wheels in a sheet. Follows the app's 12/24h setting. */
 @Composable
 fun TimeField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, minuteStep: Int = 1) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     val parsed = parseHourMinute(value)?.takeIf { (h, m) -> h in 0..23 && m in 0..59 }
     val use12h = Vectra.appearance.timeFormat == TimeFormat.H12
     val text = parsed?.let { (h, m) -> formatHm(h, m, use12h) } ?: "--:--"
@@ -230,8 +238,8 @@ fun TimePickerSheet(
     title: String = "Time",
 ) {
     val minutes = remember(minuteStep) { (0 until 60 step minuteStep).toList() }
-    var h by remember(open) { mutableIntStateOf(hour) }
-    var mIndex by remember(open) { mutableIntStateOf(minutes.indexOfLast { it <= minute }.coerceAtLeast(0)) }
+    var h by rememberSaveable(open) { mutableIntStateOf(hour) }
+    var mIndex by rememberSaveable(open) { mutableIntStateOf(minutes.indexOfLast { it <= minute }.coerceAtLeast(0)) }
     VSheet(open, onDismiss) {
         SheetHeader(title, onDismiss)
         Row(
