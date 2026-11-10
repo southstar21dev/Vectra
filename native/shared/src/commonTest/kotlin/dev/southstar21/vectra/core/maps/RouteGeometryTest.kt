@@ -150,6 +150,39 @@ class RouteGeometryTest {
         assertCloseTo(19.01, r.point.lon, 5)
     }
 
+    // At 47.5°N a degree of longitude is 0.68 of a degree of latitude. The point is 0.004° of latitude
+    // (445 m) south of the northbound leg and 0.005° of longitude (376 m) west of it, so in metres it
+    // lies nearer the northbound leg; in raw degrees it looked nearer the eastbound one.
+    @Test fun snapPicksTheNearerSegmentInMetres() {
+        val line = listOf(ll(47.5, 19.0), ll(47.5, 19.02), ll(47.52, 19.02))
+        val r = assertNotNull(snapToPolyline(ll(47.504, 19.015), line))
+        assertCloseTo(19.02, r.point.lon, 6)
+        assertCloseTo(47.504, r.point.lat, 6)
+    }
+
+    // The perpendicular foot on a diagonal segment, checked against a local metric frame.
+    @Test fun snapFootIsPerpendicularInMetres() {
+        val a = ll(47.5, 19.0)
+        val b = ll(47.51, 19.01)
+        val p = ll(47.5075, 19.0025)
+        val r = assertNotNull(snapToPolyline(p, listOf(a, b)))
+        val k = kotlin.math.cos(p.lat * kotlin.math.PI / 180)
+        val (bx, by) = (b.lon - a.lon) * k to (b.lat - a.lat)
+        val (px, py) = (p.lon - a.lon) * k to (p.lat - a.lat)
+        val t = (px * bx + py * by) / (bx * bx + by * by)
+        assertCloseTo(a.lat + t * (b.lat - a.lat), r.point.lat, 7)
+        assertCloseTo(a.lon + t * (b.lon - a.lon), r.point.lon, 7)
+        assertCloseTo(haversineMeters(a, r.point), r.distance, 3)
+    }
+
+    // A square 0.01° × 0.01° near Budapest is ~0.68 as wide as it is tall on the ground.
+    @Test fun projectorKeepsGroundProportions() {
+        val project = makeProjector(listOf(ll(47.5, 19.0), ll(47.51, 19.01)), 100.0, 100.0)
+        val sw = project(ll(47.5, 19.0))
+        val ne = project(ll(47.51, 19.01))
+        assertCloseTo(kotlin.math.cos(47.505 * kotlin.math.PI / 180), (ne.x - sw.x) / (sw.y - ne.y), 4)
+    }
+
     // ---- cumulativeHaversineDistances + pointAtDistance ----
     private val lLine = listOf(ll(47.5, 19.0), ll(47.5, 19.01), ll(47.51, 19.01))
 

@@ -71,7 +71,8 @@ fun decodePolyline(encoded: String): List<LatLon> {
 
 /**
  * Build a projector mapping lat/lon into a `width` × `height` viewBox.
- * Equirectangular, uniform scale, 8% padding, north up.
+ * Equirectangular (longitude scaled by cos of the mid latitude, so distances and angles hold),
+ * uniform scale, 8% padding, north up.
  */
 fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon) -> Point {
     val pad = 0.08
@@ -86,7 +87,8 @@ fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon
         if (p.lat < minLat) minLat = p.lat
         if (p.lat > maxLat) maxLat = p.lat
     }
-    val spanLon = maxLon - minLon
+    val kx = cos(rad((minLat + maxLat) / 2))
+    val spanLon = (maxLon - minLon) * kx
     val spanLat = maxLat - minLat
     val usableW = width * (1 - 2 * pad)
     val usableH = height * (1 - 2 * pad)
@@ -96,7 +98,7 @@ fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon
     )
     val cx = (minLon + maxLon) / 2
     val cy = (minLat + maxLat) / 2
-    return { p -> Point(width / 2 + (p.lon - cx) * scale, height / 2 - (p.lat - cy) * scale) }
+    return { p -> Point(width / 2 + (p.lon - cx) * kx * scale, height / 2 - (p.lat - cy) * scale) }
 }
 
 /** Result of [projectVehicleOntoPolyline]. */
@@ -264,19 +266,21 @@ fun snapToPolyline(p: LatLon, polyline: List<LatLon>, preferredBearing: Double? 
     if (polyline.isEmpty()) return null
     if (polyline.size == 1) return SnappedPoint(polyline[0], 0.0)
 
+    // A degree of longitude is cos(lat) as long as one of latitude (0.68 at Budapest); unscaled,
+    // east-west offsets would count ~1.48× and skew the perpendicular foot and the segment choice.
+    val kx = cos(rad(p.lat))
     var best: SegHit? = null
     var bestMatchingBearing: SegHit? = null
     for (i in 0 until polyline.size - 1) {
         val a = polyline[i]
         val b = polyline[i + 1]
         val dLat = b.lat - a.lat
-        val dLon = b.lon - a.lon
+        val dLon = (b.lon - a.lon) * kx
         val lenSq = dLat * dLat + dLon * dLon
-        var t = if (lenSq == 0.0) 0.0 else ((p.lat - a.lat) * dLat + (p.lon - a.lon) * dLon) / lenSq
+        val pLon = (p.lon - a.lon) * kx
+        var t = if (lenSq == 0.0) 0.0 else ((p.lat - a.lat) * dLat + pLon * dLon) / lenSq
         t = max(0.0, min(1.0, t))
-        val lat = a.lat + t * dLat
-        val lon = a.lon + t * dLon
-        val distSq = (p.lat - lat).pow(2) + (p.lon - lon).pow(2)
+        val distSq = (p.lat - (a.lat + t * dLat)).pow(2) + (pLon - t * dLon).pow(2)
         if (best == null || distSq < best.distSq) best = SegHit(i, t, distSq)
 
         if (preferredBearing != null && preferredBearing.isFinite() && preferredBearing >= 0 && lenSq > 1e-12) {
