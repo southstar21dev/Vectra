@@ -6,26 +6,29 @@ import type { QueryClient } from '@tanstack/react-query';
  * empty token (any sign-out path) means drop user data, reset appearance and
  * kill this device's push endpoint.
  */
-const listeners = vi.hoisted(() => new Set<(token: string) => void>());
+type Listener = (token: string, record: { id: string } | null) => void;
+const listeners = vi.hoisted(() => new Set<Listener>());
 const clearAllOfflineUserData = vi.hoisted(() => vi.fn());
+const settleKeptOfflineQueue = vi.hoisted(() => vi.fn());
 const unsubscribeDevicePushLocally = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const resetAppearanceForSignOut = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/pocketbase', () => ({
   pb: {
     authStore: {
-      onChange: (cb: (token: string) => void) => {
+      onChange: (cb: Listener) => {
         listeners.add(cb);
         return () => listeners.delete(cb);
       },
     },
   },
 }));
-vi.mock('@/lib/offline-cache', () => ({ clearAllOfflineUserData }));
+vi.mock('@/lib/offline-cache', () => ({ clearAllOfflineUserData, settleKeptOfflineQueue }));
 vi.mock('@/features/notifications/use-push-subscription', () => ({ unsubscribeDevicePushLocally }));
 vi.mock('@/hooks/use-appearance', () => ({ resetAppearanceForSignOut }));
 
 import { installAuthStoreSync } from './auth-store-sync';
+import { markExplicitSignOut } from './sign-out-intent';
 
 function fakeQueryClient() {
   return {
@@ -35,7 +38,8 @@ function fakeQueryClient() {
   };
 }
 
-const emit = (token: string) => listeners.forEach((cb) => cb(token));
+const emit = (token: string, userId: string | null = token ? 'user-1' : null) =>
+  listeners.forEach((cb) => cb(token, userId ? { id: userId } : null));
 
 beforeEach(() => {
   listeners.clear();
@@ -70,6 +74,36 @@ describe('installAuthStoreSync', () => {
     expect(unsubscribeDevicePushLocally).toHaveBeenCalledTimes(1);
     expect(qc.setQueryData).toHaveBeenCalledWith(['auth', 'session'], null);
     expect(qc.clear).toHaveBeenCalledTimes(1);
+    off();
+  });
+
+  it('keeps the offline queue of the account a forced sign-out ends', () => {
+    const off = installAuthStoreSync(fakeQueryClient() as unknown as QueryClient);
+    emit('token', 'user-1');
+    emit('');
+    expect(clearAllOfflineUserData).toHaveBeenCalledWith(undefined, 'user-1');
+    off();
+  });
+
+  it('wipes the offline queue on an explicit sign-out', () => {
+    const off = installAuthStoreSync(fakeQueryClient() as unknown as QueryClient);
+    emit('token', 'user-1');
+    markExplicitSignOut();
+    emit('');
+    expect(clearAllOfflineUserData).toHaveBeenCalledWith(undefined, null);
+    // The flag is one-shot: a later forced sign-out keeps the queue again.
+    emit('token', 'user-1');
+    emit('');
+    expect(clearAllOfflineUserData).toHaveBeenLastCalledWith(undefined, 'user-1');
+    off();
+  });
+
+  it('settles a kept queue when an account signs in, not on token refreshes', () => {
+    const off = installAuthStoreSync(fakeQueryClient() as unknown as QueryClient);
+    emit('token', 'user-2');
+    expect(settleKeptOfflineQueue).toHaveBeenCalledWith('user-2');
+    emit('token2', 'user-2');
+    expect(settleKeptOfflineQueue).toHaveBeenCalledTimes(1);
     off();
   });
 });

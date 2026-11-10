@@ -1,6 +1,8 @@
 import { useId, useState } from 'react';
 import { RiUserLine, RiMailLine, RiLockLine, RiLoader4Line, RiErrorWarningLine, RiDeleteBinLine } from '@remixicon/react';
 import { useAuth } from '@/features/auth/use-auth';
+import { PasskeyResetNote } from '@/features/auth/passkey-reset-note';
+import { PASSKEY_RESET_NOTES } from '@/features/auth/passkey-reset-notes';
 import { SETTINGS_BLOCK_CLASS, SettingsRow } from './settings-section';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -196,6 +198,7 @@ function EmailRow() {
         onChange={(e) => setCurrentPassword(e.target.value)}
         placeholder="Your current password"
       />
+      <PasskeyResetNote text={PASSKEY_RESET_NOTES.email} />
       <FieldError id={`${ids}-error`} message={error} />
       <div className="flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
@@ -321,6 +324,7 @@ function PasswordRow() {
         onChange={(e) => setConfirmPassword(e.target.value)}
         placeholder="Repeat the new password"
       />
+      <PasskeyResetNote text={PASSKEY_RESET_NOTES.password} />
       <FieldError id={`${ids}-error`} message={error} />
       <div className="flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
@@ -368,8 +372,10 @@ export function AccountSettings() {
  *  route. */
 export function DeleteAccountButton() {
   const { deleteAccount } = useAuth();
+  const ids = useId();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -377,6 +383,7 @@ export function DeleteAccountButton() {
     if (deleting) return;
     setOpen(false);
     setConfirmText('');
+    setCurrentPassword('');
     setError(null);
   };
 
@@ -384,7 +391,7 @@ export function DeleteAccountButton() {
     setDeleting(true);
     setError(null);
     try {
-      await deleteAccount();
+      await deleteAccount(currentPassword);
       toast('Account deleted');
       window.location.href = '/login';
     } catch (err) {
@@ -400,6 +407,7 @@ export function DeleteAccountButton() {
         size="sm"
         onClick={() => {
           setConfirmText('');
+          setCurrentPassword('');
           setError(null);
           setOpen(true);
         }}
@@ -436,6 +444,18 @@ export function DeleteAccountButton() {
               placeholder={DELETE_ACCOUNT_CONFIRM_TEXT}
               disabled={deleting}
             />
+            {/* The server re-checks the password, so a stolen session alone cannot delete the account. */}
+            <label htmlFor={`${ids}-delete-current`} className="block text-xs font-bold text-secondary">Current password</label>
+            <Input
+              id={`${ids}-delete-current`}
+              type="password"
+              autoComplete="current-password"
+              icon={RiLockLine}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Your current password"
+              disabled={deleting}
+            />
             <FieldError message={error} />
           </div>
 
@@ -447,7 +467,7 @@ export function DeleteAccountButton() {
               variant="destructive"
               size="sm"
               onClick={handleDelete}
-              disabled={deleting || !deleteConfirmationMatches(confirmText)}
+              disabled={deleting || !deleteConfirmationMatches(confirmText) || !currentPassword}
               className="flex items-center gap-1.5"
             >
               {deleting ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiDeleteBinLine className="w-3.5 h-3.5" />}

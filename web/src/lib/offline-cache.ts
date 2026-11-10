@@ -106,16 +106,39 @@ export function createOfflineCache<T>(
 }
 
 /**
- * Clear all user-scoped and feature offline caches from storage on logout.
+ * Bases of the keys holding writes only this device has: the schedule-items
+ * offline queue and the course tracker's not yet uploaded data, as
+ * `<base>_<userId>`. A forced sign-out (expiry, a dead token) keeps them so the
+ * same account replays them after signing back in.
  */
-export function clearAllOfflineUserData(storage?: Storage): void {
-  const s = storage ?? (typeof window !== 'undefined' ? window.localStorage : undefined);
+export const OFFLINE_QUEUE_BASE_KEYS = ['vectra_schedule_items', 'vectra_course_tracker_cache'] as const;
+
+/** Which account the offline queue kept by a forced sign-out belongs to. */
+export const KEPT_QUEUE_OWNER_KEY = 'vectra_kept_queue_owner';
+
+/** This user's offline queue keys. */
+export function offlineQueueKeys(userId: string): string[] {
+  return OFFLINE_QUEUE_BASE_KEYS.map((base) => `${base}_${userId}`);
+}
+
+function defaultStorage(): Storage | undefined {
+  return typeof window !== 'undefined' ? window.localStorage : undefined;
+}
+
+/**
+ * Clear all user-scoped and feature offline caches from storage on logout.
+ * With `keepQueueFor` (a forced sign-out), that account's offline queue keys
+ * stay and are recorded as kept; otherwise everything goes.
+ */
+export function clearAllOfflineUserData(storage?: Storage, keepQueueFor?: string | null): void {
+  const s = storage ?? defaultStorage();
   if (!s) return;
+  const kept = new Set(keepQueueFor ? offlineQueueKeys(keepQueueFor) : []);
 
   const keysToRemove: string[] = [];
   for (let i = 0; i < s.length; i++) {
     const key = s.key(i);
-    if (!key) continue;
+    if (!key || kept.has(key)) continue;
 
     // Check if key matches any of our known offline cache prefixes
     const matchesOfflineCache = OFFLINE_CACHE_BASE_KEYS.some((baseKey) => key.startsWith(baseKey));
@@ -131,5 +154,23 @@ export function clearAllOfflineUserData(storage?: Storage): void {
   for (const key of USER_SCOPED_STORAGE_KEYS) {
     s.removeItem(key);
   }
+
+  if (keepQueueFor) s.setItem(KEPT_QUEUE_OWNER_KEY, keepQueueFor);
+  else s.removeItem(KEPT_QUEUE_OWNER_KEY);
+}
+
+/**
+ * After a sign-in: a queue kept by a forced sign-out is replayed when its own
+ * account signs back in; any other account signing in deletes it instead.
+ */
+export function settleKeptOfflineQueue(userId: string, storage?: Storage): void {
+  const s = storage ?? defaultStorage();
+  if (!s) return;
+  const owner = s.getItem(KEPT_QUEUE_OWNER_KEY);
+  if (!owner) return;
+  if (owner !== userId) {
+    for (const key of offlineQueueKeys(owner)) s.removeItem(key);
+  }
+  s.removeItem(KEPT_QUEUE_OWNER_KEY);
 }
 

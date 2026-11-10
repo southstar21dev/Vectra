@@ -17,6 +17,8 @@ export type PasskeyErrorCode =
   | 'webauthn_challenge_expired'
   | 'webauthn_verification_failed'
   | 'not_supported'
+  | 'wrong_password'
+  | 'rate_limited'
   | 'cancelled'
   | 'unknown';
 
@@ -88,6 +90,11 @@ function mapError(err: unknown): PasskeyError {
   if (code && KNOWN_CODES[code]) {
     return new PasskeyError(KNOWN_CODES[code], message);
   }
+  const status = (err as { status?: number } | null)?.status;
+  if (status === 400 && /current password is incorrect/i.test(message)) {
+    return new PasskeyError('wrong_password', message);
+  }
+  if (status === 429) return new PasskeyError('rate_limited', message);
   return new PasskeyError('unknown', message);
 }
 
@@ -239,14 +246,18 @@ async function webGet(
 
 // --- Public API --------------------------------------------------------------
 
-export async function registerPasskey(): Promise<PasskeyRecord> {
+/**
+ * Enrol this device. The server re-checks the account's current password first,
+ * so a stolen session token alone cannot add a passkey.
+ */
+export async function registerPasskey(currentPassword: string): Promise<PasskeyRecord> {
   if (!(await isPasskeySupported())) {
     throw new PasskeyError('not_supported', 'Biometric sign-in is not supported on this device');
   }
   try {
     const start = await pb.send<PasskeyStartResponse<PublicKeyCredentialCreationOptionsJSON>>(
       '/api/vectra/passkeys/register/start',
-      { method: 'POST' },
+      { method: 'POST', body: { currentPassword } },
     );
     const credential = await webCreate(start.options);
     const verified = await pb.send<PasskeyApiItem>('/api/vectra/passkeys/register/verify', {
@@ -306,6 +317,10 @@ export function passkeyErrorMessage(code: PasskeyErrorCode): string {
       return 'Something went wrong — please try again.';
     case 'not_supported':
       return 'Biometric sign-in is not supported on this device.';
+    case 'wrong_password':
+      return 'Current password is incorrect.';
+    case 'rate_limited':
+      return 'Too many attempts — please wait a while and try again.';
     case 'cancelled':
       return '';
     case 'unknown':

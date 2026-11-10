@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { decryptField, encryptField, isCiphertext } from '@/lib/encryption';
 import { getSessionUserId, getStoredUserId } from '@/lib/auth-helpers';
@@ -155,6 +155,231 @@ export function reconcileQueuedItemConflicts(
   return state;
 }
 
+/**
+ * One pass over the offline queue for [userId]: refresh classes and items, then
+ * replay each queued write with an optimistic version check. Returns whether a
+ * write made meanwhile needs another pass; throws on a transient failure. Kept
+ * outside the hook so an explicit sign-out can flush the queue from any page.
+ */
+export async function runScheduleItemSyncPass(userId: string, queryClient: QueryClient): Promise<boolean> {
+  const queryKey = queryKeys.scheduleItems(userId);
+  let hasNewerMutationToSync = false;
+  let current = readScheduleItemsState(userId);
+  if (current.queue.length === 0) return false;
+
+  // Refresh classes before replaying offline writes so newly imported classes
+  // cannot silently invalidate an old offline acknowledgment.
+  await queryClient.invalidateQueries({ queryKey: queryKeys.schedule, exact: true });
+  const latestEvents = await fetchScheduleEventsFromCloud(userId);
+  if (getSessionUserId() !== userId) return false;
+  queryClient.setQueryData(['schedule'], latestEvents);
+
+  const cloudItems = await fetchCloudItems(userId);
+  if (getSessionUserId() !== userId) return false;
+  current = mergeScheduleItemsState(current, cloudItems);
+  saveLocalState(userId, current);
+  queryClient.setQueryData<ScheduleItemsState>(queryKey, current);
+
+  for (const queued of [...current.queue]) {
+    const latestState = readScheduleItemsState(userId);
+    const latestQueued = latestState.queue.find((entry) => entry.id === queued.id);
+    if (!sameQueuedMutation(latestQueued, queued)) continue;
+
+    const serverItem = cloudItems.find((item) => item.id === queued.id) || null;
+    // A create can reach the server just before the browser closes, leaving
+    // its local queue entry behind. Treat the identical row as an already
+    // completed idempotent create; different content is a real conflict.
+    if (queued.kind === 'upsert' && queued.baseUpdatedAt === null && serverItem) {
+      if (sameItemPayload(serverItem, queued.item)) {
+        const next = removeQueuedScheduleItemMutation(latestState, queued.id, serverItem);
+        saveLocalState(userId, next);
+        queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+        continue;
+      }
+      const conflicted = markScheduleItemSyncConflict(latestState, queued.id, serverItem, serverItem.updatedAt);
+      saveLocalState(userId, conflicted);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
+      continue;
+    }
+
+    const expectedVersion = queued.baseUpdatedAt;
+    const versionMatches = expectedVersion === null
+      ? serverItem === null
+      : serverItem?.updatedAt === expectedVersion;
+
+    if (!versionMatches && queued.kind === 'delete' && serverItem === null) {
+      const next = removeQueuedScheduleItemMutation(latestState, queued.id);
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+      continue;
+    }
+
+    if (!versionMatches) {
+      const conflicted = markScheduleItemSyncConflict(latestState, queued.id, serverItem, serverItem?.updatedAt ?? null);
+      saveLocalState(userId, conflicted);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
+      continue;
+    }
+
+    if (queued.kind === 'upsert') {
+      const itemConflicts = getConflictsForItem(
+        queued.item,
+        latestState.items.map(stripScheduleItemMetadata),
+        latestEvents
+      );
+      if (itemConflicts.some((conflict) => conflict.needsAcknowledgment)) {
+        continue;
+      }
+
+      const encryptedPayload = await encryptField(JSON.stringify(getPayload(queued.item)));
+      if (!isCiphertext(encryptedPayload)) {
+        throw new Error('Schedule item encryption did not produce an encrypted payload.');
+      }
+
+      let savedRow: ScheduleItemRow | null = null;
+      if (queued.baseUpdatedAt === null) {
+        // Send the client UUID as client_id, never as the PocketBase
+        // record id: PB ids are 15 chars matching ^[a-z0-9]+$ and would
+        // reject a UUID, so the app id lives in its own column.
+        savedRow = await pb.collection<ScheduleItemRow>('schedule_items').create({
+          user: userId,
+          payload: encryptedPayload,
+          client_id: queued.id,
+        });
+      } else {
+        // PocketBase has no conditional write, so read the row and compare
+        // the version ourselves: a mismatch (or a row deleted underneath
+        // us) leaves savedRow null, exactly like the old 0-row update.
+        // The row is resolved by client_id because PB cannot filter by the
+        // app's UUID through the record id.
+        let currentRow: ScheduleItemRow | null = null;
+        try {
+          currentRow = await pb.collection<ScheduleItemRow>('schedule_items').getFirstListItem(
+            pb.filter('user = {:u} && client_id = {:c}', { u: userId, c: queued.id })
+          );
+        } catch (error) {
+          if (!isNotFoundError(error)) throw error;
+        }
+        if (currentRow && currentRow.updated_at === queued.baseUpdatedAt) {
+          savedRow = await pb.collection<ScheduleItemRow>('schedule_items').update(currentRow.id, {
+            payload: encryptedPayload,
+          });
+        }
+      }
+
+      if (!savedRow) {
+        const refreshed = await fetchCloudItems(userId);
+        const latestServer = refreshed.find((item) => item.id === queued.id) || null;
+        const conflicted = markScheduleItemSyncConflict(latestState, queued.id, latestServer, latestServer?.updatedAt ?? null);
+        saveLocalState(userId, conflicted);
+        queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
+        continue;
+      }
+
+    const savedItem = await decodeRow(savedRow) || {
+      ...queued.item,
+      updatedAt: savedRow.updated_at,
+      pendingSync: false,
+      syncConflict: undefined,
+    };
+    const newestLocal = readScheduleItemsState(userId);
+    const newestMutation = newestLocal.queue.find((entry) => entry.id === queued.id);
+    if (sameQueuedMutation(newestMutation, queued)) {
+      const next = removeQueuedScheduleItemMutation(newestLocal, queued.id, savedItem);
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+    } else if (newestMutation?.kind === 'upsert') {
+      // If another tab edited while this write was in flight, its pending
+      // payload is now based on the version we just committed.
+      const rebasedItem = { ...newestMutation.item, updatedAt: savedRow.updated_at, pendingSync: true };
+      const rebasedMutation = { ...newestMutation, item: rebasedItem, baseUpdatedAt: savedRow.updated_at };
+      const next: ScheduleItemsState = {
+        ...newestLocal,
+        items: newestLocal.items.map((item) => item.id === queued.id ? rebasedItem : item),
+        queue: newestLocal.queue.map((entry) => entry.id === queued.id ? rebasedMutation : entry),
+      };
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+      hasNewerMutationToSync = true;
+    } else if (newestMutation?.kind === 'delete') {
+      const rebasedMutation = { ...newestMutation, baseUpdatedAt: savedRow.updated_at };
+      const next: ScheduleItemsState = {
+        ...newestLocal,
+        queue: newestLocal.queue.map((entry) => entry.id === queued.id ? rebasedMutation : entry),
+      };
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+      hasNewerMutationToSync = true;
+    } else if (!newestLocal.items.some((item) => item.id === queued.id)) {
+      // A queued create may have been cancelled locally while its request
+      // was in flight. Delete the newly committed row on the next pass.
+      const next = enqueueScheduleItemDelete(newestLocal, queued.id, savedItem.updatedAt);
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+      hasNewerMutationToSync = true;
+    } else {
+      const next = removeQueuedScheduleItemMutation(newestLocal, queued.id, savedItem);
+      saveLocalState(userId, next);
+      queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+    }
+    const index = cloudItems.findIndex((item) => item.id === queued.id);
+    if (index >= 0) cloudItems[index] = savedItem;
+    else cloudItems.push(savedItem);
+    } else {
+      // Mirror the conditional delete: read first and only delete when the
+      // version still matches, so a concurrent edit surfaces as a conflict.
+      let deleted = false;
+      let currentRow: ScheduleItemRow | null = null;
+      try {
+        currentRow = await pb.collection<ScheduleItemRow>('schedule_items').getFirstListItem(
+          pb.filter('user = {:u} && client_id = {:c}', { u: userId, c: queued.id })
+        );
+      } catch (error) {
+        if (!isNotFoundError(error)) throw error;
+      }
+      if (currentRow && currentRow.updated_at === queued.baseUpdatedAt) {
+        await pb.collection('schedule_items').delete(currentRow.id);
+        deleted = true;
+      }
+      if (!deleted) {
+        const refreshed = await fetchCloudItems(userId);
+        const latestServer = refreshed.find((item) => item.id === queued.id) || null;
+        const conflicted = markScheduleItemSyncConflict(readScheduleItemsState(userId), queued.id, latestServer, latestServer?.updatedAt ?? null);
+        saveLocalState(userId, conflicted);
+        queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
+        continue;
+      }
+      const newestLocal = readScheduleItemsState(userId);
+      if (sameQueuedMutation(newestLocal.queue.find((entry) => entry.id === queued.id), queued)) {
+        const next = removeQueuedScheduleItemMutation(newestLocal, queued.id);
+        saveLocalState(userId, next);
+        queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
+      }
+    }
+  }
+  return hasNewerMutationToSync;
+}
+
+/**
+ * Before an explicit sign-out: tries to send the signed-in user's queued
+ * schedule-item writes. True when none are left on this device (conflicts and
+ * items waiting for acknowledgment stay queued, so they count as left).
+ */
+export async function flushScheduleItemQueue(queryClient: QueryClient, maxPasses = 3): Promise<boolean> {
+  const userId = getSessionUserId();
+  if (!userId) return true;
+  if (readScheduleItemsState(userId).queue.length === 0) return true;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  try {
+    for (let pass = 0; pass < maxPasses; pass++) {
+      if (!(await runScheduleItemSyncPass(userId, queryClient))) break;
+    }
+  } catch (error) {
+    console.warn('Schedule item flush before sign-out failed:', error);
+  }
+  return readScheduleItemsState(userId).queue.length === 0;
+}
+
 export function useScheduleItems(events: ScheduleEvent[] = []) {
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
@@ -225,204 +450,8 @@ export function useScheduleItems(events: ScheduleEvent[] = []) {
     let hasNewerMutationToSync = false;
 
     const operation = (async () => {
-      let current = readScheduleItemsState(userId);
-      if (current.queue.length === 0) {
-        setSyncError(null);
-        setSyncRetryCount(0);
-        return;
-      }
-
       try {
-        // Refresh classes before replaying offline writes so newly imported classes
-        // cannot silently invalidate an old offline acknowledgment.
-        await queryClient.invalidateQueries({ queryKey: queryKeys.schedule, exact: true });
-        const latestEvents = await fetchScheduleEventsFromCloud(userId);
-        if (getSessionUserId() !== userId) return;
-        queryClient.setQueryData(['schedule'], latestEvents);
-
-        const cloudItems = await fetchCloudItems(userId);
-        if (getSessionUserId() !== userId) return;
-        current = mergeScheduleItemsState(current, cloudItems);
-        saveLocalState(userId, current);
-        queryClient.setQueryData<ScheduleItemsState>(queryKey, current);
-
-        for (const queued of [...current.queue]) {
-          const latestState = readScheduleItemsState(userId);
-          const latestQueued = latestState.queue.find((entry) => entry.id === queued.id);
-          if (!sameQueuedMutation(latestQueued, queued)) continue;
-
-          const serverItem = cloudItems.find((item) => item.id === queued.id) || null;
-          // A create can reach the server just before the browser closes, leaving
-          // its local queue entry behind. Treat the identical row as an already
-          // completed idempotent create; different content is a real conflict.
-          if (queued.kind === 'upsert' && queued.baseUpdatedAt === null && serverItem) {
-            if (sameItemPayload(serverItem, queued.item)) {
-              const next = removeQueuedScheduleItemMutation(latestState, queued.id, serverItem);
-              saveLocalState(userId, next);
-              queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-              continue;
-            }
-            const conflicted = markScheduleItemSyncConflict(latestState, queued.id, serverItem, serverItem.updatedAt);
-            saveLocalState(userId, conflicted);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
-            continue;
-          }
-
-          const expectedVersion = queued.baseUpdatedAt;
-          const versionMatches = expectedVersion === null
-            ? serverItem === null
-            : serverItem?.updatedAt === expectedVersion;
-
-          if (!versionMatches && queued.kind === 'delete' && serverItem === null) {
-            const next = removeQueuedScheduleItemMutation(latestState, queued.id);
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-            continue;
-          }
-
-          if (!versionMatches) {
-            const conflicted = markScheduleItemSyncConflict(latestState, queued.id, serverItem, serverItem?.updatedAt ?? null);
-            saveLocalState(userId, conflicted);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
-            continue;
-          }
-
-          if (queued.kind === 'upsert') {
-            const itemConflicts = getConflictsForItem(
-              queued.item,
-              latestState.items.map(stripScheduleItemMetadata),
-              latestEvents
-            );
-            if (itemConflicts.some((conflict) => conflict.needsAcknowledgment)) {
-              continue;
-            }
-
-            const encryptedPayload = await encryptField(JSON.stringify(getPayload(queued.item)));
-            if (!isCiphertext(encryptedPayload)) {
-              throw new Error('Schedule item encryption did not produce an encrypted payload.');
-            }
-
-            let savedRow: ScheduleItemRow | null = null;
-            if (queued.baseUpdatedAt === null) {
-              // Send the client UUID as client_id, never as the PocketBase
-              // record id: PB ids are 15 chars matching ^[a-z0-9]+$ and would
-              // reject a UUID, so the app id lives in its own column.
-              savedRow = await pb.collection<ScheduleItemRow>('schedule_items').create({
-                user: userId,
-                payload: encryptedPayload,
-                client_id: queued.id,
-              });
-            } else {
-              // PocketBase has no conditional write, so read the row and compare
-              // the version ourselves: a mismatch (or a row deleted underneath
-              // us) leaves savedRow null, exactly like the old 0-row update.
-              // The row is resolved by client_id because PB cannot filter by the
-              // app's UUID through the record id.
-              let currentRow: ScheduleItemRow | null = null;
-              try {
-                currentRow = await pb.collection<ScheduleItemRow>('schedule_items').getFirstListItem(
-                  pb.filter('user = {:u} && client_id = {:c}', { u: userId, c: queued.id })
-                );
-              } catch (error) {
-                if (!isNotFoundError(error)) throw error;
-              }
-              if (currentRow && currentRow.updated_at === queued.baseUpdatedAt) {
-                savedRow = await pb.collection<ScheduleItemRow>('schedule_items').update(currentRow.id, {
-                  payload: encryptedPayload,
-                });
-              }
-            }
-
-            if (!savedRow) {
-              const refreshed = await fetchCloudItems(userId);
-              const latestServer = refreshed.find((item) => item.id === queued.id) || null;
-              const conflicted = markScheduleItemSyncConflict(latestState, queued.id, latestServer, latestServer?.updatedAt ?? null);
-              saveLocalState(userId, conflicted);
-              queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
-              continue;
-            }
-
-          const savedItem = await decodeRow(savedRow) || {
-            ...queued.item,
-            updatedAt: savedRow.updated_at,
-            pendingSync: false,
-            syncConflict: undefined,
-          };
-          const newestLocal = readScheduleItemsState(userId);
-          const newestMutation = newestLocal.queue.find((entry) => entry.id === queued.id);
-          if (sameQueuedMutation(newestMutation, queued)) {
-            const next = removeQueuedScheduleItemMutation(newestLocal, queued.id, savedItem);
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-          } else if (newestMutation?.kind === 'upsert') {
-            // If another tab edited while this write was in flight, its pending
-            // payload is now based on the version we just committed.
-            const rebasedItem = { ...newestMutation.item, updatedAt: savedRow.updated_at, pendingSync: true };
-            const rebasedMutation = { ...newestMutation, item: rebasedItem, baseUpdatedAt: savedRow.updated_at };
-            const next: ScheduleItemsState = {
-              ...newestLocal,
-              items: newestLocal.items.map((item) => item.id === queued.id ? rebasedItem : item),
-              queue: newestLocal.queue.map((entry) => entry.id === queued.id ? rebasedMutation : entry),
-            };
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-            hasNewerMutationToSync = true;
-          } else if (newestMutation?.kind === 'delete') {
-            const rebasedMutation = { ...newestMutation, baseUpdatedAt: savedRow.updated_at };
-            const next: ScheduleItemsState = {
-              ...newestLocal,
-              queue: newestLocal.queue.map((entry) => entry.id === queued.id ? rebasedMutation : entry),
-            };
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-            hasNewerMutationToSync = true;
-          } else if (!newestLocal.items.some((item) => item.id === queued.id)) {
-            // A queued create may have been cancelled locally while its request
-            // was in flight. Delete the newly committed row on the next pass.
-            const next = enqueueScheduleItemDelete(newestLocal, queued.id, savedItem.updatedAt);
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-            hasNewerMutationToSync = true;
-          } else {
-            const next = removeQueuedScheduleItemMutation(newestLocal, queued.id, savedItem);
-            saveLocalState(userId, next);
-            queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-          }
-          const index = cloudItems.findIndex((item) => item.id === queued.id);
-          if (index >= 0) cloudItems[index] = savedItem;
-          else cloudItems.push(savedItem);
-          } else {
-            // Mirror the conditional delete: read first and only delete when the
-            // version still matches, so a concurrent edit surfaces as a conflict.
-            let deleted = false;
-            let currentRow: ScheduleItemRow | null = null;
-            try {
-              currentRow = await pb.collection<ScheduleItemRow>('schedule_items').getFirstListItem(
-                pb.filter('user = {:u} && client_id = {:c}', { u: userId, c: queued.id })
-              );
-            } catch (error) {
-              if (!isNotFoundError(error)) throw error;
-            }
-            if (currentRow && currentRow.updated_at === queued.baseUpdatedAt) {
-              await pb.collection('schedule_items').delete(currentRow.id);
-              deleted = true;
-            }
-            if (!deleted) {
-              const refreshed = await fetchCloudItems(userId);
-              const latestServer = refreshed.find((item) => item.id === queued.id) || null;
-              const conflicted = markScheduleItemSyncConflict(readScheduleItemsState(userId), queued.id, latestServer, latestServer?.updatedAt ?? null);
-              saveLocalState(userId, conflicted);
-              queryClient.setQueryData<ScheduleItemsState>(queryKey, conflicted);
-              continue;
-            }
-            const newestLocal = readScheduleItemsState(userId);
-            if (sameQueuedMutation(newestLocal.queue.find((entry) => entry.id === queued.id), queued)) {
-              const next = removeQueuedScheduleItemMutation(newestLocal, queued.id);
-              saveLocalState(userId, next);
-              queryClient.setQueryData<ScheduleItemsState>(queryKey, next);
-            }
-          }
-        }
+        hasNewerMutationToSync = await runScheduleItemSyncPass(userId, queryClient);
         // The refresh and queue pass succeeded even if an item is intentionally
         // paused for user acknowledgment; only transient failures should retry.
         setSyncError(null);
@@ -440,7 +469,7 @@ export function useScheduleItems(events: ScheduleEvent[] = []) {
 
     syncPromise.current = operation;
     return operation;
-  }, [online, queryClient, queryKey, userId]);
+  }, [online, queryClient, userId]);
 
   useEffect(() => {
     syncRef.current = executeSync;

@@ -4,6 +4,8 @@ import { EASE_OUT } from '@/components/ui/motion-tokens';
 import { useAuth } from './use-auth';
 import { usePasskeys } from './use-passkeys';
 import { passkeyErrorMessage } from './passkeys';
+import { PasskeyResetNote } from './passkey-reset-note';
+import { PASSKEY_RESET_NOTES } from './passkey-reset-notes';
 import { RiEyeLine, RiEyeOffLine, RiLoader4Line, RiMailLine, RiLockLine, RiUserLine, RiErrorWarningLine, RiFingerprintLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -229,7 +231,7 @@ export function SignupForm() {
       await signup({ email, password, fullName });
       if (enableBiometrics && isSupported === true) {
         try {
-          await register();
+          await register(password);
         } catch {
           toast('You can set this up later in Settings');
         }
@@ -328,6 +330,7 @@ export function SignupForm() {
             <p className="text-xs text-muted mt-1">
               Sign in with your fingerprint instead of a password
             </p>
+            <PasskeyResetNote text={PASSKEY_RESET_NOTES.signup} className="mt-2" />
           </div>
           <Toggle
             checked={enableBiometrics}

@@ -111,10 +111,12 @@ describe('registerPasskey (web ceremony)', () => {
       .mockResolvedValueOnce({ challenge_id: 'c-1', options: creationOptions })
       .mockResolvedValueOnce(metadata);
 
-    await expect(registerPasskey()).resolves.toEqual(record);
+    await expect(registerPasskey('pw')).resolves.toEqual(record);
 
+    // The server re-checks the current password before enrolling.
     expect(sendMock).toHaveBeenNthCalledWith(1, '/api/vectra/passkeys/register/start', {
       method: 'POST',
+      body: { currentPassword: 'pw' },
     });
     expect(parseCreationOptionsFromJSON).toHaveBeenCalledWith(creationOptions);
     expect(create).toHaveBeenCalledWith({ publicKey });
@@ -148,7 +150,7 @@ describe('registerPasskey (web ceremony)', () => {
       .mockResolvedValueOnce({ challenge_id: 'c-1', options: creationOptions })
       .mockResolvedValueOnce(metadata);
 
-    await expect(registerPasskey()).resolves.toEqual(record);
+    await expect(registerPasskey('pw')).resolves.toEqual(record);
 
     // base64url of [1,2,3,255] is "AQID_w".
     const [{ publicKey }] = create.mock.calls[0];
@@ -183,11 +185,19 @@ describe('registerPasskey (web ceremony)', () => {
     installWebCeremony(undefined);
     sendMock.mockRejectedValue({ code: 'passkey_disabled', message: 'disabled' });
 
-    await expect(registerPasskey()).rejects.toMatchObject({
+    await expect(registerPasskey('pw')).rejects.toMatchObject({
       name: 'PasskeyError',
       code: 'passkey_disabled',
       cancelled: false,
     });
+  });
+
+  it('maps a rejected current password to wrong_password', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    installWebCeremony(undefined);
+    sendMock.mockRejectedValue(Object.assign(new Error('Current password is incorrect'), { status: 400 }));
+
+    await expect(registerPasskey('wrong')).rejects.toMatchObject({ name: 'PasskeyError', code: 'wrong_password' });
   });
 
   it('marks a ceremony abort as a silent cancellation', async () => {
@@ -195,7 +205,7 @@ describe('registerPasskey (web ceremony)', () => {
     installWebCeremony(undefined);
     sendMock.mockRejectedValue({ code: 'ERROR_CEREMONY_ABORTED', message: 'aborted' });
 
-    await expect(registerPasskey()).rejects.toMatchObject({
+    await expect(registerPasskey('pw')).rejects.toMatchObject({
       name: 'PasskeyError',
       code: 'cancelled',
       cancelled: true,
@@ -204,7 +214,7 @@ describe('registerPasskey (web ceremony)', () => {
 
   it('throws not_supported before any request when unsupported', async () => {
     vi.stubGlobal('PublicKeyCredential', undefined);
-    await expect(registerPasskey()).rejects.toMatchObject({ code: 'not_supported' });
+    await expect(registerPasskey('pw')).rejects.toMatchObject({ code: 'not_supported' });
     expect(sendMock).not.toHaveBeenCalled();
   });
 });
