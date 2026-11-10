@@ -105,11 +105,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # The baseline profile generator runs on a device only; compiling it keeps it buildable.
           - os: ubuntu-latest
-            tasks: :shared:testAndroidHostTest detekt :androidApp:assembleDebug :androidApp:lint
-          # iOS stays a compile check here; release.yml builds the IPA.
+            tasks: :shared:testAndroidHostTest detekt :androidApp:assembleDebug :androidApp:lint :baselineprofile:compileNonMinifiedReleaseKotlin
+          # Compiles and links the shared tests for iOS (running them needs a simulator); the
+          # steps below also build the Swift app and widgets. release.yml builds the IPA.
           - os: macos-latest
-            tasks: :shared:compileKotlinIosSimulatorArm64
+            tasks: :shared:compileKotlinIosSimulatorArm64 :shared:linkDebugTestIosSimulatorArm64
     runs-on: ${{ matrix.os }}
     env:
       # Same reason as above: the shared tests reason in Budapest wall-clock time.
@@ -135,8 +137,42 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
 
+      # release.yml builds the committed iosApp.xcodeproj, so it must be what project.yml generates.
+      # XcodeGen is pinned (version and checksum): another version may write the project differently.
+      - name: Check the Xcode project matches project.yml
+        if: runner.os == 'macOS'
+        env:
+          XCODEGEN_VERSION: 2.46.0
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          (cd native/iosApp && "$RUNNER_TEMP/xcodegen/bin/xcodegen" generate --quiet)
+          if [ -n "$(git status --porcelain -- native/iosApp)" ]; then
+            git status --short -- native/iosApp
+            git diff -- native/iosApp
+            echo "::error::native/iosApp differs from what project.yml generates; run xcodegen in native/iosApp and commit the result."
+            exit 1
+          fi
+
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       - name: Verify
         working-directory: native
         run: ./gradlew ${{ matrix.tasks }}
+
+      # The Swift app and widgets, unsigned for the simulator. Its Gradle phase builds the shared
+      # framework (Debug), so a Swift or Kotlin/Swift interface error shows up before promotion.
+      - name: Build the iOS app for the simulator
+        if: runner.os == 'macOS'
+        run: |
+          xcodebuild build \
+            -project native/iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
