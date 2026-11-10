@@ -80,9 +80,16 @@ internal class ScheduleItemsSync(
     private val stateLock = Mutex()
     @Volatile private var validatedCloud: CloudSnapshot? = null
     @Volatile private var committedWrites = 0
+    /**
+     * The account whose items and queue [_itemsState] holds. The session switches before
+     * [onUserChanged] has read the account's queue back from disk; until then the in-memory state
+     * is empty, and a refresh or sync pass merging against it would save that over the kept queue.
+     */
+    @Volatile private var loadedFor: String? = null
 
     /** Forget the previous account; a new one loads its items and queue from the device. */
     suspend fun onUserChanged(uid: String?) {
+        loadedFor = null
         itemsFetchedAt = 0L
         syncRetryCount = 0
         retryJob?.cancel()
@@ -96,6 +103,7 @@ internal class ScheduleItemsSync(
             return
         }
         _itemsState.value = readLocalItems(uid)
+        loadedFor = uid
         _itemsLoading.value = false
     }
 
@@ -113,8 +121,9 @@ internal class ScheduleItemsSync(
     /** Persist durably first; the in-memory state only moves once the write succeeded. */
     private suspend fun saveLocal(uid: String, next: ScheduleItemsState) {
         if (!isValidScheduleItemsState(next)) error(SAVE_FAILED)
-        // A pass outliving its session must not bring back what sign-out just wiped.
-        if (userId != uid) return
+        // A pass outliving its session must not bring back what sign-out just wiped, nor save over a
+        // queue it has not read back yet.
+        if (userId != uid || loadedFor != uid) return
         try {
             kv.set(getScheduleItemsStorageKey(uid), encodeScheduleItemsState(next))
         } catch (e: CancellationException) {
@@ -128,6 +137,7 @@ internal class ScheduleItemsSync(
     /** A user's own change, for [uid]: refused when another account signed in since it began. */
     private suspend fun persistLocalState(uid: String, next: ScheduleItemsState) {
         if (userId != uid) error(ACCOUNT_CHANGED)
+        if (loadedFor != uid) error(SAVE_FAILED)
         saveLocal(uid, next)
         _itemSyncError.value = null
         syncRetryCount = 0
@@ -139,10 +149,14 @@ internal class ScheduleItemsSync(
         return rows.mapIndexedNotNull { i, row -> decodeScheduleItemRow(row) { clear[i] } }
     }
 
+    /** Fresh enough, or [uid]'s queue not read back yet: its own load (onUserChanged) refreshes once it has. */
+    private fun skipsRefresh(uid: String, force: Boolean): Boolean =
+        loadedFor != uid || (!force && Clock.System.now().toEpochMilliseconds() - itemsFetchedAt < ITEMS_STALE_MS)
+
     /** The items query: local cache offline; merged cloud + queue online (cache on failure). */
     suspend fun refreshItems(force: Boolean = false) {
         val uid = userId ?: return
-        if (!force && Clock.System.now().toEpochMilliseconds() - itemsFetchedAt < ITEMS_STALE_MS) return
+        if (skipsRefresh(uid, force)) return
         try {
             if (!online) return
             try {
@@ -154,7 +168,7 @@ internal class ScheduleItemsSync(
                         throw e
                     } catch (_: Throwable) {
                         // Preserve the in-memory result even when the cache refresh fails.
-                        if (userId == uid) _itemsState.value = revalidated
+                        if (userId == uid && loadedFor == uid) _itemsState.value = revalidated
                     }
                 }
                 if (merged != null) itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
@@ -219,7 +233,7 @@ internal class ScheduleItemsSync(
      */
     suspend fun executeSync() {
         val uid = userId ?: return
-        if (!online) return
+        if (!online || loadedFor != uid) return
         val job = syncJobLock.withLock {
             val running = syncJob?.takeIf { it.isActive }
             syncRequested = running != null

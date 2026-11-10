@@ -36,6 +36,11 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.Flow
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -224,9 +229,21 @@ private class Online(value: Boolean) : Connectivity {
     override val online = MutableStateFlow(value)
 }
 
+/** [FakeDataStore] whose reads can be held back, to open the gap between a session change and the load it triggers. */
+private class SlowReadsDataStore : DataStore<Preferences> {
+    private val inner = FakeDataStore()
+    @Volatile var readDelayMs = 0L
+    override val data: Flow<Preferences> = flow {
+        if (readDelayMs > 0) delay(readDelayMs)
+        emitAll(inner.data)
+    }
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = inner.updateData(transform)
+}
+
 private class Harness(val backend: FakeBackend, online: Boolean = true) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val kv = KeyValueStore(FakeDataStore())
+    val disk = SlowReadsDataStore()
+    val kv = KeyValueStore(disk)
     val connectivity = Online(online)
     val http = HttpClient(MockEngine { req -> backend.handle(this, req) })
     val store = AuthStore(kv, PlainSecretCipher)
@@ -696,6 +713,26 @@ class ScheduleSyncTest {
         assertEquals(1, persisted()?.queue?.size)
         connectivity.online.value = true
         auth.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId))))
+        drained()
+        assertEquals(listOf("create $ItemA"), b.writes)
+    }
+
+    /**
+     * The returning account's session is visible before its kept queue is read back from disk. A
+     * refresh landing in that gap (here: a reconnect at the same moment) must not merge against the
+     * empty in-memory state and save that over the kept queue.
+     */
+    @Test fun aRefreshWhileTheReturningAccountLoadsKeepsItsQueue() = scenario(online = false) { b ->
+        start(queuedCreate(item()))
+        auth.expire()
+        until { repo.itemsState.value.items.isEmpty() }
+        connectivity.online.value = true
+        disk.readDelayMs = 300
+        val back = scope.launch { auth.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId)))) }
+        until { auth.session.value != null }
+        repo.refreshItems(force = true)
+        disk.readDelayMs = 0
+        back.join()
         drained()
         assertEquals(listOf("create $ItemA"), b.writes)
     }
