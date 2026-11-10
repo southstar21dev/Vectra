@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,7 +38,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
@@ -55,6 +66,7 @@ import dev.southstar21.vectra.core.time.ymd
 import dev.southstar21.vectra.core.preferences.TimeFormat
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
@@ -62,10 +74,12 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 private val WeekdayInitials = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
 private val WeekdayShort = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+private val WeekdayLong = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 /** Form-height field that shows a value and opens a picker sheet. */
 @Composable
@@ -116,6 +130,11 @@ internal val LocalDateSaver = Saver<LocalDate, String>(save = { it.toString() },
 fun formatLongDate(date: LocalDate): String =
     "${WeekdayShort[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number).take(3)} ${date.year}"
 
+/** A calendar day as a screen reader says it: "Friday, 30 October 2026", plus ", today". */
+internal fun dayCellDescription(date: LocalDate, isToday: Boolean): String =
+    "${WeekdayLong[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number)} ${date.year}" +
+        if (isToday) ", today" else ""
+
 /** Month calendar (Monday first). Swipe sideways or use the arrows to change month. */
 @Composable
 fun DatePickerSheet(
@@ -136,7 +155,7 @@ fun DatePickerSheet(
         haptics.tick()
         month = if (months > 0) month.plus(DatePeriod(months = months)) else month.minus(DatePeriod(months = -months))
     }
-    VSheet(open, onDismiss) {
+    VSheet(open, onDismiss, title = "Pick a date") {
         Column(Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BarButton(RemixIcons.ArrowLeftSLine, "Previous month", { shift(-1) })
@@ -179,11 +198,19 @@ fun DatePickerSheet(
                                     .padding(2.dp)
                                     .then(if (isSelected) Modifier.background(c.accentPrimary, CircleShape) else Modifier)
                                     .then(if (isToday && !isSelected) Modifier.border(1.dp, c.accentPrimary, CircleShape) else Modifier)
-                                    .tappable(CircleShape, role = Role.Button, haptic = { tick() }) { onPick(date) },
+                                    .tappable(CircleShape, role = Role.Button, haptic = { tick() }) { onPick(date) }
+                                    // The bare number ("14") says neither the month nor which day is picked.
+                                    // As Material's date picker does: the cell's text is the full date
+                                    // and the number under it is left out.
+                                    .semantics {
+                                        text = AnnotatedString(dayCellDescription(date, isToday))
+                                        this.selected = isSelected
+                                    },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 VText(
                                     date.day.toString(),
+                                    Modifier.clearAndSetSemantics { },
                                     style = vtext(TypeScale.Body, if (isSelected) Weight.Bold else Weight.Medium),
                                     color = when {
                                         isSelected -> Color.White
@@ -240,7 +267,7 @@ fun TimePickerSheet(
     val minutes = remember(minuteStep) { (0 until 60 step minuteStep).toList() }
     var h by rememberSaveable(open) { mutableIntStateOf(hour) }
     var mIndex by rememberSaveable(open) { mutableIntStateOf(minutes.indexOfLast { it <= minute }.coerceAtLeast(0)) }
-    VSheet(open, onDismiss) {
+    VSheet(open, onDismiss, title = title) {
         SheetHeader(title, onDismiss)
         Row(
             Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 8.dp),
@@ -248,15 +275,15 @@ fun TimePickerSheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (use12h) {
-                Wheel(12, (h + 11) % 12, { "${it + 1}" }, { i -> h = (i + 1) % 12 + if (h >= 12) 12 else 0 })
+                Wheel("Hour", 12, (h + 11) % 12, { "${it + 1}" }, { i -> h = (i + 1) % 12 + if (h >= 12) 12 else 0 })
             } else {
-                Wheel(24, h, { pad2(it) }, { h = it })
+                Wheel("Hour", 24, h, { pad2(it) }, { h = it })
             }
             VText(":", Modifier.padding(horizontal = 8.dp), vtext(TypeScale.Headline, Weight.Bold), Vectra.colors.textMuted)
-            Wheel(minutes.size, mIndex, { pad2(minutes[it]) }, { mIndex = it })
+            Wheel("Minute", minutes.size, mIndex, { pad2(minutes[it]) }, { mIndex = it })
             if (use12h) {
                 Box(Modifier.width(12.dp))
-                Wheel(2, if (h < 12) 0 else 1, { if (it == 0) "AM" else "PM" }, { pm -> h = h % 12 + if (pm == 1) 12 else 0 })
+                Wheel("AM or PM", 2, if (h < 12) 0 else 1, { if (it == 0) "AM" else "PM" }, { pm -> h = h % 12 + if (pm == 1) 12 else 0 })
             }
         }
         Box(Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 12.dp)) {
@@ -268,9 +295,16 @@ fun TimePickerSheet(
 private val WheelItemHeight = 44.dp
 private const val WheelVisibleItems = 5
 
-/** A snapping scroll wheel; the centred row is the value. Ticks as each row passes the centre. */
+/** The wheel row a screen reader's adjust (set-progress) request lands on, kept in range. */
+internal fun wheelIndexFor(requested: Float, count: Int): Int = requested.roundToInt().coerceIn(0, (count - 1).coerceAtLeast(0))
+
+/**
+ * A snapping scroll wheel; the centred row is the value. Ticks as each row passes the centre.
+ * Screen readers get one adjustable control named [name] that reads the centred value, instead
+ * of a scrolling list of bare numbers.
+ */
 @Composable
-private fun Wheel(count: Int, selected: Int, label: (Int) -> String, onSelected: (Int) -> Unit) {
+private fun Wheel(name: String, count: Int, selected: Int, label: (Int) -> String, onSelected: (Int) -> Unit) {
     val c = Vectra.colors
     val haptics = Vectra.haptics
     val state = rememberLazyListState(initialFirstVisibleItemIndex = selected.coerceIn(0, count - 1))
@@ -286,7 +320,23 @@ private fun Wheel(count: Int, selected: Int, label: (Int) -> String, onSelected:
             latest(it)
         }
     }
-    Box(Modifier.width(72.dp).height(WheelItemHeight * WheelVisibleItems), contentAlignment = Alignment.Center) {
+    val scope = rememberCoroutineScope()
+    Box(
+        Modifier
+            .width(72.dp)
+            .height(WheelItemHeight * WheelVisibleItems)
+            .clearAndSetSemantics {
+                contentDescription = name
+                stateDescription = label(centred)
+                progressBarRangeInfo = ProgressBarRangeInfo(centred.toFloat(), 0f..(count - 1).coerceAtLeast(1).toFloat(), steps = (count - 2).coerceAtLeast(0))
+                setProgress { target ->
+                    val index = wheelIndexFor(target, count)
+                    if (index != centred) scope.launch { state.scrollToItem(index) }
+                    true
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
         Box(Modifier.fillMaxWidth().height(WheelItemHeight).background(c.surfaceOverlay, Radius.Control))
         LazyColumn(
             state = state,
