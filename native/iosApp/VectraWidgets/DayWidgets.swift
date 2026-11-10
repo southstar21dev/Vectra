@@ -33,6 +33,8 @@ struct TodayView: View {
         let up = entry.snapshot.nextUp(now: now)
         if case .noData = up {
             EmptyMessage(text: "Open Vectra and sign in to see your day here.")
+        } else if case .stale = up {
+            EmptyMessage(text: StaleMessage)
         } else {
             let featured = up.featured
             let day = featured?.day ?? today
@@ -119,6 +121,8 @@ struct WeekView: View {
     var body: some View {
         if entry.snapshot?.signedIn != true {
             EmptyMessage(text: "Open Vectra and sign in to see your week here.").padding(16)
+        } else if entry.snapshot.isStale(at: entry.date) {
+            EmptyMessage(text: StaleMessage).padding(16)
         } else {
             let today = Budapest.day(entry.date)
             let week = entry.snapshot.week(now: entry.date)
@@ -200,6 +204,8 @@ struct AgendaView: View {
     var body: some View {
         if entry.snapshot?.signedIn != true {
             EmptyMessage(text: "Open Vectra and sign in to see today here.").padding(16)
+        } else if entry.snapshot.isStale(at: entry.date) {
+            EmptyMessage(text: StaleMessage).padding(16)
         } else {
             content
         }
