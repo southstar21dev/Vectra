@@ -21,6 +21,7 @@ import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
@@ -35,6 +36,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
+import kotlin.coroutines.CoroutineContext
 
 /* The shared continuous device-location watcher. */
 
@@ -197,6 +199,12 @@ private class GeoError(val code: Int, message: String) : Exception(message)
  * kept alive by a watchdog (stale/missed fixes restart the watch), started
  * with the first consumer on screen and stopped with the last one, so nothing
  * tracks behind a hidden tab or a backgrounded app.
+ *
+ * Its fields are plain, so everything that touches them runs on one thread: the public
+ * calls come from the UI on the main thread, and the watch, the one-shot fix and the
+ * watchdog run on [confined], the main thread too. The app scope itself is on
+ * `Dispatchers.Default`, where a watchdog restart could race a page's release and leave a
+ * watch running with no consumer (audit 03 #14).
  */
 class DeviceLocation(
     private val provider: LocationProvider,
@@ -204,6 +212,7 @@ class DeviceLocation(
     private val scope: CoroutineScope,
     /** Consumers release after a sign-out wiped the stored fix; it must not be written back. */
     private val canPersist: () -> Boolean = { true },
+    private val confined: CoroutineContext = Dispatchers.Main,
 ) {
     private val _state = MutableStateFlow(InitialWatchLocationState)
     val state: StateFlow<WatchLocationState> = _state.asStateFlow()
@@ -228,7 +237,7 @@ class DeviceLocation(
     private fun ensureInitialized() {
         if (initialized) return
         initialized = true
-        scope.launch {
+        scope.launch(confined) {
             val stored = runSuspendCatching { readStoredLocation(kv.get(DeviceLocationStorageKey)) }.getOrNull()
             // Only seed when nothing fresher arrived meanwhile.
             if (stored != null && _state.value.status != WatchLocationStatus.Tracking) {
@@ -283,7 +292,7 @@ class DeviceLocation(
     }
 
     private fun oneShot() {
-        scope.launch {
+        scope.launch(confined) {
             try {
                 applyFix(provider.current())
             } catch (e: CancellationException) {
@@ -324,7 +333,7 @@ class DeviceLocation(
         lastWatchStartedAt = nowMs()
         // Immediate fix to minimize time-to-first-fix, then keep watching.
         oneShot()
-        watchJob = scope.launch {
+        watchJob = scope.launch(confined) {
             try {
                 provider.watch().collect { applyFix(it) }
             } catch (e: CancellationException) {
@@ -358,7 +367,7 @@ class DeviceLocation(
         if (sessionActive) return
         sessionActive = true
         permissionDenied = false
-        watchdogJob = scope.launch {
+        watchdogJob = scope.launch(confined) {
             while (true) {
                 delay(WatchdogIntervalMs)
                 restartWatchIfStale()
