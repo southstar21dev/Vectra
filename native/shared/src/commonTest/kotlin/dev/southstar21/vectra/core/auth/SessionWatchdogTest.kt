@@ -121,6 +121,35 @@ class SessionWatchdogTest {
         assertNull(store.current)
     }
 
+    /** Runs a refresh whose answer is held until [during] has run (02 #4). */
+    private suspend fun refreshAround(w: SessionWatchdog, answer: CompletableDeferred<Unit>, during: suspend () -> Unit) =
+        withContext(Dispatchers.Default) {
+            val call = launch { w.refreshIfNeeded() }
+            withTimeout(5_000) { while (refreshes == 0) delay(1) }
+            during()
+            answer.complete(Unit)
+            call.join()
+        }
+
+    private val other = AuthState("other", JsonObject(mapOf("id" to JsonPrimitive("u2"))))
+
+    @Test fun aRefreshAnsweredAfterSignOutLeavesTheUserSignedOut() = runTest {
+        val answer = CompletableDeferred<Unit>()
+        val w = watchdog { answer.await(); json(fresh) }
+        signIn()
+        refreshAround(w, answer) { repo.signOut() }
+        assertNull(store.current)
+    }
+
+    @Test fun aRejectionAnsweredAfterAnotherSignInKeepsTheNewAccount() = runTest {
+        val answer = CompletableDeferred<Unit>()
+        val w = watchdog { answer.await(); json("{}", HttpStatusCode.Unauthorized) }
+        signIn()
+        refreshAround(w, answer) { repo.signOut(); store.save(other) }
+        assertEquals(other, store.current)
+        assertFalse(repo.sessionExpired.value)
+    }
+
     @Test fun aServerErrorKeepsTheSessionAndRetriesNextTime() = runTest {
         val w = watchdog { json("{}", HttpStatusCode.InternalServerError) }
         signIn()
