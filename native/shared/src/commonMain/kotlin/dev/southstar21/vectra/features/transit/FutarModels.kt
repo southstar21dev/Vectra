@@ -89,7 +89,18 @@ data class FutarStopTime(
     val stopSequence: Int? = null,
     val tripId: String = "",
     val canceled: Boolean = false,
+    /** The trip's service day (YYYYMMDD); after midnight it can be the previous day. */
+    val serviceDate: String? = null,
 )
+
+/** Which trip-details to load: the trip, on its own service day when known. */
+data class TripDetailsKey(val tripId: String, val serviceDate: String? = null)
+
+private val ServiceDateShape = Regex("^[0-9]{8}$")
+
+/** The key for [tripId], or null without one. A service date not in Futár's YYYYMMDD form is left out. */
+fun tripDetailsKey(tripId: String?, serviceDate: String?): TripDetailsKey? =
+    tripId?.takeIf { it.isNotEmpty() }?.let { TripDetailsKey(it, serviceDate?.takeIf(ServiceDateShape::matches)) }
 
 @Serializable
 data class FutarTripRef(
@@ -246,4 +257,6 @@ data class Arrival(
     val platformStopId: String? = null,
     val platformLat: Double? = null,
     val platformLon: Double? = null,
+    /** The trip's service day (YYYYMMDD), for its trip-details. */
+    val serviceDate: String? = null,
 )

@@ -183,10 +183,11 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
     val thirdTripId = if (tripIds.size > 2) tripIds.firstOrNull { it != leadTripId && it != otherTripId } else null
 
     // Geometry: the tracked trips, with the route's variants as the fallback
-    // (no departure, trip-details 404 on the nightly service-date roll, …).
-    val tripQueryA = repo.tripDetails.collect(if (hasTrip) leadTripId else null)
-    val tripQueryB = repo.tripDetails.collect(if (hasTrip) otherTripId else null)
-    val tripQueryC = repo.tripDetails.collect(if (hasTrip) thirdTripId else null)
+    // (no departure, trip-details missing, …). Each trip is asked for on its own service day.
+    fun tripKey(tripId: String?) = if (hasTrip) tripDetailsKey(tripId, arrivals.firstOrNull { it.tripId == tripId }?.serviceDate) else null
+    val tripQueryA = repo.tripDetails.collect(tripKey(leadTripId))
+    val tripQueryB = repo.tripDetails.collect(tripKey(otherTripId))
+    val tripQueryC = repo.tripDetails.collect(tripKey(thirdTripId))
     val routeQuery = repo.routeDetails.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
     val stopRefs = routeQuery.data?.data?.references?.stops.orEmpty()
 

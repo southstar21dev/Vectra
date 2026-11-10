@@ -188,6 +188,7 @@ fun parseStopArrivals(data: FutarArrivalsResponse?, routeId: String, headsign: S
                 tripId = st.tripId,
                 routeId = tripRouteId,
                 routeShortName = route?.shortName?.takeIf { it.isNotEmpty() } ?: FallbackShortNames[tripRouteId],
+                serviceDate = st.serviceDate,
             )
         }
         .filter { it.arrivalMs > 0 && it.arrivalMs >= now - 60_000 }

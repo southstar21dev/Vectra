@@ -335,6 +335,7 @@ fun parseAllNearbyBoards(data: FutarArrivalsResponse?, catalogRoutes: Map<String
             headSign = st.stopHeadsign.orEmpty(),
             isPredicted = predicted != null && predicted != 0L,
             tripId = st.tripId,
+            serviceDate = st.serviceDate,
         )
         val platform = if (st.stopId.isNotEmpty()) refStops[st.stopId] else null
         if (platform != null && platform.lat.isFinite() && platform.lon.isFinite() &&
@@ -418,6 +419,8 @@ data class RadarDepartureItem(
     val platformStopId: String? = null,
     val platformLat: Double? = null,
     val platformLon: Double? = null,
+    /** The trip's service day (YYYYMMDD), for its trip-details. */
+    val serviceDate: String? = null,
 )
 
 /** Filter departures by transit modes; empty / null / "ALL" matches everything. */
@@ -509,6 +512,7 @@ fun buildRadarDepartures(
                     platformStopId = arrival.platformStopId,
                     platformLat = arrival.platformLat,
                     platformLon = arrival.platformLon,
+                    serviceDate = arrival.serviceDate,
                 )
             }
         }

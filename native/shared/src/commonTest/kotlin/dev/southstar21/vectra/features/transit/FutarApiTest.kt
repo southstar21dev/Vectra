@@ -84,16 +84,37 @@ class FutarApiTest {
         )
     } }
 
-    @Test fun omitsLimitForCompactFetch() = runTest { withContext(Dispatchers.Default) {
+    /** Futár's own default is 60 stop-times, which truncates the 90-minute window at a big interchange. */
+    @Test fun shallowFetchAsksForTheFullCap() = runTest { withContext(Dispatchers.Default) {
         val reqs = mutableListOf<HttpRequestData>()
         val res = api(reqs).fetchStopArrivals("BKK_123", 90)
         assertEquals(
             VectraJson.parseToJsonElement(
-                """{"endpoint":"arrivals-and-departures-for-stop","params":{"stopId":"BKK_123","minutesBefore":0,"minutesAfter":90}}""",
+                """{"endpoint":"arrivals-and-departures-for-stop","params":{"stopId":"BKK_123","minutesBefore":0,"minutesAfter":90,"limit":200}}""",
             ),
             body(reqs[0]),
         )
         assertEquals("x", res.data?.entry?.stopId)
+    } }
+
+    /** After midnight a trip can belong to the previous service day, which Futár can't guess. */
+    @Test fun tripDetailsCarryTheServiceDate() = runTest { withContext(Dispatchers.Default) {
+        val reqs = mutableListOf<HttpRequestData>()
+        api(reqs).fetchTripDetails("BKK_T1", "20261109")
+        api(reqs).fetchTripDetails("BKK_T1")
+        val (dated, undated) = reqs.map(::body)
+        assertEquals(
+            VectraJson.parseToJsonElement(
+                """{"endpoint":"trip-details","params":{"tripId":"BKK_T1","includeSchedule":true,"includeStatus":true}}""",
+            ),
+            undated,
+        )
+        assertEquals(
+            VectraJson.parseToJsonElement(
+                """{"endpoint":"trip-details","params":{"tripId":"BKK_T1","includeSchedule":true,"includeStatus":true,"date":"20261109"}}""",
+            ),
+            dated,
+        )
     } }
 
     private fun apiAnswering(status: HttpStatusCode = HttpStatusCode.OK, requests: MutableList<HttpRequestData> = mutableListOf(), answer: (HttpRequestData) -> String): FutarApi {

@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.network.VectraJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -283,6 +284,32 @@ class TransitUtilsTest {
         assertEquals("TRIP_VIA_1", arrivals[0].tripId)
         assertEquals("Salgótarjáni utca ► Sörgyár", arrivals[0].headSign)
         assertEquals("Sörgyár", arrivals[0].tripHeadsign)
+    }
+
+    /** A last metro after midnight belongs to the previous service day; its trip-details must ask for that day. */
+    @Test fun arrivalsCarryTheTripsServiceDate() {
+        val json = """
+            {"currentTime":$now,"status":"OK","data":{
+              "entry":{"stopId":"BKK_F1","stopTimes":[
+                {"stopId":"BKK_F1","tripId":"T_LATE","stopHeadsign":"Örs vezér tere","predictedArrivalTime":$futureSec,"serviceDate":"20261109"},
+                {"stopId":"BKK_F1","tripId":"T_NUM","stopHeadsign":"Örs vezér tere","predictedArrivalTime":${futureSec + 60},"serviceDate":20261110}
+              ]},
+              "references":{"trips":{"T_LATE":{"routeId":"BKK_5200"},"T_NUM":{"routeId":"BKK_5200"}}}}}
+        """.trimIndent()
+        val res = VectraJson.decodeFromString(FutarArrivalsResponse.serializer(), json)
+        val arrivals = parseStopArrivals(res, "BKK_5200", now = now)
+        assertEquals(listOf("20261109", "20261110"), arrivals.map { it.serviceDate })
+        val boards = parseAllNearbyBoards(res, null)
+        assertEquals(listOf("20261109", "20261110"), boards.single().arrivals.map { it.serviceDate })
+        assertEquals(TripDetailsKey("T_LATE", "20261109"), tripDetailsKey("T_LATE", arrivals[0].serviceDate))
+    }
+
+    @Test fun aTripDetailsKeyDropsAnUnusableServiceDate() {
+        assertEquals(TripDetailsKey("T1"), tripDetailsKey("T1", null))
+        assertEquals(TripDetailsKey("T1"), tripDetailsKey("T1", "1762646400000"))
+        assertEquals(TripDetailsKey("T1"), tripDetailsKey("T1", "2026-11-09"))
+        assertNull(tripDetailsKey("", "20261109"))
+        assertNull(tripDetailsKey(null, "20261109"))
     }
 
     // ---- multi-stop trackers ----

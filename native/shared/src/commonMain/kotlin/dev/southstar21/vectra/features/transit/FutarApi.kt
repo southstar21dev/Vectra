@@ -29,8 +29,9 @@ interface FutarEnvelope {
 }
 
 /**
- * Stop-times cap for chained trip planning. 200 is the ceiling Futár accepts
- * and covers 60–90+ min even at Deák tér.
+ * Stop-times cap every arrivals request asks for. 200 is the ceiling Futár accepts
+ * and covers 60–90+ min even at Deák tér; without it Futár stops at 60, which at a
+ * station-level stop id is only minutes of metro and tram traffic.
  */
 const val DeepArrivalsLimit = 200
 
@@ -163,7 +164,8 @@ class FutarApi(private val pb: PocketBaseClient) {
             "minutesBefore" to 0,
             "minutesAfter" to minutesAfter,
         )
-        if (limit != null && limit > 0) params["limit"] = limit
+        // An explicit cap even for shallow polls: Futár's default (60) truncates big interchanges.
+        params["limit"] = limit?.takeIf { it > 0 } ?: DeepArrivalsLimit
         return proxy("arrivals-and-departures-for-stop", params)
     }
 
@@ -222,8 +224,15 @@ class FutarApi(private val pb: PocketBaseClient) {
     suspend fun fetchVehiclesForRoute(routeId: String): FutarVehiclesForRouteResponse =
         proxy("vehicles-for-route", mapOf("routeId" to routeId))
 
-    suspend fun fetchTripDetails(tripId: String): FutarTripDetailsResponse =
-        proxy("trip-details", mapOf("tripId" to tripId, "includeSchedule" to true, "includeStatus" to true))
+    /**
+     * Without a service date Futár resolves the trip against today, so a trip from the previous
+     * service day (past midnight, GTFS times over 24:00) would 404 or come back a day ahead.
+     */
+    suspend fun fetchTripDetails(tripId: String, serviceDate: String? = null): FutarTripDetailsResponse {
+        val params = mutableMapOf<String, Any>("tripId" to tripId, "includeSchedule" to true, "includeStatus" to true)
+        if (!serviceDate.isNullOrEmpty()) params["date"] = serviceDate
+        return proxy("trip-details", params)
+    }
 
     /** Route-level stop list + per-direction geometry. */
     suspend fun fetchRouteDetails(routeId: String): FutarRouteDetailsResponse =
