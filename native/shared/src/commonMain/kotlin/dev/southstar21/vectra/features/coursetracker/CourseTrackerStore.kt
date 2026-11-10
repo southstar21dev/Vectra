@@ -89,11 +89,13 @@ fun commitTracker(trackers: Map<String, CourseTracker>, key: String, tracker: Co
     return next
 }
 
-/** Get-or-create by an already-canonical key (the modal's string-key operations). */
-fun getTrackerOrCreateByKey(trackers: Map<String, CourseTracker>, courseKey: String): Pair<String, CourseTracker> {
-    val key = courseKey.ifEmpty { "unknown" }
-    trackers[key]?.let { return key to it }
-    return key to createDefaultTracker(courseName = key).copy(courseKey = key)
+/**
+ * [base] plus every tracker that [live] changed after [before] was read: an edit made while
+ * a sync was busy with the network. The newest `updatedAt` wins, as in [mergeTrackerData].
+ */
+fun withEditsSince(before: CourseTrackerData, live: CourseTrackerData, base: CourseTrackerData): CourseTrackerData {
+    val edited = live.trackers.filter { (key, tracker) -> before.trackers[key] !== tracker }
+    return if (edited.isEmpty()) base else mergeTrackerData(CourseTrackerData(1, edited), base)
 }
 
 /** Mark the session identified by [identifier] (a session id or a date). */
@@ -169,42 +171,55 @@ fun applyUpsertTracker(data: CourseTrackerData, tracker: CourseTracker, now: Str
     return data.copy(trackers = commitTracker(data.trackers, canonicalKey, cleaned, tracker.courseKey.takeIf { it != canonicalKey }))
 }
 
-/** addAttendanceSession */
-fun applyAddSession(data: CourseTrackerData, courseKey: String, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
-    val (key, tracker) = getTrackerOrCreateByKey(data.trackers, courseKey)
-    val next = tracker.copy(
-        attendance = tracker.attendance.copy(sessions = deduplicateSessions(tracker.attendance.sessions + session)),
-        updatedAt = now,
-    )
-    return data.copy(trackers = LinkedHashMap(data.trackers).apply { put(key, next) })
+/**
+ * Writes to the tracker the Course Hub shows: the canonical key, else a legacy-keyed tracker
+ * (moved to the canonical key), else a new one when [create]. Without [create] a course with
+ * no tracker is left alone.
+ */
+private fun CourseTrackerData.withTracker(
+    identity: CourseIdentity,
+    now: String,
+    create: Boolean = true,
+    change: (CourseTracker) -> CourseTracker,
+): CourseTrackerData {
+    val canonicalKey = resolveCourseKey(identity)
+    val found = if (create) getOrCreateTrackerFromStore(trackers, canonicalKey, identity) else findTrackerInStore(trackers, canonicalKey, identity)
+    val tracker = found.tracker ?: return this
+    val next = change(tracker).copy(courseKey = found.key, updatedAt = now)
+    return copy(trackers = commitTracker(trackers, found.key, next, found.legacyKey))
 }
+
+/** addAttendanceSession */
+fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =
+    data.withTracker(identity, now) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(it.attendance.sessions + session))) }
 
 /** removeAttendanceSession: also tombstones the slot so the reconciler never regenerates it. */
-fun applyRemoveSession(data: CourseTrackerData, courseKey: String, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
-    val found = data.trackers[courseKey] ?: return data
-    val next = found.copy(
-        attendance = found.attendance.copy(
-            sessions = found.attendance.sessions.filter { it.id != session.id },
-            removedSessionKeys = (found.attendance.removedSessionKeys + sessionSlotKey(session)).distinct(),
-        ),
-        updatedAt = now,
-    )
-    return data.copy(trackers = LinkedHashMap(data.trackers).apply { put(courseKey, next) })
-}
+fun applyRemoveSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =
+    data.withTracker(identity, now, create = false) {
+        it.copy(
+            attendance = it.attendance.copy(
+                sessions = it.attendance.sessions.filter { s -> s.id != session.id },
+                removedSessionKeys = (it.attendance.removedSessionKeys + sessionSlotKey(session)).distinct(),
+            ),
+        )
+    }
 
 /** restoreAttendanceSession (undo). */
-fun applyRestoreSession(data: CourseTrackerData, courseKey: String, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
-    val found = data.trackers[courseKey] ?: return data
+fun applyRestoreSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
     val slot = sessionSlotKey(session)
-    val next = found.copy(
-        attendance = found.attendance.copy(
-            sessions = deduplicateSessions(found.attendance.sessions + session),
-            removedSessionKeys = found.attendance.removedSessionKeys.filter { it != slot },
-        ),
-        updatedAt = now,
-    )
-    return data.copy(trackers = LinkedHashMap(data.trackers).apply { put(courseKey, next) })
+    return data.withTracker(identity, now, create = false) {
+        it.copy(
+            attendance = it.attendance.copy(
+                sessions = deduplicateSessions(it.attendance.sessions + session),
+                removedSessionKeys = it.attendance.removedSessionKeys.filter { k -> k != slot },
+            ),
+        )
+    }
 }
+
+/** The Course Hub's regenerated sessions for the course. */
+fun applySessions(data: CourseTrackerData, identity: CourseIdentity, sessions: List<AttendanceSession>, now: String = nowIso()) =
+    data.withTracker(identity, now) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(sessions))) }
 
 /** Assessment writes resolve the tracker the way the sheet reads it (canonical, then legacy). */
 fun applyAssessments(
@@ -212,24 +227,14 @@ fun applyAssessments(
     identity: CourseIdentity,
     now: String = nowIso(),
     mutate: (List<AssessmentItem>) -> List<AssessmentItem>,
-): CourseTrackerData {
-    val found = getOrCreateTrackerFromStore(data.trackers, resolveCourseKey(identity), identity)
-    val tracker = found.tracker!!
-    val next = tracker.copy(courseKey = found.key, points = tracker.points.copy(assessments = mutate(tracker.points.assessments)), updatedAt = now)
-    return data.copy(trackers = commitTracker(data.trackers, found.key, next, found.legacyKey))
-}
+): CourseTrackerData = data.withTracker(identity, now) { it.copy(points = it.points.copy(assessments = mutate(it.points.assessments))) }
 
-private fun CourseTrackerData.withTracker(courseKey: String, now: String, change: (CourseTracker) -> CourseTracker): CourseTrackerData {
-    val (key, tracker) = getTrackerOrCreateByKey(trackers, courseKey)
-    return copy(trackers = LinkedHashMap(trackers).apply { put(key, change(tracker).copy(updatedAt = now)) })
-}
-
-fun applyGradingScale(data: CourseTrackerData, courseKey: String, scale: List<GradingScaleTier>, now: String = nowIso()) =
-    data.withTracker(courseKey, now) { it.copy(settingsConfirmed = true, points = it.points.copy(gradingScale = scale)) }
+fun applyGradingScale(data: CourseTrackerData, identity: CourseIdentity, scale: List<GradingScaleTier>, now: String = nowIso()) =
+    data.withTracker(identity, now) { it.copy(settingsConfirmed = true, points = it.points.copy(gradingScale = scale)) }
 
 /** Marks the attendance limits + grading scale as checked against the syllabus. */
-fun applyConfirmSettings(data: CourseTrackerData, courseKey: String, now: String = nowIso()) =
-    data.withTracker(courseKey, now) { it.copy(settingsConfirmed = true) }
+fun applyConfirmSettings(data: CourseTrackerData, identity: CourseIdentity, now: String = nowIso()) =
+    data.withTracker(identity, now) { it.copy(settingsConfirmed = true) }
 
 data class TrackerLimits(
     val maxAbsencesAllowed: Int?,
@@ -238,8 +243,8 @@ data class TrackerLimits(
     val totalPoints: Double? = null,
 )
 
-fun applyLimits(data: CourseTrackerData, courseKey: String, limits: TrackerLimits, now: String = nowIso()) =
-    data.withTracker(courseKey, now) {
+fun applyLimits(data: CourseTrackerData, identity: CourseIdentity, limits: TrackerLimits, now: String = nowIso()) =
+    data.withTracker(identity, now) {
         it.copy(
             settingsConfirmed = true,
             attendance = it.attendance.copy(maxAbsencesAllowed = limits.maxAbsencesAllowed, minAttendancePercent = limits.minAttendancePercent),

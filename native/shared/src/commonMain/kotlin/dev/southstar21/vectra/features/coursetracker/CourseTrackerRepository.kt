@@ -266,8 +266,6 @@ class CourseTrackerRepository(
 
     fun getOrCreateTracker(identity: CourseIdentity): CourseTracker = findOrCreateTracker(_data.value, identity)
 
-    fun upsertTracker(tracker: CourseTracker) = update { applyUpsertTracker(it, tracker) }
-
     fun setAttendanceStatus(
         identity: CourseIdentity,
         identifier: String,
@@ -278,9 +276,12 @@ class CourseTrackerRepository(
         sessionType: SessionType? = null,
     ) = update { applySetAttendanceStatus(it, identity, identifier, status, startTime, endTime, title, sessionType) }
 
-    fun addAttendanceSession(courseKey: String, session: AttendanceSession) = update { applyAddSession(it, courseKey, session) }
-    fun removeAttendanceSession(courseKey: String, session: AttendanceSession) = update { applyRemoveSession(it, courseKey, session) }
-    fun restoreAttendanceSession(courseKey: String, session: AttendanceSession) = update { applyRestoreSession(it, courseKey, session) }
+    fun addAttendanceSession(identity: CourseIdentity, session: AttendanceSession) = update { applyAddSession(it, identity, session) }
+    fun removeAttendanceSession(identity: CourseIdentity, session: AttendanceSession) = update { applyRemoveSession(it, identity, session) }
+    fun restoreAttendanceSession(identity: CourseIdentity, session: AttendanceSession) = update { applyRestoreSession(it, identity, session) }
+
+    /** The Course Hub's sessions regenerated from the timetable. */
+    fun replaceSessions(identity: CourseIdentity, sessions: List<AttendanceSession>) = update { applySessions(it, identity, sessions) }
 
     fun addAssessment(identity: CourseIdentity, item: AssessmentItem) = update { d -> applyAssessments(d, identity) { it + item } }
 
@@ -289,9 +290,9 @@ class CourseTrackerRepository(
 
     fun removeAssessment(identity: CourseIdentity, itemId: String) = update { d -> applyAssessments(d, identity) { list -> list.filter { it.id != itemId } } }
 
-    fun updateGradingScale(courseKey: String, scale: List<GradingScaleTier>) = update { applyGradingScale(it, courseKey, scale) }
-    fun updateLimits(courseKey: String, limits: TrackerLimits) = update { applyLimits(it, courseKey, limits) }
-    fun confirmTrackerSettings(courseKey: String) = update { applyConfirmSettings(it, courseKey) }
+    fun updateGradingScale(identity: CourseIdentity, scale: List<GradingScaleTier>) = update { applyGradingScale(it, identity, scale) }
+    fun updateLimits(identity: CourseIdentity, limits: TrackerLimits) = update { applyLimits(it, identity, limits) }
+    fun confirmTrackerSettings(identity: CourseIdentity) = update { applyConfirmSettings(it, identity) }
 
     /** Whether the class at [dateStr]/[startTime] was marked "No class" (dashboard hides it). */
     fun isSessionHoliday(courseName: String, courseCode: String?, semester: String?, dateStr: String?, startTime: String?): Boolean =
@@ -302,26 +303,24 @@ class CourseTrackerRepository(
     /**
      * syncCourseTrackersFromScheduleEvents: after a Neptun/CSV sync, populate
      * every course's sessions. Starts from this account's cache (never the
-     * anonymous one) merged with the cloud copy; persists and uploads only
-     * what changed.
+     * anonymous one) merged with the cloud copy, plus whatever was edited on
+     * screen while the cloud was read; persists and uploads only what changed.
      */
     suspend fun syncFromScheduleEvents(events: List<ScheduleEvent>): CourseTrackerData {
         val uid = userId
-        val local = readCache(uid) ?: createEmptyTrackerData()
-        var existing = local
-        if (uid != null) {
-            try {
-                val cloudData = readCloud(uid)
-                gate.markReadable(uid)
-                if (cloudData != null) existing = mergeTrackerData(local, cloudData)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
-                // Upload stays gated; local data is still reconciled.
+        val before = _data.value
+        val existing = readForScheduleSync(uid)
+        var base = existing
+        var result = reconcileTrackersWithSchedule(existing, events)
+        if (userId == uid) {
+            // Reconciled again against the live data at assignment, so a mark made during the cloud read is kept.
+            _data.update { live ->
+                base = withEditsSince(before, live, existing)
+                result = if (base === existing) result else reconcileTrackersWithSchedule(base, events)
+                if (result.data === base) live else result.data
             }
         }
-        val result = reconcileTrackersWithSchedule(existing, events)
-        if (result.data === existing) return existing
+        if (result.data === base) return base
         writeCache(result.data, uid)
         if (uid != null && result.changed) {
             try {
@@ -331,8 +330,22 @@ class CourseTrackerRepository(
             } catch (_: Throwable) {
             }
         }
-        if (userId == uid) _data.value = result.data
         return result.data
+    }
+
+    /** This account's cache merged with the cloud copy; a failed read leaves uploads gated. */
+    private suspend fun readForScheduleSync(uid: String?): CourseTrackerData {
+        val local = readCache(uid) ?: createEmptyTrackerData()
+        if (uid == null) return local
+        return try {
+            val cloudData = readCloud(uid)
+            gate.markReadable(uid)
+            if (cloudData != null) mergeTrackerData(local, cloudData) else local
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            local
+        }
     }
 
     companion object {

@@ -6,7 +6,6 @@ import androidx.compose.runtime.getValue
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
-import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.schedule.AttendanceStatus as CardStatus
 import dev.southstar21.vectra.features.schedule.normalizeTime
 
@@ -70,13 +69,10 @@ class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : Sched
 }
 
 /** After a Neptun sync, refresh the tracker blob and reconcile it against the new schedule. */
-class CourseTrackerScheduleSync(
-    private val tracker: Lazy<CourseTrackerRepository>,
-    private val schedule: Lazy<ScheduleRepository>,
-) : NeptunSyncListener {
-    override suspend fun onNeptunEventsPersisted() {
+class CourseTrackerScheduleSync(private val tracker: Lazy<CourseTrackerRepository>) : NeptunSyncListener {
+    override suspend fun onNeptunEventsPersisted(events: List<ScheduleEvent>) {
         val repo = tracker.value
         repo.refresh()
-        repo.syncFromScheduleEvents(schedule.value.events.value)
+        repo.syncFromScheduleEvents(events)
     }
 }

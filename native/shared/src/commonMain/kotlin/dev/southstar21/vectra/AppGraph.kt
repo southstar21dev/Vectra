@@ -243,10 +243,10 @@ interface AppGraph {
     fun provideCourseTrackerHooks(tracker: Lazy<CourseTrackerRepository>): ScheduleCourseTrackerHooks =
         CourseTrackerScheduleHooks(tracker)
 
-    /** Lazy both ways: the schedule needs this at construction, and this reads the schedule back. */
+    /** Lazy: the schedule needs this at construction, before the tracker exists. */
     @Provides
-    fun provideNeptunSyncListener(tracker: Lazy<CourseTrackerRepository>, schedule: Lazy<ScheduleRepository>): NeptunSyncListener =
-        CourseTrackerScheduleSync(tracker, schedule)
+    fun provideNeptunSyncListener(tracker: Lazy<CourseTrackerRepository>): NeptunSyncListener =
+        CourseTrackerScheduleSync(tracker)
 
     @SingleIn(AppScope::class)
     @Provides

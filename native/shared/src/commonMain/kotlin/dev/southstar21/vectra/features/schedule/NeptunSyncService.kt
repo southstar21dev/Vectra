@@ -64,14 +64,28 @@ fun ParsedIcsEvent.toSyncEvent() = NeptunSyncEvent(
     color.ifEmpty { "#3B82F6" }, semester, semesterStart?.ifEmpty { null }, semesterEnd?.ifEmpty { null }, eventType.ifEmpty { "class" },
 )
 
+/** As the class list will show it once refetched (it has no row id yet). */
+internal fun NeptunSyncEvent.toScheduleEvent(owner: String) = ScheduleEvent(
+    id = "", userId = owner, courseName = courseName, courseCode = courseCode, instructor = instructor, location = location,
+    dayOfWeek = dayOfWeek, startTime = startTime, endTime = endTime, color = color, semester = semester,
+    semesterStart = semesterStart, semesterEnd = semesterEnd, eventType = eventType, source = "neptun",
+)
+
+/**
+ * Told after a Neptun sync or import persisted its events, with every class as it now stands
+ * (the new Neptun rows and the manual ones). Failures never fail the sync.
+ */
+fun interface NeptunSyncListener {
+    suspend fun onNeptunEventsPersisted(events: List<ScheduleEvent>)
+}
+
+/** Another account signed in while a Neptun sync or import ran; it stops before touching that account. */
+internal class AccountChangedException : IllegalStateException("You switched accounts during the Neptun sync. Please try again.")
+
 /**
  * Neptun calendar sync: fetch the ICS feed through the proxy, parse it, replace the stored
  * classes. Everything downstream hears about it through [onScheduleReplaced].
  */
-/** Told after a Neptun sync or import persisted its events. Failures never fail the sync. */
-fun interface NeptunSyncListener {
-    suspend fun onNeptunEventsPersisted()
-}
 
 internal class NeptunSyncService(
     private val pb: PocketBaseClient,
@@ -143,9 +157,17 @@ internal class NeptunSyncService(
         return selectSyncSemester(events.map { SemesterTaggedEvent(it.semester, it.semesterEnd) }, at, stored)
     }
 
-    /** persistNeptunEvents: encrypt, then the atomic server-side replace. */
-    suspend fun persistNeptunEvents(events: List<NeptunSyncEvent>) {
-        session.requireUserId()
+    /** Throws when [owner] is no longer the signed-in account. */
+    private fun requireOwner(owner: String) {
+        if (userId != owner) throw AccountChangedException()
+    }
+
+    /**
+     * persistNeptunEvents: encrypt, then the atomic server-side replace. [owner] is the account the
+     * events belong to; the replace goes out with whoever is signed in, so it is checked again just before.
+     */
+    suspend fun persistNeptunEvents(events: List<NeptunSyncEvent>, owner: String = session.requireUserId()) {
+        requireOwner(owner)
         val encrypted = coroutineScope {
             events.map { e ->
                 async {
@@ -162,6 +184,7 @@ internal class NeptunSyncService(
                 }
             }.awaitAll()
         }
+        requireOwner(owner)
         pb.send("/api/vectra/neptun/replace", HttpMethod.Post, buildJsonObject { put("events", JsonArray(encrypted)) })
     }
 
@@ -174,9 +197,17 @@ internal class NeptunSyncService(
         }
     }
 
-    private suspend fun notifyListener() {
+    /**
+     * Hands the listener the classes as they are after the replace: refetched (and shown), or
+     * when that fails the manual classes on screen plus the rows just persisted. The list on
+     * screen is still the pre-sync one, which on a first import is empty.
+     */
+    private suspend fun notifyListener(owner: String, persisted: List<NeptunSyncEvent>) {
         try {
-            listener.onNeptunEventsPersisted()
+            val fresh = runSuspendCatching { classes.fetchEventsFromCloud(owner) }.getOrNull()
+            requireOwner(owner)
+            if (fresh != null) classes.publish(fresh)
+            listener.onNeptunEventsPersisted(fresh ?: (classes.events.value.filter { it.source != "neptun" } + persisted.map { it.toScheduleEvent(owner) }))
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
@@ -196,8 +227,10 @@ internal class NeptunSyncService(
 
     /** Import the import wizard's confirmed preview. */
     suspend fun importNeptunEvents(events: List<NeptunSyncEvent>) {
-        persistNeptunEvents(events)
-        notifyListener()
+        val owner = session.requireUserId()
+        persistNeptunEvents(events, owner)
+        notifyListener(owner, events)
+        requireOwner(owner)
         stampLastSync(Clock.System.now().toEpochMilliseconds())
         onScheduleReplaced()
     }
@@ -216,13 +249,16 @@ internal class NeptunSyncService(
         _neptunError.value = null
         writeStoredSyncError(null)
         return try {
+            // The fetch can take a minute and a half: pin the account it was started for.
+            val owner = session.requireUserId()
             val text = fetchNeptunIcs(url)
             val result = parseIcs(text)
             if (result.valid.isEmpty()) error("No valid class events found in calendar feed.")
             val semester = pickNeptunSyncSemester(result.valid) ?: error("No class events found for the current or upcoming semester.")
             val clean = result.valid.filter { it.semester == semester }.map { it.toSyncEvent() }
-            persistNeptunEvents(clean)
-            notifyListener()
+            persistNeptunEvents(clean, owner)
+            notifyListener(owner, clean)
+            requireOwner(owner)
             val nowMs = Clock.System.now().toEpochMilliseconds()
             // Only successful manual syncs consume the rate-limit quota.
             if (!isAutoSync) recordManualSync(nowMs)
@@ -238,6 +274,10 @@ internal class NeptunSyncService(
             semester
         } catch (e: CancellationException) {
             throw e
+        } catch (_: AccountChangedException) {
+            // The account signed in now never asked for this sync; it reports nothing.
+            _neptunStatus.value = NeptunSyncStatus.Idle
+            null
         } catch (e: Throwable) {
             val msg = e.message?.takeIf { it.isNotBlank() } ?: "Failed to sync with Neptun calendar."
             _neptunStatus.value = NeptunSyncStatus.Error

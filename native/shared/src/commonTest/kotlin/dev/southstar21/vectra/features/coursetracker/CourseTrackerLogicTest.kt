@@ -615,14 +615,64 @@ class CourseTrackerStoreTest {
     }
 
     @Test fun removeAndRestoreSessions() {
-        val t = createDefaultTracker("Algebra", "ALG101").let { it.copy(attendance = it.attendance.copy(sessions = listOf(session("x", "2026-09-07", AttendanceStatus.Absent, startTime = "08:00")))) }
-        val data = CourseTrackerData(1, mapOf(t.courseKey to t))
-        val removed = applyRemoveSession(data, t.courseKey, t.attendance.sessions[0])
-        assertTrue(removed.trackers.getValue(t.courseKey).attendance.sessions.isEmpty())
-        assertEquals(listOf("2026-09-07_08:00_lecture"), removed.trackers.getValue(t.courseKey).attendance.removedSessionKeys)
-        val restored = applyRestoreSession(removed, t.courseKey, t.attendance.sessions[0])
-        assertEquals(1, restored.trackers.getValue(t.courseKey).attendance.sessions.size)
-        assertTrue(restored.trackers.getValue(t.courseKey).attendance.removedSessionKeys.isEmpty())
+        val identity = CourseIdentity("ALG101", "Algebra")
+        val key = resolveCourseKey(identity)
+        val t = createDefaultTracker("Algebra", "ALG101").let {
+            it.copy(courseKey = key, attendance = it.attendance.copy(sessions = listOf(session("x", "2026-09-07", AttendanceStatus.Absent, startTime = "08:00"))))
+        }
+        val data = CourseTrackerData(1, mapOf(key to t))
+        val removed = applyRemoveSession(data, identity, t.attendance.sessions[0])
+        assertTrue(removed.trackers.getValue(key).attendance.sessions.isEmpty())
+        assertEquals(listOf("2026-09-07_08:00_lecture"), removed.trackers.getValue(key).attendance.removedSessionKeys)
+        val restored = applyRestoreSession(removed, identity, t.attendance.sessions[0])
+        assertEquals(1, restored.trackers.getValue(key).attendance.sessions.size)
+        assertTrue(restored.trackers.getValue(key).attendance.removedSessionKeys.isEmpty())
+    }
+
+    // ---- 04 #10: Course Hub writes on a legacy-keyed tracker -------------------------
+
+    private fun legacyTracker(): CourseTracker = createDefaultTracker("Business Communication Intensive", "X5VX18SUBM01M-G10").let {
+        it.copy(
+            courseKey = "x5vx18subm01m2026271",
+            attendance = it.attendance.copy(sessions = listOf(session("s-legacy", "2026-09-07", AttendanceStatus.Present, "Week 1", SessionType.Seminar, "08:00"))),
+            points = it.points.copy(assessments = listOf(AssessmentItem("q", "Quiz", 8.0, 10.0))),
+        )
+    }
+
+    private fun assertMovedToCanonicalKey(legacy: CourseTracker, data: CourseTrackerData): CourseTracker {
+        val key = resolveCourseKey(Intensive)
+        assertEquals(setOf(key), data.trackers.keys, "the legacy tracker moves; no blank tracker shadows it")
+        val moved = data.trackers.getValue(key)
+        assertEquals(key, moved.courseKey)
+        assertEquals(legacy.courseName, moved.courseName)
+        assertEquals(listOf("Quiz"), moved.points.assessments.map { it.name })
+        return moved
+    }
+
+    @Test fun hubSettingsLandOnALegacyKeyedTracker() {
+        val legacy = legacyTracker()
+        val data = CourseTrackerData(1, mapOf(legacy.courseKey to legacy))
+        val limited = assertMovedToCanonicalKey(legacy, applyLimits(data, Intensive, TrackerLimits(maxAbsencesAllowed = 2, minAttendancePercent = null)))
+        assertEquals(2, limited.attendance.maxAbsencesAllowed)
+        assertEquals(listOf("s-legacy"), limited.attendance.sessions.map { it.id })
+        val scale = listOf(GradingScaleTier(5, 90.0))
+        assertEquals(scale, assertMovedToCanonicalKey(legacy, applyGradingScale(data, Intensive, scale)).points.gradingScale)
+        assertTrue(assertMovedToCanonicalKey(legacy, applyConfirmSettings(data, Intensive)).settingsConfirmed)
+        val added = session("s-extra", "2026-09-08", AttendanceStatus.Present, "Extra", SessionType.Seminar, "10:00")
+        assertEquals(listOf("s-legacy", "s-extra"), assertMovedToCanonicalKey(legacy, applyAddSession(data, Intensive, added)).attendance.sessions.map { it.id })
+    }
+
+    @Test fun removingASessionWorksOnALegacyKeyedTracker() {
+        val legacy = legacyTracker()
+        val data = CourseTrackerData(1, mapOf(legacy.courseKey to legacy))
+        val removed = assertMovedToCanonicalKey(legacy, applyRemoveSession(data, Intensive, legacy.attendance.sessions[0]))
+        assertTrue(removed.attendance.sessions.isEmpty())
+        assertEquals(listOf(sessionSlotKey(legacy.attendance.sessions[0])), removed.attendance.removedSessionKeys)
+    }
+
+    @Test fun removingASessionOfACourseWithNoTrackerCreatesNone() {
+        val data = createEmptyTrackerData()
+        assertEquals(data, applyRemoveSession(data, Intensive, session("s", "2026-09-07", AttendanceStatus.Present)))
     }
 
     @Test fun sessionHolidayRespectsStartTime() {

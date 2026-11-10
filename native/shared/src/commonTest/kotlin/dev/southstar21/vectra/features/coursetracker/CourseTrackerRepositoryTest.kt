@@ -42,9 +42,12 @@ internal class FakeCloud : TrackerCloud {
     var updates = 0
     val uploads = mutableListOf<String>()
     var fetches = 0
+    /** Runs inside a fetch before it answers: hold it here to act while the read is in flight. */
+    var duringFetch: (suspend () -> Unit)? = null
 
     override suspend fun fetch(userId: String): String? {
         fetches++
+        duringFetch?.invoke()
         fetchError?.let { throw it }
         return row
     }
@@ -221,6 +224,31 @@ class ScheduleReconcilerTest {
         ))
         val sep1 = r.trackers.getValue("cs401_2025-26-1").attendance.sessions.filter { it.date == "2025-09-01" }
         assertEquals(setOf("08:15", "10:15"), sep1.map { it.startTime }.toSet())
+    }
+
+    /** 04 #11: a mark made while the sync reads the cloud survives the sync's result. */
+    @Test fun aMarkMadeDuringTheSyncsCloudReadIsKept() = runTest {
+        val cloud = FakeCloud()
+        val h = harness("user-live", cloud = cloud)
+        runCurrent()
+        h.repo.syncFromScheduleEvents(intensiveEvents())
+        runCurrent()
+        val inFetch = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        cloud.duringFetch = { inFetch.complete(Unit); release.await() }
+        val sync = async { h.repo.syncFromScheduleEvents(intensiveEvents()) }
+        inFetch.await()
+        h.repo.setAttendanceStatus(IntensiveIdentity, "2026-09-07", AttendanceStatus.Present, startTime = "08:00", sessionType = SessionType.Seminar)
+        runCurrent()
+        cloud.duringFetch = null
+        release.complete(Unit)
+        val result = sync.await()
+        runCurrent()
+        val key = resolveCourseKey(IntensiveIdentity)
+        fun status(data: CourseTrackerData?) = data?.trackers?.get(key)?.attendance?.sessions?.first { it.date == "2026-09-07" && it.startTime == "08:00" }?.status
+        assertEquals(AttendanceStatus.Present, status(h.repo.data.value))
+        assertEquals(AttendanceStatus.Present, status(result))
+        assertEquals(AttendanceStatus.Present, status(h.readCache("user-live")))
     }
 
     @Test fun createsTheSingletonRow() = runTest {

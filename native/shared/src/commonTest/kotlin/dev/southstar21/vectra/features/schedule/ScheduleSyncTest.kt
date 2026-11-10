@@ -12,7 +12,13 @@ import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.features.coursetracker.CourseIdentity
+import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
+import dev.southstar21.vectra.features.coursetracker.CourseTrackerScheduleSync
+import dev.southstar21.vectra.features.coursetracker.FakeCloud
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
+import dev.southstar21.vectra.features.coursetracker.PassThroughCipher
+import dev.southstar21.vectra.features.coursetracker.resolveCourseKey
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -53,10 +59,18 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private const val UserId = "user-1"
+private const val OtherUser = "user-2"
 private const val ItemA = "11111111-1111-4111-8111-111111111111"
 private const val ItemB = "22222222-2222-4222-8222-222222222222"
 // A Monday, far enough ahead that the reference date never makes it historic.
 private const val Monday = "2099-03-02"
+
+/** One weekly Neptun class over three Mondays of the 2098/99/2 semester. */
+private val NeptunFeed = listOf(
+    "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", "UID:alg-1",
+    "DTSTART:20990302T100000", "DTEND:20990302T113000", "RRULE:FREQ=WEEKLY;COUNT=3",
+    "SUMMARY:Algebra ( - ALG101-E01) - Dr. Smith - Tanóra", "LOCATION:B.101", "END:VEVENT", "END:VCALENDAR",
+).joinToString("\r\n")
 
 private fun item(id: String = ItemA, title: String = "Work", start: String = "08:00", end: String = "09:00", acks: List<String> = emptyList()) =
     ScheduleItem(id, ScheduleItem.TYPE_SHIFT, title, Monday, start, end, acknowledgedConflictKeys = acks)
@@ -80,6 +94,12 @@ private class FakeBackend {
     @Volatile var listReads = 0
     /** Bodies of class edits (PATCH schedule_events). */
     val eventPatches = mutableListOf<JsonObject>()
+    /** The Neptun feed the proxy serves, and a hook run inside its fetch. */
+    var ics = ""
+    var duringIcsFetch: (suspend () -> Unit)? = null
+    val neptunRows = mutableListOf<JsonObject>()
+    /** The auth token each Neptun replace was sent with. */
+    val neptunReplaces = mutableListOf<String?>()
 
     fun row(item: ScheduleItem, updatedAt: String, rowId: String = "row-${item.id.take(1)}"): JsonObject = JsonObject(
         mapOf(
@@ -109,6 +129,7 @@ private class FakeBackend {
     suspend fun handle(scope: MockRequestHandleScope, req: HttpRequestData): HttpResponseData = with(scope) {
         val path = req.url.encodedPath
         when {
+            isNeptunRoute(req, path) -> neptun(req, path)
             path == "/api/vectra/crypto" -> {
                 val b = body(req)
                 val values = b.getValue("values").jsonArray.map { it.jsonPrimitive.content }
@@ -123,10 +144,31 @@ private class FakeBackend {
             path.startsWith("/api/collections/schedule_events/") ->
                 if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(classRows.toList()) })
             path.startsWith("/api/collections/neptun_schedule_events/") ->
-                if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(list(emptyList()))
+                if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(neptunRows.toList()) })
             path.startsWith("/api/collections/schedule_items/") -> items(req, path.substringAfter("/records").trim('/'))
             else -> error("unexpected $path")
         }
+    }
+
+    private fun isNeptunRoute(req: HttpRequestData, path: String) =
+        req.url.host == "script.google.com" || path.startsWith("/api/vectra/neptun/") || path.startsWith("/api/collections/users/")
+
+    /** The ICS proxy, the Neptun replace route and profile updates (the sync stamps its time there). */
+    private suspend fun MockRequestHandleScope.neptun(req: HttpRequestData, path: String): HttpResponseData = when {
+        req.url.host == "script.google.com" -> {
+            duringIcsFetch?.invoke()
+            json(ics)
+        }
+        path == "/api/vectra/neptun/replace" -> {
+            val events = body(req).getValue("events").jsonArray.mapIndexed { i, e -> JsonObject(e.jsonObject + ("id" to JsonPrimitive("n-$i"))) }
+            lock.withLock {
+                neptunReplaces += req.headers["Authorization"]
+                neptunRows.clear()
+                neptunRows += events
+            }
+            json("{}")
+        }
+        else -> json(JsonObject(body(req) + ("id" to JsonPrimitive(path.substringAfterLast('/')))).toString())
     }
 
     private suspend fun MockRequestHandleScope.items(req: HttpRequestData, rowId: String): HttpResponseData {
@@ -183,12 +225,13 @@ private class Harness(val backend: FakeBackend, online: Boolean = true) {
     val pb = PocketBaseClient(createHttpClient(http), "https://pb.test", store)
     val auth = AuthRepository(pb, store, kv, scope, lazyOf(emptyList()))
     lateinit var repo: ScheduleRepository
+    var neptunListener = NeptunSyncListener { }
 
     /** Signs in with [local] already on the device, as after a restart with a queue pending. */
     suspend fun start(local: ScheduleItemsState = ScheduleItemsState()) {
         kv.set(getScheduleItemsStorageKey(UserId), encodeScheduleItemsState(local))
         store.save(AuthState("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId)))))
-        repo = ScheduleRepository(pb, CryptoClient(pb, scope), kv, connectivity, auth, http, scope, NeptunSyncListener { })
+        repo = ScheduleRepository(pb, CryptoClient(pb, scope), kv, connectivity, auth, http, scope, neptunListener)
         until { repo.localReady.value }
     }
 
@@ -332,6 +375,17 @@ class ScheduleSyncTest {
         assertEquals("v2", stored()?.syncConflict?.serverUpdatedAt)
     }
 
+    /** 04 #12: the server took the update but the reply was lost; the next pass adopts it, no conflict. */
+    @Test fun anUpdateWhoseReplyWasLostIsAdoptedNotAConflict() = scenario { b ->
+        b.seed(item(title = "New"), "v2")
+        start(queuedUpdate(item(title = "New"), "v1"))
+        drained()
+        assertEquals(emptyList(), b.writes)
+        assertNull(stored()?.syncConflict)
+        assertEquals("v2", stored()?.updatedAt)
+        assertEquals(false, stored()?.pendingSync)
+    }
+
     // ---- deletes ---------------------------------------------------------------
 
     @Test fun aDeleteOnTheSameVersionIsApplied() = scenario { b ->
@@ -449,6 +503,113 @@ class ScheduleSyncTest {
         save.await()
         drained()
         assertEquals(setOf("create $ItemA", "create $ItemB"), b.writes.toSet())
+    }
+
+    /** 04 #13: two saves of one item land in tap order, even when the first one's read is slower. */
+    @Test fun twoSavesOfOneItemLandInTheOrderTheyWereMade() = scenario { b ->
+        b.seed(item(title = "Old"), "v1")
+        start(ScheduleItemsState(items = listOf(item(title = "Old").stored(updatedAt = "v1"))))
+        until { b.listReads >= 1 }
+        settle()
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterListRead = { if (held.complete(Unit)) release.await() }
+        val first = scope.async { repo.saveItem(item(title = "One")) }
+        held.await()
+        val second = scope.async { repo.saveItem(item(title = "Two")) }
+        delay(100)
+        assertFalse(second.isCompleted, "the second save waits for the first to be queued")
+        assertTrue(repo.isSavingItem.value)
+        release.complete(Unit)
+        first.await()
+        second.await()
+        drained()
+        assertEquals("Two", b.title(ItemA))
+        assertEquals("Two", stored()?.title)
+        until { !repo.isSavingItem.value }
+    }
+
+    /** 04 #13: a save or delete finishing does not clear "saving" while another is still running. */
+    @Test fun savingStaysOnUntilTheLastSaveEnds() = scenario { b ->
+        start()
+        until { b.listReads >= 1 }
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterListRead = { if (held.complete(Unit)) release.await() }
+        val save = scope.async { repo.saveItem(item()) }
+        held.await()
+        repo.deleteItem(ItemB)
+        delay(50)
+        assertTrue(repo.isSavingItem.value, "the held save of $ItemA is still running")
+        release.complete(Unit)
+        save.await()
+        until { !repo.isSavingItem.value }
+    }
+
+    /** 04 #18: a save that began for one account never lands in the next one's. */
+    @Test fun aSaveStartedBeforeAnAccountSwitchDoesNotLandInTheNewAccount() = scenario { b ->
+        start()
+        until { b.listReads >= 1 }
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterListRead = { if (held.complete(Unit)) release.await() }
+        val save = scope.async { assertFailsWith<IllegalStateException> { repo.saveItem(item()) } }
+        held.await()
+        auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
+        until { repo.itemsState.value.items.isEmpty() && !repo.itemsLoading.value }
+        release.complete(Unit)
+        save.await()
+        settle()
+        assertTrue(parseScheduleItemsState(kv.get(getScheduleItemsStorageKey(OtherUser)))?.items.orEmpty().isEmpty())
+        assertTrue(repo.itemsState.value.items.isEmpty())
+        assertEquals(emptyList(), b.writes)
+    }
+
+    // ---- Neptun ------------------------------------------------------------------------
+
+    /** 04 #7: the first import hands the listener the new classes, not the empty pre-sync list. */
+    @Test fun aNeptunSyncTellsTheListenerTheNewClasses() = scenario { b ->
+        b.ics = NeptunFeed
+        val heard = CompletableDeferred<List<ScheduleEvent>>()
+        neptunListener = NeptunSyncListener { heard.complete(it) }
+        start()
+        assertTrue(repo.events.value.isEmpty())
+        assertEquals("2098/99/2", repo.runSync("https://neptun.example/feed.ics"))
+        val events = heard.await()
+        assertEquals(listOf("Algebra"), events.map { it.courseName }.distinct())
+        assertEquals("B.101", events.first().location)
+    }
+
+    /** 04 #7: a first Neptun import creates the course trackers. */
+    @Test fun aFirstNeptunImportCreatesTheCourseTrackers() = scenario { b ->
+        b.ics = NeptunFeed
+        val tracker = CourseTrackerRepository(FakeCloud(), PassThroughCipher, kv, scope, MutableStateFlow<String?>(UserId), isOnline = { true })
+        neptunListener = CourseTrackerScheduleSync(lazyOf(tracker))
+        start()
+        repo.runSync("https://neptun.example/feed.ics")
+        val key = resolveCourseKey(CourseIdentity("ALG101-E01", "Algebra", "2098/99/2"))
+        val created = assertNotNull(tracker.data.value.trackers[key], tracker.data.value.trackers.keys.toString())
+        assertEquals(listOf("2099-03-02", "2099-03-09", "2099-03-16"), created.attendance.sessions.map { it.date })
+    }
+
+    /** 04 #18: a sync whose feed arrives after another account signed in replaces nothing. */
+    @Test fun aNeptunSyncDoesNotReplaceTheNextAccountsClasses() = scenario { b ->
+        b.ics = NeptunFeed
+        val inFetch = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.duringIcsFetch = { inFetch.complete(Unit); release.await() }
+        var notified = false
+        neptunListener = NeptunSyncListener { notified = true }
+        start()
+        val sync = scope.async { repo.runSync("https://neptun.example/feed.ics") }
+        inFetch.await()
+        auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
+        until { auth.session.value?.userId == OtherUser }
+        release.complete(Unit)
+        assertNull(sync.await())
+        assertEquals(emptyList(), b.neptunReplaces)
+        assertFalse(notified)
+        assertEquals(NeptunSyncStatus.Idle, repo.neptunSyncStatus.value)
     }
 
     // ---- failure, offline, sign-out ------------------------------------------------
