@@ -40,6 +40,33 @@ describe('course tracker cloud write gate', () => {
     expect(ran).toEqual(['first', 'third']);
   });
 
+  it('hands the upload that runs the dropKeys of every upload it collapsed (05 #7)', async () => {
+    const ran: Array<[string, string[]]> = [];
+    let release!: () => void;
+    const first = enqueueCloudSave('u1', (drop) => new Promise<void>((resolve) => {
+      ran.push(['first', drop]);
+      release = resolve;
+    }), ['a']);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const neptun = enqueueCloudSave('u1', async (drop) => { ran.push(['neptun', drop]); }, ['legacy', 'exam']);
+    const plain = enqueueCloudSave('u1', async (drop) => { ran.push(['plain', drop]); });
+    release();
+    await Promise.all([first, neptun, plain]);
+    expect(ran).toEqual([['first', ['a']], ['plain', ['legacy', 'exam']]]);
+  });
+
+  it('does not carry dropKeys over to another user', async () => {
+    const ran: Array<[string, string[]]> = [];
+    let release!: () => void;
+    const first = enqueueCloudSave('u1', () => new Promise<void>((resolve) => { release = resolve; }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const queued = enqueueCloudSave('u1', async (drop) => { ran.push(['u1', drop]); }, ['legacy']);
+    const other = enqueueCloudSave('u2', async (drop) => { ran.push(['u2', drop]); });
+    release();
+    await Promise.all([first, queued, other]);
+    expect(ran).toEqual([['u2', []]]);
+  });
+
   it('keeps the queue usable after a failed upload', async () => {
     await expect(enqueueCloudSave('u1', async () => { throw new Error('boom'); })).rejects.toThrow('boom');
     const ran: string[] = [];
