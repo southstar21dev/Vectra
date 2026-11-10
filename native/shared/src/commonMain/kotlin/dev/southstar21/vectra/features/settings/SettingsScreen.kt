@@ -152,7 +152,7 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
             list.isNotEmpty() -> {
                 list.forEach { p ->
                     SettingsRow(RemixIcons.FingerprintLine, CyanBg, CyanText, p.friendlyName ?: "Passkey", "Added ${formatDDMMYYYY(p.createdAt.take(10))}") {
-                        VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting) {
+                        VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting, contentDescription = "Delete passkey ${p.friendlyName ?: ""}".trim()) {
                             if (deleting) InlineLoader(tint = c.textMuted) else VIcon(RemixIcons.DeleteBinLine, tint = c.textMuted)
                         }
                     }

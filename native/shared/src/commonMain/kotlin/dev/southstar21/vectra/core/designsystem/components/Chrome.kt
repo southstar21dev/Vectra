@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -100,7 +101,21 @@ private fun edgeTop(): Dp =
 
 @Composable
 private fun edgeBottom(): Dp =
-    if (LocalSurfaceEdgeToEdge.current) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 12.dp else 12.dp
+    if (LocalSurfaceEdgeToEdge.current) {
+        bottomEdgePadding(
+            navigationBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            keyboard = WindowInsets.ime.asPaddingValues().calculateBottomPadding(),
+        )
+    } else {
+        12.dp
+    }
+
+/**
+ * Padding under a [BottomBar] on an edge-to-edge screen. [ScreenColumn] already lifts the bar
+ * above the keyboard, and the keyboard covers the navigation bar, so only the part of the
+ * navigation bar the keyboard leaves uncovered still needs clearing.
+ */
+internal fun bottomEdgePadding(navigationBar: Dp, keyboard: Dp): Dp = (navigationBar - keyboard).coerceAtLeast(0.dp) + 12.dp
 
 /**
  * Top bar. A back arrow sits on the left; a close X sits on the right, and any trailing
