@@ -13,6 +13,15 @@ updates:
         update-types:
           - minor
           - patch
+  # semantic-release for release.yml (installed with npm ci from this lockfile).
+  - package-ecosystem: npm
+    directory: /.github/release-tools
+    target-branch: dev
+    schedule:
+      interval: weekly
+    groups:
+      release-tools:
+        patterns: ["*"]
   - package-ecosystem: gomod
     directory: /backend
     target-branch: dev
