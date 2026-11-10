@@ -62,6 +62,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.isValidLatLon
 import dev.southstar21.vectra.core.maps.decodePolyline
+import dev.southstar21.vectra.core.time.formatBudapestHm
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
 import kotlin.math.ceil
@@ -80,6 +81,47 @@ private val QueryState<*>.isSuccess: Boolean get() = data != null && !isError
 
 /** A background fetch with data already present. */
 private val QueryState<*>.isRefetching: Boolean get() = isFetching && !isLoading
+
+/**
+ * How far the live tracker's last snapshots can be trusted. Offline, or with no fresh data for
+ * [ArrivalsStaleMs], the countdowns stop at the snapshot's time instead of running down to "NOW".
+ */
+internal data class LiveFreshness(
+    /** The clock countdowns run against: the arrivals snapshot's time once it is stale. */
+    val countdownNow: Long,
+    val arrivalsStale: Boolean,
+    val vehiclesStale: Boolean,
+    val offline: Boolean,
+)
+
+internal fun liveFreshness(arrivalsUpdatedAt: Long, vehiclesUpdatedAt: Long, now: Long, offline: Boolean): LiveFreshness {
+    // Nothing loaded yet has nothing to freeze.
+    val arrivalsStale = arrivalsUpdatedAt > 0 && isArrivalsStale(arrivalsUpdatedAt, now, offline)
+    return LiveFreshness(
+        countdownNow = if (arrivalsStale) arrivalsStaleNow(arrivalsUpdatedAt, now, offline) else now,
+        arrivalsStale = arrivalsStale,
+        vehiclesStale = vehiclesUpdatedAt > 0 && isArrivalsStale(vehiclesUpdatedAt, now, offline),
+        offline = offline,
+    )
+}
+
+/** The note over the map's lower edge, or null for none. */
+internal fun liveMapNotice(f: LiveFreshness, arrivalsUpdatedAt: Long, arrivalsUnavailable: Boolean, noDepartures: Boolean): String? = when {
+    f.arrivalsStale && f.offline -> "Offline · departures as of ${formatBudapestHm(arrivalsUpdatedAt)}"
+    f.arrivalsStale -> "Departure times delayed · as of ${formatBudapestHm(arrivalsUpdatedAt)}"
+    arrivalsUnavailable -> "Departure times unavailable · showing route"
+    noDepartures -> "No upcoming departures right now"
+    else -> null
+}
+
+/** The live-position line under the cards. */
+internal fun liveFooterText(f: LiveFreshness, vehiclesUpdatedAt: Long, loaded: Boolean, refetching: Boolean, secondsToNext: Int?): String = when {
+    f.offline -> "Offline · live position paused"
+    f.vehiclesStale -> "Live position delayed · last update ${formatBudapestHm(vehiclesUpdatedAt)}"
+    !loaded -> "Preparing live position…"
+    refetching -> "Updating live position…"
+    else -> "Next update in ${secondsToNext ?: "—"}s"
+}
 
 /** A trip entry's geometry, or the route-variant stand-in for it. */
 private data class GeoEntry(val stopTimes: List<FutarTripStopTime>, val polyline: FutarPolyline?)
@@ -368,6 +410,9 @@ fun LiveTrackerScreen(repo: TransitRepository, stopPicks: TrackerStopPicks, trac
 
     val noDepartures = arrivalsQuery.isSuccess && arrivals.isEmpty()
     val arrivalsUnavailable = arrivalsQuery.isError
+    // Offline, LiveQuery pauses without an error: without this the countdowns ran down to "NOW".
+    val freshness = liveFreshness(arrivalsQuery.dataUpdatedAt, vehiclesQuery.dataUpdatedAt, now, !rememberOnline(repo.connectivity))
+    val mapNotice = liveMapNotice(freshness, arrivalsQuery.dataUpdatedAt, arrivalsUnavailable, noDepartures)
     val loading = !feedError && directions.isEmpty()
     val routeEmoji = routeTypeMeta(tracker?.routeType).emoji
 
@@ -465,12 +510,12 @@ fun LiveTrackerScreen(repo: TransitRepository, stopPicks: TrackerStopPicks, trac
                                 ),
                             ),
                     )
-                    if (!feedError && (noDepartures || arrivalsUnavailable)) {
+                    if (!feedError && mapNotice != null) {
                         // Clear of the departures card, which overlaps the map's lower 48dp.
                         val pill = CircleShape
                         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp)) {
                             VText(
-                                if (arrivalsUnavailable) "Departure times unavailable · showing route" else "No upcoming departures right now",
+                                mapNotice,
                                 Modifier
                                     .boxShadow(
                                         pill,
@@ -510,7 +555,8 @@ fun LiveTrackerScreen(repo: TransitRepository, stopPicks: TrackerStopPicks, trac
                                             routeId = t.routeId,
                                             routeColor = routeColor,
                                             routeTextColor = t.routeTextColor,
-                                            now = now,
+                                            now = freshness.countdownNow,
+                                            frozen = freshness.arrivalsStale,
                                             accent = if (i == 0) DirectionAccent.Emerald else DirectionAccent.Violet,
                                             lead = i == 0,
                                             frozenStopsLeft = frozenStops[fk],
@@ -580,11 +626,7 @@ fun LiveTrackerScreen(repo: TransitRepository, stopPicks: TrackerStopPicks, trac
                     ) {
                         SpinningRefreshIcon(spinning = vehiclesQuery.isRefetching)
                         VText(
-                            when {
-                                !vehiclesQuery.isSuccess -> "Preparing live position…"
-                                vehiclesQuery.isRefetching -> "Updating live position…"
-                                else -> "Next update in ${secondsToNextUpdate ?: "—"}s"
-                            },
+                            liveFooterText(freshness, vehiclesQuery.dataUpdatedAt, vehiclesQuery.isSuccess, vehiclesQuery.isRefetching, secondsToNextUpdate),
                             style = vtext(TypeScale.Caption),
                             color = c.textMuted,
                         )
