@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.json.JsonObject
@@ -41,11 +43,14 @@ class FutarApiTest {
             transform(state.value).also { state.value = it }
     }
 
+    /** The batch fans out in parallel on Dispatchers.Default; a bare list add could drop a request. */
+    private val recording = Mutex()
+
     private val ok = """{"status":"OK","currentTime":1,"data":{"entry":{"stopId":"x","stopTimes":[]}}}"""
 
     private fun api(requests: MutableList<HttpRequestData>): FutarApi {
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             respond(ok, headers = headersOf(HttpHeaders.ContentType, "application/json"))
         }
         val pb = PocketBaseClient(
@@ -93,7 +98,7 @@ class FutarApiTest {
 
     private fun apiAnswering(status: HttpStatusCode = HttpStatusCode.OK, requests: MutableList<HttpRequestData> = mutableListOf(), answer: (HttpRequestData) -> String): FutarApi {
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             respond(answer(req), status, headersOf(HttpHeaders.ContentType, "application/json"))
         }
         return FutarApi(PocketBaseClient(createHttpClient(HttpClient(engine)), "https://pb.test", AuthStore(KeyValueStore(MemoryDataStore()), PlainSecretCipher)))
@@ -145,7 +150,7 @@ class FutarApiTest {
     @Test fun aServerErrorOnTheBatchStillFallsBack() = runTest { withContext(Dispatchers.Default) {
         val requests = mutableListOf<HttpRequestData>()
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             val batch = body(req)["endpoint"]?.jsonPrimitive?.content == "stop-arrivals"
             respond(if (batch) """{"message":"bad"}""" else ok, if (batch) HttpStatusCode.BadGateway else HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
         }
