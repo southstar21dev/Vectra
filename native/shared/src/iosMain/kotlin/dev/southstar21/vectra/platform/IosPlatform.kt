@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.BlobStore
+import dev.southstar21.vectra.core.data.moveStorage
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.platform.SecretCipher
 import dev.southstar21.vectra.features.transit.CatalogDiskCache
@@ -23,6 +24,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.value
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import okio.Path.Companion.toPath
 import platform.CoreFoundation.CFDataRef
@@ -77,14 +79,37 @@ private fun appDirectory(kind: ULong): String {
     return requireNotNull(dir?.path) { "No app directory $kind" }
 }
 
+private const val PreferencesFile = "vectra.preferences_pb"
+private const val BlobsDir = "vectra-blobs"
+
+/**
+ * Application Support/vectra, excluded from iCloud and Finder backups like Android's data
+ * extraction rules: a restored copy is orphaned on another device, whose Keychain cannot open the
+ * session. Releases up to 1.8.3 kept the same files in Documents; the first call moves them here.
+ */
+private val storageDir: String by lazy {
+    val dir = appDirectory(NSApplicationSupportDirectory) + "/vectra"
+    moveStorage(Path(appDirectory(NSDocumentDirectory)), Path(dir), listOf(PreferencesFile, BlobsDir))
+    SystemFileSystem.createDirectories(Path(dir))
+    excludeFromBackup(dir)
+    dir
+}
+
+/** Set on the directory, so it also covers the files DataStore and BlobStore replace by rename. */
+@OptIn(ExperimentalForeignApi::class)
+private fun excludeFromBackup(path: String) {
+    NSURL.fileURLWithPath(path, isDirectory = true)
+        .setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+}
+
 fun createDataStore(): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(
     // A corrupt file would otherwise throw on every read, crashing each launch until the app is reinstalled.
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
-    produceFile = { (appDirectory(NSDocumentDirectory) + "/vectra.preferences_pb").toPath() },
+    produceFile = { "$storageDir/$PreferencesFile".toPath() },
 )
 
 /** Large values, one file each, next to the preferences file. */
-fun createBlobStore(): BlobStore = BlobStore(Path(appDirectory(NSDocumentDirectory) + "/vectra-blobs"))
+fun createBlobStore(): BlobStore = BlobStore(Path(storageDir, BlobsDir))
 
 /**
  * The transit catalog's offline copy, in Application Support rather than tmp/, which iOS
