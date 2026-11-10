@@ -61,6 +61,13 @@ type Options struct {
 //   - SkippedNoEmail:   an auth.users row with no email; PocketBase's auth
 //     email is required, so the user (and, transitively, its data) is not
 //     imported. This is data not represented, not idempotency.
+//   - SkippedEmailTaken: an auth.users row whose email already belongs to a
+//     different PocketBase account (someone signed up in the app after
+//     cutover). The user is not imported and not merged into that account
+//     (its email was never verified, so it may not be the same person); its
+//     data shows up as unknown-user skips. With Refresh, an already-imported
+//     user whose source email is now taken by another account keeps its
+//     current record and is counted here too.
 //   - SkippedUnknownUser: a row whose user_id has no imported user (e.g. the
 //     email-less users above) — the parent is missing, not idempotency.
 type TableReport struct {
@@ -68,6 +75,7 @@ type TableReport struct {
 	Imported           int
 	SkippedExisting    int
 	SkippedNoEmail     int
+	SkippedEmailTaken  int
 	SkippedUnknownUser int
 }
 
@@ -83,8 +91,8 @@ func (r Report) String() string {
 	for _, t := range r.Tables {
 		fmt.Fprintf(
 			&b,
-			"  %-24s imported=%-6d skipped_existing=%-6d skipped_no_email=%-6d skipped_unknown_user=%-6d\n",
-			t.Table, t.Imported, t.SkippedExisting, t.SkippedNoEmail, t.SkippedUnknownUser,
+			"  %-24s imported=%-6d skipped_existing=%-6d skipped_no_email=%-6d skipped_email_taken=%-6d skipped_unknown_user=%-6d\n",
+			t.Table, t.Imported, t.SkippedExisting, t.SkippedNoEmail, t.SkippedEmailTaken, t.SkippedUnknownUser,
 		)
 	}
 	return b.String()
@@ -199,6 +207,7 @@ func importAll(app core.App, src source, opts Options) (Report, error) {
 		"imported", ur.Imported,
 		"skipped_existing", ur.SkippedExisting,
 		"skipped_no_email", ur.SkippedNoEmail,
+		"skipped_email_taken", ur.SkippedEmailTaken,
 		"skipped_unknown_user", ur.SkippedUnknownUser,
 	)
 
@@ -267,16 +276,44 @@ func importUsers(app core.App, users []UserRow, profiles map[string]ProfileRow, 
 			if err != nil {
 				return fmt.Errorf("lookup user %s: %w", u.ID, err)
 			}
+			// An account other than this user's own (the legacy_id match, if
+			// any) that already holds the source email.
+			holder, err := emailHolder(tx, u.Email)
+			if err != nil {
+				return fmt.Errorf("lookup user %s by email: %w", u.ID, err)
+			}
+			if holder != nil && existing != nil && holder.Id == existing.Id {
+				holder = nil
+			}
+
 			if existing != nil {
 				userMap[u.ID] = existing.Id
 				tr.SkippedExisting++
 				if opts.DryRun || !opts.Refresh {
 					continue
 				}
+				if holder != nil {
+					// Refreshing would move this account onto an email another
+					// account uses now, failing the whole users transaction.
+					app.Logger().Warn("migrate-supabase: not refreshing user whose source email belongs to another account",
+						"legacy_id", u.ID, "record_id", existing.Id, "other_record_id", holder.Id)
+					tr.SkippedEmailTaken++
+					continue
+				}
 				applyUser(existing, u, profiles[u.ID])
 				if err := tx.Save(existing); err != nil {
 					return fmt.Errorf("update user %s: %w", u.ID, err)
 				}
+				continue
+			}
+
+			if holder != nil {
+				// Someone signed up in the app with this email after cutover.
+				// Emails are not verified, so it may not be the same person:
+				// do not attach the Supabase user's data to that account.
+				app.Logger().Warn("migrate-supabase: skipping user whose email belongs to another account",
+					"legacy_id", u.ID, "other_record_id", holder.Id)
+				tr.SkippedEmailTaken++
 				continue
 			}
 
@@ -299,6 +336,19 @@ func importUsers(app core.App, users []UserRow, profiles map[string]ProfileRow, 
 		return nil
 	})
 	return tr, err
+}
+
+// emailHolder returns the users record that holds email (matched the way
+// PocketBase's unique email index matches it), or nil.
+func emailHolder(app core.App, email string) (*core.Record, error) {
+	rec, err := app.FindAuthRecordByEmail("users", email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return rec, nil
 }
 
 // applyUser writes the Supabase user + profile onto a PocketBase users record.
