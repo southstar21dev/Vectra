@@ -1,5 +1,8 @@
 {
   "webcredentials": {
-    "apps": ["3HNYQ2F575.dev.southstar21.vectra"]
+    "apps": [
+      "3HNYQ2F575.dev.southstar21.vectra",
+      "3HNYQ2F575.dev.southstar21.vectra.debug"
+    ]
   }
 }

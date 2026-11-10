@@ -12,5 +12,18 @@
         "33:D6:18:06:91:AF:BC:87:47:D0:66:A2:35:0D:4E:0A:E9:39:65:EC:8D:5E:34:6F:60:43:6A:D8:97:D6:A5:F1"
       ]
     }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.southstar21.vectra.debug",
+      "sha256_cert_fingerprints": [
+        "33:D6:18:06:91:AF:BC:87:47:D0:66:A2:35:0D:4E:0A:E9:39:65:EC:8D:5E:34:6F:60:43:6A:D8:97:D6:A5:F1"
+      ]
+    }
   }
 ]
