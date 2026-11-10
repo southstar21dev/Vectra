@@ -9,9 +9,20 @@
 // client-controlled, so trusting it lets a caller pick a fresh bucket per
 // request. The deployment knows which case it is in, so it says so in the env:
 //
-//	TRUSTED_PROXY=1   behind a reverse proxy that appends the client IP
-//	                  (production and dev on Coolify)
-//	unset / other     the socket address is used and X-Forwarded-For ignored
+//	TRUSTED_PROXY=cloudflare  behind Cloudflare (production and dev): trust
+//	                          CF-Connecting-IP, which Cloudflare always sets
+//	                          to the connecting client and overwrites if the
+//	                          client sent one
+//	TRUSTED_PROXY=1           behind a reverse proxy that appends the client
+//	                          IP and nothing in front of it
+//	unset / other             the socket address is used and both headers
+//	                          ignored
+//
+// Behind Cloudflare, X-Forwarded-For ends with Cloudflare's edge address
+// (Traefik appends the peer it saw), which changes from request to request, so
+// keying on it gives every request a fresh bucket. CF-Connecting-IP can only be
+// forged by a client that bypasses Cloudflare and reaches the origin directly,
+// so the origin should accept Cloudflare's addresses only.
 //
 // The environment always wins over the settings stored in the database (a
 // value saved from the dashboard is replaced on every settings reload).
@@ -28,32 +39,52 @@ import (
 )
 
 const (
-	// EnvVar turns trusted-proxy handling on when set to 1, true or yes.
+	// EnvVar selects the trusted-proxy mode (see the package comment).
 	EnvVar = "TRUSTED_PROXY"
 	// Header is the forwarded-for header Traefik appends to.
 	Header = "X-Forwarded-For"
+	// CloudflareHeader carries the client IP Cloudflare saw.
+	CloudflareHeader = "CF-Connecting-IP"
 )
 
-// Enabled reports whether TRUSTED_PROXY asks for the proxy header to be
-// trusted.
-func Enabled() bool {
+// Mode is how the client IP is found.
+type Mode int
+
+const (
+	// Direct: the socket address; no header is trusted.
+	Direct Mode = iota
+	// ForwardedFor: the right-most X-Forwarded-For entry, appended by the proxy.
+	ForwardedFor
+	// Cloudflare: CF-Connecting-IP.
+	Cloudflare
+)
+
+// CurrentMode reads TRUSTED_PROXY.
+func CurrentMode() Mode {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(EnvVar))) {
 	case "1", "true", "yes":
-		return true
+		return ForwardedFor
+	case "cloudflare", "cf":
+		return Cloudflare
 	default:
-		return false
+		return Direct
 	}
 }
 
-// Apply sets the in-memory trusted-proxy settings: the forwarded-for header
-// when enabled, no header otherwise.
-func Apply(s *core.Settings, enabled bool) {
+// Enabled reports whether TRUSTED_PROXY asks for a proxy header to be trusted.
+func Enabled() bool { return CurrentMode() != Direct }
+
+// Apply sets the in-memory trusted-proxy settings for mode.
+func Apply(s *core.Settings, mode Mode) {
 	s.TrustedProxy.UseLeftmostIP = false
-	if enabled {
+	switch mode {
+	case ForwardedFor:
 		s.TrustedProxy.Headers = []string{Header}
-		return
+	case Cloudflare:
+		s.TrustedProxy.Headers = []string{CloudflareHeader}
+	default:
+		s.TrustedProxy.Headers = nil
 	}
-	s.TrustedProxy.Headers = nil
 }
 
 // Register applies the TRUSTED_PROXY decision after every settings reload
@@ -66,10 +97,10 @@ func Register(app core.App) {
 		if err := e.Next(); err != nil {
 			return err
 		}
-		Apply(e.App.Settings(), Enabled())
+		Apply(e.App.Settings(), CurrentMode())
 		return nil
 	})
 	if app.IsBootstrapped() {
-		Apply(app.Settings(), Enabled())
+		Apply(app.Settings(), CurrentMode())
 	}
 }

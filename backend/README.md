@@ -30,7 +30,7 @@ on `/app/pb_data`, port 8090, but branch `dev` and the domain above. Environment
 | `WEBAUTHN_RP_ID` | `vectra.southstar21.dev` |
 | `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev,android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Vectra Dev` |
-| `TRUSTED_PROXY` | `1` (see below) |
+| `TRUSTED_PROXY` | `cloudflare` (see below) |
 
 Passkeys keep production's relying-party ID: `vectra.southstar21.dev/.well-known/` lists the debug
 app IDs as well (`web/public/.well-known/`), so they work once that web build is deployed. A
@@ -50,16 +50,20 @@ Every per-IP rate limit (PocketBase's auth limiter, password-reset emails, passk
 proxy, the re-auth checks) keys on the client IP. Whether that IP comes from `X-Forwarded-For` is set
 by the environment, not by the database:
 
+- **`TRUSTED_PROXY=cloudflare`**: trust `CF-Connecting-IP`, which Cloudflare sets to the client it
+  saw and overwrites if the client sent one. **Required on production and dev in Coolify**, which sit
+  behind Cloudflare. There `X-Forwarded-For` ends with Cloudflare's edge address, which changes per
+  request, so `1` would give every request a fresh bucket (checked on dev, 2026-11-11: five bad logins
+  in a row, no 429). The header can only be forged by bypassing Cloudflare and reaching the server
+  directly, so the server should accept Cloudflare's addresses only.
 - **`TRUSTED_PROXY=1`** (also `true`/`yes`): trust `X-Forwarded-For` and take its right-most entry,
-  the one Traefik appended. **Required on production and dev in Coolify.** Without it every user
-  shares the proxy's address, so one busy client rate-limits everybody.
-- **unset**: ignore the header and use the socket address. Right for `docker compose up` and
-  `make run`, where nothing sits in front.
+  the one the proxy appended. For a reverse proxy with nothing in front of it.
+- **unset**: ignore both headers and use the socket address. Right for `docker compose up` and
+  `make run`, where nothing sits in front. Behind a proxy, every user would share its address.
 
 The environment wins over the "Trusted proxy" setting in the dashboard (a saved value is replaced on
 the next settings reload). Never publish the container port to the internet: reached directly, the
-header is client-controlled. The compose file binds it to `127.0.0.1` for that reason. If a CDN is
-ever put in front of Traefik, the right-most entry becomes the CDN edge; revisit this then.
+header is client-controlled. The compose file binds it to `127.0.0.1` for that reason.
 
 ## Container user
 

@@ -29,10 +29,17 @@ func newApp(t *testing.T) *tests.TestApp {
 // clientKey is the per-IP limiter key a request from remoteAddr carrying the
 // given X-Forwarded-For value gets.
 func clientKey(app core.App, remoteAddr, xff string) string {
+	return clientKeyWith(app, remoteAddr, map[string]string{"X-Forwarded-For": xff})
+}
+
+// clientKeyWith is clientKey with any set of headers (empty values are not sent).
+func clientKeyWith(app core.App, remoteAddr string, headers map[string]string) string {
 	req := httptest.NewRequest("POST", "/api/vectra/passkeys/login/start", nil)
 	req.RemoteAddr = remoteAddr
-	if xff != "" {
-		req.Header.Set("X-Forwarded-For", xff)
+	for k, v := range headers {
+		if v != "" {
+			req.Header.Set(k, v)
+		}
 	}
 	e := &core.RequestEvent{App: app, Event: router.Event{Request: req}}
 	return ratelimit.ClientIP(e)
@@ -83,8 +90,38 @@ func TestStoredSettingCannotOverrideEnv(t *testing.T) {
 	require.Equal(t, []string{"X-Forwarded-For"}, app.Settings().TrustedProxy.Headers)
 }
 
+// Behind Cloudflare, X-Forwarded-For ends with Cloudflare's edge, which changes per
+// request: keying on it gave every request a fresh bucket. CF-Connecting-IP is
+// the client, and X-Forwarded-For (spoofed or not) is ignored.
+func TestCloudflareTrustsConnectingIP(t *testing.T) {
+	t.Setenv(proxytrust.EnvVar, "cloudflare")
+	app := newApp(t)
+
+	require.Equal(t, []string{"CF-Connecting-IP"}, app.Settings().TrustedProxy.Headers)
+	for _, edge := range []string{"172.70.1.1", "172.71.2.2", "162.158.3.3"} {
+		key := clientKeyWith(app, "10.0.1.2:80", map[string]string{
+			"CF-Connecting-IP": "203.0.113.9",
+			"X-Forwarded-For":  "6.6.6.6, 203.0.113.9, " + edge,
+		})
+		require.Equal(t, "203.0.113.9", key, "edge %s: one client, one bucket", edge)
+	}
+	require.Equal(t, "10.0.1.2", clientKeyWith(app, "10.0.1.2:80", map[string]string{"X-Forwarded-For": "6.6.6.6"}),
+		"without CF-Connecting-IP: the socket address, never X-Forwarded-For")
+}
+
+func TestModeValues(t *testing.T) {
+	for v, want := range map[string]proxytrust.Mode{
+		"1": proxytrust.ForwardedFor, "true": proxytrust.ForwardedFor, "YES": proxytrust.ForwardedFor,
+		"cloudflare": proxytrust.Cloudflare, " Cloudflare ": proxytrust.Cloudflare, "cf": proxytrust.Cloudflare,
+		"": proxytrust.Direct, "0": proxytrust.Direct, "no": proxytrust.Direct,
+	} {
+		t.Setenv(proxytrust.EnvVar, v)
+		require.Equal(t, want, proxytrust.CurrentMode(), "TRUSTED_PROXY=%q", v)
+	}
+}
+
 func TestEnabledValues(t *testing.T) {
-	for v, want := range map[string]bool{"1": true, "true": true, "YES": true, " 1 ": true, "": false, "0": false, "false": false, "no": false} {
+	for v, want := range map[string]bool{"1": true, "true": true, "YES": true, " 1 ": true, "cloudflare": true, "": false, "0": false, "false": false, "no": false} {
 		t.Setenv(proxytrust.EnvVar, v)
 		require.Equal(t, want, proxytrust.Enabled(), "TRUSTED_PROXY=%q", v)
 	}

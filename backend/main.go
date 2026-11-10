@@ -26,8 +26,8 @@ import (
 func main() {
 	app := pocketbase.New()
 
-	// Trust X-Forwarded-For only when TRUSTED_PROXY=1 says a reverse proxy sits
-	// in front; otherwise per-IP rate limits key on the socket address.
+	// Trust a proxy's client-IP header only when TRUSTED_PROXY says one sits in
+	// front (cloudflare or 1); otherwise per-IP rate limits key on the socket address.
 	proxytrust.Register(app)
 
 	schema.RegisterTimestamps(app)
