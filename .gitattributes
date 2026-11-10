@@ -2,3 +2,5 @@
 web/public/catalog/routes.json linguist-generated=true
 web/public/catalog/stops.json linguist-generated=true
 web/public/catalog/route-variants.json linguist-generated=true
+# Generated baseline profiles (several MB of rules) — collapse in diffs.
+native/androidApp/src/release/generated/baselineProfiles/*.txt linguist-generated=true
