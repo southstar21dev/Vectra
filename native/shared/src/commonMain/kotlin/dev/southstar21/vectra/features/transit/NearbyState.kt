@@ -10,8 +10,10 @@ import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.util.roundHalfUpToLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Data and loading flag of a once-per-session catalog query. */
 @Immutable
@@ -20,24 +22,41 @@ data class CatalogQuery<T>(val data: T? = null, val isLoading: Boolean = true)
 @Composable
 private fun <T> rememberCatalogQuery(repo: TransitRepository, load: suspend TransitCatalog.() -> T): CatalogQuery<T> {
     val state by produceState(CatalogQuery<T>(), repo) {
-        // Never stale, one retry: the catalog itself memoizes per session.
-        var attempt = 0
-        while (true) {
-            try {
-                value = CatalogQuery(repo.catalog.load(), false)
-                return@produceState
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
-                if (attempt++ >= 1) {
-                    value = CatalogQuery(null, false)
-                    return@produceState
-                }
-                delay(1000)
-            }
-        }
+        val data = loadCatalogUntilLoaded(repo.connectivity.online, { repo.catalog.load() }) { value = CatalogQuery(null, false) }
+        value = CatalogQuery(data, false)
     }
     return state
+}
+
+/** Longest wait between catalog retries while online. */
+internal const val CatalogRetryMaxMs = 60_000L
+
+/**
+ * Loads the catalog until it succeeds (the catalog itself memoizes per session). After the
+ * second failure [onGaveUp] lets the screens stop showing a spinner, but it keeps trying: with
+ * a doubling wait while online (a server hiccup has no reconnect to wait for), never while
+ * offline, and straight away when the device reconnects. Tab pages stay composed, so giving up
+ * left the nearby stops and explorer dots empty until the process restarted (audit 03 #4).
+ */
+internal suspend fun <T> loadCatalogUntilLoaded(online: StateFlow<Boolean>, load: suspend () -> T, onGaveUp: () -> Unit): T {
+    var failures = 0
+    while (true) {
+        try {
+            return load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            failures++
+        }
+        if (failures == 2) onGaveUp()
+        val wait = minOf(CatalogRetryMaxMs, 1000L shl minOf(failures - 1, 6))
+        // A reconnect during the wait ends it early.
+        withTimeoutOrNull(wait) {
+            online.first { !it }
+            online.first { it }
+        }
+        online.first { it }
+    }
 }
 
 /** The full BKK stop catalog (fetched once per session). */
