@@ -219,9 +219,23 @@ fun VSheet(
     val exited by rememberUpdatedState(onExited)
     val spec: AnimationSpec<Float> = if (reduceMotion) tween(200, easing = VectraEasing.Fade) else VectraSprings.sheet()
 
+    // While closing, dragging and nested scroll are off (see the panel's modifiers): a drag would
+    // cancel the exit animation and strand the sheet open, with the scrim and back already off.
+    fun finishExit() {
+        if (!mounted) return
+        mounted = false
+        exited?.invoke()
+    }
+
     fun release(velocity: Float) {
         scope.launch {
             state.dragging = false
+            // A drag that interrupted the exit animation cancelled it: finish closing from here.
+            if (!currentOpen) {
+                state.animateTo(state.hidden, spec)
+                finishExit()
+                return@launch
+            }
             val target = state.targetFor(state.current, velocity)
             if (target == state.hidden) {
                 dismiss()
@@ -243,8 +257,7 @@ fun VSheet(
             state.animateTo(if (size == SheetSize.Expandable) state.anchors[state.anchors.size - 2] else 0f, spec)
         } else {
             state.animateTo(state.hidden, spec)
-            mounted = false
-            exited?.invoke()
+            finishExit()
         }
     }
 
@@ -295,10 +308,11 @@ fun VSheet(
                     .draggable(
                         rememberDraggableState { delta -> scope.launch { state.dragBy(delta) } },
                         Orientation.Vertical,
+                        enabled = open,
                         onDragStarted = { state.dragging = true },
                         onDragStopped = { velocity -> release(velocity) },
                     )
-                    .nestedScroll(nested)
+                    .then(if (open) Modifier.nestedScroll(nested) else Modifier)
                     .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom)),
             ) {
                 if (dragHandle) SheetHandle(Modifier.align(Alignment.CenterHorizontally))

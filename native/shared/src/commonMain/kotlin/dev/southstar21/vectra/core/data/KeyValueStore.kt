@@ -40,12 +40,12 @@ class KeyValueStore(private val store: DataStore<Preferences>, private val blobs
         }
     }
 
-    /** Remove every key starting with one of [prefixes] (logout cleanup). */
-    suspend fun removeByPrefix(vararg prefixes: String) {
+    /** Remove every key starting with one of [prefixes], except the exact keys in [keep] (logout cleanup). */
+    suspend fun removeByPrefix(vararg prefixes: String, keep: Set<String> = emptySet()) {
         store.edit { prefs ->
-            prefs.asMap().keys.filter { k -> prefixes.any { k.name.startsWith(it) } }.forEach { prefs.remove(it) }
+            prefs.asMap().keys.filter { k -> k.name !in keep && prefixes.any { k.name.startsWith(it) } }.forEach { prefs.remove(it) }
         }
-        blobs?.removeByPrefix(*prefixes)
+        blobs?.removeByPrefix(*prefixes, keep = keep)
     }
 
     /**

@@ -100,8 +100,6 @@ fun ScheduleScreen(repo: ScheduleRepository, tracker: ScheduleCourseTrackerHooks
     val itemSyncError by repo.itemSyncError.collectAsStateWithLifecycle()
     val eventsError by repo.eventsError.collectAsStateWithLifecycle()
     val conflicts by repo.conflicts.collectAsStateWithLifecycle()
-    val today = nowInBudapest(Instant.fromEpochMilliseconds(rememberMinuteClock())).ymd
-    LaunchedEffect(today) { repo.setConflictDate(today) }
 
     val items = itemsState.items
     val isOffline = !online

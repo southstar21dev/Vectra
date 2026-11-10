@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.core.network
 
+import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.platform.SecretCipher
 import kotlinx.coroutines.Dispatchers
@@ -46,10 +47,11 @@ class AuthStore(private val storage: KeyValueStore, private val cipher: SecretCi
     val current: AuthState? get() = _state.value
 
     suspend fun restore() {
-        val stored = storage.get(KEY) ?: return
+        // A storage or Keychain/Keystore failure reads as signed out rather than crashing every launch.
+        val stored = runSuspendCatching { storage.get(KEY) }.getOrNull() ?: return
         // Keystore calls are binder round trips; this runs during startup on Main otherwise.
         _state.value = withContext(Dispatchers.Default) {
-            val raw = cipher.decrypt(stored) ?: return@withContext null
+            val raw = runCatching { cipher.decrypt(stored) }.getOrNull() ?: return@withContext null
             runCatching { parseSession(VectraJson.parseToJsonElement(raw).jsonObject) }.getOrNull()
         }
     }

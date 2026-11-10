@@ -59,13 +59,14 @@ class BlobStore(
         }
     }
 
-    /** Removes every key starting with one of [prefixes]. */
-    suspend fun removeByPrefix(vararg prefixes: String) = writes.withLock {
+    /** Removes every key starting with one of [prefixes], except the exact keys in [keep]. */
+    suspend fun removeByPrefix(vararg prefixes: String, keep: Set<String> = emptySet()) = writes.withLock {
         withContext(io) {
             if (!fs.exists(dir)) return@withContext
             val encoded = prefixes.map(::encodeBlobKey)
+            val kept = keep.mapTo(HashSet(), ::encodeBlobKey)
             for (file in fs.list(dir)) {
-                if (encoded.any(file.name::startsWith)) fs.delete(file, mustExist = false)
+                if (file.name !in kept && encoded.any(file.name::startsWith)) fs.delete(file, mustExist = false)
             }
         }
     }

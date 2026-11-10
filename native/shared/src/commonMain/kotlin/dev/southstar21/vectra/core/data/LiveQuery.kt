@@ -115,7 +115,9 @@ class LiveQuery<K, T>(
 
     /** Observe [key]; the query polls while at least one observer is collecting. */
     fun observe(key: K): Flow<QueryState<T>> = flow {
-        val e = withContext(confined) { acquire(key) }
+        // NonCancellable: a collector cancelled during this hop would otherwise get the exception on
+        // return, after acquire() counted it and started polling but before the finally can release it.
+        val e = withContext(NonCancellable + confined) { acquire(key) }
         try {
             emitAll(e.state)
         } finally {

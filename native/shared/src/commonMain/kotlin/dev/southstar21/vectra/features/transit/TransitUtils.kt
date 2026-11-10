@@ -243,6 +243,20 @@ private val EntityQuot = Regex("&quot;", RegexOption.IGNORE_CASE)
 private val EntityNumeric = Regex("""&#(\d+);""")
 private val SpaceBeforePunctuation = Regex(""" ([.,!?;:])""")
 
+/**
+ * The text for a numeric entity's code point, or null when it isn't one: an emoji such as
+ * `&#128652;` is above 0xFFFF and needs a surrogate pair ([Char] alone throws for it).
+ */
+internal fun codePointToString(code: Int): String? = when (code) {
+    in 0xD800..0xDFFF -> null
+    in 0..0xFFFF -> Char(code).toString()
+    in 0x10000..0x10FFFF -> {
+        val v = code - 0x10000
+        charArrayOf(Char(0xD800 + (v shr 10)), Char(0xDC00 + (v and 0x3FF))).concatToString()
+    }
+    else -> null
+}
+
 /** Crude HTML-to-text: drop tags and decode the common entities. */
 fun stripHtml(html: String): String = html
     .replace(HtmlBreak, " ")
@@ -253,7 +267,7 @@ fun stripHtml(html: String): String = html
     .replace(EntityGt, ">")
     .replace(EntityQuot, "\"")
     .replace("&#39;", "'")
-    .replace(EntityNumeric) { m -> m.groupValues[1].toIntOrNull()?.let { Char(it).toString() } ?: m.value }
+    .replace(EntityNumeric) { m -> m.groupValues[1].toIntOrNull()?.let(::codePointToString) ?: m.value }
     .replace(Whitespace, " ")
     .replace(SpaceBeforePunctuation, "$1")
     .trim()
@@ -309,7 +323,9 @@ fun parseAlerts(
         return parent != null && parent in ids
     }
 
-    fun agencyWide(a: FutarAlert): Boolean = a.routeIds.orEmpty().isEmpty() && a.stopIds.orEmpty().isEmpty()
+    // affectedRouteIds also reads the rich routes:[{routeId}] form, so an alert naming its lines only
+    // that way isn't taken for an agency-wide one.
+    fun agencyWide(a: FutarAlert): Boolean = a.affectedRouteIds().isEmpty() && a.stopIds.orEmpty().isEmpty()
 
     fun vehicleTypeMatch(a: FutarAlert): Boolean {
         val declared = a.vehicleRouteTypes

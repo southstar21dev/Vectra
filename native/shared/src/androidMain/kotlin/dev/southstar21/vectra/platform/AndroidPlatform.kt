@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.platform
 
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.emptyPreferences
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -26,6 +28,8 @@ import java.util.concurrent.TimeUnit
 
 fun createDataStore(context: Context): DataStore<Preferences> =
     PreferenceDataStoreFactory.createWithPath(
+        // A corrupt file would otherwise throw on every read, crashing each launch until the app's data is cleared.
+        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
         produceFile = { context.filesDir.resolve("vectra.preferences_pb").absolutePath.toPath() },
     )
 

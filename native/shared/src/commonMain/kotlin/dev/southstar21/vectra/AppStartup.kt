@@ -19,8 +19,10 @@ object AppStartup {
         if (startup.restored) return
         configureMapNetworking(graph.http)
         runSuspendCatching { graph.kv.moveLargeValuesToBlobs() }
-        graph.appearanceRepository.loadStored()
-        graph.auth.restore()
+        // Neither may crash the launch: unreadable appearance falls back to defaults, an unreadable
+        // session to signed out.
+        runSuspendCatching { graph.appearanceRepository.loadStored() }
+        runSuspendCatching { graph.auth.restore() }
         startup.restored = true
         graph.watchdog.trigger()
         // Neptun auto-sync starts from the repository's init, so it can't wait for a screen to ask.

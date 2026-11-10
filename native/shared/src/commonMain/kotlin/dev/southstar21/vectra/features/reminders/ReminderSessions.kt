@@ -100,7 +100,7 @@ fun expandSessions(
         val date = from.plus(DatePeriod(days = offset))
         val ymd = date.ymd()
         events
-            .filter { classOccursOnDate(it, ymd, it.semesterStart ?: ymd, index) && !isCancelled(it, ymd) }
+            .filter { classOccursOnDate(it, ymd, index) && !isCancelled(it, ymd) }
             .mapNotNull { e ->
                 val kind = sessionKind(e)
                 timeRange(date, e.startTime, e.endTime)?.let { (s, end) ->

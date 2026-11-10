@@ -61,19 +61,11 @@ class ScheduleRepository(
     val itemSyncError: StateFlow<String?> get() = itemsSync.itemSyncError
     val isSavingItem: StateFlow<Boolean> get() = itemsSync.isSavingItem
 
-    private val conflictDate = MutableStateFlow(nowInBudapest().ymd)
-
     /** Active clashes between personal items and classes, worked out once here and off Main for every screen. */
-    val conflicts: StateFlow<List<ScheduleConflict>> = combine(items, events, conflictDate) { items, events, date ->
-        Triple(items, events, date)
-    }.conflate().map { (items, events, date) ->
-        getScheduleConflicts(items.map { it.toItem() }, events, date)
-    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
-
-    /** Screens report today's date so [conflicts] rolls over at midnight. */
-    fun setConflictDate(ymd: String) {
-        conflictDate.value = ymd
-    }
+    val conflicts: StateFlow<List<ScheduleConflict>> = combine(items, events) { items, events -> items to events }
+        .conflate().map { (items, events) ->
+            getScheduleConflicts(items.map { it.toItem() }, events)
+        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val neptunSyncStatus: StateFlow<NeptunSyncStatus> get() = neptun.neptunSyncStatus
     val neptunSyncError: StateFlow<String?> get() = neptun.neptunSyncError
@@ -144,6 +136,9 @@ class ScheduleRepository(
 
     suspend fun refreshItems(force: Boolean = false) = itemsSync.refreshItems(force)
     suspend fun executeSync() = itemsSync.executeSync()
+
+    /** Before an explicit sign-out: true when no personal-item change is left only on this device. */
+    suspend fun flushPendingWrites(): Boolean = itemsSync.flushPending()
     suspend fun saveItem(candidate: ScheduleItem): StoredScheduleItem = itemsSync.saveItem(candidate)
     suspend fun deleteItem(id: String) = itemsSync.deleteItem(id)
     suspend fun toggleTaskCompleted(item: ScheduleItem): ScheduleItem = itemsSync.toggleTaskCompleted(item)
@@ -178,7 +173,7 @@ fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.
     val now = nowInBudapest(at)
     val index = ScheduleEventIndex(events)
     return events.filter { it.dayOfWeek == now.dayOfWeek }
-        .filter { classOccursOnDate(it, now.ymd, it.semesterStart ?: now.ymd, index) }
+        .filter { classOccursOnDate(it, now.ymd, index) }
 }
 
 /** Unique semesters, chronologically. */

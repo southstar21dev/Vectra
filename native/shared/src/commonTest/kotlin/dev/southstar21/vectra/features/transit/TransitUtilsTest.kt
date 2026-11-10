@@ -61,6 +61,12 @@ class TransitUtilsTest {
         assertEquals("M3 – megszűnik", stripHtml("M3 &#8211; megszűnik"))
     }
 
+    @Test fun stripHtmlDecodesEmojiAndKeepsInvalidEntities() {
+        // Above 0xFFFF: a surrogate pair, where Char(code) used to throw during composition.
+        assertEquals("Bus \uD83D\uDE8C replaced", stripHtml("Bus &#128652; replaced"))
+        assertEquals("&#55357; &#99999999;", stripHtml("&#55357; &#99999999;"))
+    }
+
     @Test fun normalizesSearchText() {
         assertEquals("szell kalman ter", normalizeSearchText("Széll Kálmán tér"))
         assertEquals("hosok tere", normalizeSearchText("Hősök tere"))
@@ -106,6 +112,18 @@ class TransitUtilsTest {
         emptyList(),
         ids(responseWithRefAlerts(A("A-external", stopIds = listOf("BKK_F00001"), routeIds = listOf("BKK_XTRAIN"), start = 1.0)), tr = { if (it == "BKK_XTRAIN") "RAIL" else null }),
     )
+
+    @Test fun alertsRoutesOnlyFormIsNotAgencyWide() {
+        // Another line named only in the rich routes:[{routeId}] form, with no routeIds and no type to go by.
+        val other = FutarAlert(
+            id = "A-other", routes = listOf(FutarAlertRoute("BKK_OTHER", null)),
+            header = FutarTranslations(someTranslation = "h"), description = FutarTranslations(someTranslation = "d"),
+        )
+        val base = responseWithRefAlerts()
+        val data = base.data!!
+        val res = base.copy(data = data.copy(references = data.references!!.copy(alerts = mapOf("A-other" to other))))
+        assertEquals(emptyList(), ids(res))
+    }
 
     @Test fun alertsAgencyTypeExcluded() =
         assertEquals(emptyList(), ids(responseWithRefAlerts(A("A-agency-rail", start = 1.0, vehicleRouteTypes = listOf("RAIL")))))

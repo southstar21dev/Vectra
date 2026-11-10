@@ -43,6 +43,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.concurrent.Volatile
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -74,6 +75,11 @@ private class FakeBackend {
     var duringCreate: (suspend (clientId: String) -> Unit)? = null
     /** Runs after the pass's single-row re-read target was chosen, before it is answered. */
     var beforeRowLookup: (suspend () -> Unit)? = null
+    /** Runs after a full item list was read, before it is answered: hold it to make it stale. */
+    var afterListRead: (suspend () -> Unit)? = null
+    @Volatile var listReads = 0
+    /** Bodies of class edits (PATCH schedule_events). */
+    val eventPatches = mutableListOf<JsonObject>()
 
     fun row(item: ScheduleItem, updatedAt: String, rowId: String = "row-${item.id.take(1)}"): JsonObject = JsonObject(
         mapOf(
@@ -109,6 +115,11 @@ private class FakeBackend {
                 val out = if (b.getValue("op").jsonPrimitive.content == "encrypt") values.map { "vc3:$it" } else values.map { it.removePrefix("vc3:") }
                 json(JsonObject(mapOf("values" to JsonArray(out.map(::JsonPrimitive)))).toString())
             }
+            path.startsWith("/api/collections/schedule_events/") && req.method == HttpMethod.Patch -> {
+                val b = body(req)
+                eventPatches += b
+                json(JsonObject(b + mapOf("id" to JsonPrimitive(path.substringAfterLast('/')), "updated_at" to JsonPrimitive("e2"))).toString())
+            }
             path.startsWith("/api/collections/schedule_events/") ->
                 if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(classRows.toList()) })
             path.startsWith("/api/collections/neptun_schedule_events/") ->
@@ -124,7 +135,12 @@ private class FakeBackend {
             HttpMethod.Get -> {
                 val clientId = Regex("client_id = '([^']+)'").find(req.url.parameters["filter"].orEmpty())?.groupValues?.get(1)
                 if (clientId != null) beforeRowLookup?.invoke()
-                json(lock.withLock { list(itemRows.filter { clientId == null || it.string("client_id") == clientId }) })
+                val snapshot = lock.withLock { list(itemRows.filter { clientId == null || it.string("client_id") == clientId }) }
+                if (clientId == null) {
+                    listReads++
+                    afterListRead?.invoke()
+                }
+                json(snapshot)
             }
             HttpMethod.Post -> {
                 val b = body(req)
@@ -250,6 +266,34 @@ class ScheduleSyncTest {
         assertEquals("v1", stored()?.syncConflict?.serverUpdatedAt)
         assertEquals("Mine", stored()?.title)
         assertEquals(1, queue.size)
+    }
+
+    // ---- stale reads -------------------------------------------------------------
+
+    /** 04 #4: a refresh whose read predates a sync commit must not merge the old row back over it. */
+    @Test fun aRefreshReadBeforeACommitDoesNotRevertIt() = scenario { b ->
+        b.seed(item(title = "Old"), "v1")
+        start(ScheduleItemsState(items = listOf(item(title = "Old").stored(updatedAt = "v1"))))
+        // Let the sign-in refresh finish first, so the held read below is ours.
+        until { b.listReads >= 1 }
+        settle()
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterListRead = { if (held.complete(Unit)) release.await() }
+        // The refresh reads "Old"/v1 and is held before it can merge.
+        val refresh = scope.async { repo.refreshItems(force = true) }
+        held.await()
+        // Meanwhile a save commits "New" and the queue drains.
+        repo.saveItem(item(title = "New"))
+        drained()
+        val committed = assertNotNull(stored()).updatedAt
+        assertEquals("New", b.title(ItemA))
+        release.complete(Unit)
+        refresh.await()
+        assertEquals("New", stored()?.title)
+        assertEquals(committed, stored()?.updatedAt)
+        assertEquals(false, stored()?.pendingSync)
+        assertEquals("New", persisted()?.items?.single()?.title)
     }
 
     // ---- updates ---------------------------------------------------------------
@@ -460,6 +504,36 @@ class ScheduleSyncTest {
         release.complete(Unit)
         delay(50)
         assertNull(kv.get(getScheduleItemsStorageKey(UserId)))
+    }
+
+    /** 02 #2: an involuntary sign-out keeps the queue, and the same account replays it on its return. */
+    @Test fun aQueueKeptThroughAnExpiryReplaysWhenTheAccountReturns() = scenario(online = false) { b ->
+        start(queuedCreate(item()))
+        auth.expire()
+        until { repo.itemsState.value.items.isEmpty() }
+        assertEquals(1, persisted()?.queue?.size)
+        connectivity.online.value = true
+        auth.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId))))
+        drained()
+        assertEquals(listOf("create $ItemA"), b.writes)
+    }
+
+    @Test fun aSignOutFlushSendsTheQueueOrSaysItCannot() = scenario(online = false) { b ->
+        start(queuedCreate(item()))
+        assertFalse(repo.flushPendingWrites(), "offline: the queued create cannot be sent")
+        connectivity.online.value = true
+        until { b.writes.isNotEmpty() }
+        assertTrue(repo.flushPendingWrites())
+        assertEquals(listOf("create $ItemA"), b.writes)
+    }
+
+    /** 04 #5: the editor has no date fields, so an edit must not clear the dates a class has. */
+    @Test fun editingAClassKeepsItsDates() = scenario { b ->
+        start()
+        repo.updateEvent("class-1", ScheduleFormData("Algebra", "seminar", "A1", "", "", 1, "10:00", "11:00", "blue", "2098/99/2"))
+        val patch = b.eventPatches.single()
+        assertFalse("semester_start" in patch, patch.toString())
+        assertFalse("semester_end" in patch, patch.toString())
     }
 
     // ---- clashes with classes ------------------------------------------------------

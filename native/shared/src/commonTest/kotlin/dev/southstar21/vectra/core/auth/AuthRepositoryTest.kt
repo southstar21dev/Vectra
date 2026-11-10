@@ -63,6 +63,7 @@ class AuthRepositoryTest {
 
     private suspend fun seedUserData() {
         kv.set("vectra_schedule_items_u1", "items")
+        kv.set("vectra_course_tracker_cache_u1", "trackers")
         kv.set("vectra_schedule_cache_events_u1", "events")
         kv.set("vectra_trip_plans_cache_u1", "trips")
         kv.set("unrelated_setting", "keep")
@@ -71,6 +72,7 @@ class AuthRepositoryTest {
     private suspend fun assertWiped() {
         assertNull(store.current)
         assertNull(kv.get("vectra_schedule_items_u1"))
+        assertNull(kv.get("vectra_course_tracker_cache_u1"))
         assertNull(kv.get("vectra_schedule_cache_events_u1"))
         assertNull(kv.get("vectra_trip_plans_cache_u1"))
         assertEquals("keep", kv.get("unrelated_setting"))
@@ -182,19 +184,90 @@ class AuthRepositoryTest {
         assertNull(store.current)
     }
 
-    @Test fun deletingTheAccountWipes() = runTest {
+    /** Everything but the offline queue is gone, and the queue is kept for this account. */
+    private suspend fun assertWipedKeepingQueue() {
+        assertNull(store.current)
+        assertEquals("items", kv.get("vectra_schedule_items_u1"))
+        assertEquals("trackers", kv.get("vectra_course_tracker_cache_u1"))
+        assertNull(kv.get("vectra_schedule_cache_events_u1"))
+        assertNull(kv.get("vectra_trip_plans_cache_u1"))
+        assertEquals("u1", kv.get(AuthRepository.KEPT_QUEUE_OWNER_KEY))
+    }
+
+    @Test fun deletingTheAccountSendsThePasswordAndWipes() = runTest {
+        var body = ""
+        val r = repo { req -> body = (req.body as TextContent).text; json("{}") }
+        signIn()
+        seedUserData()
+        r.deleteAccount("pw")
+        assertEquals("""{"currentPassword":"pw"}""", body)
+        assertWiped()
+        assertNull(kv.get(AuthRepository.KEPT_QUEUE_OWNER_KEY))
+    }
+
+    @Test fun expiryKeepsTheOfflineQueue() = runTest {
         val r = repo()
         signIn()
         seedUserData()
-        r.deleteAccount()
+        r.expire()
+        assertWipedKeepingQueue()
+    }
+
+    @Test fun anExplicitSignOutAfterAnExpiryWipesTheQueueToo() = runTest {
+        val r = repo { json(SessionOk) }
+        signIn()
+        seedUserData()
+        r.expire()
+        r.login("a@b.c", "pw")
+        r.signOut()
         assertWiped()
+        assertNull(kv.get(AuthRepository.KEPT_QUEUE_OWNER_KEY))
+    }
+
+    @Test fun theSameAccountSigningBackInGetsItsKeptQueue() = runTest {
+        val r = repo { json(SessionOk) }
+        signIn()
+        seedUserData()
+        r.expire()
+        r.login("a@b.c", "pw")
+        assertNull(kv.get(AuthRepository.KEPT_QUEUE_OWNER_KEY))
+        assertEquals("items", kv.get("vectra_schedule_items_u1"))
+        assertEquals("trackers", kv.get("vectra_course_tracker_cache_u1"))
+    }
+
+    @Test fun anotherAccountSigningInDropsTheKeptQueue() = runTest {
+        val r = repo()
+        signIn()
+        seedUserData()
+        r.expire()
+        r.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive("u2"), "email" to JsonPrimitive("x@b.c"))))
+        assertNull(kv.get(AuthRepository.KEPT_QUEUE_OWNER_KEY))
+        assertNull(kv.get("vectra_schedule_items_u1"))
+        assertNull(kv.get("vectra_course_tracker_cache_u1"))
+    }
+
+    @Test fun flushingReportsWritesLeftBehind() = runTest {
+        val flushed = object : SessionListener { override suspend fun flushPendingWrites() = true }
+        val stuck = object : SessionListener { override suspend fun flushPendingWrites() = false }
+        val failing = object : SessionListener { override suspend fun flushPendingWrites(): Boolean = error("offline") }
+        signIn()
+        assertTrue(repo(flushed, Recording("plain", mutableListOf())).flushPendingWrites())
+        assertFalse(repo(flushed, stuck).flushPendingWrites())
+        assertFalse(repo(failing, flushed).flushPendingWrites())
+        assertNotNull(store.current, "flushing never signs out")
+    }
+
+    @Test fun aHangingFlushIsBounded() = runTest {
+        val r = repo(object : SessionListener { override suspend fun flushPendingWrites(): Boolean = awaitCancellation() })
+        signIn()
+        assertFalse(r.flushPendingWrites())
     }
 
     @Test fun aFailedAccountDeleteKeepsEverything() = runTest {
         val r = repo { json("{}", HttpStatusCode.InternalServerError) }
         signIn()
         seedUserData()
-        assertFailsWith<PocketBaseException> { r.deleteAccount() }
+        assertFailsWith<PocketBaseException> { r.deleteAccount("pw") }
         assertNotNull(store.current)
         assertEquals("items", kv.get("vectra_schedule_items_u1"))
     }
@@ -215,11 +288,34 @@ class AuthRepositoryTest {
     }
 
     @Test fun changingThePasswordReauthenticates() = runTest {
-        val r = repo { json(SessionOk) }
+        var update: String? = null
+        val r = repo { req ->
+            if (req.url.encodedPath.startsWith("/api/collections/users/records/")) update = (req.body as TextContent).text
+            json(SessionOk)
+        }
         signIn()
         r.changePassword("old", "new")
         assertEquals("tok2", store.token)
         assertEquals(3, requests.size)
+        // PocketBase rejects a self-service password change without the current password.
+        assertTrue(update!!.contains(""""oldPassword":"old""""), update)
+        assertTrue(update.contains(""""password":"new""""), update)
+    }
+
+    @Test fun aRateLimitedPasswordCheckIsNotCalledWrong() = runTest {
+        val r = repo { json("{}", HttpStatusCode.TooManyRequests) }
+        signIn()
+        val e = assertFailsWith<IllegalStateException> { r.changePassword("old", "new") }
+        assertEquals("Too many attempts — please wait a moment and try again", e.message)
+        assertEquals(1, requests.size)
+    }
+
+    @Test fun anOfflinePasswordCheckIsNotCalledWrong() = runTest {
+        val r = repo { throw IllegalStateException("no route to host") }
+        signIn()
+        val e = assertFailsWith<PocketBaseException> { r.changePassword("old", "new") }
+        assertTrue(e.isNetwork)
+        assertNotNull(store.current)
     }
 
     @Test fun aFailedPasswordReauthSignsOut() = runTest {
@@ -231,7 +327,7 @@ class AuthRepositoryTest {
         seedUserData()
         val e = assertFailsWith<IllegalStateException> { r.changePassword("old", "new") }
         assertEquals("Password updated, but your session ended — please sign in again", e.message)
-        assertWiped()
+        assertWipedKeepingQueue()
     }
 
     @Test fun cancellingAPasswordReauthDoesNotSignOut() = runTest {
@@ -273,11 +369,12 @@ class AuthRepositoryTest {
         assertNotNull(store.current)
     }
 
-    @Test fun aFailedEmailReauthSignsOut() = runTest {
+    @Test fun aFailedEmailReauthSignsOutKeepingTheQueue() = runTest {
         val r = repo { req -> if (req.url.encodedPath.endsWith("auth-with-password")) json("{}", HttpStatusCode.BadRequest) else json("{}") }
         signIn()
+        seedUserData()
         assertFailsWith<IllegalStateException> { r.changeEmail("pw", "new@b.c") }
-        assertNull(store.current)
+        assertWipedKeepingQueue()
     }
 
     @Test fun profileFollowsTheSession() = runTest {

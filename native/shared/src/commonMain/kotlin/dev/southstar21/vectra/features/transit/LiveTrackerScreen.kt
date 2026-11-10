@@ -60,6 +60,7 @@ import dev.southstar21.vectra.core.designsystem.theme.pullUp
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
+import dev.southstar21.vectra.core.maps.isValidLatLon
 import dev.southstar21.vectra.core.maps.decodePolyline
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
@@ -208,8 +209,10 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
                 stopTimes = stopTimes,
             )
         }
-        fun vehiclesFor(tripId: String) = vehicles.filter { it.tripId == tripId }
-            .map { RouteMapVehicle(it.vehicleId, it.location ?: LatLon(), bearing = it.bearing) }
+        // A vehicle assigned to the trip but without a GPS position has nowhere to be drawn: as (0,0)
+        // it would project onto a line end and freeze a bogus stops-left count.
+        fun vehiclesFor(tripId: String) = vehicles.filter { it.tripId == tripId && isValidLatLon(it.location) }
+            .map { RouteMapVehicle(it.vehicleId, it.location!!, bearing = it.bearing) }
         fun tripEntry(q: QueryState<FutarTripDetailsResponse>): GeoEntry? =
             q.data?.data?.entry?.let { GeoEntry(it.stopTimes.orEmpty(), it.polyline) }?.takeIf { it.stopTimes.isNotEmpty() }
 

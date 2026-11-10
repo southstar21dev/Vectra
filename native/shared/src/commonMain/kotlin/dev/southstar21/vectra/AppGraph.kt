@@ -135,15 +135,26 @@ interface AppGraph {
         stopPicks: TrackerStopPicks,
         reminders: ReminderScheduler,
         widgets: WidgetPublisher,
+        passkeys: PasskeyRepository,
+        schedule: ScheduleRepository,
+        courseTracker: CourseTrackerRepository,
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
+        },
+        // Both react to the session themselves; here they only get to upload before an explicit sign-out.
+        object : SessionListener {
+            override suspend fun flushPendingWrites() = schedule.flushPendingWrites()
+        },
+        object : SessionListener {
+            override suspend fun flushPendingWrites() = courseTracker.flushPendingWrites()
         },
         transit,
         notifications,
         stopPicks,
         reminders,
         widgets,
+        passkeys,
     )
 
     @SingleIn(AppScope::class)
@@ -158,8 +169,8 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun providePasskeys(pb: PocketBaseClient, auth: AuthRepository, authenticator: PasskeyAuthenticator): PasskeyRepository =
-        PasskeyRepository(pb, auth, authenticator)
+    fun providePasskeys(pb: PocketBaseClient, auth: AuthRepository, authenticator: PasskeyAuthenticator, scope: CoroutineScope): PasskeyRepository =
+        PasskeyRepository(pb, auth, authenticator, scope)
 
     @SingleIn(AppScope::class)
     @Provides

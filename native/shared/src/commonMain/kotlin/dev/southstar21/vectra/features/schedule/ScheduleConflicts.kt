@@ -122,6 +122,7 @@ internal class ScheduleEventIndex(events: List<ScheduleEvent>) {
     private val courseNames = HashMap<Pair<String, String>, CourseNames>()
     private val exams = HashMap<Pair<String, String>, Boolean>()
     private val earliestStarts = HashMap<CourseKey, String?>()
+    private val semesterAnchors = HashMap<String, String?>()
     private val slots: List<Slot> = events.filter { !isExam(it) }.map {
         Slot(names(it), it.semester.trim().lowercase(), it.semesterStart?.takeIf(::isValid))
     }
@@ -146,25 +147,56 @@ internal class ScheduleEventIndex(events: List<ScheduleEvent>) {
             }
             matching.mapNotNull { it.start }.minOrNull()
         }
+
+    /** The Monday of the week the first dated class of [semester] meets, any course; null when none is dated. */
+    fun semesterAnchor(semester: String): String? {
+        val key = semester.trim().lowercase()
+        if (key.isEmpty()) return null
+        return semesterAnchors.getOrPut(key) {
+            slots.filter { it.semester == key }.mapNotNull { it.start }.minOrNull()?.let(::mondayOf)
+        }
+    }
 }
 
-private fun semesterWeekOneStart(event: ScheduleEvent, referenceDate: String, index: ScheduleEventIndex): String? {
-    index.earliestStart(event)?.let { return it }
-    // First-of-month fallback, anchored to the reference date so it stays deterministic.
-    if (!index.isValid(referenceDate)) return null
-    return referenceDate.substring(0, 8) + "01"
+/** A Monday long before any class this app shows: the last-resort parity anchor. */
+private const val FixedParityAnchor = "2024-01-01"
+
+private val SemesterTag = Regex("""^(\d{4})/\d{2}/([12])$""")
+
+private fun mondayOf(date: String): String? {
+    val ordinal = ordinalForDate(date) ?: return null
+    return formatDateOrdinal(ordinal - (LocalDate.fromEpochDays(ordinal).dayOfWeek.daysSinceSunday + 6) % 7)
 }
+
+/** The Monday of the week a Corvinus semester nominally starts: 1 September for "/1", 1 February for "/2". */
+internal fun nominalSemesterStart(semester: String): String? {
+    val m = SemesterTag.find(semester.trim()) ?: return null
+    val year = m.groupValues[1].toInt()
+    return mondayOf(if (m.groupValues[2] == "1") "$year-09-01" else "${year + 1}-02-01")
+}
+
+/**
+ * Week one for odd/even counting. A class whose course has dated slots starts at the earliest
+ * of them. Otherwise (manual classes have no dates) a date that never depends on which day is
+ * being looked at, so the schedule, reminders and widgets agree and parity never restarts: the
+ * week the semester's first dated class meets, else the semester's nominal start, else a fixed
+ * Monday.
+ */
+private fun semesterWeekOneStart(event: ScheduleEvent, index: ScheduleEventIndex): String =
+    index.earliestStart(event)
+        ?: index.semesterAnchor(event.semester)
+        ?: nominalSemesterStart(event.semester)
+        ?: FixedParityAnchor
 
 /** Whether a weekly class meets on a candidate Budapest-local date. */
 fun classOccursOnDate(
     event: ScheduleEvent,
     dateStr: String,
-    referenceDate: String = dateStr,
     scheduleEvents: List<ScheduleEvent> = listOf(event),
-): Boolean = classOccursOnDate(event, dateStr, referenceDate, ScheduleEventIndex(scheduleEvents))
+): Boolean = classOccursOnDate(event, dateStr, ScheduleEventIndex(scheduleEvents))
 
 /** [classOccursOnDate] for many events of one list, which share [index]. */
-internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, referenceDate: String, index: ScheduleEventIndex): Boolean {
+internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, index: ScheduleEventIndex): Boolean {
     val candidateOrdinal = ordinalForDate(dateStr) ?: return false
     val candidateWeekday = LocalDate.fromEpochDays(candidateOrdinal).dayOfWeek.daysSinceSunday
     occurrenceInterval(event) ?: return false
@@ -178,7 +210,7 @@ internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, referenceD
     // Manual weekly classes repeat blindly, but nobody teaches on a public holiday.
     if (event.source != "neptun" && isHungarianPublicHoliday(dateStr)) return false
 
-    val weekOneStart = semesterWeekOneStart(event, referenceDate, index) ?: return false
+    val weekOneStart = semesterWeekOneStart(event, index)
     val weekOneOrdinal = ordinalForDate(weekOneStart) ?: return false
     val anchorWeekday = weekdayForDate(weekOneStart) ?: return false
     val firstOccurrence = weekOneOrdinal + ((event.dayOfWeek - anchorWeekday + 7) % 7)
@@ -225,7 +257,6 @@ private fun overlap(a: ScheduleInterval, b: ScheduleInterval): Pair<Int, Int>? {
 fun getScheduleConflicts(
     items: List<ScheduleItem>,
     events: List<ScheduleEvent>,
-    referenceDate: String,
     dates: Collection<String>? = null,
 ): List<ScheduleConflict> {
     val allowed = dates?.toSet()
@@ -259,7 +290,7 @@ fun getScheduleConflicts(
         for (iv in intervals[item.id].orEmpty()) {
             if (allowed != null && iv.date !in allowed) continue
             for (event in relevant) {
-                if (!classOccursOnDate(event, iv.date, referenceDate, index)) continue
+                if (!classOccursOnDate(event, iv.date, index)) continue
                 val (es, ee) = occurrenceInterval(event) ?: continue
                 val (s, e) = overlap(iv, ScheduleInterval(iv.date, es, ee)) ?: continue
                 val key = getClassConflictKey(event, iv.date)

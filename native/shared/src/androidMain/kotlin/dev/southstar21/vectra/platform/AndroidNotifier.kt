@@ -131,6 +131,12 @@ class AndroidNotifier(private val context: Context, private val smallIcon: Int, 
         NotificationManagerCompat.from(context).notify(channel, 0, builder.build())
     }
 
+    /** Whether [n]'s reminder is still in the shade (tapping it auto-cancels it, swiping dismisses it). */
+    internal fun isShowing(n: ScheduledNotification): Boolean {
+        val channel = if (n.channel == ReminderChannel.Commute) CHANNEL_COMMUTE else CHANNEL_CLASSES
+        return manager.activeNotifications.any { it.tag == channel && it.id == 0 }
+    }
+
     private fun openApp(url: String?, requestCode: Int): PendingIntent {
         val intent = Intent(context, launchActivity).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

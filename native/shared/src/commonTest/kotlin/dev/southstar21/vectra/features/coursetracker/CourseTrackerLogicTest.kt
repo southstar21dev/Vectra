@@ -330,6 +330,15 @@ class PointsCalcTest {
     private fun a(id: String, name: String, earned: Double, max: Double, weight: Double? = null, mustPass: Boolean? = null, minPass: Double? = null, completed: Boolean? = null) =
         AssessmentItem(id, name, earned, max, weight, mustPass, minPass, completed)
 
+    @Test fun aScoreExactlyAtACustomCutoffReachesIt() {
+        // 57 / 100 * 100 is 56.99999999999999 in doubles; it must still earn the 57% grade.
+        val scale = listOf(GradingScaleTier(5, 87.0), GradingScaleTier(4, 75.0), GradingScaleTier(3, 62.0), GradingScaleTier(2, 57.0))
+        val s = calculatePointsSummary(listOf(a("1", "Exam", 57.0, 100.0)), false, scale, 100.0)
+        assertEquals(57.0, s.overallPercentage)
+        assertEquals(2, s.estimatedGrade)
+        assertEquals(2, estimateGrade(57.0 / 100 * 100, scale))
+    }
+
     @Test fun unweightedSums() {
         val s = calculatePointsSummary(listOf(a("1", "Quiz 1", 10.0, 10.0), a("2", "Midterm", 35.0, 40.0), a("3", "Homework", 20.0, 25.0), a("4", "Final", 0.0, 25.0)), false, DefaultGradingScale)
         assertEquals(65.0, s.totalEarned)

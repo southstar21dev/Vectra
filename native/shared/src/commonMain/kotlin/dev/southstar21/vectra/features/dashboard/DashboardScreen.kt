@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,7 +91,6 @@ fun DashboardScreen(graph: AppGraph) {
     }
     val plainItems = remember(items) { items.map { it.toItem() } }
     val todayItems = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) }
-    LaunchedEffect(todayStr) { schedule.setConflictDate(todayStr) }
     val needsAck = remember(conflicts) { conflicts.filter { it.needsAcknowledgment }.flatMap { listOfNotNull(it.itemId, it.otherItemId) }.toSet() }
     val syncIds = remember(items) { items.filter { it.syncConflict != null }.map { it.id }.toSet() }
 

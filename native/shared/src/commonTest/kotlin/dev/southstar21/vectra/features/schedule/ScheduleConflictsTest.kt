@@ -65,24 +65,18 @@ class ScheduleConflictsTest {
 
     @Test fun weekdayAndBounds() {
         val e = scheduleEvent(semesterStart = "2026-09-07", semesterEnd = "2026-09-21")
-        assertTrue(classOccursOnDate(e, "2026-09-07", "2026-09-01"))
-        assertTrue(classOccursOnDate(e, "2026-09-21", "2026-09-01"))
-        assertTrue(classOccursOnDate(e, "2026-09-14", "2026-09-01"))
-        assertFalse(classOccursOnDate(e, "2026-09-08", "2026-09-01"))
-        assertFalse(classOccursOnDate(e, "2026-09-28", "2026-09-01"))
+        assertTrue(classOccursOnDate(e, "2026-09-07"))
+        assertTrue(classOccursOnDate(e, "2026-09-21"))
+        assertTrue(classOccursOnDate(e, "2026-09-14"))
+        assertFalse(classOccursOnDate(e, "2026-09-08"))
+        assertFalse(classOccursOnDate(e, "2026-09-28"))
     }
 
     @Test fun oddEvenAnchor() {
         val e = scheduleEvent(semesterStart = "2026-09-08", semesterEnd = "2026-10-31", csvMetadata = freq("odd"))
-        assertTrue(classOccursOnDate(e, "2026-09-14", "2026-09-01"))
-        assertFalse(classOccursOnDate(e, "2026-09-21", "2026-09-01"))
-        assertTrue(classOccursOnDate(e.copy(csvMetadata = freq("even")), "2026-09-21", "2026-09-01"))
-    }
-
-    @Test fun referenceMonthStartFallback() {
-        val e = scheduleEvent(semesterStart = null, semesterEnd = null, csvMetadata = freq("odd"))
-        assertTrue(classOccursOnDate(e, "2026-09-07", "2026-09-01"))
-        assertFalse(classOccursOnDate(e, "2026-09-14", "2026-09-01"))
+        assertTrue(classOccursOnDate(e, "2026-09-14"))
+        assertFalse(classOccursOnDate(e, "2026-09-21"))
+        assertTrue(classOccursOnDate(e.copy(csvMetadata = freq("even")), "2026-09-21"))
     }
 
     @Test fun earliestMatchingRowAnchors() {
@@ -91,14 +85,14 @@ class ScheduleConflictsTest {
             id = "friday", dayOfWeek = 5, courseCode = "CS101-G01", startTime = "14:00", endTime = "15:00",
             semesterStart = "2026-09-11", csvMetadata = freq("odd"),
         )
-        assertTrue(classOccursOnDate(friday, "2026-09-11", "2026-09-24", listOf(monday, friday)))
-        assertFalse(classOccursOnDate(friday, "2026-09-18", "2026-09-24", listOf(monday, friday)))
+        assertTrue(classOccursOnDate(friday, "2026-09-11", listOf(monday, friday)))
+        assertFalse(classOccursOnDate(friday, "2026-09-18", listOf(monday, friday)))
     }
 
     @Test fun examIsIndividualDate() {
         val exam = scheduleEvent(eventType = "exam", semesterStart = "2026-09-07", semesterEnd = "2026-09-07")
-        assertTrue(classOccursOnDate(exam, "2026-09-07", "2026-09-01"))
-        assertFalse(classOccursOnDate(exam, "2026-09-14", "2026-09-01"))
+        assertTrue(classOccursOnDate(exam, "2026-09-07"))
+        assertFalse(classOccursOnDate(exam, "2026-09-14"))
     }
 
     @Test fun englishTitledLegacyExam() {
@@ -106,8 +100,8 @@ class ScheduleConflictsTest {
             courseName = "Elements of Accounting Midterm Exam", courseCode = "", dayOfWeek = 1,
             semesterStart = "2026-11-02", semesterEnd = "2026-11-02",
         )
-        assertTrue(classOccursOnDate(legacy, "2026-11-02", "2026-11-02"))
-        assertFalse(classOccursOnDate(legacy, "2026-11-09", "2026-11-02"))
+        assertTrue(classOccursOnDate(legacy, "2026-11-02"))
+        assertFalse(classOccursOnDate(legacy, "2026-11-09"))
     }
 
     @Test fun manualAttendanceType() {
@@ -139,7 +133,7 @@ class ScheduleConflictsTest {
         val item = shift()
         val seminar = scheduleEvent()
         val lecture = scheduleEvent(id = "lecture", courseCode = "CS101-E01")
-        val c = getScheduleConflicts(listOf(item), listOf(seminar, lecture), "2026-09-07")
+        val c = getScheduleConflicts(listOf(item), listOf(seminar, lecture))
         assertEquals(1, c.size)
         assertEquals(item.id, c[0].itemId)
         assertEquals(seminar.id, c[0].classId)
@@ -151,13 +145,13 @@ class ScheduleConflictsTest {
         val item = shift(endTime = "10:00")
         val seminar = scheduleEvent(startTime = "10:00", endTime = "11:00")
         val done = shift(id = "task", type = "task", completed = true, startTime = "09:30", endTime = "10:30")
-        assertEquals(0, getScheduleConflicts(listOf(item, done), listOf(seminar), "2026-09-07").size)
+        assertEquals(0, getScheduleConflicts(listOf(item, done), listOf(seminar)).size)
     }
 
     @Test fun itemPairStableKey() {
         val a = shift(id = "a", startTime = "09:00", endTime = "11:00")
         val b = shift(id = "b", type = "task", startTime = "10:00", endTime = "12:00")
-        val conflict = getScheduleConflicts(listOf(a, b), emptyList(), "2026-09-07")[0]
+        val conflict = getScheduleConflicts(listOf(a, b), emptyList())[0]
         assertEquals("a", conflict.itemId)
         assertEquals("b", conflict.otherItemId)
         assertFalse(conflictIsAcknowledged(conflict, listOf(a, b)))
@@ -166,9 +160,9 @@ class ScheduleConflictsTest {
 
     @Test fun stableNeptunKeys() {
         val item = shift()
-        val original = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "old-neptun-row")), "2026-09-07")[0]
-        val after = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "new-neptun-row")), "2026-09-07")[0]
-        val moved = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "moved", startTime = "10:30")), "2026-09-07")[0]
+        val original = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "old-neptun-row")))[0]
+        val after = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "new-neptun-row")))[0]
+        val moved = getScheduleConflicts(listOf(item), listOf(scheduleEvent(id = "moved", startTime = "10:30")))[0]
         assertEquals(original.key, after.key)
         assertNotEquals(original.key, moved.key)
     }
@@ -176,11 +170,11 @@ class ScheduleConflictsTest {
     @Test fun shiftTailNextDay() {
         val overnight = shift(startTime = "23:00", endTime = "02:00")
         val next = scheduleEvent(id = "next-day", dayOfWeek = 2, startTime = "01:00", endTime = "01:30", semesterStart = "2026-09-07")
-        assertEquals(1, getScheduleConflicts(listOf(overnight), listOf(next), "2026-09-07").size)
+        assertEquals(1, getScheduleConflicts(listOf(overnight), listOf(next)).size)
     }
 
     @Test fun laterRefreshNeedsAck() {
-        val c = getScheduleConflicts(listOf(shift()), listOf(scheduleEvent(id = "new-class")), "2026-09-07")
+        val c = getScheduleConflicts(listOf(shift()), listOf(scheduleEvent(id = "new-class")))
         assertEquals(1, c.size)
         assertTrue(c[0].needsAcknowledgment)
     }
@@ -188,8 +182,8 @@ class ScheduleConflictsTest {
     @Test fun eitherSideAckSuffices() {
         val first = shift(id = "first")
         val second = shift(id = "second", type = "task", startTime = "10:00", endTime = "11:00")
-        val conflict = getScheduleConflicts(listOf(first, second), emptyList(), "2026-09-07")[0]
-        val refreshed = getScheduleConflicts(listOf(first.copy(acknowledgedConflictKeys = listOf(conflict.key)), second), emptyList(), "2026-09-07")[0]
+        val conflict = getScheduleConflicts(listOf(first, second), emptyList())[0]
+        val refreshed = getScheduleConflicts(listOf(first.copy(acknowledgedConflictKeys = listOf(conflict.key)), second), emptyList())[0]
         assertFalse(refreshed.needsAcknowledgment)
     }
 
@@ -200,7 +194,7 @@ class ScheduleConflictsTest {
         val index = ScheduleEventIndex(events)
         for (date in listOf("2026-09-07", "2026-09-11", "2026-09-14", "2026-09-18", "2026-12-25", "not-a-date")) {
             for (event in events) {
-                assertEquals(classOccursOnDate(event, date, "2026-09-01", events), classOccursOnDate(event, date, "2026-09-01", index), "${event.id} on $date")
+                assertEquals(classOccursOnDate(event, date, events), classOccursOnDate(event, date, index), "${event.id} on $date")
             }
         }
     }

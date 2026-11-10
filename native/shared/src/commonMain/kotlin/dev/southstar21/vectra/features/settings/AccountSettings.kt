@@ -47,11 +47,13 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.features.auth.AccountLogic
+import dev.southstar21.vectra.features.auth.PasskeyResetNote
+import dev.southstar21.vectra.features.auth.PasskeyResetNotes
 import kotlinx.serialization.json.JsonPrimitive
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 @Composable
-private fun FieldError(message: String?) {
+internal fun FieldError(message: String?) {
     if (message == null) return
     val c = Vectra.colors
     val shape = Radius.Control
@@ -66,7 +68,7 @@ private fun FieldError(message: String?) {
 }
 
 @Composable
-private fun FormLabel(text: String) = VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = Vectra.colors.textSecondary)
+internal fun FormLabel(text: String) = VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = Vectra.colors.textSecondary)
 
 @Composable
 private fun EditButton(label: String, onClick: () -> Unit) =
@@ -137,6 +139,7 @@ private fun EmailRow(auth: AuthRepository) {
             VInput(email, { email = it }, placeholder = "name@example.com", icon = RemixIcons.MailLine, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             FormLabel("Current password")
             VInput(current, { current = it }, placeholder = "Your current password", icon = RemixIcons.LockLine, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            PasskeyResetNote(PasskeyResetNotes.EMAIL)
             FieldError(error)
             EditActions(saving, { editing = false }) {
                 val e = email.trim()
@@ -181,6 +184,7 @@ private fun PasswordRow(auth: AuthRepository) {
             VInput(next, { next = it }, placeholder = "At least ${AccountLogic.MIN_PASSWORD_LENGTH} characters", icon = RemixIcons.LockLine, visualTransformation = pw, keyboardOptions = ko)
             FormLabel("Confirm new password")
             VInput(confirm, { confirm = it }, placeholder = "Repeat the new password", icon = RemixIcons.LockLine, visualTransformation = pw, keyboardOptions = ko)
+            PasskeyResetNote(PasskeyResetNotes.PASSWORD)
             FieldError(error)
             EditActions(saving, { editing = false }) {
                 val invalid = when {
@@ -211,13 +215,14 @@ fun DeleteAccountButton(auth: AuthRepository) {
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf(false) }
-    VButton(onClick = { text = ""; error = null; open = true }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
+    VButton(onClick = { text = ""; password = ""; error = null; open = true }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
         VIcon(RemixIcons.DeleteBinLine, size = 14.dp, tint = c.tints.red.text)
         VText("Delete", style = vtext(TypeScale.Caption, Weight.Bold), color = c.tints.red.text)
     }
-    val close = { if (!deleting) { open = false; text = ""; error = null } }
+    val close = { if (!deleting) { open = false; text = ""; password = ""; error = null } }
     VDialog(open, close, showClose = false) {
         DialogHeader(Modifier.padding(top = 4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -237,18 +242,24 @@ fun DeleteAccountButton(auth: AuthRepository) {
                 color = c.textSecondary,
             )
             VInput(text, { text = it }, placeholder = AccountLogic.DELETE_ACCOUNT_CONFIRM_TEXT, enabled = !deleting)
+            // The server re-checks the password, so a stolen session alone cannot delete the account.
+            FormLabel("Current password")
+            VInput(
+                password, { password = it }, placeholder = "Your current password", icon = RemixIcons.LockLine, enabled = !deleting,
+                visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            )
             FieldError(error)
         }
         DialogFooter(Modifier.padding(top = 16.dp)) {
             VButton(
                 onClick = {
                     deleting = true; error = null
-                    scope.launchCatching({ auth.deleteAccount(); toaster.show("Account deleted") }) { deleting = false; error = it.message ?: "Could not delete account" }
+                    scope.launchCatching({ auth.deleteAccount(password); toaster.show("Account deleted") }) { deleting = false; error = it.message ?: "Could not delete account" }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 variant = ButtonVariant.Destructive,
                 size = ButtonSize.Sm,
-                enabled = !deleting && AccountLogic.deleteConfirmationMatches(text),
+                enabled = !deleting && AccountLogic.deleteConfirmationMatches(text) && password.isNotEmpty(),
             ) {
                 if (deleting) InlineLoader(size = 14.dp) else VIcon(RemixIcons.DeleteBinLine, size = 14.dp)
                 VText("Delete my account")
@@ -257,3 +268,4 @@ fun DeleteAccountButton(auth: AuthRepository) {
         }
     }
 }
+

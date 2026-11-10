@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
 /** Offline cache base key: `<base>_<userId>`, the bare base when signed out. */
@@ -64,9 +65,15 @@ class CourseTrackerRepository(
     private val userId: String? get() = userIdFlow.value
     private var uploadedSnapshot: CourseTrackerData? = null
 
+    // Signed-in edits made, and how many of them the cloud has: unequal means some exist only here.
+    @Volatile private var editsMade = 0
+    @Volatile private var editsUploaded = 0
+
     init {
         scope.launch {
             userIdFlow.collect { uid ->
+                editsMade = 0
+                editsUploaded = 0
                 _isLoading.value = true
                 _data.value = readCache(uid) ?: readCache(null) ?: createEmptyTrackerData()
                 refresh()
@@ -153,8 +160,9 @@ class CourseTrackerRepository(
             val reconciled = mergeTrackerData(_data.value, parsed)
             _data.value = reconciled
             writeCache(reconciled, uid)
-            if (gate.takeHeldBack(uid)) {
-                // Local edits made while uploads were blocked: push the merged copy.
+            // Local edits made while uploads were blocked, or kept from a session that expired
+            // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
+            if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) {
                 try {
                     val enc = cipher.encrypt(serializeTrackerData(reconciled))
                     gate.enqueue { cloud.upsert(uid, enc) }
@@ -191,10 +199,12 @@ class CourseTrackerRepository(
         // Signed out meanwhile: that user's edits stay out of the next user's upload.
         if (userId != uid) return
         _isSaving.value = true
+        val edits = editsMade
         try {
             if (upload(uid, _data.value) == TrackerUploadResult.HeldBack) {
                 refresh()
             } else {
+                if (userId == uid) editsUploaded = maxOf(editsUploaded, edits)
                 // The upload just merged the cloud copy, so another device's trackers are in hand.
                 uploadedSnapshot?.let { merged ->
                     uploadedSnapshot = null
@@ -222,12 +232,30 @@ class CourseTrackerRepository(
         }
     }
 
+    /**
+     * Before an explicit sign-out: sends a debounced or failed upload now. True when the cloud
+     * has every edit made while signed in.
+     */
+    suspend fun flushPendingWrites(): Boolean {
+        val uid = userId
+        if (uid != null && editsMade != editsUploaded) {
+            uploadLock.withLock {
+                uploadTimer?.cancel()
+                uploadTimer = null
+                pendingUploadUser = uid
+            }
+            uploadPending()
+        }
+        return editsMade == editsUploaded
+    }
+
     /** Every mutation: instant local state + offline cache, then the (debounced) cloud upload. */
     fun update(mutator: (CourseTrackerData) -> CourseTrackerData) {
         var next: CourseTrackerData? = null
         _data.update { prev -> mutator(prev).also { next = it } }
         val snapshot = next ?: return
         val uid = userId
+        if (uid != null) editsMade++
         scope.launch {
             writeCache(snapshot, uid)
             if (uid != null) scheduleUpload(uid)

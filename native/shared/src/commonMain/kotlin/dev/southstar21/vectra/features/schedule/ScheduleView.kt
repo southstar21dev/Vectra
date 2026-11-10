@@ -358,9 +358,6 @@ internal fun ScheduleView(
     val viewSyncIds = remember(scheduleItems, syncConflictIds) { syncConflictIds + scheduleItems.filter { it.syncConflict != null }.map { it.id } }
 
     val week = nav.activeWeek
-    // Anchor for semester/frequency math on events that carry no semester bounds (fixed on mount).
-    val referenceDate = remember { nowInBudapest().ymd }
-
     val ring = remember { listOf<Int?>(null) + DayOrder }
     // Remembered: daySwipe keys its detector on this lambda. It reads selectedDay's state when called.
     val swipe: (Int) -> Unit = remember {
@@ -401,7 +398,7 @@ internal fun ScheduleView(
             }
             // Built once per week, so the outgoing week keeps its own days while it fades out.
             val agenda = remember(shownWeek.startStr, events, selectedSemester, selectedDay, plainItems, todayStr) {
-                buildAgenda(shownWeek, events, selectedSemester, selectedDay, plainItems, todayStr, referenceDate)
+                buildAgenda(shownWeek, events, selectedSemester, selectedDay, plainItems, todayStr)
             }
             // The outgoing week keeps its reset button as it was, like AnimatePresence's exiting element.
             val atDefault = remember { booleanArrayOf(nav.isAtDefaultWeek) }
@@ -493,7 +490,6 @@ private fun buildAgenda(
     selectedDay: Int?,
     items: List<ScheduleItem>,
     todayStr: String,
-    referenceDate: String,
 ): List<AgendaDay> {
     val byDay = groupEventsByDay(filterScheduleEvents(events, selectedSemester, selectedDay, week.startStr, week.endStr))
     val occurrences = getScheduleItemOccurrences(items, week.startStr, week.endStr)
@@ -504,7 +500,7 @@ private fun buildAgenda(
         AgendaDay(
             day,
             info,
-            byDay[day].orEmpty().filter { classOccursOnDate(it, info.dateStr, it.semesterStart ?: referenceDate, index) },
+            byDay[day].orEmpty().filter { classOccursOnDate(it, info.dateStr, index) },
             occurrences.filter { it.date == info.dateStr },
         )
     }

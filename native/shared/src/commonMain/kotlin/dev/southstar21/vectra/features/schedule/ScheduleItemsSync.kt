@@ -139,24 +139,18 @@ internal class ScheduleItemsSync(
         try {
             if (!online) return
             try {
-                val (cloud, latestEvents) = coroutineScope {
-                    val c = async { fetchCloudItems(uid) }
-                    val e = async { classes.fetchShared(uid) }
-                    c.await() to e.await()
-                }
-                if (userId != uid) return
-                classes.publish(latestEvents)
-                stateLock.withLock {
-                    val merged = mergeScheduleItemsState(currentLocal(), cloud)
-                    val revalidated = reconcileQueuedItemConflicts(merged, latestEvents)
+                val merged = readAndMerge(uid, classes::publish) { local, read ->
+                    val revalidated = reconcileQueuedItemConflicts(mergeScheduleItemsState(local, read.items), read.events)
                     try {
                         saveLocal(uid, revalidated)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (_: Throwable) {
                         // Preserve the in-memory result even when the cache refresh fails.
-                        _itemsState.value = revalidated
+                        if (userId == uid) _itemsState.value = revalidated
                     }
                 }
-                itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
+                if (merged != null) itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Throwable) {
@@ -167,6 +161,40 @@ internal class ScheduleItemsSync(
             val q = _itemsState.value.queue
             if (online && q.isNotEmpty() && _itemSyncError.value == null) scope.launch { executeSync() }
         }
+    }
+
+    /**
+     * Reads classes and items, then merges them into the local state under [stateLock]. A sync
+     * pass that committed a write after the read began makes the read stale: merging it would
+     * bring back the row's previous version (and `updatedAt`) over the commit, so the read is
+     * retried instead. Null when the account changed or every read raced a commit; the local
+     * state, which already holds those commits, then stays as it is.
+     */
+    private suspend fun readAndMerge(
+        uid: String,
+        show: (List<ScheduleEvent>) -> Unit,
+        merge: suspend (local: ScheduleItemsState, read: CloudSnapshot) -> Unit,
+    ): CloudSnapshot? {
+        var merged: CloudSnapshot? = null
+        var attempts = 0
+        while (merged == null && attempts < STALE_READ_ATTEMPTS && userId == uid) {
+            attempts++
+            val writesAtRead = committedWrites
+            val (latestEvents, cloud) = coroutineScope {
+                val e = async { classes.fetchShared(uid) }
+                val c = async { fetchCloudItems(uid) }
+                e.await() to c.await()
+            }
+            if (userId == uid) {
+                show(latestEvents)
+                val read = CloudSnapshot(Clock.System.now().toEpochMilliseconds(), writesAtRead, latestEvents, cloud)
+                val fresh = stateLock.withLock {
+                    (committedWrites == writesAtRead).also { if (it) merge(currentLocal(), read) }
+                }
+                if (fresh) merged = read
+            }
+        }
+        return merged
     }
 
     private fun isNotFound(e: Throwable) = e is PocketBaseException && e.status == 404
@@ -380,6 +408,15 @@ internal class ScheduleItemsSync(
         }
     }
 
+    /**
+     * Before an explicit sign-out: one more sync pass when online. True when the queue is
+     * empty afterwards; conflicts and items waiting for acknowledgment stay queued, so they count.
+     */
+    suspend fun flushPending(): Boolean {
+        if (userId != null && online && currentLocal().queue.isNotEmpty()) executeSync()
+        return currentLocal().queue.isEmpty()
+    }
+
     /** Create or update an item: validate, re-check clashes on fresh data, queue, sync. */
     suspend fun saveItem(candidate: ScheduleItem): StoredScheduleItem {
         _isSavingItem.value = true
@@ -390,17 +427,19 @@ internal class ScheduleItemsSync(
             var validationEvents = classes.events.value
             var current = currentLocal()
             if (online) {
-                val writesAtRead = committedWrites
                 try {
-                    val (latestEvents, cloud) = coroutineScope {
-                        val e = async { classes.fetchShared(uid) }
-                        val c = async { fetchCloudItems(uid) }
-                        e.await() to c.await()
+                    var merged: ScheduleItemsState? = null
+                    val read = readAndMerge(uid, classes::show) { local, read ->
+                        merged = mergeScheduleItemsState(local, read.items).also { saveLocal(uid, it) }
                     }
-                    validationEvents = latestEvents
-                    classes.show(latestEvents)
-                    validatedCloud = CloudSnapshot(Clock.System.now().toEpochMilliseconds(), writesAtRead, latestEvents, cloud)
-                    current = stateLock.withLock { mergeScheduleItemsState(currentLocal(), cloud).also { saveLocal(uid, it) } }
+                    if (read != null) {
+                        validationEvents = read.events
+                        validatedCloud = read
+                        current = merged ?: current
+                    } else {
+                        // Every read raced a commit: check against the newest local state, which has them.
+                        current = currentLocal()
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Throwable) {
@@ -465,6 +504,8 @@ internal class ScheduleItemsSync(
     private companion object {
         const val ITEMS_STALE_MS = 60_000L
         const val VALIDATED_CLOUD_REUSE_MS = 5_000L
+        /** Reads that raced a sync commit are retried this many times in all. */
+        const val STALE_READ_ATTEMPTS = 3
         const val SAVE_FAILED = "Unable to save this change on this device. Check available storage and try again."
     }
 }

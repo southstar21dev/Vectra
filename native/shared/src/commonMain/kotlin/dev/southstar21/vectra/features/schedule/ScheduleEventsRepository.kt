@@ -286,8 +286,9 @@ internal class ScheduleEventsRepository(
             put("end_time", data.endTime)
             put("color", data.color)
             put("semester", data.semester)
-            put("semester_start", data.semesterStart)
-            put("semester_end", data.semesterEnd)
+            // The editor has no date fields: a PATCH without them keeps the dates the class already has.
+            data.semesterStart?.let { put("semester_start", it) }
+            data.semesterEnd?.let { put("semester_end", it) }
             put("attendance_type", data.attendanceType)
             // An edit replaces csv_metadata outright, so only the frequency survives.
             put("csv_metadata", setFrequencyInMetadata(null, data.frequency))
