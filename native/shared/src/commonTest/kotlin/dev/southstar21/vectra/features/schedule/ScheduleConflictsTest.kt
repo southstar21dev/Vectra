@@ -73,10 +73,12 @@ class ScheduleConflictsTest {
     }
 
     @Test fun oddEvenAnchor() {
+        // Weeks count as the header does: Tuesday 8 September is in week one (from Monday 7 September),
+        // so this Monday class first meets in week two, on the 14th, and "odd" skips it (04 #5).
         val e = scheduleEvent(semesterStart = "2026-09-08", semesterEnd = "2026-10-31", csvMetadata = freq("odd"))
-        assertTrue(classOccursOnDate(e, "2026-09-14"))
-        assertFalse(classOccursOnDate(e, "2026-09-21"))
-        assertTrue(classOccursOnDate(e.copy(csvMetadata = freq("even")), "2026-09-21"))
+        assertFalse(classOccursOnDate(e, "2026-09-14"))
+        assertTrue(classOccursOnDate(e, "2026-09-21"))
+        assertTrue(classOccursOnDate(e.copy(csvMetadata = freq("even")), "2026-09-14"))
     }
 
     @Test fun earliestMatchingRowAnchors() {

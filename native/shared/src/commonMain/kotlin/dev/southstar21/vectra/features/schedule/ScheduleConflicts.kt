@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.time.isValidCalendarDate
 import dev.southstar21.vectra.core.time.daysSinceSunday
 import dev.southstar21.vectra.features.holidays.isHungarianPublicHoliday
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import kotlinx.serialization.Serializable
 
 /** A personal schedule item: a work shift or a task. */
@@ -113,47 +114,25 @@ fun isConflictRelevantClass(event: ScheduleEvent, intensive: Boolean = false): B
  * each event, per date, per item is otherwise quadratic in regex-heavy string work.
  * Confined to one computation: it is not thread-safe.
  */
-internal class ScheduleEventIndex(events: List<ScheduleEvent>) {
-    private class Slot(val names: CourseNames, val semester: String, val start: String?)
-
-    private data class CourseKey(val name: String, val code: String, val semester: String)
-
+internal class ScheduleEventIndex(private val events: List<ScheduleEvent>) {
     private val validDates = HashMap<String, Boolean>()
-    private val courseNames = HashMap<Pair<String, String>, CourseNames>()
     private val exams = HashMap<Pair<String, String>, Boolean>()
-    private val earliestStarts = HashMap<CourseKey, String?>()
-    private val semesterAnchors = HashMap<String, String?>()
-    private val slots: List<Slot> = events.filter { !isExam(it) }.map {
-        Slot(names(it), it.semester.trim().lowercase(), it.semesterStart?.takeIf(::isValid))
-    }
+    private val weekOnes = HashMap<String, String?>()
 
     fun isValid(date: String): Boolean = validDates.getOrPut(date) { isValidCalendarDate(date) }
 
     fun isExam(event: ScheduleEvent): Boolean =
         exams.getOrPut(event.eventType to event.courseName) { event.isExam() }
 
-    private fun names(event: ScheduleEvent) =
-        courseNames.getOrPut(event.courseName to event.courseCode) { ScheduleCourses.names(event.courseName, event.courseCode) }
-
-    /** Odd/even weeks anchor at the earliest start among the course's slots. */
-    fun earliestStart(event: ScheduleEvent): String? =
-        earliestStarts.getOrPut(CourseKey(event.courseName, event.courseCode, event.semester)) {
-            val names = names(event)
-            var matching = slots.filter { names.sameCourse(it.names) }
-            val semester = event.semester.trim().lowercase()
-            if (semester.isNotEmpty()) {
-                val sameSemester = matching.filter { it.semester == semester }
-                if (sameSemester.isNotEmpty()) matching = sameSemester
-            }
-            matching.mapNotNull { it.start }.minOrNull()
-        }
-
-    /** The Monday of the week the first dated class of [semester] meets, any course; null when none is dated. */
-    fun semesterAnchor(semester: String): String? {
-        val key = semester.trim().lowercase()
-        if (key.isEmpty()) return null
-        return semesterAnchors.getOrPut(key) {
-            slots.filter { it.semester == key }.mapNotNull { it.start }.minOrNull()?.let(::mondayOf)
+    /**
+     * The Monday of week one of [semester] as the schedule's week header counts it
+     * (computeAcademicWeekInfo): the official start of that semester's events, so an intensive
+     * week before term is not week one. Null when none of its events is dated.
+     */
+    fun officialWeekOne(semester: String): String? {
+        if (semester.isBlank()) return null
+        return weekOnes.getOrPut(semester) {
+            ScheduleCourses.officialSemesterStart(events.filter { it.semester == semester })?.let(::mondayOf)
         }
     }
 }
@@ -176,17 +155,19 @@ internal fun nominalSemesterStart(semester: String): String? {
 }
 
 /**
- * Week one for odd/even counting. A class whose course has dated slots starts at the earliest
- * of them. Otherwise (manual classes have no dates) a date that never depends on which day is
- * being looked at, so the schedule, reminders and widgets agree and parity never restarts: the
- * week the semester's first dated class meets, else the semester's nominal start, else a fixed
- * Monday.
+ * Week one for odd/even counting: the week the schedule header calls Week 1, so "Even weeks"
+ * means the weeks it labels even. That is the semester's official start, else its nominal start,
+ * else a fixed Monday. A class without a semester ("All semesters") counts in the semester
+ * [dateStr] falls in. It never depends on which day is being looked at, so the schedule,
+ * reminders and widgets agree.
  */
-private fun semesterWeekOneStart(event: ScheduleEvent, index: ScheduleEventIndex): String =
-    index.earliestStart(event)
-        ?: index.semesterAnchor(event.semester)
-        ?: nominalSemesterStart(event.semester)
-        ?: FixedParityAnchor
+private fun semesterWeekOneStart(event: ScheduleEvent, dateStr: String, index: ScheduleEventIndex): String {
+    val semester = event.semester.ifBlank {
+        val date = LocalDate.parse(dateStr)
+        getSemesterFromYearMonth(date.year, date.month.number)
+    }
+    return index.officialWeekOne(semester) ?: nominalSemesterStart(semester) ?: FixedParityAnchor
+}
 
 /** Whether a weekly class meets on a candidate Budapest-local date. */
 fun classOccursOnDate(
@@ -210,7 +191,7 @@ internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, index: Sch
     // Manual weekly classes repeat blindly, but nobody teaches on a public holiday.
     if (event.source != "neptun" && isHungarianPublicHoliday(dateStr)) return false
 
-    val weekOneStart = semesterWeekOneStart(event, index)
+    val weekOneStart = semesterWeekOneStart(event, dateStr, index)
     val weekOneOrdinal = ordinalForDate(weekOneStart) ?: return false
     val anchorWeekday = weekdayForDate(weekOneStart) ?: return false
     val firstOccurrence = weekOneOrdinal + ((event.dayOfWeek - anchorWeekday + 7) % 7)
