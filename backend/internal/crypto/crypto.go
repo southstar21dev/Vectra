@@ -13,12 +13,16 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
+
+	"vectra/pb/internal/ratelimit"
 )
 
 const (
@@ -282,6 +286,50 @@ type request struct {
 	Parts  [][]string `json:"parts"`
 }
 
+// Batch limits. Older app versions send a whole collection in one decrypt
+// (decryptAll), so the per-request caps sit far above any real account's data;
+// current clients split their batches well below them. Every value or part
+// list costs one unit of the caller's budget.
+const (
+	MaxValues       = 20_000
+	MaxPartLists    = 2_000
+	MaxPartsPerList = 16
+	MaxBatchBytes   = 16 << 20
+	UserBudget      = 200_000
+	UserWindow      = 10 * time.Minute
+)
+
+// UserLimiter holds each user's budget of values per UserWindow. It is a var
+// so tests can substitute a fresh one.
+var UserLimiter = ratelimit.New(UserBudget, UserWindow)
+
+// batchCost checks body against the caps and returns its cost in budget
+// units, or a non-empty reason when it is too large.
+func batchCost(body request) (int, string) {
+	if len(body.Values) > MaxValues {
+		return 0, fmt.Sprintf("Too many values in one request (at most %d)", MaxValues)
+	}
+	if len(body.Parts) > MaxPartLists {
+		return 0, fmt.Sprintf("Too many digests in one request (at most %d)", MaxPartLists)
+	}
+	size := 0
+	for _, v := range body.Values {
+		size += len(v)
+	}
+	for _, p := range body.Parts {
+		if len(p) > MaxPartsPerList {
+			return 0, fmt.Sprintf("Too many parts in one digest (at most %d)", MaxPartsPerList)
+		}
+		for _, v := range p {
+			size += len(v)
+		}
+	}
+	if size > MaxBatchBytes {
+		return 0, fmt.Sprintf("Request too large (at most %d bytes of values)", MaxBatchBytes)
+	}
+	return max(1, len(body.Values)+len(body.Parts)), ""
+}
+
 // Handler implements POST /api/vectra/crypto (JWT-gated).
 //
 // encrypt emits `vc3:` ciphertext bound to the caller (e.Auth.Id). decrypt
@@ -302,6 +350,13 @@ func Handler(e *core.RequestEvent) error {
 	var body request
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid request body", err)
+	}
+	cost, tooLarge := batchCost(body)
+	if tooLarge != "" {
+		return e.Error(http.StatusRequestEntityTooLarge, tooLarge, nil)
+	}
+	if !UserLimiter.AllowN(e.Auth.Id, cost, time.Now()) {
+		return e.TooManyRequestsError("Too many crypto requests. Please wait a while and try again.", nil)
 	}
 	switch body.Op {
 	case "encrypt":
