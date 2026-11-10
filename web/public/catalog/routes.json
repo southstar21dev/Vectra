@@ -2906,7 +2906,7 @@
   {
     "id": "volan_415",
     "shortName": "415",
-    "description": "Hort, Hősök tere 1. | Budapest, Stadion autóbusz-pályaudvar",
+    "description": "Gyöngyös, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5122,23 +5122,7 @@
   {
     "id": "volan_H8",
     "shortName": "H8",
-    "description": "Kerepes H | Budapest, Örs vezér tere M+H",
-    "type": "COACH",
-    "color": "F9AB13",
-    "textColor": "000000"
-  },
-  {
-    "id": "volan_H8A",
-    "shortName": "H8A",
-    "description": "Cinkota H | Budapest, Örs vezér tere M+H",
-    "type": "COACH",
-    "color": "F9AB13",
-    "textColor": "000000"
-  },
-  {
-    "id": "volan_H8E",
-    "shortName": "H8E",
-    "description": "Kerepes H | Budapest, Örs vezér tere M+H",
+    "description": "Budapest, Örs vezér tere M+H (Kerepesi út) | Kerepes H",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5150,14 +5134,6 @@
     "type": "SUBURBAN_RAILWAY",
     "color": "ED6E86",
     "textColor": "FFFFFF"
-  },
-  {
-    "id": "volan_H9",
-    "shortName": "H9",
-    "description": "Csömör, Gorkij fasor H | Budapest, Örs vezér tere M+H",
-    "type": "COACH",
-    "color": "F9AB13",
-    "textColor": "000000"
   },
   {
     "id": "BKK_IC",
@@ -5216,14 +5192,6 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_MOZG",
-    "shortName": "MOZG",
-    "description": "Különjárat | Különjárat",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
     "id": "BKK_rjx",
     "shortName": "rjx",
     "description": "München Hbf | Budapest-Keleti",
@@ -5266,7 +5234,7 @@
   {
     "id": "BKK_S30",
     "shortName": "S30",
-    "description": "Siófok | Budapest-Déli",
+    "description": "Székesfehérvár | Budapest-Déli",
     "type": "RAIL",
     "color": "00AFF0",
     "textColor": "FFFFFF"
