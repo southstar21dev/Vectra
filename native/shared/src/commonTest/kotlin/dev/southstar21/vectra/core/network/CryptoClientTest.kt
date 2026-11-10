@@ -133,4 +133,19 @@ class CryptoClientTest {
         s.client.decrypt("vc3:a")
         assertEquals(2, s.batches.size)
     }
+
+    @Test fun aLargeCollectionGoesOutInCappedSlices() = real {
+        val s = Server()
+        val values = (1..2500).map { "vc3:v$it" }
+        assertEquals(values.map { it.removePrefix("vc3:") }, s.client.decryptAll(values))
+        assertEquals(listOf(MaxCryptoBatch, MaxCryptoBatch, 500), s.batches.map { it.size })
+        assertEquals(values, s.batches.flatten())
+    }
+
+    @Test fun theLaterSlicesAreRememberedUnderTheirOwnValues() = real {
+        val s = Server()
+        s.client.decryptAll((1..1500).map { "vc3:v$it" })
+        assertEquals("v1400", s.client.decrypt("vc3:v1400"))
+        assertEquals(2, s.batches.size)
+    }
 }

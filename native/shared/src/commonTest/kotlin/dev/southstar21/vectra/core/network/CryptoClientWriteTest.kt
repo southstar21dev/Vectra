@@ -69,6 +69,15 @@ class CryptoClientWriteTest {
         assertEquals("encrypt", ops.first().getValue("op").jsonPrimitive.content)
     }
 
+    @Test fun aLargeEncryptBurstStaysUnderTheBatchCap() = real {
+        val inputs = (1..1500).map { "p$it" }
+        val out = coroutineScope { inputs.map { async { encryptor.encrypt(it) } }.awaitAll() }
+        assertEquals(inputs.map { "vc3:$it" }, out)
+        val sizes = ops.map { it.getValue("values").jsonArray.size }
+        assertTrue(sizes.all { it <= MaxCryptoBatch }, "batch sizes $sizes")
+        assertEquals(inputs.size, sizes.sum())
+    }
+
     @Test fun nothingToEncryptNeedsNoRequest() = real {
         assertNull(encryptor.encrypt(null))
         assertEquals("", encryptor.encrypt(""))
