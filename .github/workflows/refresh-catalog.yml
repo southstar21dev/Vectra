@@ -16,6 +16,12 @@
 # see identical changes (no conflicts). The commits are `chore:`, so they never
 # cut a release, and pushes made with GITHUB_TOKEN don't trigger other workflows.
 #
+# Two jobs: `generate` holds the Futár key and only a read token; `push` holds the
+# write token, runs no repo code apart from wait-for-release.sh, and only commits
+# the three JSON files. `push` never moves master while a Release run on master is
+# queued or running (that release would see the branch move and publish nothing):
+# it waits up to 40 minutes, and otherwise leaves the catalog for the next day's run.
+#
 # Required GitHub secret (repo → Settings → Secrets and variables → Actions):
 #   FUTAR_API_KEY — the BKK Futár API key (register at opendata.bkk.hu)
 
@@ -31,13 +37,17 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  refresh:
+  generate:
     runs-on: ubuntu-latest
     # A hung Futár feed must not hold the runner for the 6h default.
     timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
     defaults:
       run:
         working-directory: web
@@ -45,10 +55,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: master
-          fetch-depth: 0
+          persist-credentials: false
 
-      # The generator imports only Node built-ins, so nothing is installed: no third-party code runs
-      # in a job that holds a push-capable token.
+      # The generator imports only Node built-ins, so nothing is installed.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
@@ -58,9 +67,74 @@ jobs:
           FUTAR_API_KEY: ${{ secrets.FUTAR_API_KEY }}
         run: node scripts/build-catalog.mjs
 
-      - name: Commit changes (if any)
+      - id: check
+        name: Check the new catalog
         run: |
-          FILES="public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json"
+          FILES=(public/catalog/routes.json public/catalog/stops.json public/catalog/route-variants.json)
+          if git diff --quiet -- "${FILES[@]}"; then
+            echo "Catalog unchanged on master — nothing to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Belt-and-braces: build-catalog.mjs already aborts below absolute and
+          # relative sanity thresholds, but never ship a suspiciously small
+          # catalog even if a future edit relaxes that guard.
+          ROUTES="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/routes.json','utf8')).length")"
+          STOPS="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/stops.json','utf8')).length")"
+          OLD_ROUTES="$(git show HEAD:web/public/catalog/routes.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+          OLD_STOPS="$(git show HEAD:web/public/catalog/stops.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
+          BROKEN=0
+          if [ "${ROUTES}" -lt 100 ] || [ "${STOPS}" -lt 500 ]; then BROKEN=1; fi
+          if [ "${OLD_ROUTES}" -gt 0 ] && [ "${ROUTES}" -lt $(( OLD_ROUTES * 95 / 100 )) ]; then BROKEN=1; fi
+          if [ "${OLD_STOPS}" -gt 0 ] && [ "${STOPS}" -lt $(( OLD_STOPS * 95 / 100 )) ]; then BROKEN=1; fi
+          if [ "$BROKEN" -eq 1 ]; then
+            echo "Regenerated catalog looks degraded (routes=$ROUTES/$OLD_ROUTES, stops=$STOPS/$OLD_STOPS) — keeping the last good catalog."
+            git checkout -- "${FILES[@]}"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Master's catalog after this run (new or unchanged); `push` syncs dev to it either way.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: catalog
+          path: |
+            web/public/catalog/routes.json
+            web/public/catalog/stops.json
+            web/public/catalog/route-variants.json
+          if-no-files-found: error
+          retention-days: 1
+
+  push:
+    needs: generate
+    runs-on: ubuntu-latest
+    # Up to 40 minutes waiting for a release, plus the pushes.
+    timeout-minutes: 50
+    permissions:
+      contents: write
+      # Lists the Release runs (wait-for-release.sh).
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: catalog
+          path: ${{ runner.temp }}/catalog
+
+      - name: Commit and push (if anything changed)
+        env:
+          CHANGED: ${{ needs.generate.outputs.changed }}
+          NEW: ${{ runner.temp }}/catalog
+        run: |
+          FILES=(routes.json stops.json route-variants.json)
           git config user.name "vectra-bot"
           git config user.email "vectra-bot@users.noreply.github.com"
           # GitHub occasionally rejects a push server-side (e.g. "fatal error in
@@ -73,40 +147,47 @@ jobs:
             done
             return 1
           }
-          if git diff --quiet -- $FILES; then
-            echo "Catalog unchanged on master — nothing to commit."
-          else
-            # Belt-and-braces: build-catalog.mjs already aborts below absolute and
-            # relative sanity thresholds, but never ship a suspiciously small
-            # catalog even if a future edit relaxes that guard.
-            ROUTES="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/routes.json','utf8')).length")"
-            STOPS="$(node -p "JSON.parse(require('fs').readFileSync('public/catalog/stops.json','utf8')).length")"
-            OLD_ROUTES="$(git show HEAD:web/public/catalog/routes.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
-            OLD_STOPS="$(git show HEAD:web/public/catalog/stops.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).length" 2>/dev/null || echo 0)"
-            BROKEN=0
-            if [ "${ROUTES}" -lt 100 ] || [ "${STOPS}" -lt 500 ]; then BROKEN=1; fi
-            if [ "${OLD_ROUTES}" -gt 0 ] && [ "${ROUTES}" -lt $(( OLD_ROUTES * 95 / 100 )) ]; then BROKEN=1; fi
-            if [ "${OLD_STOPS}" -gt 0 ] && [ "${STOPS}" -lt $(( OLD_STOPS * 95 / 100 )) ]; then BROKEN=1; fi
-            if [ "$BROKEN" -eq 1 ]; then
-              echo "Regenerated catalog looks degraded (routes=$ROUTES/$OLD_ROUTES, stops=$STOPS/$OLD_STOPS) — keeping the last good catalog."
-              git checkout -- $FILES
+          # wait-for-release.sh exits 3 while a Release run is active; any other failure stops the job.
+          release_free() {
+            local rc=0
+            .github/scripts/wait-for-release.sh "$1" || rc=$?
+            [ "$rc" -eq 0 ] && return 0
+            [ "$rc" -eq 3 ] && return 1
+            exit "$rc"
+          }
+          if [ "$CHANGED" = true ]; then
+            if ! release_free 2400; then
+              echo "::warning::A Release run on master is still active; leaving the catalog for the next run."
+              exit 0
+            fi
+            # Master may have moved while this job waited; commit on its current head.
+            git fetch -q origin master
+            git checkout -q --detach origin/master
+            for F in "${FILES[@]}"; do cp "$NEW/$F" "web/public/catalog/$F"; done
+            if git diff --quiet -- web/public/catalog; then
+              echo "Master already has this catalog."
             else
-              git add $FILES
-              git commit -m "chore: refresh BKK transit catalog from Futár feed"
+              git add web/public/catalog
+              git commit -q -m "chore: refresh BKK transit catalog from Futár feed"
+              # A release may have started while this job committed: check once more.
+              if ! release_free 0; then
+                echo "::warning::A Release run on master started; leaving the catalog for the next run."
+                exit 0
+              fi
               push_with_retry master
             fi
           fi
           # Always sync master's catalog onto the other long-lived branches, so a
           # branch left behind by an earlier failed push catches up on the next run.
           for BRANCH in dev; do
-            git worktree add -q "../../$BRANCH" "origin/$BRANCH"
-            cp $FILES "../../$BRANCH/web/public/catalog/"
+            git worktree add -q "$RUNNER_TEMP/$BRANCH" "origin/$BRANCH"
+            for F in "${FILES[@]}"; do cp "$NEW/$F" "$RUNNER_TEMP/$BRANCH/web/public/catalog/$F"; done
             (
-              cd "../../$BRANCH/web"
-              if git diff --quiet -- public/catalog; then
+              cd "$RUNNER_TEMP/$BRANCH"
+              if git diff --quiet -- web/public/catalog; then
                 echo "$BRANCH already has this catalog."
               else
-                git add public/catalog
+                git add web/public/catalog
                 git commit -q -m "chore: refresh BKK transit catalog from Futár feed"
                 push_with_retry "$BRANCH"
               fi
