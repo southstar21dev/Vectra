@@ -161,7 +161,7 @@ type source interface {
 // app. When opts.DryRun is set it reports the expected counts without writing.
 func Run(app core.App, dsn string, opts Options) (Report, error) {
 	if strings.TrimSpace(dsn) == "" {
-		return Report{}, errors.New("migrate-supabase: --dsn is required")
+		return Report{}, errors.New("migrate-supabase: SUPABASE_DSN (or --dsn) is required")
 	}
 
 	src, err := openPostgres(dsn)

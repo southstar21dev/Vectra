@@ -11,6 +11,9 @@ import (
 // only and never re-runs an edited one, so a persistent pb_data that already
 // applied 1700000001 would lack them. This migration adds them separately and
 // is idempotent, so it is safe on both fresh and already-migrated databases.
+// Existing schedule_items rows get their record id as client_id before the
+// unique index is built. Duplicate course_tracker_data rows per user are not
+// merged here: restoring a backup that has them needs a manual dedupe first.
 //
 //   - schedule_items.client_id: the app generates its own UUID for every
 //     schedule item and keys its offline mutation queue on it; PocketBase's
@@ -29,6 +32,17 @@ func init() {
 		}
 		if si.Fields.GetByName("client_id") == nil {
 			si.Fields.Add(&core.TextField{Name: "client_id", Required: true})
+			if err := app.Save(si); err != nil {
+				return err
+			}
+		}
+		// Rows that predate the column all hold "", which would make the unique
+		// index below fail as soon as there are two of them. Their record id is a
+		// unique stand-in the client never generates (it uses UUIDs).
+		if _, err := app.DB().NewQuery(
+			"UPDATE schedule_items SET client_id = id WHERE client_id = '' OR client_id IS NULL",
+		).Execute(); err != nil {
+			return err
 		}
 		if si.GetIndex("idx_schedule_items_client_id") == "" {
 			si.AddIndex("idx_schedule_items_client_id", true, "client_id", "")

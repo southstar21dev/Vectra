@@ -5,8 +5,8 @@ package resetpage
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	_ "embed"
+	"encoding/base64"
 	"net/http"
 	"strings"
 

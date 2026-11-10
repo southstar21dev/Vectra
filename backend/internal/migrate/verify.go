@@ -154,7 +154,7 @@ func Verify(app core.App, dsn string) (VerifyReport, error) {
 // VerifyWithOptions is Verify with explicit options.
 func VerifyWithOptions(app core.App, dsn string, opts VerifyOptions) (VerifyReport, error) {
 	if strings.TrimSpace(dsn) == "" {
-		return VerifyReport{}, errors.New("migrate-supabase: --dsn is required")
+		return VerifyReport{}, errors.New("migrate-supabase: SUPABASE_DSN (or --dsn) is required")
 	}
 	src, err := openPostgres(dsn)
 	if err != nil {
@@ -402,8 +402,11 @@ func decryptCheck(app core.App, table string, key []byte, sampleRows int) Check 
 	found := 0
 	var failures []string
 	for _, rec := range records {
-		// vc3 values are bound to their owner, so decrypt as that user (vc2
-		// ignores it). Every ciphertext table carries the `user` relation.
+		// vc3 values are bound to their owner, so decrypt as that user. Every
+		// ciphertext table carries the `user` relation. The route no longer
+		// opens vc2; the importer upgrades it to vc3 right after importing
+		// (internal/legacyvc2), so a vc2 value here is checked for integrity
+		// through the legacy path.
 		owner := rec.GetString("user")
 		for _, field := range rec.Collection().Fields {
 			v, ok := ciphertextString(rec.Get(field.GetName()))
@@ -411,7 +414,13 @@ func decryptCheck(app core.App, table string, key []byte, sampleRows int) Check 
 				continue
 			}
 			found++
-			if _, err := crypto.DecryptValueFor(key, v, owner); err != nil {
+			var err error
+			if strings.HasPrefix(v, crypto.V2Prefix) {
+				_, err = crypto.DecryptValue(key, v)
+			} else {
+				_, err = crypto.DecryptValueFor(key, v, owner)
+			}
+			if err != nil {
 				failures = append(failures, fmt.Sprintf("%s.%s: %v", rec.Id, field.GetName(), err))
 			}
 		}

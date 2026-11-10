@@ -17,6 +17,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/types"
 
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/reauth"
 )
 
 const (
@@ -32,6 +33,10 @@ const (
 	challengeTTL = 5 * time.Minute
 
 	defaultFriendlyName = "Passkey"
+	// maxFriendlyNameRunes bounds the stored label: the passkeys field rejects
+	// long values, and that would surface as a 500 after the single-use
+	// registration challenge has already been consumed.
+	maxFriendlyNameRunes = 64
 
 	// challengeCleanupJobID / challengeCleanupSchedule drive the periodic
 	// reclamation of expired challenge rows. Login/start is public and inserts
@@ -91,6 +96,16 @@ func splitOrigins(raw string) []string {
 		}
 	}
 	return out
+}
+
+// truncateFriendlyName cuts name to maxFriendlyNameRunes runes, never inside a
+// multi-byte character.
+func truncateFriendlyName(name string) string {
+	r := []rune(name)
+	if len(r) <= maxFriendlyNameRunes {
+		return name
+	}
+	return strings.TrimSpace(string(r[:maxFriendlyNameRunes]))
 }
 
 // webAuthnUser adapts a PocketBase users record to webauthn.User.
@@ -306,6 +321,49 @@ func RegisterChallengeCleanup(app core.App) {
 	})
 }
 
+// RegisterRevokeOnCredentialChange deletes a user's passkeys and pending
+// registration challenges whenever the account's tokenKey rotates, which
+// PocketBase does on a password change, a password-reset confirm and an email
+// change. Without it a passkey enrolled by whoever held the account before
+// (for example an attacker who signed up with the victim's unverified
+// address) would keep logging in after the rightful owner reset the password.
+// It mirrors PocketBase's own rule of deleting a record's OTPs on a tokenKey
+// change, and runs in the same transaction as the update. Call it once during
+// boot.
+func RegisterRevokeOnCredentialChange(app core.App) {
+	app.OnRecordUpdateExecute("users").BindFunc(func(e *core.RecordEvent) error {
+		originalApp := e.App
+		return e.App.RunInTransaction(func(txApp core.App) error {
+			e.App = txApp
+			defer func() { e.App = originalApp }()
+			if err := e.Next(); err != nil {
+				return err
+			}
+			if e.Record.Original().IsNew() || e.Record.Original().TokenKey() == e.Record.TokenKey() {
+				return nil
+			}
+			return revokeUserPasskeys(txApp, e.Record.Id)
+		})
+	})
+}
+
+// revokeUserPasskeys deletes every passkey and passkey challenge owned by
+// userID.
+func revokeUserPasskeys(app core.App, userID string) error {
+	for _, name := range []string{passkeysCollection, challengesCollection} {
+		recs, err := app.FindRecordsByFilter(name, "user = {:u}", "", 0, 0, dbx.Params{"u": userID})
+		if err != nil {
+			return err
+		}
+		for _, r := range recs {
+			if err := app.Delete(r); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // verifyRequest is the body shared by both verify steps. credential is the
 // standard WebAuthn PublicKeyCredential JSON produced by the client ceremony.
 type verifyRequest struct {
@@ -328,12 +386,24 @@ func passkeyJSON(r *core.Record) map[string]any {
 }
 
 // RegistrationStartHandler implements POST /api/vectra/passkeys/register/start.
-// Requires auth. Returns {challenge_id, options} where options is the
+// Requires auth and the body {currentPassword}: a passkey is a login factor
+// that outlives the session, so a stolen session token alone must not be able
+// to enrol one (see reauth.Check, which also rate-limits the check). Returns
+// {challenge_id, options} where options is the
 // PublicKeyCredentialCreationOptions the client feeds to
 // navigator.credentials.create({publicKey: options}) or the native plugin.
 func RegistrationStartHandler(e *core.RequestEvent) error {
 	if e.Auth == nil {
 		return e.UnauthorizedError("Authentication required", nil)
+	}
+	var body struct {
+		CurrentPassword string `json:"currentPassword"`
+	}
+	if err := e.BindBody(&body); err != nil {
+		return e.BadRequestError("Invalid request body", err)
+	}
+	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+		return err
 	}
 	w, err := newWebAuthn()
 	if err != nil {
@@ -401,7 +471,7 @@ func RegistrationVerifyHandler(e *core.RequestEvent) error {
 		return e.BadRequestError("Registration verification failed", err)
 	}
 
-	friendlyName := strings.TrimSpace(body.FriendlyName)
+	friendlyName := truncateFriendlyName(strings.TrimSpace(body.FriendlyName))
 	if friendlyName == "" {
 		friendlyName = defaultFriendlyName
 	}

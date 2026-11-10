@@ -2,13 +2,17 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/spf13/cobra"
 
+	"vectra/pb/internal/crypto"
+	"vectra/pb/internal/legacyvc2"
 	"vectra/pb/internal/migrate"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/push"
@@ -29,6 +33,9 @@ func main() {
 	// call and authentication challenges have no user, so cascade delete never
 	// touches them).
 	passkeys.RegisterChallengeCleanup(app)
+	// Revoke passkeys when the password or email changes (tokenKey rotation),
+	// so a passkey enrolled before a password reset cannot log in after it.
+	passkeys.RegisterRevokeOnCredentialChange(app)
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
 
@@ -55,12 +62,20 @@ func registerMigrateSupabaseCommand(app *pocketbase.PocketBase) {
 		Use:   "migrate-supabase",
 		Short: "Import users and data from Supabase Postgres",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dsn, _ := cmd.Flags().GetString("dsn")
+			// Secrets come from the environment so they stay out of shell
+			// history and the process list; the flags remain as a fallback.
+			dsn := os.Getenv("SUPABASE_DSN")
+			if dsn == "" {
+				dsn, _ = cmd.Flags().GetString("dsn")
+			}
 			dry, _ := cmd.Flags().GetBool("dry-run")
 			verify, _ := cmd.Flags().GetBool("verify")
 			refresh, _ := cmd.Flags().GetBool("refresh")
 			testEmail, _ := cmd.Flags().GetString("test-email")
-			testPassword, _ := cmd.Flags().GetString("test-password")
+			testPassword := os.Getenv("VECTRA_TEST_PASSWORD")
+			if testPassword == "" {
+				testPassword, _ = cmd.Flags().GetString("test-password")
+			}
 
 			if verify && dry {
 				return errors.New("--verify cannot be combined with --dry-run (nothing was imported)")
@@ -89,14 +104,25 @@ func registerMigrateSupabaseCommand(app *pocketbase.PocketBase) {
 				return err
 			}
 			cmd.Println(report.String())
+			if dry {
+				return nil
+			}
+			// The importer copies Supabase's vc2 ciphertext verbatim, and the
+			// crypto route no longer opens vc2, so upgrade it to owner-bound vc3
+			// now (migration 1700000013 only ran once, at its first serve).
+			up, err := legacyvc2.Upgrade(app, crypto.EncryptionKeyFromEnv)
+			if err != nil {
+				return fmt.Errorf("import finished, but re-encrypting vc2 to vc3 failed (the imported vc2 rows are unchanged): %w", err)
+			}
+			cmd.Printf("re-encrypted %d vc2 value(s) to vc3; %d left unchanged\n", up.Converted, len(up.Left))
 			return nil
 		},
 	}
-	cmd.Flags().String("dsn", "", "Postgres DSN of the Supabase database (required)")
+	cmd.Flags().String("dsn", "", "Postgres DSN of the Supabase database; prefer the SUPABASE_DSN env var, which keeps it out of shell history and the process list")
 	cmd.Flags().Bool("dry-run", false, "connect and report counts without writing anything")
 	cmd.Flags().Bool("refresh", false, "overwrite already-imported users, passkeys and keyed data rows from the source (default: insert-only, existing rows are skipped)")
 	cmd.Flags().Bool("verify", false, "verify counts, ciphertext, integrity and login against the existing database (read-only; no import)")
 	cmd.Flags().String("test-email", "", "test account email for a live-login assertion during --verify")
-	cmd.Flags().String("test-password", "", "test account password for a live-login assertion during --verify")
+	cmd.Flags().String("test-password", "", "test account password for a live-login assertion during --verify; prefer the VECTRA_TEST_PASSWORD env var")
 	app.RootCmd.AddCommand(cmd)
 }

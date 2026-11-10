@@ -3,33 +3,16 @@ package account
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 
-	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/reauth"
 )
 
 // errInvalidPassword is returned when the caller's current password does not
 // match the stored hash.
 var errInvalidPassword = errors.New("current password is incorrect")
-
-const (
-	// emailChangeWindow / the per-key caps below bound EmailHandler, which
-	// checks the current password and so is otherwise a password-guessing
-	// oracle for a stolen session token. Each user and each client IP gets its
-	// own bucket.
-	emailChangeWindow     = 15 * time.Minute
-	emailChangePerUserMax = 5
-	emailChangePerIPMax   = 20
-)
-
-// emailUserLimiter / emailIPLimiter are vars so tests can substitute fresh ones.
-var (
-	emailUserLimiter = ratelimit.New(emailChangePerUserMax, emailChangeWindow)
-	emailIPLimiter   = ratelimit.New(emailChangePerIPMax, emailChangeWindow)
-)
 
 var ownedCollections = []string{
 	"schedule_events", "neptun_schedule_events", "schedule_items",
@@ -62,9 +45,20 @@ func deleteAccount(app core.App, userID string) error {
 	return app.Delete(user)
 }
 
-// Handler implements POST /api/vectra/account/delete (JWT-gated): delete the
-// caller's owned records, then the auth record itself, in one transaction.
+// Handler implements POST /api/vectra/account/delete (JWT-gated): reads
+// {currentPassword}, verifies it (rate-limited, see reauth.Check), then deletes
+// the caller's owned records and the auth record itself in one transaction. The
+// password check keeps a leaked session token from deleting the account.
 func Handler(e *core.RequestEvent) error {
+	var body struct {
+		CurrentPassword string `json:"currentPassword"`
+	}
+	if err := e.BindBody(&body); err != nil {
+		return e.BadRequestError("Invalid request body", err)
+	}
+	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+		return err
+	}
 	userID := e.Auth.Id
 	err := e.App.RunInTransaction(func(txApp core.App) error {
 		return deleteAccount(txApp, userID)
@@ -111,12 +105,10 @@ func EmailHandler(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
-	if e.Auth == nil || e.Auth.Id == "" {
-		return e.UnauthorizedError("Authentication required", nil)
-	}
-	now := time.Now()
-	if !emailIPLimiter.Allow(ratelimit.ClientIP(e), now) || !emailUserLimiter.Allow(e.Auth.Id, now) {
-		return e.TooManyRequestsError("Too many email change attempts. Please wait a while and try again.", nil)
+	// The shared re-auth gate rate-limits the password check per user and IP;
+	// ChangeEmail re-validates it as part of the change itself.
+	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+		return err
 	}
 	err := ChangeEmail(e.App, e.Auth.Id, body.CurrentPassword, body.NewEmail)
 	if errors.Is(err, errInvalidPassword) {

@@ -499,3 +499,24 @@ func TestFetchStopArrivalsCollapsesConcurrentMisses(t *testing.T) {
 	require.EqualValues(t, callers, ok.Load())
 	require.EqualValues(t, 1, hits.Load(), "concurrent misses must share one upstream call")
 }
+
+// TestHandlerDoesNotFollowRedirects: the upstream URL carries the API key, so a
+// redirect must never be followed (it would resend the key to the target).
+func TestHandlerDoesNotFollowRedirects(t *testing.T) {
+	t.Setenv("FUTAR_API_KEY", sentinelKey)
+	var followed atomic.Int32
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		followed.Add(1)
+		_, _ = io.WriteString(w, `{"status":"OK"}`)
+	}))
+	defer target.Close()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL+r.URL.Path+"?"+r.URL.RawQuery, http.StatusFound)
+	}))
+	defer upstream.Close()
+	useFutarBase(t, upstream.URL)
+
+	rec := runHandler(t, `{"endpoint":"vehicles-for-route","params":{"routeId":"BKK_3010"}}`)
+	require.Equal(t, http.StatusBadGateway, rec.Code)
+	require.Zero(t, followed.Load())
+}

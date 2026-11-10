@@ -12,9 +12,11 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
-
-	_ "vectra/pb/migrations"
 )
+
+// This internal test package cannot import vectra/pb/migrations (migration
+// 1700000013 imports this package). The route tests only need the users
+// collection, which PocketBase's test data already provides.
 
 func TestDeriveKeyMatchesWebCrypto(t *testing.T) {
 	key := deriveKey("test-key")
@@ -67,7 +69,7 @@ func TestExportedValueHelpers(t *testing.T) {
 }
 
 // TestVC3BoundToOwner: a vc3 ciphertext opens only for the user it was sealed
-// for, while legacy vc2 values still open for anyone holding the key.
+// for, and the route's decrypt path refuses legacy vc2 values for everyone.
 func TestVC3BoundToOwner(t *testing.T) {
 	key := deriveKey("vc3-key")
 
@@ -84,15 +86,16 @@ func TestVC3BoundToOwner(t *testing.T) {
 	_, err = decryptValueFor(key, ct, "")
 	require.Error(t, err)
 
-	// Legacy vc2 still decrypts regardless of caller.
+	// Legacy vc2 is refused by the route's path, whoever asks.
 	v2, err := encryptValue(key, "legacy")
 	require.NoError(t, err)
-	got, err = decryptValueFor(key, v2, "userB")
-	require.NoError(t, err)
-	require.Equal(t, "legacy", got)
+	_, err = decryptValueFor(key, v2, "userB")
+	require.Error(t, err, "the route must not open unbound vc2")
+	_, err = DecryptValueFor(deriveKey("test-key"), "vc2:AAECAwQFBgcICQoLOY8X/pUZ4LVnmsNxo2f1Y8NHKaeqONMAhR0t8Hgk5/p5tAAZWLM=", "anyone")
+	require.Error(t, err)
 
-	// The cross-implementation vc2 vector keeps working through the new path.
-	got, err = DecryptValueFor(deriveKey("test-key"), "vc2:AAECAwQFBgcICQoLOY8X/pUZ4LVnmsNxo2f1Y8NHKaeqONMAhR0t8Hgk5/p5tAAZWLM=", "anyone")
+	// The legacy helper (used only by the vc2 to vc3 upgrade) still opens it.
+	got, err = DecryptValue(deriveKey("test-key"), "vc2:AAECAwQFBgcICQoLOY8X/pUZ4LVnmsNxo2f1Y8NHKaeqONMAhR0t8Hgk5/p5tAAZWLM=")
 	require.NoError(t, err)
 	require.Equal(t, "Vectra cross-impl test", got)
 
@@ -131,8 +134,8 @@ func callHandler(t *testing.T, app *tests.TestApp, auth *core.Record, body strin
 
 // TestHandlerVC3RoundTripAndCrossUser drives the route: encrypt emits vc3 for
 // the caller, the caller decrypts it, another user gets the input echoed back
-// with its index in `errors` (not a 500 for the whole batch), and vc2 and
-// plaintext entries in the same batch are unaffected.
+// with its index in `errors` (not a 500 for the whole batch), a legacy vc2
+// entry is refused the same way for every caller, and plaintext passes through.
 func TestHandlerVC3RoundTripAndCrossUser(t *testing.T) {
 	resetKey(t, "handler-key")
 	app, err := tests.NewTestApp()
@@ -166,11 +169,12 @@ func TestHandlerVC3RoundTripAndCrossUser(t *testing.T) {
 	batch, _ := json.Marshal(map[string]any{"op": "decrypt", "values": []string{aliceCT, legacy, "plain"}})
 
 	own := callHandler(t, app, alice, string(batch))
-	require.Equal(t, []any{"hello", "old row", "plain"}, own["values"])
-	require.NotContains(t, own, "errors")
+	require.Equal(t, []any{"hello", legacy, "plain"}, own["values"],
+		"vc2 is no longer opened; its input is echoed")
+	require.Equal(t, []any{float64(1)}, own["errors"])
 
 	cross := callHandler(t, app, bob, string(batch))
-	require.Equal(t, []any{aliceCT, "old row", "plain"}, cross["values"],
+	require.Equal(t, []any{aliceCT, legacy, "plain"}, cross["values"],
 		"a failed entry echoes its input; the rest of the batch still decrypts")
-	require.Equal(t, []any{float64(0)}, cross["errors"])
+	require.Equal(t, []any{float64(0), float64(1)}, cross["errors"])
 }

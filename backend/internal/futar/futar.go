@@ -51,9 +51,17 @@ const (
 // httptest.Server; production never reassigns it.
 var futarBase = "https://futar.bkk.hu/api/query/v1/ws/otp/api/where"
 
+// maxUpstreamBody caps how much of a Futár response is read or streamed back.
+// Real responses (route details with polylines included) stay well under 1 MB.
+const maxUpstreamBody = 8 << 20
+
 // upstreamClient is shared by every proxy call so connections to Futár are
-// pooled instead of a fresh transport per request.
-var upstreamClient = &http.Client{Timeout: upstreamTimeout}
+// pooled instead of a fresh transport per request. Redirects are not followed:
+// the request URL carries the API key, which a redirect would resend.
+var upstreamClient = &http.Client{
+	Timeout:       upstreamTimeout,
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
 
 // limiter is the per-IP limiter for Handler. It is a var so tests can
 // substitute a fresh one.
@@ -427,7 +435,7 @@ func doFetchStopArrivals(ctx context.Context, cacheKey, stopID string, minutesBe
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamBody))
 	if err != nil {
 		return nil, "Upstream request failed"
 	}
@@ -667,5 +675,5 @@ func Handler(e *core.RequestEvent) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		status = http.StatusBadGateway
 	}
-	return e.Stream(status, "application/json", resp.Body)
+	return e.Stream(status, "application/json", io.LimitReader(resp.Body, maxUpstreamBody))
 }
