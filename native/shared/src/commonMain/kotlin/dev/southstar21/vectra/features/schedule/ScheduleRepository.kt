@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -74,9 +73,14 @@ class ScheduleRepository(
         scope.launch {
             auth.session.map { it?.userId?.ifEmpty { null } }.distinctUntilChanged().collect { uid -> onUserChanged(uid) }
         }
+        // Read now, not in the collector: a reconnect before it subscribes would otherwise
+        // arrive as its first value and be skipped, leaving the offline queue unsent.
+        var wasOnline = connectivity.online.value
         scope.launch {
-            connectivity.online.drop(1).collect { isOnline ->
-                if (isOnline && session.userId != null) {
+            connectivity.online.collect { isOnline ->
+                val reconnected = isOnline && !wasOnline
+                wasOnline = isOnline
+                if (reconnected && session.userId != null) {
                     // Refetch on reconnect, and replay whatever was queued while offline.
                     launch { runSuspendCatching { classes.refreshEvents(force = true) } }
                     launch { itemsSync.refreshItems(force = true); itemsSync.executeSync() }
