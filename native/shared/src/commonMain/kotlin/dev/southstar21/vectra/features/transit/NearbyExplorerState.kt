@@ -57,7 +57,43 @@ data class ExplorerSelection(
     val distanceMeters: Double,
     val arrivalMs: Long,
     val isPredicted: Boolean,
+    /** [tripId]'s service day (YYYYMMDD), for its trip-details. */
+    val serviceDate: String? = null,
 )
+
+/** How long a departure stays followable after its time, as on the boards. */
+private const val DepartedGraceMs = 60_000L
+
+/**
+ * [selection] kept in step with its stop's latest departures ([boards]; null while that stop's
+ * arrivals aren't loaded, which keeps the latched values): the same trip's current time, else,
+ * once that trip has left the feed, the next departure of the same line and direction. Null when
+ * the line has nothing left there in that direction.
+ */
+internal fun refreshExplorerSelection(selection: ExplorerSelection, boards: List<NearbyDeparture>?, now: Long): ExplorerSelection? {
+    if (boards == null) return selection
+    val upcoming = boards.filter { it.routeId == selection.routeId }
+        .flatMap { it.arrivals }
+        .filter { it.arrivalMs >= now - DepartedGraceMs }
+    val next = upcoming.firstOrNull { !selection.tripId.isNullOrEmpty() && it.tripId == selection.tripId }
+        ?: upcoming.filter { it.headSign == selection.headsign }.minByOrNull { it.arrivalMs }
+    return next?.let { a ->
+        selection.copy(
+            tripId = a.tripId.ifEmpty { null },
+            arrivalMs = a.arrivalMs,
+            isPredicted = a.isPredicted,
+            serviceDate = a.serviceDate,
+            platformStopId = a.platformStopId ?: selection.platformStopId,
+            lat = a.platformLat ?: selection.lat,
+            lon = a.platformLon ?: selection.lon,
+        )
+    }
+}
+
+/** Where the selected departure leaves from: its platform, else every platform of its station in [refs]. */
+internal fun explorerServingStopIds(selection: ExplorerSelection, refs: Map<String, FutarStop>?): Set<String> =
+    selection.platformStopId?.takeIf { it.isNotEmpty() }?.let(::setOf)
+        ?: (refs.orEmpty().values.filter { it.parentStationId == selection.stopId }.map { it.id } + selection.stopId).toSet()
 
 /** The selected stop's latched identity — survives leaving the viewport. */
 @Immutable
@@ -135,11 +171,8 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
     val writeModeFilter = remember { createModeFilterWriteQueue() }
 
     // Drop a latched selection whose mode the active filter no longer includes.
-    val selection = selectionState?.takeUnless { sel ->
+    val filteredSelection = selectionState?.takeUnless { sel ->
         modeFilter.isNotEmpty() && sel.routeType.uppercase() !in modeFilter.map { it.uppercase() }.toSet()
-    }
-    LaunchedEffect(selection == null && selectionState != null) {
-        if (selection == null && selectionState != null) selectionState = null
     }
 
     val anchor = remember(geoState.status, geoState.lat, geoState.lon) {
@@ -163,6 +196,24 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
         arrivalStops.associate { it.id to parseAllNearbyBoards(stopArrivalsResults[it.id]?.data, catalogRoutes.data) }
     }
     val stopDeparturesMap = remember(boards, now) { boards.mapValues { dropDepartedBoards(it.value, now) } }
+
+    // The selected departure follows later polls: its time moves with the prediction, and once it
+    // has left, the next one in the same direction takes over (or the selection clears).
+    val selection = remember(filteredSelection, boards, stopArrivalsResults, now) {
+        filteredSelection?.let { sel ->
+            val loaded = stopArrivalsResults[sel.stopId]?.data != null
+            refreshExplorerSelection(sel, if (loaded) boards[sel.stopId] else null, now)
+        }
+    }
+    LaunchedEffect(selection == null && selectionState != null) {
+        if (selection == null && selectionState != null) selectionState = null
+    }
+    // Latch the refreshed values, so they hold once the stop stops being polled.
+    LaunchedEffect(selection) {
+        // Only over the selection it was derived from, never over a newer tap.
+        val source = filteredSelection ?: return@LaunchedEffect
+        if (selection != null && selection != source && selectionState === source) selectionState = selection
+    }
 
     // Map dots: every station in view, polled stations' physical stops substituted.
     val mapStops = remember(viewport, stopsInView, arrivalStops, stopArrivalsResults) {
@@ -221,6 +272,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
                     distanceMeters = item.distanceMeters,
                     arrivalMs = item.arrivalMs,
                     isPredicted = item.isPredicted,
+                    serviceDate = item.serviceDate,
                 )
             }
         }
@@ -245,18 +297,22 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
 
     // Selected route geometry: the departure's own trip first, route details as fallback.
     val routeDetails = repo.routeDetails.collect(selection?.routeId)
-    val tripDetails = repo.tripDetails.collect(selection?.tripId?.takeIf { it.isNotEmpty() })
-    val polylines = remember(selection, routeDetails.data, tripDetails.data) {
+    val tripDetails = repo.tripDetails.collect(tripDetailsKey(selection?.tripId, selection?.serviceDate))
+    // Without trip details and with an unfamiliar headsign, the variant through the departure's platform.
+    val servingStopIds = remember(selection, routeDetails.data) {
+        selection?.let { explorerServingStopIds(it, routeDetails.data?.data?.references?.stops) }.orEmpty()
+    }
+    val polylines = remember(selection, routeDetails.data, tripDetails.data, servingStopIds) {
         if (selection == null) return@remember emptyList<List<LatLon>>()
         val tripPolyline = selectTripPolyline(tripDetails.data)
         if (tripPolyline.isNotEmpty()) return@remember listOf(tripPolyline)
         val variants = routeDetails.data?.data?.entry?.variants.orEmpty()
         // One fallback geometry: a departure identifies one trip/direction.
-        val matching = selectVariantPolylines(variants, selection.headsign, selection.routeId)
+        val matching = selectVariantPolylines(variants, selection.headsign, selection.routeId, servingStopIds)
         if (matching.isNotEmpty()) listOf(matching[0]) else emptyList()
     }
 
-    val routeStops = remember(selection, routeDetails.data, tripDetails.data) {
+    val routeStops = remember(selection, routeDetails.data, tripDetails.data, servingStopIds) {
         if (selection == null) return@remember emptyList<ExplorerRouteStop>()
         val tripData = tripDetails.data?.data
         if (!tripData?.entry?.stopTimes.isNullOrEmpty()) {
@@ -265,7 +321,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
         }
         val data = routeDetails.data?.data
         resolveStopRefs(
-            selectVariantStopIds(data?.entry?.variants.orEmpty(), selection.headsign, selection.routeId),
+            selectVariantStopIds(data?.entry?.variants.orEmpty(), selection.headsign, selection.routeId, servingStopIds),
             data?.references?.stops,
         )
     }

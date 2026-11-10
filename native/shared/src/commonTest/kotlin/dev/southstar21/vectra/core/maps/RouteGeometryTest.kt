@@ -293,6 +293,25 @@ class RouteGeometryTest {
         assertEquals(listOf("a1", "b1"), selectVariantStopIds(v, "A", "BKK_99"))
     }
 
+    // No headsign match (trip details missing, stop headsign unlike the variant's): the direction
+    // through the departure's own platform, not both directions merged.
+    private val bothWays = listOf(
+        FutarRouteVariant(headsign = "Kelenföld vasútállomás M", stopIds = listOf("north1", "plat_n", "north3"), polyline = FutarPolyline("_p~iF~ps|U_ulLnnqC")),
+        FutarRouteVariant(headsign = "Örs vezér tere M+H", stopIds = listOf("south1", "plat_s", "south3"), polyline = FutarPolyline(encoded)),
+    )
+
+    @Test fun noHeadsignMatchPrefersTheVariantThroughThePlatform() {
+        assertEquals(listOf("south1", "plat_s", "south3"), selectVariantStopIds(bothWays, "Fehér út", servingStopIds = setOf("plat_s")))
+        assertEquals(listOf(points), selectVariantPolylines(bothWays, "Fehér út", servingStopIds = setOf("plat_s")))
+        assertEquals(listOf(listOf(ll(38.5, -120.2), ll(40.7, -120.95))), selectVariantPolylines(bothWays, null, servingStopIds = setOf("plat_n")))
+    }
+
+    @Test fun aHeadsignMatchStillWinsOverThePlatform() =
+        assertEquals(listOf("north1", "plat_n", "north3"), selectVariantStopIds(bothWays, "Kelenföld vasútállomás M", servingStopIds = setOf("plat_s")))
+
+    @Test fun aPlatformNoVariantServesFallsBackToAll() =
+        assertEquals(listOf("north1", "plat_n", "north3", "south1", "plat_s", "south3"), selectVariantStopIds(bothWays, "Fehér út", servingStopIds = setOf("elsewhere")))
+
     // ---- selectTripPolyline / selectTripStopIds ----
     private fun trip(entry: FutarTripDetailsEntry) = FutarTripDetailsResponse(data = FutarTripDetailsData(entry = entry))
 
