@@ -2,8 +2,8 @@
 #
 #   docker compose up --build
 #
-# The binary is built inside the container from this directory (multi-stage
-# build inline, so there is no separate Dockerfile to keep in sync), and the
+# The image is the deploy image (Dockerfile in this directory, the same one
+# Coolify builds): the server runs as the unprivileged `vectra` user, and the
 # `pb_data` named volume persists the SQLite database between runs.
 #
 # Secrets are env-only. The values below are DEV PLACEHOLDERS and are safe to
@@ -15,21 +15,7 @@ services:
   pocketbase:
     build:
       context: .
-      dockerfile_inline: |
-        FROM golang:1.27-alpine AS build
-        WORKDIR /src
-        COPY go.mod go.sum ./
-        RUN go mod download
-        COPY . .
-        RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pb .
-
-        FROM alpine:3.20
-        RUN apk add --no-cache ca-certificates tzdata
-        WORKDIR /app
-        COPY --from=build /out/pb ./pb
-        EXPOSE 8090
-        ENTRYPOINT ["./pb"]
-        CMD ["serve", "--http=0.0.0.0:8090"]
+      dockerfile: Dockerfile
     # Loopback only: the container port must never be reachable from other
     # hosts. Without a proxy in front, TRUSTED_PROXY stays unset, so
     # X-Forwarded-For is ignored and rate limits key on the socket address.

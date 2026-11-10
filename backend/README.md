@@ -36,8 +36,8 @@ Passkeys keep production's relying-party ID: `vectra.southstar21.dev/.well-known
 app IDs as well (`web/public/.well-known/`), so they work once that web build is deployed. A
 passkey made on dev only exists on dev.
 
-After the first deploy, create a superuser (`/app/pb superuser create <email> <password>` in the
-container's terminal, or the `/_/` installer link in the log). In the dashboard's settings, leave
+After the first deploy, create a superuser (`su-exec vectra /app/pb superuser create <email>
+<password>` in the container's terminal, or the `/_/` installer link in the log). In the dashboard's settings, leave
 SMTP off, or point it at a mailbox that isn't users', so dev never mails anyone; set the
 application URL to the dev domain.
 
@@ -60,3 +60,12 @@ The environment wins over the "Trusted proxy" setting in the dashboard (a saved 
 the next settings reload). Never publish the container port to the internet: reached directly, the
 header is client-controlled. The compose file binds it to `127.0.0.1` for that reason. If a CDN is
 ever put in front of Traefik, the right-most entry becomes the CDN edge; revisit this then.
+
+## Container user
+
+The image (`Dockerfile`, Alpine 3.24) runs the server as the unprivileged `vectra` user (uid/gid
+10001). `docker-entrypoint.sh` starts as root only to re-own `/app/pb_data` (`chown -R`), then drops
+to `vectra` with `su-exec`. A volume created by an older image, which ran as root, is therefore fixed
+on the first start; no manual `chown` is needed. In the container's terminal (which is root), run
+`pb` commands as the app user, `su-exec vectra /app/pb …`; a file a root command creates in
+`pb_data` is re-owned on the next restart anyway.
