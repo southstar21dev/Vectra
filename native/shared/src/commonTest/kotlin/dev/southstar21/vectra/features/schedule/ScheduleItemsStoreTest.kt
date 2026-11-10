@@ -91,6 +91,21 @@ class ScheduleItemsStoreTest {
         assertEquals(0, after.queue.size)
     }
 
+    /** 04 #19: a create sent without an answer may have landed, so deleting it queues a delete. */
+    @Test fun cancellingAnUnconfirmedCreateQueuesADeleteForWhateverLanded() {
+        val created = item()
+        val queued = enqueueScheduleItemUpsert(createEmptyScheduleItemsState(), created, null)
+        val state = queued.copy(queue = queued.queue.map { it.copy(baseUpdatedAt = UnconfirmedCreateBase) })
+        assertTrue(state.queue.single().isCreate)
+        // An edit made meanwhile keeps the mark.
+        val edited = enqueueScheduleItemUpsert(state, created.copy(title = "Edited"))
+        assertEquals(UnconfirmedCreateBase, edited.queue.single().baseUpdatedAt)
+        val after = enqueueScheduleItemDelete(edited, created.id)
+        assertEquals(0, after.items.size)
+        assertEquals(listOf(ScheduleItemMutation("delete", created.id, null, UnconfirmedCreateBase)), after.queue)
+        assertEquals(after, parseScheduleItemsState(encodeScheduleItemsState(after)))
+    }
+
     @Test fun retainsQueuedServerDelete() {
         val server = item(updatedAt = "2026-09-01T10:00:00.000Z")
         val state = ScheduleItemsState(1, listOf(server), emptyList())

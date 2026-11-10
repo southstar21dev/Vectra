@@ -56,6 +56,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.io.IOException
 import kotlin.test.assertTrue
 
 private const val UserId = "user-1"
@@ -85,6 +86,8 @@ private class FakeBackend {
     val writes = mutableListOf<String>()
     var itemsDown = false
     var classesDown = false
+    /** The next create lands, but its reply is lost on the way back (audit 04 #19). */
+    var loseCreateReply = false
     /** Runs inside a create, before it lands: hold it here to act mid-flight. */
     var duringCreate: (suspend (clientId: String) -> Unit)? = null
     /** Runs after the pass's single-row re-read target was chosen, before it is answered. */
@@ -188,10 +191,15 @@ private class FakeBackend {
                 val b = body(req)
                 val clientId = b.string("client_id")!!
                 duringCreate?.invoke(clientId)
-                json(lock.withLock {
+                val saved = lock.withLock {
                     writes += "create $clientId"
                     JsonObject(b + mapOf("id" to JsonPrimitive("row-${++version}"), "updated_at" to JsonPrimitive("saved-$version"))).also { itemRows += it }
-                }.toString())
+                }
+                if (loseCreateReply) {
+                    loseCreateReply = false
+                    throw IOException("connection reset")
+                }
+                json(saved.toString())
             }
             HttpMethod.Patch -> json(lock.withLock {
                 writes += "update $rowId"
@@ -279,6 +287,19 @@ class ScheduleSyncTest {
     }
 
     // ---- creates ---------------------------------------------------------------
+
+    /** 04 #19: the create landed but its reply was lost; deleting it must delete the server row too. */
+    @Test fun deletingACreateWhoseReplyWasLostDeletesTheServerRow() = scenario { b ->
+        b.loseCreateReply = true
+        start(queuedCreate(item()))
+        until { b.writes.contains("create $ItemA") && persisted()?.queue?.isNotEmpty() == true }
+        repo.deleteItem(ItemA)
+        drained()
+        assertEquals(listOf("create $ItemA", "delete row-1"), b.writes)
+        assertTrue(b.itemRows.isEmpty())
+        repo.refreshItems(force = true)
+        assertNull(stored())
+    }
 
     @Test fun aQueuedCreateReachesTheServer() = scenario { b ->
         start(queuedCreate(item()))

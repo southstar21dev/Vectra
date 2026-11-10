@@ -273,7 +273,12 @@ internal class ScheduleItemsSync(
                 val latestQueued = latest.queue.firstOrNull { it.id == queued.id }
                 if (latestQueued != queued) continue
                 val serverItem = cloudItems.firstOrNull { it.id == queued.id }
-                val versionMatches = if (queued.baseUpdatedAt == null) serverItem == null else serverItem?.updatedAt == queued.baseUpdatedAt
+                val versionMatches = when {
+                    queued.isCreate -> serverItem == null
+                    // The delete of an unconfirmed create has no version to check: the delete branch settles it.
+                    queued.baseUpdatedAt == UnconfirmedCreateBase -> true
+                    else -> serverItem?.updatedAt == queued.baseUpdatedAt
+                }
                 if (!versionMatches) {
                     if (settleVersionMismatch(uid, queued, serverItem)) hasNewer = true
                     continue
@@ -288,13 +293,8 @@ internal class ScheduleItemsSync(
                     if (!isCiphertext(encrypted)) error("Schedule item encryption did not produce an encrypted payload.")
 
                     var savedRow: JsonObject? = null
-                    if (queued.baseUpdatedAt == null) {
-                        // The client UUID travels as client_id: PocketBase ids are 15 chars and reject a UUID.
-                        savedRow = pb.collection("schedule_items").create(buildJsonObject {
-                            put("user", uid)
-                            put("payload", encrypted)
-                            put("client_id", queued.id)
-                        })
+                    if (queued.isCreate) {
+                        savedRow = createRow(uid, queued, encrypted)
                     } else {
                         // PocketBase has no conditional write: read and compare the version ourselves.
                         val row = findItemRow(uid, queued.id)
@@ -318,9 +318,11 @@ internal class ScheduleItemsSync(
                     if (idx >= 0) cloudItems[idx] = savedItem else cloudItems += savedItem
                 } else {
                     // Conditional delete: only when the version still matches, so a concurrent edit surfaces.
+                    // A create never confirmed has no version: whatever landed of it is ours to delete.
                     var deleted = false
                     val row = findItemRow(uid, queued.id)
-                    if (row != null && row.string("updated_at") == queued.baseUpdatedAt) {
+                    val ours = queued.baseUpdatedAt == UnconfirmedCreateBase || row?.string("updated_at") == queued.baseUpdatedAt
+                    if (row != null && ours) {
                         pb.collection("schedule_items").delete(row.string("id").orEmpty())
                         committedWrites++
                         deleted = true
@@ -351,6 +353,39 @@ internal class ScheduleItemsSync(
             scheduleRetry()
             return false
         }
+    }
+
+    /** Sends a queued create; one that gets no answer is marked unconfirmed before the pass fails. */
+    private suspend fun createRow(uid: String, queued: ScheduleItemMutation, encrypted: String?): JsonObject = try {
+        // The client UUID travels as client_id: PocketBase ids are 15 chars and reject a UUID.
+        pb.collection("schedule_items").create(buildJsonObject {
+            put("user", uid)
+            put("payload", encrypted)
+            put("client_id", queued.id)
+        })
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        // A 4xx means nothing was created; no answer (or a 5xx) may hide a row that did land.
+        if (e !is PocketBaseException || e.isNetwork || e.status >= 500) runSuspendCatching { markCreateUnconfirmed(uid, queued.id) }
+        throw e
+    }
+
+    /**
+     * The create of [id] may have landed with its reply lost. Its queued upsert keeps that in mind,
+     * and if the item was deleted meanwhile a delete is queued for whatever landed (audit 04 #19).
+     */
+    private suspend fun markCreateUnconfirmed(uid: String, id: String) = stateLock.withLock {
+        val newest = currentLocal()
+        val queued = newest.queue.firstOrNull { it.id == id }
+        val next = when {
+            queued == null && newest.items.none { it.id == id } ->
+                newest.copy(queue = newest.queue + ScheduleItemMutation(ScheduleItemMutation.DELETE, id, null, UnconfirmedCreateBase))
+            queued != null && queued.isUpsert && queued.baseUpdatedAt == null ->
+                newest.copy(queue = newest.queue.map { if (it.id == id) it.copy(baseUpdatedAt = UnconfirmedCreateBase) else it })
+            else -> null
+        }
+        if (next != null) saveLocal(uid, next)
     }
 
     /**

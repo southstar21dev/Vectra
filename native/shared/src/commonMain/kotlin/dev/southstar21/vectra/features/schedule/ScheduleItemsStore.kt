@@ -198,6 +198,16 @@ fun enqueueScheduleItemUpsert(state: ScheduleItemsState, item: StoredScheduleIte
     return ScheduleItemsState(1, upsertItem(state.items, next), state.queue.filter { it.id != item.id } + mutation)
 }
 
+/**
+ * The base of a create whose request got no answer: it may have landed with the reply lost. The
+ * sync still treats it as a create, and a delete queued on top of it deletes the row wherever it
+ * turns up instead of being dropped, which brought the row back on the next refresh (audit 04 #19).
+ */
+const val UnconfirmedCreateBase = "unconfirmed-create"
+
+/** A create: never sent ([baseUpdatedAt] null) or sent without an answer. */
+val ScheduleItemMutation.isCreate: Boolean get() = isUpsert && (baseUpdatedAt == null || baseUpdatedAt == UnconfirmedCreateBase)
+
 fun enqueueScheduleItemDelete(state: ScheduleItemsState, id: String, baseUpdatedAt: String? = null): ScheduleItemsState {
     val previous = state.queue.firstOrNull { it.id == id }
     val base = previous?.baseUpdatedAt ?: baseUpdatedAt ?: state.items.firstOrNull { it.id == id }?.updatedAt
