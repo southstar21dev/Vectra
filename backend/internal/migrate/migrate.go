@@ -507,7 +507,13 @@ func findDataRow(app core.App, name string, row DataRow, userID string) (*core.R
 		return findRecord(app, name, "user = {:v}", dbx.Params{"v": userID})
 	case "transit_trackers":
 		if k, ok := row.Fields["dedupe_key"].(string); ok && k != "" {
-			return findRecord(app, name, "user = {:u} && dedupe_key = {:k}", dbx.Params{"u": userID, "k": k})
+			rec, err := findRecord(app, name, "user = {:u} && dedupe_key = {:k}", dbx.Params{"u": userID, "k": k})
+			if rec != nil || err != nil {
+				return rec, err
+			}
+			// Not found by the source's (old-format) key: a row imported earlier
+			// has had its key rewritten to dk2 since (internal/dedupekey), but
+			// it still carries the derived id.
 		}
 	}
 	return findRecordByDerivedID(app, name, row)

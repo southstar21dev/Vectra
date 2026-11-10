@@ -109,12 +109,13 @@ func TestVC3BoundToOwner(t *testing.T) {
 func resetKey(t *testing.T, password string) {
 	t.Helper()
 	t.Setenv("NEPTUN_ENCRYPTION_KEY", password)
-	keyOnce = sync.Once{}
-	keyVal, keyErr = nil, nil
-	t.Cleanup(func() {
+	reset := func() {
 		keyOnce = sync.Once{}
 		keyVal, keyErr = nil, nil
-	})
+		keyPassword, digestKey = "", nil
+	}
+	reset()
+	t.Cleanup(reset)
 }
 
 func callHandler(t *testing.T, app *tests.TestApp, auth *core.Record, body string) map[string]any {

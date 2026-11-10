@@ -3,13 +3,16 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -29,12 +32,25 @@ const (
 	salt     = "vectra-aes-gcm-v1"
 	iter     = 100_000
 	keyLen   = 32
+
+	// DigestPrefix marks a per-user keyed digest (see bindDigest). Stored
+	// transit_trackers.dedupe_key values without it are the old global
+	// digests, which internal/dedupekey rewrites.
+	DigestPrefix = "dk2:"
+	// digestKeyInfo separates the digest subkey from the encryption key.
+	digestKeyInfo = "vectra-dedupe-digest-v2"
+	// minKeyLen is the length below which a warning is logged at first use.
+	// The key is not rejected: the production key's length is not known here,
+	// and refusing it would stop the server.
+	minKeyLen = 32
 )
 
 var (
-	keyOnce sync.Once
-	keyVal  []byte
-	keyErr  error
+	keyOnce     sync.Once
+	keyVal      []byte
+	keyErr      error
+	keyPassword string
+	digestKey   []byte
 )
 
 func deriveKey(password string) []byte {
@@ -48,9 +64,22 @@ func encryptionKey() ([]byte, error) {
 			keyErr = errors.New("NEPTUN_ENCRYPTION_KEY is not set")
 			return
 		}
+		if len(password) < minKeyLen {
+			log.Printf("crypto: NEPTUN_ENCRYPTION_KEY is shorter than %d characters; use a long random value (openssl rand -hex 32)", minKeyLen)
+		}
+		keyPassword = password
 		keyVal = deriveKey(password)
+		digestKey = deriveDigestKey(keyVal)
 	})
 	return keyVal, keyErr
+}
+
+// deriveDigestKey derives the HMAC key for digests from the PBKDF2 output, so
+// every offline guess at NEPTUN_ENCRYPTION_KEY costs the full key derivation.
+func deriveDigestKey(key []byte) []byte {
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(digestKeyInfo))
+	return mac.Sum(nil)
 }
 
 func seal(key []byte, prefix, plain string, aad []byte) (string, error) {
@@ -142,14 +171,37 @@ func isCiphertext(value string) bool {
 	return strings.HasPrefix(value, v2Prefix) || strings.HasPrefix(value, v3Prefix)
 }
 
+// digestValue is the digest the route returned before dk2:
+// SHA256(password | part | part ...). It is now only the inner value of the
+// per-user digest and never leaves the server. A `|` or `\` inside a part is
+// escaped first, so different part lists no longer collide (["a|b"] used to
+// equal ["a","b"]); parts without either character hash exactly as before,
+// which is what lets internal/dedupekey rewrite stored keys without knowing
+// their parts.
 func digestValue(password string, parts []string) string {
 	h := sha256.New()
 	io.WriteString(h, password)
 	for _, p := range parts {
 		io.WriteString(h, "|")
-		io.WriteString(h, p)
+		io.WriteString(h, digestEscaper.Replace(p))
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+var digestEscaper = strings.NewReplacer(`\`, `\\`, "|", `\|`)
+
+// bindDigest turns an inner digest into the per-user value the route returns:
+// "dk2:" + hex(HMAC-SHA256(digestKey, len(userID) userID len(inner) inner)),
+// with each length as 8 big-endian bytes.
+func bindDigest(dkey []byte, userID, inner string) string {
+	mac := hmac.New(sha256.New, dkey)
+	for _, v := range []string{userID, inner} {
+		var n [8]byte
+		binary.BigEndian.PutUint64(n[:], uint64(len(v)))
+		mac.Write(n[:])
+		mac.Write([]byte(v))
+	}
+	return DigestPrefix + hex.EncodeToString(mac.Sum(nil))
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +254,26 @@ func DecryptValueFor(key []byte, value, userID string) (string, error) {
 // to userID.
 func EncryptValueFor(key []byte, plain, userID string) (string, error) {
 	return encryptValueFor(key, plain, userID)
+}
+
+// DigestKeyFromEnv returns the digest subkey derived from
+// NEPTUN_ENCRYPTION_KEY (memoised with the encryption key).
+func DigestKeyFromEnv() ([]byte, error) {
+	if _, err := encryptionKey(); err != nil {
+		return nil, err
+	}
+	return digestKey, nil
+}
+
+// UpgradeDigest maps a stored pre-dk2 digest (what the route used to return,
+// digestValue of the parts) to the dk2 value the route now returns for the
+// same parts and owner. A value that already carries DigestPrefix is returned
+// unchanged with false.
+func UpgradeDigest(dkey []byte, userID, stored string) (string, bool) {
+	if strings.HasPrefix(stored, DigestPrefix) {
+		return stored, false
+	}
+	return bindDigest(dkey, userID, stored), true
 }
 
 type request struct {
@@ -268,9 +340,11 @@ func Handler(e *core.RequestEvent) error {
 		}
 		return e.JSON(200, resp)
 	case "digest":
+		// Keyed per user: the same parts give different digests in different
+		// accounts, and the response is no fast oracle on the server key.
 		digests := make([]string, len(body.Parts))
 		for i, p := range body.Parts {
-			digests[i] = digestValue(os.Getenv("NEPTUN_ENCRYPTION_KEY"), p)
+			digests[i] = bindDigest(digestKey, e.Auth.Id, digestValue(keyPassword, p))
 		}
 		return e.JSON(200, map[string]any{"digests": digests})
 	default:

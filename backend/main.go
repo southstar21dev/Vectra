@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"vectra/pb/internal/crypto"
+	"vectra/pb/internal/dedupekey"
 	"vectra/pb/internal/legacyvc2"
 	"vectra/pb/internal/migrate"
 	"vectra/pb/internal/passkeys"
@@ -120,6 +121,14 @@ func registerMigrateSupabaseCommand(app *pocketbase.PocketBase) {
 				return fmt.Errorf("import finished, but re-encrypting vc2 to vc3 failed (the imported vc2 rows are unchanged): %w", err)
 			}
 			cmd.Printf("re-encrypted %d vc2 value(s) to vc3; %d left unchanged\n", up.Converted, len(up.Left))
+			// Supabase's transit_trackers.dedupe_key values are old global
+			// digests; rewrite them to the per-user form the crypto route
+			// returns now (migration 1700000014 only ran once, at its first serve).
+			dk, err := dedupekey.Upgrade(app, crypto.DigestKeyFromEnv)
+			if err != nil {
+				return fmt.Errorf("import finished, but rewriting transit tracker dedupe keys failed (the imported keys are unchanged): %w", err)
+			}
+			cmd.Printf("rewrote %d transit tracker dedupe key(s); %d left unchanged\n", dk.Converted, len(dk.Left))
 			return nil
 		},
 	}
