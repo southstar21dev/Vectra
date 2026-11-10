@@ -200,7 +200,8 @@ class AttendanceCalcTest {
     }
 
     @Test fun neptunRecurringImportsAre14Weeks() {
-        val events = List(14) { event("Physics I", "PHY101", 1, "08:15", "09:45", semesterStart = "2025-09-01", semesterEnd = "2025-12-08", source = "neptun", eventType = "lecture", id = "nep-$it") }
+        // 14 Mondays: 1 Sep to 1 Dec (a Neptun range ends on its last real meeting).
+        val events = List(14) { event("Physics I", "PHY101", 1, "08:15", "09:45", semesterStart = "2025-09-01", semesterEnd = "2025-12-01", source = "neptun", eventType = "lecture", id = "nep-$it") }
         val r = generateSessionsFromScheduleEvents("Physics I", "PHY101", scheduleEvents = events)
         assertEquals(14, r.size)
         assertEquals(14, r.map { it.date }.toSet().size)
@@ -211,7 +212,7 @@ class AttendanceCalcTest {
     @Test fun isolatesTheRequestedSemester() {
         val events = listOf(
             event("Economics", "ECO101", 1, "10:00", "11:30", "2021/22/1", "2021-09-01", "2021-12-15", source = "neptun"),
-            event("Economics", "ECO101", 1, "10:00", "11:30", "2025/26/1", "2025-09-01", "2025-12-15", source = "neptun"),
+            event("Economics", "ECO101", 1, "10:00", "11:30", "2025/26/1", "2025-09-01", "2025-12-01", source = "neptun"),
         )
         val r = generateSessionsFromScheduleEvents("Economics", "ECO101", "2025/26/1", scheduleEvents = events)
         assertEquals(14, r.size)
@@ -259,6 +260,35 @@ class AttendanceCalcTest {
         val events = dates.map { event("Organisational interpersonal skills dev", "G04", 2, "08:00", "09:30", semesterStart = it, semesterEnd = it, source = "neptun", eventType = "seminar") }
         val r = generateSessionsFromScheduleEvents("Organisational interpersonal skills dev", "G04", scheduleEvents = events)
         assertEquals(dates, r.map { it.date }.sorted())
+    }
+
+    // Neptun-shaped: one meeting in the week before classes, then 14 regular Mondays. The course
+    // spans 15 weeks from its first date, so a fixed 14-week window dropped its last class.
+    @Test fun aCourseLongerThanFourteenWeeksKeepsItsLastWeek() {
+        val events = listOf(
+            event("Statistics", "STA101-E", 1, "08:00", "09:30", semesterStart = "2026-02-09", semesterEnd = "2026-02-09", source = "neptun", eventType = "lecture"),
+            event("Statistics", "STA101-E", 1, "08:00", "09:30", semesterStart = "2026-02-16", semesterEnd = "2026-05-18", source = "neptun", eventType = "lecture"),
+        )
+        val r = generateSessionsFromScheduleEvents("Statistics", "STA101-E", scheduleEvents = events)
+        assertEquals(15, r.size)
+        assertEquals("2026-02-09", r.first().date)
+        assertEquals("2026-05-18", r.last().date)
+        assertEquals("Week 15", r.last().title)
+    }
+
+    @Test fun aRunawayEndDateIsCappedAtAYear() {
+        val events = listOf(event("Physics I", "PHY101", 1, "08:15", "09:45", semesterStart = "2026-09-07", semesterEnd = "2099-12-31", source = "neptun", eventType = "lecture"))
+        assertEquals(53, generateSessionsFromScheduleEvents("Physics I", "PHY101", scheduleEvents = events).size)
+    }
+
+    @Test fun aManualClassEndingAtTheExamPeriodStaysFourteenWeeks() {
+        val r = generateSessionsFromScheduleEvents("Chemistry", "CHE1", scheduleEvents = listOf(event("Chemistry", "CHE1", 2, "10:00", "11:30", semesterStart = "2026-09-07", semesterEnd = "2027-01-31")))
+        assertEquals(14, r.size)
+    }
+
+    @Test fun anUndatedManualClassStillGetsFourteenWeeks() {
+        val r = generateSessionsFromScheduleEvents("Chemistry", dayOfWeek = 2, startTime = "10:00", endTime = "11:30", semesterStart = "2026-09-07")
+        assertEquals(14, r.size)
     }
 
     @Test fun noPhantomSessions() {
