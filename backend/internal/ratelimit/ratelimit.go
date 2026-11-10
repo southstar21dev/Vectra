@@ -104,8 +104,9 @@ func (l *Limiter) makeRoom(now time.Time) {
 }
 
 // ClientIP returns the caller's IP for limiter keys. It prefers e.RealIP(),
-// which honours the TrustedProxy settings (see migration 1700000008) so each
-// client behind the reverse proxy gets its own bucket, and falls back to the
+// which honours the TrustedProxy settings (set from TRUSTED_PROXY, see
+// internal/proxytrust) so each client behind the reverse proxy gets its own
+// bucket, and falls back to the
 // socket address when the event carries no app (direct handler use in tests).
 // IPv6 clients are keyed by their /64 (see ClientKey).
 func ClientIP(e *core.RequestEvent) string {

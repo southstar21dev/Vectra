@@ -15,6 +15,7 @@ import (
 	"vectra/pb/internal/legacyvc2"
 	"vectra/pb/internal/migrate"
 	"vectra/pb/internal/passkeys"
+	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/push"
 	"vectra/pb/internal/routes"
 	"vectra/pb/internal/schema"
@@ -23,6 +24,10 @@ import (
 
 func main() {
 	app := pocketbase.New()
+
+	// Trust X-Forwarded-For only when TRUSTED_PROXY=1 says a reverse proxy sits
+	// in front; otherwise per-IP rate limits key on the socket address.
+	proxytrust.Register(app)
 
 	schema.RegisterTimestamps(app)
 	// Reject push subscriptions whose endpoint is not a known push service, so

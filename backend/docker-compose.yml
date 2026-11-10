@@ -30,8 +30,11 @@ services:
         EXPOSE 8090
         ENTRYPOINT ["./pb"]
         CMD ["serve", "--http=0.0.0.0:8090"]
+    # Loopback only: the container port must never be reachable from other
+    # hosts. Without a proxy in front, TRUSTED_PROXY stays unset, so
+    # X-Forwarded-For is ignored and rate limits key on the socket address.
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     volumes:
       - pb_data:/app/pb_data
     environment:

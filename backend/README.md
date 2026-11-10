@@ -30,6 +30,7 @@ on `/app/pb_data`, port 8090, but branch `dev` and the domain above. Environment
 | `WEBAUTHN_RP_ID` | `vectra.southstar21.dev` |
 | `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev,android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Vectra Dev` |
+| `TRUSTED_PROXY` | `1` (see below) |
 
 Passkeys keep production's relying-party ID: `vectra.southstar21.dev/.well-known/` lists the debug
 app IDs as well (`web/public/.well-known/`), so they work once that web build is deployed. A
@@ -42,3 +43,20 @@ application URL to the dev domain.
 
 The test account is copied from production, re-encrypted with the dev key, by a one-off script
 (record ids are kept; passkeys and push subscriptions are not copied).
+
+## Client IP and the reverse proxy (`TRUSTED_PROXY`)
+
+Every per-IP rate limit (PocketBase's auth limiter, password-reset emails, passkey login, the Futár
+proxy, the re-auth checks) keys on the client IP. Whether that IP comes from `X-Forwarded-For` is set
+by the environment, not by the database:
+
+- **`TRUSTED_PROXY=1`** (also `true`/`yes`): trust `X-Forwarded-For` and take its right-most entry,
+  the one Traefik appended. **Required on production and dev in Coolify.** Without it every user
+  shares the proxy's address, so one busy client rate-limits everybody.
+- **unset**: ignore the header and use the socket address. Right for `docker compose up` and
+  `make run`, where nothing sits in front.
+
+The environment wins over the "Trusted proxy" setting in the dashboard (a saved value is replaced on
+the next settings reload). Never publish the container port to the internet: reached directly, the
+header is client-controlled. The compose file binds it to `127.0.0.1` for that reason. If a CDN is
+ever put in front of Traefik, the right-most entry becomes the CDN edge; revisit this then.
