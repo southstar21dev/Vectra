@@ -7,7 +7,10 @@ import Security
 /// and renames every App Group to `<group>.<TeamID>`. Both sides look for that name first, then the
 /// original, and use the first one the signature actually grants.
 enum AppGroup {
-    static let base = "group.dev.southstar21.vectra"
+    /// From Info.plist (`VECTRA_APP_GROUP` in project.yml): Debug builds use their own group, so a
+    /// debug and a release install never read each other's snapshot.
+    static let base = Bundle.main.object(forInfoDictionaryKey: "VectraAppGroup") as? String
+        ?? "group.dev.southstar21.vectra"
 
     /// Where the app writes the widget snapshot; nil when the build carries no App Group.
     static let container: URL? = {

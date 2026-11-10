@@ -26,7 +26,9 @@ targets:
     info:
       path: iosApp/Info.plist
       properties:
-        CFBundleDisplayName: Vectra
+        CFBundleDisplayName: $(VECTRA_DISPLAY_NAME)
+        # Read by Shared/AppGroup.swift; differs between Debug and Release (see settings).
+        VectraAppGroup: $(VECTRA_APP_GROUP)
         # Macros from the "Version from Gradle" phase (Info.plist is preprocessed).
         CFBundleShortVersionString: VECTRA_VERSION_NAME
         CFBundleVersion: VECTRA_VERSION_CODE
@@ -54,11 +56,15 @@ targets:
         com.apple.developer.associated-domains: ["webcredentials:vectra.southstar21.dev"]
         # Shared with VectraWidgets: the app writes the widget snapshot here. A sideloading store
         # renames it to group.dev.southstar21.vectra.<TeamID>; Shared/AppGroup.swift finds either.
-        com.apple.security.application-groups: [group.dev.southstar21.vectra]
+        # Xcode expands the setting at signing: Debug gets its own group, so a debug and a release
+        # install never share widget data.
+        com.apple.security.application-groups: ["$(VECTRA_APP_GROUP)"]
     settings:
       base:
         PRODUCT_NAME: Vectra
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra
+        VECTRA_APP_GROUP: group.dev.southstar21.vectra
+        VECTRA_DISPLAY_NAME: Vectra
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # The version comes from gradle.properties' vectra.versionName, like androidApp's.
@@ -73,6 +79,13 @@ targets:
         # The shared Kotlin framework (static), built by the Gradle phase below.
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared", "-lsqlite3", "-lc++"]
+      # Debug builds talk to the dev backend (shared/build.gradle.kts) and install next to the
+      # release app. Passkeys need <TeamID>.dev.southstar21.vectra.debug in apple-app-site-association.
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug
+          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
+          VECTRA_DISPLAY_NAME: Vectra Dev
     preBuildScripts:
       - name: Version from Gradle
         basedOnDependencyAnalysis: false
@@ -81,8 +94,14 @@ targets:
         script: |
           # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
           # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
+          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
+          # gradle.properties only holds the real version while CI builds a release.
           set -e
           FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+            [ -n "$TAG" ] && FULL=$TAG
+          fi
           NAME=${FULL%%-*}
           CODE=$(echo "$FULL" | awk -F'[.-]' '{
             b = 99
@@ -117,7 +136,8 @@ targets:
     info:
       path: VectraWidgets/Info.plist
       properties:
-        CFBundleDisplayName: Vectra
+        CFBundleDisplayName: $(VECTRA_DISPLAY_NAME)
+        VectraAppGroup: $(VECTRA_APP_GROUP)
         # The app's version (same macros): an extension must never trail its app.
         CFBundleShortVersionString: VECTRA_VERSION_NAME
         CFBundleVersion: VECTRA_VERSION_CODE
@@ -126,11 +146,13 @@ targets:
     entitlements:
       path: VectraWidgets/VectraWidgets.entitlements
       properties:
-        com.apple.security.application-groups: [group.dev.southstar21.vectra]
+        com.apple.security.application-groups: ["$(VECTRA_APP_GROUP)"]
     settings:
       base:
         PRODUCT_NAME: VectraWidgets
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgets
+        VECTRA_APP_GROUP: group.dev.southstar21.vectra
+        VECTRA_DISPLAY_NAME: Vectra
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_PREPROCESS: YES
         INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
@@ -139,6 +161,11 @@ targets:
         "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
         "ARCHS[sdk=iphonesimulator*]": arm64
         SKIP_INSTALL: YES
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug.widgets
+          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
+          VECTRA_DISPLAY_NAME: Vectra Dev
     preBuildScripts:
       - name: Version from Gradle
         basedOnDependencyAnalysis: false
@@ -147,8 +174,14 @@ targets:
         script: |
           # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
           # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
+          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
+          # gradle.properties only holds the real version while CI builds a release.
           set -e
           FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+            [ -n "$TAG" ] && FULL=$TAG
+          fi
           NAME=${FULL%%-*}
           CODE=$(echo "$FULL" | awk -F'[.-]' '{
             b = 99

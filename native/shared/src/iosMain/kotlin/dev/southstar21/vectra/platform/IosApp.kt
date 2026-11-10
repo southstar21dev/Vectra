@@ -31,9 +31,18 @@ object IosApp {
     val graph: AppGraph by lazy {
         createGraphFactory<AppGraph.Factory>().create(
             config = VectraConfig(
-                pocketbaseUrl = IosBuildConfig.POCKETBASE_URL,
+                // Debug builds use the dev backend, like androidApp's debug build type.
+                pocketbaseUrl = if (Platform.isDebugBinary) {
+                    IosBuildConfig.DEV_POCKETBASE_URL
+                } else {
+                    IosBuildConfig.POCKETBASE_URL
+                },
                 catalogOrigin = IosBuildConfig.CATALOG_ORIGIN,
-                appVersion = IosBuildConfig.VERSION_NAME,
+                appVersion = if (Platform.isDebugBinary) {
+                    IosBuildConfig.DEBUG_VERSION_NAME
+                } else {
+                    IosBuildConfig.VERSION_NAME
+                },
                 isDebug = Platform.isDebugBinary,
             ),
             dataStore = createDataStore(),
