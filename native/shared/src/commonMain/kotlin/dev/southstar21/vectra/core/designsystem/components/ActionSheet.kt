@@ -23,7 +23,7 @@ class SheetAction(val label: String, val icon: ImageVector, val destructive: Boo
 /** A short list of actions for one thing (a long-press menu), shown in a sheet. */
 @Composable
 fun ActionSheet(open: Boolean, onDismiss: () -> Unit, title: String?, actions: List<SheetAction>, subtitle: String? = null) {
-    VSheet(open, onDismiss) {
+    VSheet(open, onDismiss, title = title) {
         if (title != null) SheetHeader(title, onDismiss, subtitle = subtitle)
         Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
             for (action in actions) {

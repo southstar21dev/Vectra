@@ -31,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -68,6 +70,8 @@ fun VDialog(
     scrollable: Boolean = true,
     maxWidth: Dp = 448.dp,
     dismissOnScrim: Boolean = true,
+    /** Read out by screen readers as the dialog opens. */
+    title: String? = null,
     onExited: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -104,13 +108,15 @@ fun VDialog(
     Overlay {
         val c = Vectra.colors
         VBackHandler(enabled = open, onBack = onDismiss)
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        val scrimDismisses = open && dismissOnScrim
+        BoxWithConstraints(Modifier.fillMaxSize().modalPane(title ?: "Dialog", open, onDismiss)) {
             Box(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = scrimAlpha.value }
                     .background(c.dialogScrim)
-                    .consumeTouches(enabled = open && dismissOnScrim) { onDismiss() },
+                    .consumeTouches(enabled = scrimDismisses) { onDismiss() }
+                    .scrimSemantics(enabled = scrimDismisses, onDismiss = onDismiss),
             )
             val shape = Radius.Card
             Box(Modifier.fillMaxSize().padding(16.dp).imePadding(), contentAlignment = Alignment.Center) {
@@ -158,7 +164,7 @@ fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope
 
 @Composable
 fun DialogTitle(text: String, modifier: Modifier = Modifier) =
-    VText(text, modifier, vtext(TypeScale.Body, Weight.Bold, lineHeight = 21.sp), Vectra.colors.textPrimary)
+    VText(text, modifier.semantics { heading() }, vtext(TypeScale.Body, Weight.Bold, lineHeight = 21.sp), Vectra.colors.textPrimary)
 
 @Composable
 fun DialogDescription(text: String, modifier: Modifier = Modifier) =
@@ -188,7 +194,7 @@ fun ConfirmDialog(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val close = { if (!pending) { error = null; onClose() } }
-    VDialog(open, close, showClose = false) {
+    VDialog(open, close, showClose = false, title = title) {
         DialogHeader(Modifier.padding(top = 4.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

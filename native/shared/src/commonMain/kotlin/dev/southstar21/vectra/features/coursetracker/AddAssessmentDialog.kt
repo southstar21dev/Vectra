@@ -99,7 +99,7 @@ internal fun AddAssessmentDialog(
     toast: UndoToastState,
 ) {
     val generation = rememberOpenGeneration(open)
-    TrackerSheetDialog(open, onDismiss, onExited) {
+    TrackerSheetDialog(open, onDismiss, if (item != null) "Edit assessment" else "Add assessment", onExited) {
         key(generation, item?.id) {
             AssessmentForm(onDismiss, item, onSave, onDelete, useWeightedCategories, courseName, projectedPercentage, estimatedGrade, gradingScale, existingWeightTotal, online, toast)
         }

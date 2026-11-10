@@ -223,7 +223,7 @@ fun DeleteAccountButton(auth: AuthRepository) {
         VText("Delete", style = vtext(TypeScale.Caption, Weight.Bold), color = c.tints.red.text)
     }
     val close = { if (!deleting) { open = false; text = ""; password = ""; error = null } }
-    VDialog(open, close, showClose = false) {
+    VDialog(open, close, showClose = false, title = "Delete account?") {
         DialogHeader(Modifier.padding(top = 4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconChip(RemixIcons.DeleteBinLine, c.tints.red, size = 32, iconSize = 16)

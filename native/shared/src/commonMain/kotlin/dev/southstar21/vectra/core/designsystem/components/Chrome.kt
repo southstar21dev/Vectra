@@ -346,7 +346,7 @@ fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            VText(title, style = vtext(TypeScale.Subtitle, Weight.Extrabold, Tracking.Tight), color = Vectra.colors.textPrimary)
+            VText(title, Modifier.semantics { heading() }, vtext(TypeScale.Subtitle, Weight.Extrabold, Tracking.Tight), Vectra.colors.textPrimary)
             if (subtitle != null) VText(subtitle, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary)
         }
         SheetCloseButton(onClose)

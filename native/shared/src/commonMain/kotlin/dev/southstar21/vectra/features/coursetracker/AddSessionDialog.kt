@@ -66,8 +66,14 @@ private val SessionTypeOptions = listOf(
 
 /** The sheet shared by the add-session and assessment forms: full height, footer docked. */
 @Composable
-internal fun TrackerSheetDialog(open: Boolean, onDismiss: () -> Unit, onExited: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    VSheet(open = open, onDismiss = onDismiss, size = SheetSize.Full, onExited = onExited) {
+internal fun TrackerSheetDialog(
+    open: Boolean,
+    onDismiss: () -> Unit,
+    title: String,
+    onExited: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    VSheet(open = open, onDismiss = onDismiss, size = SheetSize.Full, title = title, onExited = onExited) {
         Column(Modifier.fillMaxWidth().weight(1f), content = content)
     }
 }
@@ -79,7 +85,7 @@ internal fun TrackerSheetDialog(open: Boolean, onDismiss: () -> Unit, onExited: 
 @Composable
 internal fun AddSessionDialog(open: Boolean, onDismiss: () -> Unit, onAddSession: (AttendanceSession) -> Unit) {
     val generation = rememberOpenGeneration(open)
-    TrackerSheetDialog(open, onDismiss) {
+    TrackerSheetDialog(open, onDismiss, "Add session") {
         key(generation) { AddSessionForm(onDismiss, onAddSession) }
     }
 }

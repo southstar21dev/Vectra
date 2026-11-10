@@ -138,7 +138,7 @@ private fun <T> OptionList(
     onPick: (T) -> Unit,
 ) {
     val haptics = Vectra.haptics
-    VSheet(open, onDismiss) {
+    VSheet(open, onDismiss, title = title) {
         if (title != null) SheetHeader(title, onDismiss)
         Column(
             Modifier

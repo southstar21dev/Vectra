@@ -38,6 +38,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.dismiss
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
@@ -125,6 +129,10 @@ private class LeaveState {
     var onTimer = false
 }
 
+/** How a screen reader announces a toast: errors interrupt, the rest wait their turn. */
+internal fun toastLiveRegion(type: ToastType): LiveRegionMode =
+    if (type == ToastType.Error) LiveRegionMode.Assertive else LiveRegionMode.Polite
+
 private const val DismissDistanceDp = 64f
 private const val DismissVelocity = 900f
 
@@ -196,6 +204,12 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
                 translationY = dragY.value + (1f - e) * (if (reduceMotion) 0f else height * 0.6f)
                 val s = if (reduceMotion) 1f else 0.94f + 0.06f * e
                 scaleX = s; scaleY = s
+            }
+            // One node read out as it appears (errors interrupt), with a dismiss action standing in
+            // for the swipe; the Undo button stays its own node.
+            .semantics(mergeDescendants = true) {
+                liveRegion = toastLiveRegion(toast.type)
+                dismiss { leave(); true }
             }
             .pointerInput(toast.id) {
                 awaitEachGesture {
