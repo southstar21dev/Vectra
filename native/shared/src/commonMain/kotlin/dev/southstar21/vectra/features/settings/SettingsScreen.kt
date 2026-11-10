@@ -65,8 +65,6 @@ fun SettingsScreen(
     locationRow: (@Composable () -> Unit)? = null,
 ) {
     val c = Vectra.colors
-    val scope = rememberCoroutineScope()
-    var loggingOut by remember { mutableStateOf(false) }
     VectraPage(spacing = 28) {
         // Each section piles under the next as the page scrolls; the 20dp above each glass is its title stamp.
         ScrollPile(
@@ -104,9 +102,7 @@ fun SettingsScreen(
                         },
                         {
                             SettingsRow(RemixIcons.LogoutBoxRLine, c.surfaceOverlay, c.textSecondary, "Sign out", "End your session on this device") {
-                                VButton(onClick = { loggingOut = true; scope.launch { try { graph.auth.signOut() } finally { loggingOut = false } } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm, enabled = !loggingOut) {
-                                    if (loggingOut) InlineLoader(size = 14.dp) else VText("Sign out", style = vtext(TypeScale.Caption, Weight.Bold))
-                                }
+                                SignOutButton(graph.auth)
                             }
                         },
                         {
@@ -134,13 +130,17 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
     var registering by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     LaunchedEffect(repo) { runSuspendCatching { repo.refresh() }.onFailure { loadError = true } }
-    val register: () -> Unit = {
-        registering = true
-        scope.launchCatching({ repo.register(); registering = false; toaster.success("Passkey added") }) {
-            registering = false
-            repo.errorMessage(it)?.let(toaster::error)
-        }
-    }
+    // The server re-checks the password before enrolling: a stolen session alone must not add a passkey.
+    val register: () -> Unit = { registering = true }
+    CurrentPasswordDialog(
+        open = registering,
+        title = "Add a passkey",
+        description = "Confirm it's you with your current password, then follow your device's prompt.",
+        confirmText = "Continue",
+        onDismiss = { registering = false },
+        onConfirm = { password -> repo.register(password); toaster.success("Passkey added") },
+        errorMessage = repo::errorMessage,
+    )
     val list = passkeys
     Column {
         when {
@@ -159,14 +159,14 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
                 }
                 SettingsRow(RemixIcons.AddLine, c.surfaceOverlay, c.textSecondary, "Add another passkey", "Register this device too") {
                     VButton(onClick = register, size = ButtonSize.Sm, enabled = !registering) {
-                        if (registering) InlineLoader(size = 14.dp) else VIcon(RemixIcons.AddLine, size = 14.dp)
+                        VIcon(RemixIcons.AddLine, size = 14.dp)
                         VText("Add")
                     }
                 }
             }
             else -> SettingsRow(RemixIcons.FingerprintLine, CyanBg, CyanText, "Passkey sign-in", "Use your fingerprint or face instead of a password") {
                 VButton(onClick = register, size = ButtonSize.Sm, enabled = !registering) {
-                    if (registering) InlineLoader(size = 14.dp) else VIcon(RemixIcons.FingerprintLine, size = 14.dp)
+                    VIcon(RemixIcons.FingerprintLine, size = 14.dp)
                     VText("Set up")
                 }
             }

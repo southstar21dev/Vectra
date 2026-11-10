@@ -21,7 +21,9 @@ class MainActivity : ComponentActivity() {
         val graph = app.graph
         val appearance = graph.appearanceRepository
         splash.setKeepOnScreenCondition { !appearance.loaded.value }
-        handle(intent)
+        // Only a fresh launch carries a new link: a recreate (dark mode, font size) re-delivers the same
+        // intent, and replaying it would pop whatever screen is open now.
+        if (savedInstanceState == null) handle(intent)
         setContent {
             VectraApp(graph)
             // Fully drawn: the session is restored and the real screen is composed, under the splash if it's still up.
@@ -36,5 +38,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         intent?.getStringExtra(AndroidNotifier.EXTRA_URL)?.let { DeepLinks.pending.value = it }
+        // Consumed: the activity keeps this intent, so nothing may read the link from it again.
+        intent?.removeExtra(AndroidNotifier.EXTRA_URL)
     }
 }

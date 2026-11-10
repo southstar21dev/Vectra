@@ -183,21 +183,24 @@ private fun CourseHub(
         val next = sessionsSignature(generated)
         if (generated.isNotEmpty() && next != sessionsSignature(current) && next != lastReconciled[0]) {
             lastReconciled[0] = next
-            repo.upsertTracker(tracker.copy(attendance = tracker.attendance.copy(sessions = generated)))
+            repo.replaceSessions(identity, generated)
         }
     }
 
-    // Who teaches a session and where: the timetable row it was generated from,
-    // else the course the hub is about.
+    // Who teaches a session and where: the timetable row it was generated from (the one whose
+    // dates cover it, when a room change split the slot), else the course the hub is about.
     val sessionMeta: (AttendanceSession) -> SessionMeta = { s ->
         val weekday = parseIsoDate(s.date)?.dayOfWeek?.let { d -> (d.ordinal + 1) % 7 } ?: -1
         val start = normalizeTime(s.startTime)
-        val match = events.firstOrNull { e ->
+        val rows = events.filter { e ->
             TrackerCourses.isSameCourse(e.courseName, e.courseCode, course.courseName, course.courseCode) &&
                 e.dayOfWeek == weekday &&
                 (start == null || normalizeTime(e.startTime) == start) &&
                 getEventSessionType(e) == s.sessionType
         }
+        val match = rows.firstOrNull { e ->
+            (e.semesterStart.isNullOrEmpty() || s.date >= e.semesterStart) && (e.semesterEnd.isNullOrEmpty() || s.date <= e.semesterEnd)
+        } ?: rows.firstOrNull()
         SessionMeta(match?.instructor.nonEmpty() ?: course.instructor, match?.location.nonEmpty() ?: course.location)
     }
 
@@ -251,11 +254,12 @@ private fun CourseHub(
                             semesterStart = semesterStart,
                             sessionMeta = sessionMeta,
                             onSetStatus = { id, status ->
-                                repo.setAttendanceStatus(CourseIdentity(tracker.courseCode, tracker.courseName, tracker.semester), id, status)
+                                repo.setAttendanceStatus(identity, id, status)
                             },
-                            onAddSession = { repo.addAttendanceSession(tracker.courseKey, it) },
-                            onRemoveSession = { repo.removeAttendanceSession(tracker.courseKey, it) },
-                            onRestoreSession = { repo.restoreAttendanceSession(tracker.courseKey, it) },
+                            // By identity, not key: the tracker may still sit under a legacy key.
+                            onAddSession = { repo.addAttendanceSession(identity, it) },
+                            onRemoveSession = { repo.removeAttendanceSession(identity, it) },
+                            onRestoreSession = { repo.restoreAttendanceSession(identity, it) },
                             toast = toast,
                             scroll = scroll,
                             viewportTop = { viewportTop },
@@ -271,9 +275,9 @@ private fun CourseHub(
                         TrackerTab.Rules -> SettingsTab(
                             tracker = tracker,
                             online = online,
-                            onUpdateLimits = { repo.updateLimits(tracker.courseKey, it) },
-                            onUpdateGradingScale = { repo.updateGradingScale(tracker.courseKey, it) },
-                            onConfirmSettings = { repo.confirmTrackerSettings(tracker.courseKey) },
+                            onUpdateLimits = { repo.updateLimits(identity, it) },
+                            onUpdateGradingScale = { repo.updateGradingScale(identity, it) },
+                            onConfirmSettings = { repo.confirmTrackerSettings(identity) },
                         )
                     }
                 }

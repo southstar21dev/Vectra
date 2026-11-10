@@ -3,11 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSessionUserId } from '@/lib/auth-helpers';
 import { isOnline } from '@/lib/online';
 import { queryKeys } from '@/lib/query-keys';
-import { decryptField, encryptField, isCiphertext } from '@/lib/encryption';
 import {
   createEmptyTrackerData,
-  parseTrackerData,
-  serializeTrackerData,
   sessionSlotKey,
   type AttendanceSession,
   type AttendanceStatus,
@@ -19,14 +16,7 @@ import {
   type SessionType,
 } from './tracker-types';
 import { deduplicateSessions, normalizeTime, resolveCourseKey } from './attendance-calc';
-import { fetchCourseTrackerData, upsertCourseTrackerData } from './course-tracker-cloud';
-import {
-  enqueueCloudSave,
-  markCloudReadable,
-  noteHeldBackWrite,
-  takeHeldBackWrite,
-} from './course-tracker-sync';
-import { uploadTrackerData } from './course-tracker-upload';
+import { syncTrackerDataWithCloud, uploadTrackerData } from './course-tracker-upload';
 import {
   applySetAttendanceStatus,
   applyUpsertTracker,
@@ -36,7 +26,6 @@ import {
   getCourseTrackerOfflineCacheKey,
   getOrCreateTrackerFromStore,
   getTrackerOrCreateByKey,
-  mergeTrackerData,
   saveCourseTrackerToOfflineCache,
 } from './course-tracker-store';
 
@@ -64,54 +53,9 @@ export function useCourseTracker() {
         return cached;
       }
 
-      try {
-        const encryptedData = await fetchCourseTrackerData(userId);
-
-        if (!encryptedData) {
-          // No cloud record yet: seed it from local data if we have any.
-          markCloudReadable(userId);
-          takeHeldBackWrite(userId);
-          if (cached && Object.keys(cached.trackers).length > 0) {
-            try {
-              const encrypted = (await encryptField(serializeTrackerData(cached))) as string;
-              await enqueueCloudSave(userId, () => upsertCourseTrackerData(userId, encrypted));
-            } catch (seedErr) {
-              console.warn('Initial cloud seed failed:', seedErr);
-            }
-          }
-          return cached;
-        }
-
-        const decrypted = await decryptField(encryptedData);
-        const parsed = isCiphertext(decrypted) ? null : parseTrackerData(decrypted);
-        if (!parsed) {
-          // Undecryptable or unparseable (e.g. written by a newer client): keep
-          // the cloud write gate closed so the local copy never replaces it.
-          console.warn('Course tracker cloud data is unreadable; keeping offline cache and blocking uploads.');
-          return cached;
-        }
-
-        markCloudReadable(userId);
-        // Re-read the live cache at return time so an update that landed while
-        // the fetch was in flight is never clobbered by the (possibly stale)
-        // cloud snapshot. Keep the newest version of each tracker.
-        const reconciled = mergeTrackerData(readCurrent(), parsed);
-        saveCourseTrackerToOfflineCache(reconciled, userId);
-        if (takeHeldBackWrite(userId)) {
-          // Local edits made while uploads were blocked: push the merged copy.
-          try {
-            const encrypted = (await encryptField(serializeTrackerData(reconciled))) as string;
-            await enqueueCloudSave(userId, () => upsertCourseTrackerData(userId, encrypted));
-          } catch (pushErr) {
-            noteHeldBackWrite(userId);
-            console.warn('Failed to upload held-back course tracker edits:', pushErr);
-          }
-        }
-        return reconciled;
-      } catch (err) {
-        console.warn('Failed to load course tracker from cloud, keeping offline cache:', err);
-        return cached;
-      }
+      // Merges the cloud copy and uploads whatever it lacks, so an edit whose
+      // upload failed or was held back is retried on the next successful read.
+      return syncTrackerDataWithCloud(userId, readCurrent);
     },
     staleTime: 1000 * 30, // 30s
     refetchOnWindowFocus: true,

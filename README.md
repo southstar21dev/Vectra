@@ -143,16 +143,6 @@ Both then offer each new release as an update. With a free Apple ID, the app has
 7 days (AltStore/SideStore do this in the background). Requires iOS 18.5 or newer. You can also
 download `Vectra-<version>.ipa` from a release and open it in AltStore or SideStore.
 
-### Betas
-
-Pre-releases (`-dev.N`) are built from the `dev` branch. On Android,
-enable *Include prereleases* in Obtainium. On iPhone, tap *AltStore/SideStore, with prereleases* on
-the [install page](https://southstar21dev.github.io/Vectra/), or add the beta source instead:
-
-```
-https://southstar21dev.github.io/Vectra/altstore-beta.json
-```
-
 ## How it's built
 
 | Folder | What it is |
@@ -189,18 +179,20 @@ Baseline Profiles.
 ## Development
 
 ```sh
+# Each block starts from the repository root.
+
 # Backend: builds and serves on 127.0.0.1:8090
 make -C backend run
 
 # Native: Android (open native/ in Android Studio, or)
-cd native && ./gradlew :androidApp:installDebug
-./gradlew :shared:testAndroidHostTest detekt :androidApp:lint   # tests and static analysis
+(cd native && ./gradlew :androidApp:installDebug)
+(cd native && ./gradlew :shared:testAndroidHostTest detekt :androidApp:lint)   # tests and static analysis
 
 # Native: iOS. The Xcode project is generated from project.yml
-cd native/iosApp && xcodegen && open iosApp.xcodeproj
+(cd native/iosApp && xcodegen && open iosApp.xcodeproj)
 
 # Web (legacy)
-cd web && npm install && npm run dev
+(cd web && npm install && npm run dev)
 ```
 
 See [`native/README.md`](native/README.md) and [`native/docs/CONTRIBUTING.md`](native/docs/CONTRIBUTING.md)
@@ -211,14 +203,15 @@ environment variables.
 
 | Branch | Purpose | Releases |
 |---|---|---|
-| `dev` | Day-to-day work; feature branches and Dependabot PRs merge here. | `1.4.0-dev.N` |
+| `dev` | Day-to-day work; feature branches and Dependabot PRs merge here. | none (CI only) |
 | `master` | Production; the backend and web deploy from here. | `1.4.0` |
 
-[semantic-release](https://semantic-release.gitbook.io/) runs on every push to these branches once
+[semantic-release](https://semantic-release.gitbook.io/) runs on every push to `master` once
 CI passes, and versions from [Conventional Commits](https://www.conventionalcommits.org/):
 `feat:` is a minor release, `fix:` and `perf:` are patches, and `!` or `BREAKING CHANGE:` is a major.
-`chore:`, `docs:`, `refactor:`, `test:` and `ci:` release nothing. Each release ships a signed APK, an
-unsigned IPA and updated AltStore/SideStore sources.
+`chore:`, `docs:`, `refactor:`, `test:` and `ci:` release nothing. Each release ships a signed APK and
+updated AltStore/SideStore sources, plus an ad-hoc-signed IPA unless the release is Android-only
+(AltStore/SideStore re-sign it with your Apple ID).
 
 ## Disclaimer
 
@@ -251,7 +244,9 @@ Code adapted from other projects keeps its original license, as listed in [NOTIC
 - Maps © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, served by
   [OpenFreeMap](https://openfreemap.org) with [OpenMapTiles](https://openmaptiles.org), rendered by
   [MapLibre](https://maplibre.org).
-- Weather from [Open-Meteo](https://open-meteo.com) (CC BY 4.0); radar from [RainViewer](https://www.rainviewer.com).
+- Weather from [Open-Meteo](https://open-meteo.com) (CC BY 4.0); radar from [RainViewer](https://www.rainviewer.com);
+  place names from [BigDataCloud](https://www.bigdatacloud.com).
 - Liquid Glass rendering by [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass) (Apache-2.0).
 - Icons from [Remix Icon](https://remixicon.com).
+- Fonts: [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (SIL OFL 1.1; see [NOTICE.md](NOTICE.md)).
 - [Get it on Obtainium](https://github.com/ImranR98/Obtainium) and [Get it on GitHub](https://github.com/Kunzisoft/Github-badge) badges by their respective projects.

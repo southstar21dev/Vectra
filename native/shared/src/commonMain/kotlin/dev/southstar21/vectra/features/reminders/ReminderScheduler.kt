@@ -144,30 +144,46 @@ class ReminderScheduler(
      * reminder firing now. [LiveDepartures.firstMs] is the latest of the lines' next departures, so
      * the times stay fresh while any of them can still be caught.
      */
-    suspend fun liveDepartures(queries: List<DepartureQuery>): LiveDepartures {
-        withTimeoutOrNull(3_000) { auth.session.first { it != null } }
-        val times = departures.timesEach(queries, nowMs())
+    suspend fun liveDepartures(queries: List<DepartureQuery>, budgetMs: Long = LiveDeparturesBudgetMs): LiveDepartures {
+        // Bounded, so a stalled network still leaves the caller time to post the reminder itself:
+        // past the budget every line falls back to "tap for departures".
+        val times = withTimeoutOrNull(budgetMs) {
+            withTimeoutOrNull(3_000) { auth.session.first { it != null } }
+            departures.timesEach(queries, nowMs())
+        } ?: List(queries.size) { null }
         val lines = queries.zip(times) { q, t -> if (t == null) departuresFallbackLine(q) else departuresLine(q, t) }
         return LiveDepartures(lines.joinToString("\n"), times.mapNotNull { it?.firstOrNull() }.maxOrNull())
     }
 
     data class LiveDepartures(val line: String, val firstMs: Long?)
 
-    private fun apply(plan: List<ScheduledNotification>) {
-        if (plan == planned) return
+    /**
+     * [force] hands [plan] to the system even when it matches [planned]: that starts empty on every
+     * launch while alarms set by an earlier process are still pending, so clearing must not be skipped.
+     */
+    private fun apply(plan: List<ScheduledNotification>, force: Boolean = false) {
+        if (!force && plan == planned) return
         planned = plan
         notifier.replaceScheduled(plan)
     }
 
-    override suspend fun beforeSignOut() = lock.withLock { apply(emptyList()) }
+    /** Whether a reminder firing now still belongs to a signed-in account (a cold process restores first). */
+    suspend fun hasSession(): Boolean {
+        auth.restore()
+        return auth.session.value != null
+    }
+
+    override suspend fun beforeSignOut() = lock.withLock { apply(emptyList(), force = true) }
 
     override suspend fun onSessionCleared() {
-        lock.withLock { apply(emptyList()) }
+        lock.withLock { apply(emptyList(), force = true) }
         store.reset()
     }
 
     companion object {
         const val HorizonDays = 7
+        /** How long a firing reminder waits for live departures; the Android receiver has about 10 s in all. */
+        const val LiveDeparturesBudgetMs = 5_000L
         /** iOS keeps at most 64 pending notifications per app. */
         const val MaxScheduled = 60
     }

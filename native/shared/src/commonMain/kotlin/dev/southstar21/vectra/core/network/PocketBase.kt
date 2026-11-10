@@ -26,6 +26,9 @@ import kotlinx.serialization.json.jsonPrimitive
 
 val VectraJson = Json {
     ignoreUnknownKeys = true
+    // An explicit null (or an unknown enum value) in a field with a default takes the default, so one
+    // odd entry in a large feed doesn't fail the whole response.
+    coerceInputValues = true
     explicitNulls = false
     encodeDefaults = true
     isLenient = true

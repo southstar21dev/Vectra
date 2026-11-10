@@ -12,8 +12,12 @@ adb shell am start -W -n "$PKG/.android.MainActivity"
 # Long enough for startup work (graph, preferences, widgets) to run, not just the first frame.
 sleep 25
 
-if adb logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
-  adb logcat -d -b crash | tail -80
+# Read the crash buffer once, then search it: piping adb straight into `grep -q` lets grep exit on the
+# first match, adb dies of SIGPIPE, and under pipefail the pipeline reads as "no crash". Only this
+# app's crashes count; an unrelated system app crashing on the emulator must not fail the release.
+CRASHES="$(adb logcat -d -b crash)"
+if grep -q "Process: $PKG," <<<"$CRASHES"; then
+  tail -80 <<<"$CRASHES"
   echo "::error::The release build crashed on launch."
   exit 1
 fi

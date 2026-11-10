@@ -42,9 +42,12 @@ internal class FakeCloud : TrackerCloud {
     var updates = 0
     val uploads = mutableListOf<String>()
     var fetches = 0
+    /** Runs inside a fetch before it answers: hold it here to act while the read is in flight. */
+    var duringFetch: (suspend () -> Unit)? = null
 
     override suspend fun fetch(userId: String): String? {
         fetches++
+        duringFetch?.invoke()
         fetchError?.let { throw it }
         return row
     }
@@ -70,16 +73,22 @@ private fun intensiveEvents() = listOf("08:00" to "09:30", "09:50" to "11:20", "
 
 private val IntensiveIdentity = CourseIdentity("X5VX18SUBM01M-G10", "Business Communication Intensive", "2026/27/1")
 
-private class Harness(scope: CoroutineScope, userId: String?, val kv: KeyValueStore = KeyValueStore(FakeDataStore()), val cloud: FakeCloud = FakeCloud()) {
+private class Harness(
+    scope: CoroutineScope,
+    userId: String?,
+    val kv: KeyValueStore = KeyValueStore(FakeDataStore()),
+    val cloud: FakeCloud = FakeCloud(),
+    online: Boolean = false,
+) {
     val gate = CloudWriteGate()
-    val repo = CourseTrackerRepository(cloud, PassThroughCipher, kv, scope, MutableStateFlow(userId), isOnline = { false }, gate = gate)
+    val repo = CourseTrackerRepository(cloud, PassThroughCipher, kv, scope, MutableStateFlow(userId), isOnline = { online }, gate = gate)
 
     suspend fun saveCache(data: CourseTrackerData, uid: String?) = kv.set(courseTrackerCacheKey(uid), serializeTrackerData(data))
     suspend fun readCache(uid: String?) = parseTrackerData(kv.get(courseTrackerCacheKey(uid)))
 }
 
-private fun TestScope.harness(userId: String?, kv: KeyValueStore = KeyValueStore(FakeDataStore()), cloud: FakeCloud = FakeCloud()) =
-    Harness(backgroundScope, userId, kv, cloud)
+private fun TestScope.harness(userId: String?, kv: KeyValueStore = KeyValueStore(FakeDataStore()), cloud: FakeCloud = FakeCloud(), online: Boolean = false) =
+    Harness(backgroundScope, userId, kv, cloud, online)
 
 class ScheduleReconcilerTest {
     @Test fun examOnlyScheduleCreatesNothing() = runTest {
@@ -215,6 +224,31 @@ class ScheduleReconcilerTest {
         ))
         val sep1 = r.trackers.getValue("cs401_2025-26-1").attendance.sessions.filter { it.date == "2025-09-01" }
         assertEquals(setOf("08:15", "10:15"), sep1.map { it.startTime }.toSet())
+    }
+
+    /** 04 #11: a mark made while the sync reads the cloud survives the sync's result. */
+    @Test fun aMarkMadeDuringTheSyncsCloudReadIsKept() = runTest {
+        val cloud = FakeCloud()
+        val h = harness("user-live", cloud = cloud)
+        runCurrent()
+        h.repo.syncFromScheduleEvents(intensiveEvents())
+        runCurrent()
+        val inFetch = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        cloud.duringFetch = { inFetch.complete(Unit); release.await() }
+        val sync = async { h.repo.syncFromScheduleEvents(intensiveEvents()) }
+        inFetch.await()
+        h.repo.setAttendanceStatus(IntensiveIdentity, "2026-09-07", AttendanceStatus.Present, startTime = "08:00", sessionType = SessionType.Seminar)
+        runCurrent()
+        cloud.duringFetch = null
+        release.complete(Unit)
+        val result = sync.await()
+        runCurrent()
+        val key = resolveCourseKey(IntensiveIdentity)
+        fun status(data: CourseTrackerData?) = data?.trackers?.get(key)?.attendance?.sessions?.first { it.date == "2026-09-07" && it.startTime == "08:00" }?.status
+        assertEquals(AttendanceStatus.Present, status(h.repo.data.value))
+        assertEquals(AttendanceStatus.Present, status(result))
+        assertEquals(AttendanceStatus.Present, status(h.readCache("user-live")))
     }
 
     @Test fun createsTheSingletonRow() = runTest {
@@ -419,5 +453,56 @@ class TrackerUploadTest {
         // isOnline is false here, so the refresh stops at the gate: the edit stays local and held back.
         assertTrue(cloud.uploads.isEmpty())
         assertTrue(h.gate.takeHeldBack("u9"))
+    }
+
+    // ---- sign-out (02 #2) ---------------------------------------------------------
+
+    @Test fun aSignOutFlushSendsTheDebouncedEdit() = runTest {
+        val cloud = FakeCloud()
+        val h = signedIn(cloud)
+        h.gate.markReadable("u9")
+        assertTrue(h.repo.flushPendingWrites(), "nothing edited, nothing pending")
+        h.repo.addAssessment(IntensiveIdentity, AssessmentItem("q", "Quiz", 5.0, 10.0))
+        runCurrent()
+        assertTrue(h.repo.flushPendingWrites())
+        assertEquals(1, cloud.uploads.size)
+        advanceTimeBy(TrackerUploadDebounceMs * 2)
+        runCurrent()
+        assertEquals(1, cloud.uploads.size, "the cancelled debounce does not upload again")
+    }
+
+    @Test fun aSignOutFlushReportsAnEditTheCloudDoesNotHave() = runTest {
+        val cloud = FakeCloud()
+        val h = signedIn(cloud)
+        h.gate.markReadable("u9")
+        cloud.fetchError = IllegalStateException("offline")
+        h.repo.addAssessment(IntensiveIdentity, AssessmentItem("q", "Quiz", 5.0, 10.0))
+        runCurrent()
+        assertFalse(h.repo.flushPendingWrites())
+        cloud.fetchError = null
+        assertTrue(h.repo.flushPendingWrites(), "a later flush retries the failed upload")
+        assertEquals(1, cloud.uploads.size)
+    }
+
+    @Test fun aCacheKeptThroughAnExpiryIsUploadedWhenTheAccountReturns() = runTest {
+        val cloud = FakeCloud().apply {
+            hasRow = true
+            row = serializeTrackerData(CourseTrackerData(1, mapOf("a" to tracker("Cloud older", "2026-10-01T00:00:00.000Z"))))
+        }
+        val kv = KeyValueStore(FakeDataStore())
+        kv.set(courseTrackerCacheKey("u9"), serializeTrackerData(CourseTrackerData(1, mapOf("a" to tracker("Edited offline", "2026-10-02T00:00:00.000Z")))))
+        harness("u9", kv = kv, cloud = cloud, online = true)
+        runCurrent()
+        assertEquals("Edited offline", parseTrackerData(cloud.uploads.single())!!.trackers.getValue("a").courseName)
+    }
+
+    @Test fun aRefreshWithNothingNewUploadsNothing() = runTest {
+        val data = CourseTrackerData(1, mapOf("a" to tracker("Same", "2026-10-01T00:00:00.000Z")))
+        val cloud = FakeCloud().apply { hasRow = true; row = serializeTrackerData(data) }
+        val kv = KeyValueStore(FakeDataStore())
+        kv.set(courseTrackerCacheKey("u9"), serializeTrackerData(data))
+        harness("u9", kv = kv, cloud = cloud, online = true)
+        runCurrent()
+        assertTrue(cloud.uploads.isEmpty())
     }
 }

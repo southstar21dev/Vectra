@@ -13,8 +13,28 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/reauth"
 	_ "vectra/pb/migrations"
 )
+
+// useLimiters swaps in fresh re-auth limiters allowing perUser checks per user.
+func useLimiters(t *testing.T, perUser int) {
+	t.Helper()
+	prevUser, prevIP := reauth.UserLimiter, reauth.IPLimiter
+	reauth.UserLimiter = ratelimit.New(perUser, time.Minute)
+	reauth.IPLimiter = ratelimit.New(100, time.Minute)
+	t.Cleanup(func() { reauth.UserLimiter, reauth.IPLimiter = prevUser, prevIP })
+}
+
+func postAs(app *tests.TestApp, auth *core.Record, target, body string, handler func(*core.RequestEvent) error) (*httptest.ResponseRecorder, error) {
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	e := &core.RequestEvent{App: app, Auth: auth}
+	e.Request = req
+	e.Response = w
+	return w, handler(e)
+}
 
 func TestDeleteAccountCascades(t *testing.T) {
 	app, err := tests.NewTestApp()
@@ -99,10 +119,7 @@ func TestEmailHandlerRateLimited(t *testing.T) {
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	prevUser, prevIP := emailUserLimiter, emailIPLimiter
-	emailUserLimiter = ratelimit.New(2, time.Minute)
-	emailIPLimiter = ratelimit.New(100, time.Minute)
-	t.Cleanup(func() { emailUserLimiter, emailIPLimiter = prevUser, prevIP })
+	useLimiters(t, 2)
 
 	users, _ := app.FindCollectionByNameOrId("users")
 	u := core.NewRecord(users)
@@ -127,4 +144,59 @@ func TestEmailHandlerRateLimited(t *testing.T) {
 	apiErr, ok := call().(*router.ApiError)
 	require.True(t, ok)
 	require.Equal(t, http.StatusTooManyRequests, apiErr.Status)
+}
+
+// TestDeleteHandlerRequiresCurrentPassword: a bearer token alone cannot delete
+// the account; a missing or wrong password is a 400 and deletes nothing, the
+// right one deletes the account.
+func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	useLimiters(t, 10)
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "keep@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	for _, body := range []string{"", `{}`, `{"currentPassword":"wrong"}`} {
+		_, err := postAs(app, u, "/api/vectra/account/delete", body, Handler)
+		apiErr, ok := err.(*router.ApiError)
+		require.True(t, ok, "body %q", body)
+		require.Equal(t, http.StatusBadRequest, apiErr.Status, "body %q", body)
+		_, err = app.FindRecordById("users", u.Id)
+		require.NoError(t, err, "a rejected delete must leave the account in place")
+	}
+
+	w, err := postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, w.Code)
+	_, err = app.FindRecordById("users", u.Id)
+	require.Error(t, err)
+}
+
+// TestReauthBucketIsShared: wrong guesses on one re-auth route spend the same
+// per-user budget as another, so spreading guesses buys nothing.
+func TestReauthBucketIsShared(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	useLimiters(t, 2)
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "shared@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	_, _ = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"wrong","newEmail":"x@test.local"}`, EmailHandler)
+	_, _ = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"wrong"}`, Handler)
+	_, err = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler)
+	apiErr, ok := err.(*router.ApiError)
+	require.True(t, ok)
+	require.Equal(t, http.StatusTooManyRequests, apiErr.Status)
+	_, err = app.FindRecordById("users", u.Id)
+	require.NoError(t, err)
 }

@@ -118,4 +118,15 @@ class DeviceLocationTest {
     fun storageKeyMatchesTheWeb() {
         assertEquals("vectra.deviceLocation", DeviceLocationStorageKey)
     }
+
+    @Test fun aCachedFixKeepsItsOwnAge() {
+        val now = 1_800_000_000_000L
+        val old = now - 20 * 60_000L
+        assertEquals(old, fixTimeMs(old, now))
+        // Within the skew allowance, or no time at all: it counts as now.
+        assertEquals(now, fixTimeMs(now - 5_000L, now))
+        assertEquals(now, fixTimeMs(now + 5_000L, now))
+        assertEquals(now, fixTimeMs(0L, now))
+        assertTrue(isLocationStale(applyPositionSuccess(InitialWatchLocationState, PositionFix(47.5, 19.0, 10.0), fixTimeMs(old, now)), now))
+    }
 }

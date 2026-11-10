@@ -4,6 +4,7 @@ import type { Profile } from './auth.queries';
 import type { LoginCredentials, SignupCredentials } from './types';
 import { cleanupDevicePushSubscription } from '@/features/notifications/use-push-subscription';
 import { SIGN_OUT_TIMEOUT_MS, withTimeout } from './session-utils';
+import { markExplicitSignOut } from './sign-out-intent';
 
 /**
  * The auth mutation bodies live here (separate from `useAuth`) so they can be
@@ -77,10 +78,17 @@ export async function changePassword({
   if (!currentEmail) throw new Error('Not authenticated');
   try {
     await pb.collection('users').authWithPassword(currentEmail, currentPassword);
-  } catch {
-    throw new Error('Current password is incorrect');
+  } catch (err) {
+    // Only a rejected login means a wrong password; offline or rate-limited is
+    // reported as what it is.
+    const status = (err as { status?: number } | null)?.status;
+    if (status === 400 || status === 401) throw new Error('Current password is incorrect');
+    if (status === 429) throw new Error('Too many attempts — please wait a moment and try again');
+    throw err;
   }
+  // PocketBase requires oldPassword whenever a user changes their own password.
   await pb.collection('users').update(session.record!.id, {
+    oldPassword: currentPassword,
     password: newPassword,
     passwordConfirm: newPassword,
   });
@@ -94,12 +102,18 @@ export async function changePassword({
   }
 }
 
-/** Delete the caller's account server-side, then clear the dead local session. */
-export async function deleteUserAccount() {
+/**
+ * Delete the caller's account server-side, then clear the dead local session.
+ * The server re-checks the current password, so a stolen token alone cannot
+ * delete the account.
+ */
+export async function deleteUserAccount(currentPassword: string) {
   requireSession();
-  await pb.send('/api/vectra/account/delete', { method: 'POST' });
+  await pb.send('/api/vectra/account/delete', { method: 'POST', body: { currentPassword } });
   // The server wiped the auth record; the local session is dead. Clearing the
-  // store fires `onChange` in useAuth, which drops cached user data.
+  // store fires `onChange` in useAuth, which drops cached user data, the
+  // offline queue included (the account no longer exists).
+  markExplicitSignOut();
   pb.authStore.clear();
 }
 
@@ -118,6 +132,9 @@ export async function signOut(): Promise<void> {
   } catch (err) {
     console.warn('Push cleanup on sign-out skipped:', err);
   } finally {
+    // The user chose to sign out: the offline queue goes too. Callers flush it
+    // first and warn when writes are left (see settings-page.tsx).
+    markExplicitSignOut();
     pb.authStore.clear();
   }
 }

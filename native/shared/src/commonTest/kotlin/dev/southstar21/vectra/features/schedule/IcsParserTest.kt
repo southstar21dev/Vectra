@@ -27,6 +27,44 @@ class IcsParserTest {
         assertTrue(parseIcsContent(ics, includeExams = false).valid.all { it.eventType != "exam" })
     }
 
+    // ---- 04 #6: room changes --------------------------------------------------------
+
+    private val algebra = "Algebra ( - ALG101-E01) - Dr. Smith - Tanóra"
+
+    private fun weekly(room: String, vararg days: String) =
+        days.map { ev("alg-$it-$room", "${it}T100000", "${it}T113000", algebra, room) }.toTypedArray()
+
+    @Test fun aRoomChangeMidSemesterSplitsTheSlot() {
+        val ics = cal(*weekly("A.101", "20260907", "20260914", "20260921"), *weekly("B.202", "20260928", "20261005"))
+        val slots = parseIcsContent(ics).valid
+        assertEquals(
+            listOf(Triple("A.101", "2026-09-07", "2026-09-21"), Triple("B.202", "2026-09-28", "2026-10-05")),
+            slots.map { Triple(it.location, it.semesterStart, it.semesterEnd) },
+        )
+        assertEquals(1, slots.map { listOf(it.courseName, it.courseCode, it.semester, it.dayOfWeek, it.startTime) }.distinct().size)
+    }
+
+    @Test fun roomsDifferingOnlyInCaseOrSpacingStayOneSlot() {
+        val ics = cal(*weekly("A.101", "20260907", "20260914"), *weekly("a.101 ", "20260921"))
+        val slot = parseIcsContent(ics).valid.single()
+        assertEquals("A.101" to ("2026-09-07" to "2026-09-21"), slot.location to (slot.semesterStart to slot.semesterEnd))
+    }
+
+    @Test fun aSecondEventOnTheSameDateAddsNoClass() {
+        val ics = cal(*weekly("A.101", "20260907", "20260914"), *weekly("B.202", "20260914"))
+        val slot = parseIcsContent(ics).valid.single()
+        assertEquals("A.101" to ("2026-09-07" to "2026-09-14"), slot.location to (slot.semesterStart to slot.semesterEnd))
+    }
+
+    @Test fun aSubstituteTeacherGetsTheirOwnDate() {
+        val sub = ev("alg-sub", "20260914T100000", "20260914T113000", "Algebra ( - ALG101-E01) - Dr. Jones - Tanóra", "A.101")
+        val ics = cal(*weekly("A.101", "20260907", "20260921"), sub)
+        assertEquals(
+            listOf("Dr. Smith" to "2026-09-07", "Dr. Smith" to "2026-09-21", "Dr. Jones" to "2026-09-14"),
+            parseIcsContent(ics).valid.map { it.instructor to it.semesterStart.orEmpty() },
+        )
+    }
+
     @Test fun sameDayExamSlotsDistinct() {
         val ics = cal(
             ev("exam-am", "20261001T090000", "20261001T100000", "Accounting (Írásbeli) - Dr. Smith - Vizsga"),

@@ -1,6 +1,6 @@
 # Vectra PocketBase backend — local dev tasks.
 #
-#   make build     compile the server binary (pb/)
+#   make build     compile the server binary (./pb)
 #   make run       build then serve on 127.0.0.1:8090
 #   make test      go vet + go test for the whole module
 #   make migrate   apply pending Go migrations to pb_data/data.db

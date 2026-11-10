@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.schedule
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.network.string
-import dev.southstar21.vectra.core.time.nowInBudapest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -68,11 +67,10 @@ fun getConflictsForItem(
     item: ScheduleItem,
     otherItems: List<ScheduleItem>,
     events: List<ScheduleEvent>,
-    referenceDate: String = nowInBudapest().ymd,
 ): List<ScheduleConflict> {
     val dates = getItemIntervals(item).map { it.date }.distinct()
     val acknowledged = item.acknowledgedConflictKeys.toSet()
-    return getScheduleConflicts(otherItems.filter { it.id != item.id } + item, events, referenceDate, dates)
+    return getScheduleConflicts(otherItems.filter { it.id != item.id } + item, events, dates)
         .filter { it.itemId == item.id || it.otherItemId == item.id }
         .map { it.copy(needsAcknowledgment = it.needsAcknowledgment && it.key !in acknowledged) }
 }
@@ -90,10 +88,9 @@ fun throwForUnacknowledgedConflicts(conflicts: List<ScheduleConflict>, acknowled
 fun reconcileQueuedItemConflicts(
     state: ScheduleItemsState,
     events: List<ScheduleEvent>,
-    referenceDate: String = nowInBudapest().ymd,
 ): ScheduleItemsState {
     for (m in state.queue) {
-        if (m.isUpsert) getConflictsForItem(m.item!!.toItem(), state.items.map { it.toItem() }, events, referenceDate)
+        if (m.isUpsert) getConflictsForItem(m.item!!.toItem(), state.items.map { it.toItem() }, events)
     }
     return state
 }

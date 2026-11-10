@@ -10,7 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
@@ -144,7 +144,10 @@ class FutarApi(private val pb: PocketBaseClient) {
                 }
             })
         }
-        val text = withTimeout(40_000) { pb.sendText("/api/vectra/futar", HttpMethod.Post, body) }
+        // withTimeoutOrNull, not withTimeout: its TimeoutCancellationException would read as the caller's
+        // own cancellation, so a hung proxy would never count as a failure, back off or show an error.
+        val text = withTimeoutOrNull(40_000) { pb.sendText("/api/vectra/futar", HttpMethod.Post, body) }
+            ?: throw FutarException("Transit feed timed out")
         val decoded = runCatching { VectraJson.decodeFromString(deserializer, text) }.getOrNull()
         if (decoded?.status == "OK") return decoded
         assertFutarOk(runCatching { VectraJson.parseToJsonElement(text) }.getOrElse { JsonPrimitive(text) })
@@ -178,9 +181,10 @@ class FutarApi(private val pb: PocketBaseClient) {
     }
 
     /**
-     * Arrivals for many stops in one request (chunked at [MaxBatchArrivalStops]). A failed
-     * batch falls back to one request per stop so the feed still loads, unless the
-     * request never got an answer: then N more requests could not fare better.
+     * Arrivals for many stops in one request (chunked at [MaxBatchArrivalStops]). A batch the
+     * server failed on (5xx, or an unreadable answer) falls back to one request per stop so the
+     * feed still loads. Not when the request never got an answer, nor on a 4xx such as 429:
+     * N more requests could not fare better, and a rate limit asks for fewer, not more.
      */
     suspend fun fetchStopArrivalsBatch(stopIds: List<String>, minutesAfter: Int = 90): StopArrivalsBatch {
         val stationIds = stopIds.map(::normalizeStopIdToStation).filter { it.isNotEmpty() }.distinct()
@@ -208,7 +212,7 @@ class FutarApi(private val pb: PocketBaseClient) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: PocketBaseException) {
-            if (e.isNetwork) throw e
+            if (e.isNetwork || e.status in 400..499) throw e
             fetchStopArrivalsIndividually(stationIds, minutesAfter)
         } catch (_: Throwable) {
             fetchStopArrivalsIndividually(stationIds, minutesAfter)

@@ -1,7 +1,112 @@
-import { RiFingerprintLine, RiLoader4Line, RiAddLine, RiDeleteBinLine } from '@remixicon/react';
+import { useId, useState } from 'react';
+import { RiFingerprintLine, RiLoader4Line, RiAddLine, RiDeleteBinLine, RiLockLine, RiErrorWarningLine } from '@remixicon/react';
 import { usePasskeys } from './use-passkeys';
+import { PasskeyError, passkeyErrorMessage } from './passkeys';
 import { SettingsRow } from '@/features/settings/settings-section';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+/**
+ * Asks for the current password before enrolling a passkey: the server
+ * re-checks it, so a stolen session token alone cannot add one.
+ */
+function AddPasskeyDialog({
+  open,
+  onClose,
+  register,
+}: {
+  open: boolean;
+  onClose: () => void;
+  register: (currentPassword: string) => Promise<unknown>;
+}) {
+  const ids = useId();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const close = () => {
+    if (busy) return;
+    setPassword('');
+    setError(null);
+    onClose();
+  };
+
+  const submit = async () => {
+    if (busy || !password) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await register(password);
+      setBusy(false);
+      setPassword('');
+      onClose();
+    } catch (err) {
+      setBusy(false);
+      // A cancelled system prompt is not an error worth showing.
+      if (err instanceof PasskeyError && err.cancelled) {
+        close();
+        return;
+      }
+      setError(err instanceof PasskeyError ? passkeyErrorMessage(err.code) : 'Biometric sign-in failed — please try again.');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && close()}>
+      <DialogContent className="max-w-md" presentation="dialog">
+        <DialogHeader className="pt-2">
+          <DialogTitle>Add a passkey</DialogTitle>
+          <DialogDescription className="text-secondary mt-2">
+            Confirm it's you with your current password, then follow your device's prompt.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          <label htmlFor={`${ids}-current`} className="block text-xs font-bold text-secondary">Current password</label>
+          <Input
+            id={`${ids}-current`}
+            type="password"
+            autoComplete="current-password"
+            icon={RiLockLine}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your current password"
+            disabled={busy}
+            autoFocus
+          />
+          {error && (
+            <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-tint-red text-tint-red text-xs flex items-center gap-2.5">
+              <RiErrorWarningLine className="w-4 h-4 shrink-0 text-tint-red" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="ghost" size="sm" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="default" size="sm" disabled={busy || !password} aria-busy={busy || undefined}>
+              {busy ? <RiLoader4Line className="w-4 h-4 animate-spin" aria-hidden="true" /> : null}
+              Continue
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /** Passkey rows for the Account group: one per registered passkey plus an add
  *  row, or a single set-up row. */
@@ -17,9 +122,11 @@ export function PasskeySettings() {
     deletePasskey,
     deletePending,
   } = usePasskeys();
+  const [adding, setAdding] = useState(false);
 
   return (
     <>
+      <AddPasskeyDialog open={adding} onClose={() => setAdding(false)} register={register} />
       {isSupported === false ? (
         <SettingsRow
           icon={RiFingerprintLine}
@@ -77,7 +184,7 @@ export function PasskeySettings() {
             title="Add another passkey"
             subtitle="Register this device too"
             control={
-              <Button variant="default" size="sm" onClick={() => void register()} disabled={registerPending} className="h-9 px-4 rounded-xl font-bold">
+              <Button variant="default" size="sm" onClick={() => setAdding(true)} disabled={registerPending} className="h-9 px-4 rounded-xl font-bold">
                 {registerPending ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiAddLine className="w-3.5 h-3.5" />}
                 <span>Add</span>
               </Button>
@@ -91,7 +198,7 @@ export function PasskeySettings() {
           title="Passkey sign-in"
           subtitle="Use your fingerprint or face instead of a password"
           control={
-            <Button variant="default" size="sm" onClick={() => void register()} disabled={registerPending} className="h-9 px-4 rounded-xl font-bold">
+            <Button variant="default" size="sm" onClick={() => setAdding(true)} disabled={registerPending} className="h-9 px-4 rounded-xl font-bold">
               {registerPending ? (
                 <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
               ) : (

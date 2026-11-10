@@ -10,10 +10,19 @@ plugins {
 // The version lives in gradle.properties (CI writes the release version there); the code is derived
 // so the two can't drift. 1.2.3 -> 1020399. Prereleases sort below their release and dev below rc:
 // 1.2.3-dev.4 -> 1020304, 1.2.3-rc.2 -> 1020352. The same rule is in iosApp/project.yml.
+// Debug builds are versioned from git instead (see the root build.gradle.kts and androidComponents below).
 val appVersionName: String = providers.gradleProperty("vectra.versionName").get()
-val appVersionCode: Int = run {
-    val match = Regex("""(\d+)\.(\d{1,2})\.(\d{1,2})(?:-(dev|rc)\.(\d+))?""").matchEntire(appVersionName)
-        ?: error("vectra.versionName must be major.minor.patch[-dev.N|-rc.N] with minor and patch below 100, got '$appVersionName'")
+val appVersionCode: Int = versionCodeOf(appVersionName)
+
+@Suppress("UNCHECKED_CAST")
+val debugBaseVersion = rootProject.extra["debugBaseVersion"] as Provider<String>
+
+@Suppress("UNCHECKED_CAST")
+val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
+
+fun versionCodeOf(versionName: String): Int {
+    val match = Regex("""(\d+)\.(\d{1,2})\.(\d{1,2})(?:-(dev|rc)\.(\d+))?""").matchEntire(versionName)
+        ?: error("vectra.versionName must be major.minor.patch[-dev.N|-rc.N] with minor and patch below 100, got '$versionName'")
     val (major, minor, patch) = match.groupValues.subList(1, 4).map(String::toInt)
     val pre = match.groupValues[5].toIntOrNull() ?: 0
     val build = when (match.groupValues[4]) {
@@ -21,7 +30,7 @@ val appVersionCode: Int = run {
         "rc" -> 50 + pre.coerceAtMost(48)
         else -> 99
     }
-    (major * 10_000 + minor * 100 + patch) * 100 + build
+    return (major * 10_000 + minor * 100 + patch) * 100 + build
 }
 
 android {
@@ -34,12 +43,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = appVersionCode
         versionName = appVersionName
-        // PocketBase backend; override with -Pvectra.pocketbaseUrl=…
-        buildConfigField(
-            "String",
-            "POCKETBASE_URL",
-            "\"${providers.gradleProperty("vectra.pocketbaseUrl").getOrElse("https://apivectra.southstar21.dev")}\"",
-        )
+        manifestPlaceholders["appLabel"] = "Vectra"
         // Where the transit catalog is served: <origin>/catalog/*.json.
         buildConfigField(
             "String",
@@ -63,8 +67,21 @@ android {
         }
     }
 
+    // PocketBase backend: debug builds use the dev backend, release builds production, so testing never
+    // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The same split is in
+    // shared/build.gradle.kts for iOS.
+    val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl").orNull
+    fun pocketbaseUrl(default: String) = "\"${pocketbaseOverride ?: default}\""
+
     buildTypes {
+        debug {
+            // Installs next to the release app. Passkeys need this package in assetlinks.json.
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "Vectra Dev"
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra-dev.southstar21.dev"))
+        }
         release {
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra.southstar21.dev"))
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -115,6 +132,16 @@ kotlin {
 androidComponents {
     beforeVariants { variant ->
         variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+    // Debug: the newest release plus the commit (1.8.2+92e0b25), with that release's code, so a
+    // rebuild installs over the last one and a new release tag moves it forward.
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionName.set(debugVersionName)
+            // Resolved now: a lambda calling a script function can't go into the configuration cache.
+            // The cache still tracks the git output, so a new tag invalidates it.
+            output.versionCode.set(versionCodeOf(debugBaseVersion.get()))
+        }
     }
 }
 

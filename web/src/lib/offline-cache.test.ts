@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createOfflineCache, clearAllOfflineUserData } from './offline-cache';
+import {
+  createOfflineCache,
+  clearAllOfflineUserData,
+  KEPT_QUEUE_OWNER_KEY,
+  settleKeptOfflineQueue,
+} from './offline-cache';
 
 function makeStorage(initial: Record<string, string> = {}): Storage {
   const map = new Map(Object.entries(initial));
@@ -94,5 +99,48 @@ describe('createOfflineCache', () => {
     expect(storage.getItem('vectra.weather.snapshot')).toBeNull();
     expect(storage.getItem('vectra.deviceLocation')).toBeNull();
     expect(storage.getItem('vectra.appearance')).toBe('{"theme":"dark"}');
+  });
+
+  it('keeps one account\'s offline queue on a forced sign-out', () => {
+    const storage = makeStorage({
+      vectra_schedule_items_user1: '{"queue":[1]}',
+      vectra_course_tracker_cache_user1: '{"trackers":{}}',
+      vectra_schedule_items_user2: '{"queue":[2]}',
+      vectra_schedule_cache_events_user1: '[]',
+      vectra_neptun_sync_error: 'x',
+    });
+
+    clearAllOfflineUserData(storage, 'user1');
+
+    expect(storage.getItem('vectra_schedule_items_user1')).toBe('{"queue":[1]}');
+    expect(storage.getItem('vectra_course_tracker_cache_user1')).toBe('{"trackers":{}}');
+    expect(storage.getItem('vectra_schedule_items_user2')).toBeNull();
+    expect(storage.getItem('vectra_schedule_cache_events_user1')).toBeNull();
+    expect(storage.getItem('vectra_neptun_sync_error')).toBeNull();
+    expect(storage.getItem(KEPT_QUEUE_OWNER_KEY)).toBe('user1');
+
+    // An explicit sign-out later wipes the kept queue and its marker.
+    clearAllOfflineUserData(storage);
+    expect(storage.getItem('vectra_schedule_items_user1')).toBeNull();
+    expect(storage.getItem(KEPT_QUEUE_OWNER_KEY)).toBeNull();
+  });
+
+  it('replays a kept queue for its own account and drops it for another', () => {
+    const kept = () => makeStorage({
+      vectra_schedule_items_user1: '{"queue":[1]}',
+      vectra_course_tracker_cache_user1: '{}',
+      [KEPT_QUEUE_OWNER_KEY]: 'user1',
+    });
+
+    const same = kept();
+    settleKeptOfflineQueue('user1', same);
+    expect(same.getItem('vectra_schedule_items_user1')).toBe('{"queue":[1]}');
+    expect(same.getItem(KEPT_QUEUE_OWNER_KEY)).toBeNull();
+
+    const other = kept();
+    settleKeptOfflineQueue('user2', other);
+    expect(other.getItem('vectra_schedule_items_user1')).toBeNull();
+    expect(other.getItem('vectra_course_tracker_cache_user1')).toBeNull();
+    expect(other.getItem(KEPT_QUEUE_OWNER_KEY)).toBeNull();
   });
 });

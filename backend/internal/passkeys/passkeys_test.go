@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/reauth"
 	_ "vectra/pb/migrations"
 )
 
@@ -33,7 +35,18 @@ const (
 	testOrigin  = "https://example.org"
 	testRPName  = "Vectra Test"
 	migratedUID = "11111111-2222-3333-4444-555555555555"
+
+	// startBody is a register/start body carrying newTestUser's password.
+	startBody = `{"currentPassword":"password123"}`
 )
+
+// TestMain gives the package's tests roomy re-auth limiters: the real ones
+// would trip on the many register/start calls made from one test IP.
+func TestMain(m *testing.M) {
+	reauth.UserLimiter = ratelimit.New(1000, time.Minute)
+	reauth.IPLimiter = ratelimit.New(1000, time.Minute)
+	os.Exit(m.Run())
+}
 
 // setWebAuthnEnv points the RP config at the test origin. Call before invoking
 // any handler that builds the WebAuthn instance.
@@ -448,7 +461,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 			handle := webAuthnID(user)
 
 			// register/start
-			e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", "", nil)
+			e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
 			require.NoError(t, RegistrationStartHandler(e))
 			require.Equal(t, http.StatusOK, w.Code)
 			start := decodeStart(t, w.Body.Bytes())
@@ -503,7 +516,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 // begins a discoverable login, returning the login challenge.
 func registerAndStartLogin(t *testing.T, app *tests.TestApp, user *core.Record, auth *testAuthenticator) startResponse {
 	t.Helper()
-	e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", "", nil)
+	e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
 	require.NoError(t, RegistrationStartHandler(e))
 	start := decodeStart(t, w.Body.Bytes())
 
@@ -538,7 +551,7 @@ func TestRegistrationChallengeBoundToCaller(t *testing.T) {
 	mallory := newTestUser(t, app, "mallory-reg@test.local", "")
 	auth := newTestAuthenticator(t)
 
-	e, w := requestEvent(t, app, alice, http.MethodPost, "/api/vectra/passkeys/register/start", "", nil)
+	e, w := requestEvent(t, app, alice, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
 	require.NoError(t, RegistrationStartHandler(e))
 	start := decodeStart(t, w.Body.Bytes())
 

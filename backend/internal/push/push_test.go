@@ -249,7 +249,7 @@ func TestTopicForIsAppleSafe(t *testing.T) {
 func TestValidateEndpointAllowlist(t *testing.T) {
 	for _, ok := range []string{
 		"https://fcm.googleapis.com/fcm/send/abc",
-		"https://jmt17.google.com.googleapis.com/x", // suffix match
+		"https://jmt17.google.com/fcm/send/abc",
 		"https://web.push.apple.com/QGx",
 		"https://wns2-par02p.notify.windows.com/w/?token=x",
 		"https://updates.push.services.mozilla.com/wpush/v2/x",
@@ -269,7 +269,9 @@ func TestValidateEndpointAllowlist(t *testing.T) {
 		"https://169.254.169.254/latest/meta-data",  // metadata service
 		"https://push.example.com/x",                // unknown host
 		"ftp://updates.push.services.mozilla.com/x", // scheme
-		"https://.googleapis.com/x",                 // bare suffix
+		"https://.push.apple.com/x",                 // bare suffix
+		"https://storage.googleapis.com/bucket/x",   // other Google API
+		"https://jmt17.google.com.googleapis.com/x", // no generic googleapis suffix
 	} {
 		require.Error(t, ValidateEndpoint(bad), bad)
 	}

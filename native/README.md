@@ -44,6 +44,10 @@ except the release builds.
 
 Version: `vectra.versionName` in `gradle.properties`; `versionCode` is derived from it. Both apps read it:
 iOS gets it as `CFBundleShortVersionString`, with the same derived number as `CFBundleVersion`.
+That value is only current while CI builds a release (it writes it then and never commits it), so
+debug builds take their version from git instead: the newest `vX.Y.Z` tag plus the commit, e.g.
+`1.8.2+92e0b25` in Settings, with that release's version code (iOS Debug: `1.8.2` in Info.plist).
+Run `git fetch --tags` if a debug build shows an old version.
 The backend overrides (`-Pvectra.pocketbaseUrl`, `-Pvectra.catalogOrigin`) apply to both apps as well.
 
 Release signing: `-Pvectra.keystore=… -Pvectra.storePassword=… -Pvectra.keyAlias=… -Pvectra.keyPassword=…`.
@@ -59,7 +63,10 @@ Regenerate it after large UI changes, with one device attached and the test acco
   -Pvectra.testEmail=… -Pvectra.testPassword=…
 ```
 Both pass the credentials because Gradle uninstalls the app after each connected run, so every run starts signed out.
-Backend: `-Pvectra.pocketbaseUrl=…` (default `https://apivectra.southstar21.dev`) and
+Backend: debug builds (app ID `dev.southstar21.vectra.debug`, named "Vectra Dev", installable next to
+the release app) talk to the dev backend `https://apivectra-dev.southstar21.dev`, release builds to
+production `https://apivectra.southstar21.dev` (iOS: Xcode's Debug and Release configurations); see
+`../backend/README.md`. `-Pvectra.pocketbaseUrl=…` overrides both, and
 `-Pvectra.catalogOrigin=…` (default `https://vectra.southstar21.dev`, where the transit
 catalog `/catalog/*.json` is served).
 

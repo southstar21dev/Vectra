@@ -5,9 +5,11 @@ import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.VectraApp
 import dev.southstar21.vectra.core.config.VectraConfig
 import dev.southstar21.vectra.core.platform.NoPush
+import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.navigation.DeepLinks
 import dev.zacsweers.metro.createGraphFactory
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import platform.BackgroundTasks.BGAppRefreshTask
 import platform.BackgroundTasks.BGAppRefreshTaskRequest
@@ -29,9 +31,18 @@ object IosApp {
     val graph: AppGraph by lazy {
         createGraphFactory<AppGraph.Factory>().create(
             config = VectraConfig(
-                pocketbaseUrl = IosBuildConfig.POCKETBASE_URL,
+                // Debug builds use the dev backend, like androidApp's debug build type.
+                pocketbaseUrl = if (Platform.isDebugBinary) {
+                    IosBuildConfig.DEV_POCKETBASE_URL
+                } else {
+                    IosBuildConfig.POCKETBASE_URL
+                },
                 catalogOrigin = IosBuildConfig.CATALOG_ORIGIN,
-                appVersion = IosBuildConfig.VERSION_NAME,
+                appVersion = if (Platform.isDebugBinary) {
+                    IosBuildConfig.DEBUG_VERSION_NAME
+                } else {
+                    IosBuildConfig.VERSION_NAME
+                },
                 isDebug = Platform.isDebugBinary,
             ),
             dataStore = createDataStore(),
@@ -81,15 +92,20 @@ object IosApp {
         BGTaskScheduler.sharedScheduler.registerForTaskWithIdentifier(ReminderRefreshTask, null) { task ->
             val refresh = task as? BGAppRefreshTask ?: return@registerForTaskWithIdentifier
             scheduleReminderRefresh()
+            // The task is completed exactly once: by the work finishing, or by iOS expiring it first.
+            val completed = CompletableDeferred<Boolean>()
+            fun complete(success: Boolean) {
+                if (completed.complete(success)) refresh.setTaskCompletedWithSuccess(success)
+            }
             val job = graph.scope.launch {
-                runCatching { graph.reminders.rescheduleWhenReady() }
+                runSuspendCatching { graph.reminders.rescheduleWhenReady() }
                 // Background refresh also rolls the widgets over to a new day when the app isn't opened.
-                runCatching { graph.widgets.publishWhenReady() }
-                refresh.setTaskCompletedWithSuccess(true)
+                runSuspendCatching { graph.widgets.publishWhenReady() }
+                complete(true)
             }
             refresh.expirationHandler = {
                 job.cancel()
-                refresh.setTaskCompletedWithSuccess(false)
+                complete(false)
             }
         }
     }

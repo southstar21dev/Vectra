@@ -52,6 +52,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -118,6 +119,12 @@ fun ToasterHost(toaster: Toaster, modifier: Modifier = Modifier, bottomOffset: I
     }
 }
 
+/** The banner's exit in progress, if any; [onTimer] when it is the lifetime running out. */
+private class LeaveState {
+    var job: Job? = null
+    var onTimer = false
+}
+
 private const val DismissDistanceDp = 64f
 private const val DismissVelocity = 900f
 
@@ -132,16 +139,20 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
     val dragY = remember { Animatable(0f) }
     var height by remember { mutableStateOf(0f) }
     var held by remember { mutableStateOf(false) }
-    var leaving by remember { mutableStateOf(false) }
+    val leaving = remember { LeaveState() }
 
-    suspend fun leave(towardsX: Float = 0f) {
-        if (leaving) return
-        leaving = true
-        coroutineScope {
-            if (towardsX != 0f) launch { dragX.animateTo(towardsX, tween(180, easing = VectraEasing.Fade)) }
-            enter.animateTo(0f, if (reduceMotion) tween(120) else tween(200, easing = VectraEasing.Fade))
+    // The exit runs in the banner's own scope, not in an effect a touch restarts: a cancelled exit
+    // used to leave the toast half-faded at the head of the queue, blocking every later toast.
+    fun leave(towardsX: Float = 0f, onTimer: Boolean = false) {
+        if (leaving.job?.isActive == true) return
+        leaving.onTimer = onTimer
+        leaving.job = scope.launch {
+            coroutineScope {
+                if (towardsX != 0f) launch { dragX.animateTo(towardsX, tween(180, easing = VectraEasing.Fade)) }
+                enter.animateTo(0f, if (reduceMotion) tween(120) else tween(200, easing = VectraEasing.Fade))
+            }
+            toaster.dismiss(toast)
         }
-        toaster.dismiss(toast)
     }
 
     LaunchedEffect(Unit) {
@@ -154,9 +165,16 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
     }
     // The lifetime pauses while a finger rests on the toast.
     LaunchedEffect(held) {
-        if (held) return@LaunchedEffect
+        if (held) {
+            // A finger landed while the toast was fading on its own (reaching for Undo): bring it back.
+            if (leaving.onTimer && leaving.job?.isActive == true) {
+                leaving.job?.cancel()
+                enter.animateTo(1f, tween(120))
+            }
+            return@LaunchedEffect
+        }
         delay(toast.durationMs)
-        leave()
+        leave(onTimer = true)
     }
 
     val (icon, tint) = when (toast.type) {
@@ -237,7 +255,7 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
                     .background(c.accentPrimary.copy(alpha = 0.15f), CircleShape)
                     .tappable(CircleShape, haptic = { tick() }) {
                         action.onClick()
-                        scope.launch { leave() }
+                        leave()
                     }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,

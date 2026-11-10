@@ -89,7 +89,7 @@ data class PositionFix(
     val speed: Double? = null,
 )
 
-/** Pure transition for a successful fix; always refreshes `lastUpdatedMs`. */
+/** Pure transition for a successful fix; `lastUpdatedMs` becomes [now], the time the fix counts as taken. */
 fun applyPositionSuccess(current: WatchLocationState, coords: PositionFix, now: Long = nowMs()): WatchLocationState =
     WatchLocationState(
         status = WatchLocationStatus.Tracking,
@@ -117,6 +117,18 @@ fun applyPositionError(current: WatchLocationState, code: Int, message: String? 
         errorMessage = text,
     )
 }
+
+/** A provider's cached fix older than this keeps its own time instead of being stamped as new. */
+const val CachedFixAgeMs = 2 * 60_000L
+
+/**
+ * The time a fix counts as taken. A last-known fix the provider hands back after a timeout can be
+ * many minutes old and must look that old, so it neither resets the watchdog nor is persisted as
+ * fresh. Small differences are clock skew between the location provider and the device: those
+ * count as now.
+ */
+fun fixTimeMs(fixTimeMs: Long, now: Long): Long =
+    if (fixTimeMs > 0 && now - fixTimeMs > CachedFixAgeMs) fixTimeMs else now
 
 /** True when the last fix is old enough that the watcher must be restarted. */
 fun isLocationStale(state: WatchLocationState, now: Long = nowMs(), maxAgeMs: Long = DeviceLocationStaleMs): Boolean {
@@ -240,7 +252,11 @@ class DeviceLocation(
     }
 
     private fun applyFix(fix: GeoFix) {
-        val next = applyPositionSuccess(_state.value, PositionFix(fix.lat, fix.lon, fix.accuracy, fix.heading, fix.speed))
+        val next = applyPositionSuccess(
+            _state.value,
+            PositionFix(fix.lat, fix.lon, fix.accuracy, fix.heading, fix.speed),
+            fixTimeMs(fix.timeMs, nowMs()),
+        )
         _state.value = next
         failedRestartCount = 0
         persistThrottled(next)

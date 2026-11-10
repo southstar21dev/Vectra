@@ -70,7 +70,6 @@ import dev.southstar21.vectra.core.designsystem.theme.cardDepthShadows
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
@@ -154,7 +153,12 @@ private fun AuthCard(mode: AuthMode, onMode: (AuthMode) -> Unit, auth: AuthRepos
 interface PasskeyActions {
     val isSupported: Boolean
     suspend fun signIn()
-    suspend fun register()
+
+    /** Enrols this device; the server asks for the account's [currentPassword] first. */
+    suspend fun register(currentPassword: String)
+
+    /** [register] on a scope that outlives the signup screen, which the new session removes. */
+    fun registerAfterSignup(currentPassword: String, onFailure: (Throwable) -> Unit)
     fun errorMessage(e: Throwable): String?
 }
 
@@ -298,6 +302,7 @@ private fun ResetPasswordForm(auth: AuthRepository, initialEmail: String, onBack
                 style = vtext(TypeScale.Caption),
                 color = c.textMuted,
             )
+            PasskeyResetNote(PasskeyResetNotes.RESET, Modifier.padding(top = 4.dp))
         }
         sentTo?.let {
             Banner(
@@ -349,9 +354,11 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?) {
                 pending = true
                 error = null
                 scope.launchCatching({
-                    auth.signup(email.trim(), password, name.trim().take(AccountLogic.FULL_NAME_MAX_LENGTH))
+                    val chosenPassword = password
+                    auth.signup(email.trim(), chosenPassword, name.trim().take(AccountLogic.FULL_NAME_MAX_LENGTH))
                     if (biometrics && passkeys?.isSupported == true) {
-                        runSuspendCatching { passkeys.register() }.onFailure { toaster.show("You can set this up later in Settings") }
+                        // Not on this screen's scope: the session signup just published removes the screen.
+                        passkeys.registerAfterSignup(chosenPassword) { toaster.show("You can set this up later in Settings") }
                     }
                     pending = false
                 }) { pending = false; error = it }
@@ -391,6 +398,7 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?) {
                 Column(Modifier.weight(1f)) {
                     VText("Enable biometric sign-in", style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary)
                     VText("Sign in with your fingerprint instead of a password", Modifier.padding(top = 4.dp), vtext(TypeScale.Caption), c.textMuted)
+                    PasskeyResetNote(PasskeyResetNotes.SIGNUP, Modifier.padding(top = 8.dp))
                 }
                 VToggle(biometrics, { biometrics = it }, label = "Enable biometric sign-in for faster logins")
             }

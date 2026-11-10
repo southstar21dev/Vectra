@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.platform
 
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -72,6 +74,8 @@ private fun appDirectory(kind: ULong): String {
 }
 
 fun createDataStore(): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(
+    // A corrupt file would otherwise throw on every read, crashing each launch until the app is reinstalled.
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
     produceFile = { (appDirectory(NSDocumentDirectory) + "/vectra.preferences_pb").toPath() },
 )
 

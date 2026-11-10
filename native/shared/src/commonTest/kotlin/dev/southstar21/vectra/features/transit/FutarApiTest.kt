@@ -131,6 +131,30 @@ class FutarApiTest {
         assertEquals(3, requests.size)
     } }
 
+    @Test fun aRateLimitedBatchDoesNotFanOut() = runTest { withContext(Dispatchers.Default) {
+        val requests = mutableListOf<HttpRequestData>()
+        val failure = runCatching {
+            apiAnswering(HttpStatusCode.TooManyRequests, requests) { """{"message":"slow down"}""" }
+                .fetchStopArrivalsBatch(listOf("BKK_CS1", "BKK_CS2"))
+        }.exceptionOrNull()
+        assertIs<PocketBaseException>(failure)
+        assertEquals(429, failure.status)
+        assertEquals(1, requests.size)
+    } }
+
+    @Test fun aServerErrorOnTheBatchStillFallsBack() = runTest { withContext(Dispatchers.Default) {
+        val requests = mutableListOf<HttpRequestData>()
+        val engine = MockEngine { req ->
+            requests += req
+            val batch = body(req)["endpoint"]?.jsonPrimitive?.content == "stop-arrivals"
+            respond(if (batch) """{"message":"bad"}""" else ok, if (batch) HttpStatusCode.BadGateway else HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val api = FutarApi(PocketBaseClient(createHttpClient(HttpClient(engine)), "https://pb.test", AuthStore(KeyValueStore(MemoryDataStore()), PlainSecretCipher)))
+        val batch = api.fetchStopArrivalsBatch(listOf("BKK_CS1", "BKK_CS2"))
+        assertEquals(setOf("BKK_CS1", "BKK_CS2"), batch.responses.keys)
+        assertEquals(3, requests.size)
+    } }
+
     @Test fun aBatchWhereEveryStopFailedIsAFailure() = runTest { withContext(Dispatchers.Default) {
         val failure = runCatching {
             apiAnswering { """{"status":"ERROR","error":"down"}""" }.fetchStopArrivalsBatch(listOf("BKK_CS1", "BKK_CS2"))

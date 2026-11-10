@@ -2,6 +2,7 @@ package dev.southstar21.vectra.core.auth
 
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.UserScopedKeyPrefixes
+import dev.southstar21.vectra.core.data.offlineQueueKeys
 import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.PocketBaseClient
@@ -22,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,6 +33,12 @@ import kotlinx.serialization.json.buildJsonObject
 interface SessionListener {
     suspend fun beforeSignOut() {}
     suspend fun onSessionCleared() {}
+
+    /**
+     * Uploads writes that only this device holds, before an explicit sign-out deletes them.
+     * True when none are left behind.
+     */
+    suspend fun flushPendingWrites(): Boolean = true
 }
 
 /**
@@ -71,6 +79,7 @@ class AuthRepository(
 
     suspend fun login(email: String, password: String) {
         pb.authWithPassword(email, password)
+        settleKeptQueue()
     }
 
     suspend fun signup(email: String, password: String, fullName: String) {
@@ -83,6 +92,7 @@ class AuthRepository(
             },
         )
         pb.authWithPassword(email, password)
+        settleKeptQueue()
     }
 
     /**
@@ -98,7 +108,10 @@ class AuthRepository(
     }
 
     /** Save a token + record obtained elsewhere (passkey login). */
-    suspend fun adoptSession(token: String, record: JsonObject) = store.save(AuthState(token, record))
+    suspend fun adoptSession(token: String, record: JsonObject) {
+        store.save(AuthState(token, record))
+        settleKeptQueue()
+    }
 
     suspend fun updateProfile(fields: Map<String, JsonElement>) {
         val id = requireSession().userId
@@ -119,7 +132,7 @@ class AuthRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
-            clear()
+            clear(keepQueue = true)
             error("Email updated, but your session ended — please sign in again with your new address")
         }
     }
@@ -129,30 +142,60 @@ class AuthRepository(
         val email = session.email ?: error("Not authenticated")
         try {
             pb.authWithPassword(email, currentPassword)
-        } catch (_: PocketBaseException) {
-            error("Current password is incorrect")
+        } catch (e: PocketBaseException) {
+            // Only a rejected login means a wrong password; offline or rate-limited is said as such.
+            when {
+                e.status == 400 || e.status == 401 -> error("Current password is incorrect")
+                e.status == 429 -> error("Too many attempts — please wait a moment and try again")
+                else -> throw e
+            }
         }
+        // PocketBase requires oldPassword whenever a user changes their own password.
         pb.collection("users").update(
             session.userId,
-            JsonObject(mapOf("password" to JsonPrimitive(newPassword), "passwordConfirm" to JsonPrimitive(newPassword))),
+            JsonObject(
+                mapOf(
+                    "oldPassword" to JsonPrimitive(currentPassword),
+                    "password" to JsonPrimitive(newPassword),
+                    "passwordConfirm" to JsonPrimitive(newPassword),
+                ),
+            ),
         )
         try {
             pb.authWithPassword(email, newPassword)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
-            clear()
+            clear(keepQueue = true)
             error("Password updated, but your session ended — please sign in again")
         }
     }
 
-    suspend fun deleteAccount() {
+    /** The server asks for the current password, so a stolen session token alone cannot delete the account. */
+    suspend fun deleteAccount(currentPassword: String) {
         requireSession()
-        pb.send("/api/vectra/account/delete", HttpMethod.Post)
+        pb.send(
+            "/api/vectra/account/delete",
+            HttpMethod.Post,
+            JsonObject(mapOf("currentPassword" to JsonPrimitive(currentPassword))),
+        )
         clear()
     }
 
-    /** Explicit sign-out: device push cleanup first (bounded), then the session is wiped regardless. */
+    /**
+     * Tries, for at most [FLUSH_TIMEOUT_MS], to upload the edits only this device holds (offline
+     * schedule items, debounced course tracker writes). True when none are left; a sign-out
+     * after false loses them, so the caller warns first.
+     */
+    suspend fun flushPendingWrites(): Boolean = withTimeoutOrNull(FLUSH_TIMEOUT_MS) {
+        listeners.value.map { runSuspendCatching { it.flushPendingWrites() }.getOrDefault(false) }.all { it }
+    } ?: false
+
+    /**
+     * Explicit sign-out: device push cleanup first (bounded), then the session and every
+     * per-user key are wiped regardless, the offline queue included. Call [flushPendingWrites]
+     * first and warn when it returns false.
+     */
     suspend fun signOut() {
         try {
             withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } }
@@ -164,18 +207,46 @@ class AuthRepository(
         clear()
     }
 
-    /** The watchdog found the token dead: flag the login hint and drop the session. */
+    /**
+     * The watchdog found the token dead: flag the login hint and drop the session. The user
+     * did not choose to sign out, so their unsynced edits are kept for when they sign back in.
+     */
     suspend fun expire() {
         _sessionExpired.value = true
-        clear()
+        clear(keepQueue = true)
     }
 
-    /** Runs to the end even if the caller is cancelled: half a wipe leaves one account's data behind. */
-    private suspend fun clear() = withContext(NonCancellable) {
+    /**
+     * Runs to the end even if the caller is cancelled: half a wipe leaves one account's data behind.
+     * [keepQueue] keeps the signed-out account's offline queue (and notes whose it is), for an
+     * involuntary sign-out: those writes have no other copy.
+     */
+    private suspend fun clear(keepQueue: Boolean = false) = withContext(NonCancellable) {
+        val keptFor = store.current?.userId?.ifEmpty { null }?.takeIf { keepQueue }
         store.clear()
         // A shared device must not keep the previous account's data.
-        kv.removeByPrefix(*UserScopedKeyPrefixes)
+        val kept = keptFor?.let(::offlineQueueKeys).orEmpty()
+        runSuspendCatching {
+            kv.removeByPrefix(*UserScopedKeyPrefixes, keep = kept)
+            kv.set(KEPT_QUEUE_OWNER_KEY, keptFor)
+        }
         listeners.value.forEach { runSuspendCatching { it.onSessionCleared() } }
+    }
+
+    /**
+     * After a sign-in: a queue kept by [expire] is replayed by the features when its own account
+     * signs back in; any other account signing in deletes it instead. Best effort: the sign-in
+     * itself has already succeeded.
+     */
+    private suspend fun settleKeptQueue() = withContext(NonCancellable) {
+        val uid = store.current?.userId?.ifEmpty { null } ?: return@withContext
+        runSuspendCatching {
+            val owner = kv.get(KEPT_QUEUE_OWNER_KEY)
+            if (owner != null) {
+                if (owner != uid) offlineQueueKeys(owner).forEach { kv.set(it, null) }
+                kv.set(KEPT_QUEUE_OWNER_KEY, null)
+            }
+        }
     }
 
     private fun requireSession(): AuthState = store.current ?: error("Not authenticated")
@@ -184,5 +255,9 @@ class AuthRepository(
 
     companion object {
         const val SIGN_OUT_TIMEOUT_MS = 3000L
+        const val FLUSH_TIMEOUT_MS = 8000L
+
+        /** Which account the offline queue kept by an involuntary sign-out belongs to. */
+        const val KEPT_QUEUE_OWNER_KEY = "vectra.keptQueueOwner"
     }
 }

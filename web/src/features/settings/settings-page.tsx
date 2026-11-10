@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RiLogoutBoxRLine, RiLoader4Line, RiMapPinLine, RiInformationLine, RiDeleteBinLine } from '@remixicon/react';
 import { useAppVersion } from '@/lib/app-version';
 import { NotificationSettings } from '@/features/notifications/notification-settings';
@@ -11,6 +12,9 @@ import { SettingsSection, SettingsRow } from './settings-section';
 import { Reveal } from '@/components/ui/reveal';
 import { Toggle } from '@/components/ui/toggle';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { flushScheduleItemQueue } from '@/features/schedule/use-schedule-items';
+import { withTimeout } from '@/features/auth/session-utils';
 import {
   useWeatherLocation,
   type WeatherLocationStatus,
@@ -27,14 +31,19 @@ const LOCATION_STATUS_COPY: Record<WeatherLocationStatus, string> = {
   unsupported: 'Location is not supported on this device',
 };
 
+/** How long sign-out waits for queued schedule changes to upload. */
+const FLUSH_BEFORE_SIGN_OUT_MS = 8_000;
+
 export function SettingsPage() {
   const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { state: weatherState, setMode: setWeatherMode } = useWeatherLocation();
   const versionInfo = useAppVersion();
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
+  const queryClient = useQueryClient();
+  const [unsyncedWarning, setUnsyncedWarning] = useState(false);
+
+  const signOutNow = async () => {
     // `logout` always clears the session (its push cleanup is bounded), but
     // leave for /login even if it throws so the button can never stay stuck.
     try {
@@ -42,6 +51,20 @@ export function SettingsPage() {
     } finally {
       window.location.href = '/login';
     }
+  };
+
+  // Signing out deletes this device's unsynced schedule changes, so send them
+  // first (bounded) and ask before signing out anyway when some are left.
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    const flushed = await withTimeout(flushScheduleItemQueue(queryClient), FLUSH_BEFORE_SIGN_OUT_MS, 'Flush timed out')
+      .catch(() => false);
+    if (flushed) {
+      await signOutNow();
+      return;
+    }
+    setIsLoggingOut(false);
+    setUnsyncedWarning(true);
   };
 
   const locationSubtitle =
@@ -123,6 +146,16 @@ export function SettingsPage() {
           />
         </SettingsSection>
       </Reveal>
+
+      <ConfirmDialog
+        open={unsyncedWarning}
+        onClose={() => setUnsyncedWarning(false)}
+        onConfirm={signOutNow}
+        title="Sign out with unsynced changes?"
+        description="Some schedule changes on this device haven't reached the server yet. Signing out deletes them. Stay signed in and go online to keep them."
+        confirmText="Sign out anyway"
+        cancelText="Stay signed in"
+      />
     </div>
   );
 }

@@ -320,7 +320,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
+			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\n# Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):\n# gradle.properties only holds the real version while CI builds a release.\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  TAG=$(git -C \"$SRCROOT\" tag --list 'v*' | sed -n 's/^v\\([0-9]*\\.[0-9]*\\.[0-9]*\\)$/\\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)\n  [ -n \"$TAG\" ] && FULL=$TAG\nfi\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
 		};
 		D478399EBD9F22053A9C1D70 /* Version from Gradle */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -340,7 +340,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
+			shellScript = "# Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,\n# 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).\n# Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):\n# gradle.properties only holds the real version while CI builds a release.\nset -e\nFULL=$(sed -n 's/^vectra.versionName=//p' \"$SRCROOT/../gradle.properties\")\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  TAG=$(git -C \"$SRCROOT\" tag --list 'v*' | sed -n 's/^v\\([0-9]*\\.[0-9]*\\.[0-9]*\\)$/\\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)\n  [ -n \"$TAG\" ] && FULL=$TAG\nfi\nNAME=${FULL%%-*}\nCODE=$(echo \"$FULL\" | awk -F'[.-]' '{\n  b = 99\n  if ($4 == \"dev\") b = ($5 > 49 ? 49 : $5)\n  if ($4 == \"rc\") b = 50 + ($5 > 48 ? 48 : $5)\n  print ($1 * 10000 + $2 * 100 + $3) * 100 + b\n}')\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '#define VECTRA_VERSION_NAME %s\\n#define VECTRA_VERSION_CODE %s\\n' \"$NAME\" \"$CODE\" > \"$DERIVED_FILE_DIR/VectraVersion.h\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -525,10 +525,12 @@
 					"-lsqlite3",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.debug;
 				PRODUCT_NAME = Vectra;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
+				VECTRA_APP_GROUP = group.dev.southstar21.vectra.debug;
+				VECTRA_DISPLAY_NAME = "Vectra Dev";
 			};
 			name = Debug;
 		};
@@ -561,6 +563,8 @@
 				PRODUCT_NAME = Vectra;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
+				VECTRA_APP_GROUP = group.dev.southstar21.vectra;
+				VECTRA_DISPLAY_NAME = Vectra;
 			};
 			name = Release;
 		};
@@ -585,6 +589,8 @@
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
+				VECTRA_APP_GROUP = group.dev.southstar21.vectra;
+				VECTRA_DISPLAY_NAME = Vectra;
 			};
 			name = Release;
 		};
@@ -604,11 +610,13 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.debug.widgets;
 				PRODUCT_NAME = VectraWidgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
+				VECTRA_APP_GROUP = group.dev.southstar21.vectra.debug;
+				VECTRA_DISPLAY_NAME = "Vectra Dev";
 			};
 			name = Debug;
 		};

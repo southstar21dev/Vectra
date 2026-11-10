@@ -57,6 +57,12 @@ class ReminderReceiver : BroadcastReceiver() {
         val n = intent.getStringExtra(AndroidNotifier.EXTRA_PAYLOAD)
             ?.let { runCatching { VectraJson.decodeFromString(ScheduledNotification.serializer(), it) }.getOrNull() } ?: return
         val refresh = intent.getIntExtra(EXTRA_REFRESH, 0)
+        // An alarm left behind by an account that has since signed out (or expired) shows nothing, and
+        // a refresh only updates a reminder that is still showing: one tapped open or swiped away stays gone.
+        if (scheduler.hasSession() && (refresh == 0 || notifier.isShowing(n))) show(n, refresh, scheduler, notifier)
+    }
+
+    private suspend fun show(n: ScheduledNotification, refresh: Int, scheduler: ReminderScheduler, notifier: AndroidNotifier) {
         if (n.departures.isEmpty()) {
             notifier.post(n, n.body, silent = false)
         } else {

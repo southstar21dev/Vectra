@@ -27,9 +27,13 @@ data class PointsSummary(
     val failedMustPassItems: List<AssessmentItem>,
 )
 
+/** Far below anything a percentage is shown with, far above double rounding error. */
+private const val GradeEpsilon = 1e-9
+
 fun estimateGrade(percentage: Double, scale: List<GradingScaleTier> = DefaultGradingScale): Int {
     for (tier in scale.sortedByDescending { it.minPercentage }) {
-        if (percentage >= tier.minPercentage) return tier.grade
+        // Exactly at a cutoff counts as reaching it, whatever rounding the division left behind.
+        if (percentage + GradeEpsilon >= tier.minPercentage) return tier.grade
     }
     return 1
 }
@@ -66,12 +70,13 @@ fun calculatePointsSummary(
     val remainingMax = max(0.0, totalMax - scoredMax)
     // Numerator and denominator cover the same items, so typed-but-incomplete
     // points never push the rate past 100%.
-    val currentPercentage = if (scoredMax > 0) scoredEarned / scoredMax * 100 else 0.0
+    // Multiply first: 57 / 100 * 100 is 56.99999999999999, which would miss a 57% cutoff.
+    val currentPercentage = if (scoredMax > 0) scoredEarned * 100 / scoredMax else 0.0
     // Share of the whole course: one 18/20 quiz on a 100-point course is 18%.
     val overall = if (useWeightedCategories) {
         assessments.filter { it.maxPoints > 0 && it.weightPercent != null }
-            .sumOf { it.earnedPoints / it.maxPoints * it.weightPercent!! }
-    } else if (courseTotal > 0) totalEarned / courseTotal * 100 else 0.0
+            .sumOf { it.earnedPoints * it.weightPercent!! / it.maxPoints }
+    } else if (courseTotal > 0) totalEarned * 100 / courseTotal else 0.0
     val hasFailed = failed.isNotEmpty()
     return PointsSummary(
         totalEarned, totalMax, scoredMax, scoredEarned, remainingMax, currentPercentage, overall,

@@ -138,7 +138,7 @@ private fun ItemEditorContent(
         acknowledgedConflictKeys = emptyList(),
     )
     val currentConflicts = remember(candidate, events, items) {
-        getScheduleConflicts(listOf(candidate) + items.filter { it.id != candidate.id }.map { it.toItem() }, events, nowInBudapest().ymd)
+        getScheduleConflicts(listOf(candidate) + items.filter { it.id != candidate.id }.map { it.toItem() }, events)
             .filter { it.itemId == candidate.id || it.otherItemId == candidate.id }
             .map { it.copy(needsAcknowledgment = true) }
     }

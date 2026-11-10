@@ -8,13 +8,22 @@ plugins {
 }
 
 // iOS gets the same build-time values as androidApp's BuildConfig, from the same Gradle properties,
-// so a version bump or backend override reaches both apps at once.
+// so a version bump or backend override reaches both apps at once. Both backend URLs are generated and
+// IosApp picks one by Platform.isDebugBinary: Xcode's Debug configuration uses the dev backend,
+// Release production, as androidApp's build types do. -Pvectra.pocketbaseUrl=… overrides both.
 val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
     val versionName = providers.gradleProperty("vectra.versionName")
-    val pocketbaseUrl = providers.gradleProperty("vectra.pocketbaseUrl").orElse("https://apivectra.southstar21.dev")
+    // Debug binaries show the git-derived version (root build.gradle.kts), as androidApp's debug builds do.
+    @Suppress("UNCHECKED_CAST")
+    val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
+    val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl")
+    val pocketbaseUrl = pocketbaseOverride.orElse("https://apivectra.southstar21.dev")
+    val devPocketbaseUrl = pocketbaseOverride.orElse("https://apivectra-dev.southstar21.dev")
     val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin").orElse("https://vectra.southstar21.dev")
     inputs.property("versionName", versionName)
+    inputs.property("debugVersionName", debugVersionName)
     inputs.property("pocketbaseUrl", pocketbaseUrl)
+    inputs.property("devPocketbaseUrl", devPocketbaseUrl)
     inputs.property("catalogOrigin", catalogOrigin)
     val out = layout.buildDirectory.dir("generated/iosBuildConfig")
     outputs.dir(out)
@@ -28,7 +37,9 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
             |
             |internal object IosBuildConfig {
             |    const val VERSION_NAME = "${versionName.get()}"
+            |    const val DEBUG_VERSION_NAME = "${debugVersionName.get()}"
             |    const val POCKETBASE_URL = "${pocketbaseUrl.get()}"
+            |    const val DEV_POCKETBASE_URL = "${devPocketbaseUrl.get()}"
             |    const val CATALOG_ORIGIN = "${catalogOrigin.get()}"
             |}
             |""".trimMargin(),

@@ -180,6 +180,11 @@ fun clusterConsecutiveWeeks(dates: List<String>): List<Pair<String, String>> {
     return clusters
 }
 
+private val Whitespace = Regex("""\s+""")
+
+/** Case and spacing never make two rooms (or teachers) different. */
+private fun normalizeSlotText(value: String): String = value.trim().lowercase().replace(Whitespace, " ")
+
 private class RawIcsEvent {
     var dtstart = ""
     var dtend = ""
@@ -350,6 +355,8 @@ fun parseIcsContent(icsText: String, includeExams: Boolean = true): ParseIcsResu
     val eventMap = LinkedHashMap<String, Entry>()
     val courseColors = HashMap<String, String>()
     var colorIndex = 0
+    // Slot + date pairs already taken: a second VEVENT for the same class on the same date adds nothing.
+    val slotDates = HashSet<String>()
 
     fun addOccurrence(raw: RawIcsEvent, summary: String, isExam: Boolean, start: IcsTimestampInfo, end: IcsTimestampInfo) {
         // "Course Name ( - Course Code) - Instructor - Tanóra" / "Course (Írásbeli) - Instructor - Vizsga"
@@ -375,17 +382,23 @@ fun parseIcsContent(icsText: String, includeExams: Boolean = true): ParseIcsResu
 
         val color = courseColors.getOrPut(courseName) { CourseColors[colorIndex % CourseColors.size].also { colorIndex++ } }
 
-        val dedupKey = "$semester|${courseName.lowercase()}|${courseCode.lowercase()}|${start.dayOfWeek}|${start.timeStr}|${end.timeStr}|" +
+        val slotKey = "$semester|${courseName.lowercase()}|${courseCode.lowercase()}|${start.dayOfWeek}|${start.timeStr}|${end.timeStr}|" +
             if (isExam) "exam:${start.dateStr}" else "class"
-        val existing = eventMap[dedupKey]
-        if (existing != null) existing.dates += start.dateStr
-        else eventMap[dedupKey] = Entry(
-            ParsedIcsEvent(
-                courseName, courseCode, instructor, raw.location.trim(), start.dayOfWeek, start.timeStr, end.timeStr,
-                color, semester, start.dateStr, start.dateStr, if (isExam) "exam" else "class",
-            ),
-            mutableListOf(start.dateStr),
-        )
+        val location = raw.location.trim()
+        // Room and teacher belong to the slot: a class that changes room mid-semester becomes
+        // date-ranged slots of its own instead of showing the first room all term.
+        val dedupKey = "$slotKey|${normalizeSlotText(location)}|${normalizeSlotText(instructor)}"
+        if (slotDates.add("$slotKey|${start.dateStr}")) {
+            val existing = eventMap[dedupKey]
+            if (existing != null) existing.dates += start.dateStr
+            else eventMap[dedupKey] = Entry(
+                ParsedIcsEvent(
+                    courseName, courseCode, instructor, location, start.dayOfWeek, start.timeStr, end.timeStr,
+                    color, semester, start.dateStr, start.dateStr, if (isExam) "exam" else "class",
+                ),
+                mutableListOf(start.dateStr),
+            )
+        }
     }
 
     events.forEachIndexed { index, raw ->

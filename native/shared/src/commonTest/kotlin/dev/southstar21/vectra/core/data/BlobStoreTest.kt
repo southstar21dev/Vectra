@@ -112,6 +112,19 @@ class BlobStoreTest {
         assertNull(kv.get("vectra.deviceLocation"))
     }
 
+    @Test fun anExpiryWipeKeepsTheQueueFiles() = onDisk {
+        val kv = KeyValueStore(FakeDataStore(), blobs)
+        kv.set("vectra_schedule_items_u1", "queue")
+        kv.set("vectra_course_tracker_cache_u1", "trackers")
+        kv.set("vectra_schedule_items_u2", "other account")
+        kv.set("vectra_trip_plans_cache_u1", "plans")
+        kv.removeByPrefix(*UserScopedKeyPrefixes, keep = offlineQueueKeys("u1"))
+        assertEquals("queue", kv.get("vectra_schedule_items_u1"))
+        assertEquals("trackers", kv.get("vectra_course_tracker_cache_u1"))
+        assertNull(kv.get("vectra_schedule_items_u2"))
+        assertNull(kv.get("vectra_trip_plans_cache_u1"))
+    }
+
     @Test fun movesOldValuesOutOfDataStoreOnce() = onDisk {
         val store = FakeDataStore()
         val before = KeyValueStore(store)

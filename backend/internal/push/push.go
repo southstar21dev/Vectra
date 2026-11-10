@@ -371,12 +371,15 @@ func endpointOf(rec *core.Record) (string, bool) {
 // The server POSTs to whatever endpoint a client stored, so without this a
 // user could aim the send path at internal hosts (SSRF).
 var (
+	// Google's push services are listed by exact host: a generic
+	// ".googleapis.com" suffix would also admit storage.googleapis.com and every
+	// other Google API as a POST target.
 	allowedPushHosts = []string{
 		"fcm.googleapis.com",
+		"jmt17.google.com",
 		"updates.push.services.mozilla.com",
 	}
 	allowedPushHostSuffixes = []string{
-		".googleapis.com",
 		".push.apple.com",
 		".notify.windows.com",
 		".push.services.mozilla.com",

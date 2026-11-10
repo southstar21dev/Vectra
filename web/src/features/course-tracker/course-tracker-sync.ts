@@ -12,8 +12,10 @@
 const readableUsers = new Set<string>();
 const heldBackUsers = new Set<string>();
 
+type PendingSave = { userId: string; run: (dropKeys: string[]) => Promise<void>; dropKeys: string[] };
+
 let chain: Promise<void> = Promise.resolve();
-let latestPending: { userId: string; run: () => Promise<void> } | null = null;
+let latestPending: PendingSave | null = null;
 
 export function markCloudReadable(userId: string): void {
   readableUsers.add(userId);
@@ -38,14 +40,22 @@ export function takeHeldBackWrite(userId: string): boolean {
 /**
  * Runs `run` after every previously queued upload. Uploads queued while one is
  * in flight collapse to the newest, since each one carries the full document.
+ * The `dropKeys` of every collapsed upload carry over to the one that runs
+ * (it gets their union): a plain save that supersedes a Neptun sync's upload
+ * must not let the trackers that sync removed come back from the cloud copy.
  */
-export function enqueueCloudSave(userId: string, run: () => Promise<void>): Promise<void> {
-  latestPending = { userId, run };
+export function enqueueCloudSave(
+  userId: string,
+  run: (dropKeys: string[]) => Promise<void>,
+  dropKeys: string[] = []
+): Promise<void> {
+  const carried = latestPending?.userId === userId ? latestPending.dropKeys : [];
+  latestPending = { userId, run, dropKeys: Array.from(new Set([...carried, ...dropKeys])) };
   const next = chain.then(async () => {
     const pending = latestPending;
     if (!pending) return;
     latestPending = null;
-    await pending.run();
+    await pending.run(pending.dropKeys);
   });
   // Keep the chain alive after a failed upload; the caller still sees the error.
   chain = next.catch(() => undefined);

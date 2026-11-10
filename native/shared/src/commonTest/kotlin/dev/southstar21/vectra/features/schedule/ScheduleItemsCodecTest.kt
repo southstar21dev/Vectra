@@ -21,7 +21,7 @@ class ScheduleItemsCodecTest {
 
     @Test fun newOverlapStaysUnacknowledged() {
         val queued = enqueueScheduleItemUpsert(createEmptyScheduleItemsState(), item, null)
-        val result = reconcileQueuedItemConflicts(queued, listOf(event), "2026-09-07")
+        val result = reconcileQueuedItemConflicts(queued, listOf(event))
         assertEquals(1, result.queue.size)
         assertEquals("upsert", result.queue[0].kind)
         assertEquals(emptyList(), result.queue[0].item!!.acknowledgedConflictKeys)
@@ -30,7 +30,7 @@ class ScheduleItemsCodecTest {
 
     @Test fun noConflictLeavesStateUnchanged() {
         val queued = enqueueScheduleItemUpsert(createEmptyScheduleItemsState(), item.copy(acknowledgedConflictKeys = listOf("prior-conflict")), null)
-        assertEquals(queued, reconcileQueuedItemConflicts(queued, emptyList(), "2026-09-07"))
+        assertEquals(queued, reconcileQueuedItemConflicts(queued, emptyList()))
     }
 
     private val cleartext = """{"type":"shift","title":"Work","date":"2026-09-07","startTime":"09:00","endTime":"12:00","acknowledgedConflictKeys":[]}"""

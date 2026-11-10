@@ -23,7 +23,7 @@ func Register(se *core.ServeEvent) {
 	// JWT-gated; the handler itself enforces that the caller is the target user
 	// or a superuser (internal service-role caller).
 	g.POST("/push/send", push.Handler).Bind(apis.RequireAuth())
-	// JWT-gated; deletes only the caller's own data.
+	// JWT-gated; verifies the current password, then deletes only the caller's own data.
 	g.POST("/account/delete", account.Handler).Bind(apis.RequireAuth())
 	// JWT-gated; verifies the current password and switches the caller's own
 	// email instantly (no SMTP confirmation), matching the old behavior.

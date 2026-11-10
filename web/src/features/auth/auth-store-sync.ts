@@ -1,9 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { pb } from '@/lib/pocketbase';
-import { clearAllOfflineUserData } from '@/lib/offline-cache';
+import { clearAllOfflineUserData, settleKeptOfflineQueue } from '@/lib/offline-cache';
 import { unsubscribeDevicePushLocally } from '@/features/notifications/use-push-subscription';
 import { resetAppearanceForSignOut } from '@/hooks/use-appearance';
+import { takeExplicitSignOut } from './sign-out-intent';
 
 /**
  * The ONE `pb.authStore.onChange` subscription that keeps the query cache in
@@ -18,18 +19,29 @@ import { resetAppearanceForSignOut } from '@/hooks/use-appearance';
  * deletion, another tab) — drop all cached user data and kill this device's
  * push endpoint, so a signed-out device never keeps receiving the previous
  * account's pushes.
+ *
+ * The offline queue (schedule items, course tracker data) is the exception: it
+ * holds writes with no other copy, so it is wiped only on an explicit sign-out
+ * (`markExplicitSignOut` in sign-out-intent.ts). Any other sign-out keeps it
+ * for that account, and it is deleted if a different account signs in on this
+ * device.
  */
 let detach: (() => void) | null = null;
 
 export function installAuthStoreSync(queryClient: QueryClient): () => void {
   detach?.();
-  const unsubscribe = pb.authStore.onChange((token) => {
+  let lastUserId: string | null = pb.authStore.record?.id ?? null;
+  const unsubscribe = pb.authStore.onChange((token, record) => {
     if (token) {
+      if (record?.id && record.id !== lastUserId) settleKeptOfflineQueue(record.id);
+      lastUserId = record?.id ?? lastUserId;
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.root });
       queryClient.invalidateQueries({ queryKey: queryKeys.profile });
       return;
     }
-    clearAllOfflineUserData();
+    const keepQueueFor = takeExplicitSignOut() ? null : lastUserId;
+    lastUserId = null;
+    clearAllOfflineUserData(undefined, keepQueueFor);
     resetAppearanceForSignOut();
     // The token is already gone, so the server row can't be deleted here
     // (explicit logout does that first); unsubscribing locally makes the

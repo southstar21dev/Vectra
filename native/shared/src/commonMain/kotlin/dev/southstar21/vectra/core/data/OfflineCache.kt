@@ -37,6 +37,19 @@ val UserScopedKeyPrefixes = arrayOf(
 )
 
 /**
+ * Bases of the keys that hold writes only this device has (the schedule items queue and the
+ * course tracker's not yet uploaded data), as `<base>_<userId>`. An involuntary sign-out keeps
+ * them so the same account can replay them after signing back in; see AuthRepository.
+ */
+val OfflineQueueKeyPrefixes = arrayOf(
+    "vectra_schedule_items",
+    "vectra_course_tracker_cache",
+)
+
+/** This user's [OfflineQueueKeyPrefixes] keys. */
+fun offlineQueueKeys(userId: String): Set<String> = OfflineQueueKeyPrefixes.mapTo(LinkedHashSet()) { "${it}_$userId" }
+
+/**
  * Offline-first read: cache when offline; otherwise fetch → write cache, and
  * fall back to the cache when the fetch fails (no cache → rethrow).
  */
