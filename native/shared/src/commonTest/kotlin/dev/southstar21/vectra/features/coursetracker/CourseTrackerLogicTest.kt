@@ -629,6 +629,27 @@ class CourseTrackerStoreTest {
         assertTrue(restored.trackers.getValue(key).attendance.removedSessionKeys.isEmpty())
     }
 
+    /** 04 #19: a custom session added where one was removed survives the next reconcile. */
+    @Test fun aSessionAddedAtARemovedSlotSurvivesTheReconcile() {
+        val identity = CourseIdentity("ALG101", "Algebra")
+        val key = resolveCourseKey(identity)
+        val original = session("x", "2026-09-07", AttendanceStatus.Absent, startTime = "08:00")
+        val t = createDefaultTracker("Algebra", "ALG101").let { it.copy(courseKey = key, attendance = it.attendance.copy(sessions = listOf(original))) }
+        val removed = applyRemoveSession(CourseTrackerData(1, mapOf(key to t)), identity, original)
+        val custom = session("c", "2026-09-07", AttendanceStatus.Present, startTime = "08:00").copy(isCustom = true)
+        val attendance = applyAddSession(removed, identity, custom).trackers.getValue(key).attendance
+        assertTrue(attendance.removedSessionKeys.isEmpty())
+        val reconciled = generateScheduleSessions(
+            dayOfWeek = 3,
+            startTime = "10:00",
+            semesterStart = "2026-09-01",
+            semesterEnd = "2026-09-30",
+            existingSessions = attendance.sessions,
+            removedSessionKeys = attendance.removedSessionKeys,
+        )
+        assertTrue(reconciled.any { it.id == "c" }, reconciled.map { it.date + " " + it.startTime }.toString())
+    }
+
     // ---- 04 #10: Course Hub writes on a legacy-keyed tracker -------------------------
 
     private fun legacyTracker(): CourseTracker = createDefaultTracker("Business Communication Intensive", "X5VX18SUBM01M-G10").let {

@@ -66,6 +66,17 @@ private fun draftNumber(value: Double?, fallback: String) = if (value != null &&
 private fun round2(x: Double) = round(x * 100) / 100
 
 /**
+ * [value] in the other score mode: points to a percentage of [max], or back. Null when either
+ * is not a usable number, so the field keeps what it had.
+ */
+internal fun convertScore(value: String, max: String, toPercent: Boolean): String? {
+    val v = parseFiniteNumber(value)
+    val m = parseFiniteNumber(max)?.takeIf { it > 0 }
+    if (v == null || m == null) return null
+    return formatNumber(round2(if (toPercent) v / m * 100 else v / 100 * m))
+}
+
+/**
  * Add or edit an assessment: name and date, the
  * score as points or percent with a live grade hint, weight, must-pass rule,
  * notes. The form is re-created for each opening (or each edited item).
@@ -195,6 +206,21 @@ private fun ColumnScope.AssessmentForm(
         }
     }
 
+    // Switching how the score is entered carries the values across, so a save from Percent
+    // never stores the placeholder's 85% (audit 04 #19).
+    fun switchMode(next: ScoreMode) {
+        if (next == mode) return
+        val toPercent = next == ScoreMode.Percent
+        if (toPercent) {
+            convertScore(earned, maxPoints, true)?.let { percentage = it }
+            convertScore(minPassPoints, maxPoints, true)?.let { minPassPercent = it }
+        } else {
+            convertScore(percentage, maxPoints, false)?.let { earned = it }
+            convertScore(minPassPercent, maxPoints, false)?.let { minPassPoints = it }
+        }
+        mode = next
+    }
+
     fun submit() {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) {
@@ -312,7 +338,7 @@ private fun ColumnScope.AssessmentForm(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("Score")
             FormGroup(rows = listOf(
-                { FormField("Enter it as") { PillRadio(mode, ScoreOptions, { mode = it }) } },
+                { FormField("Enter it as") { PillRadio(mode, ScoreOptions, ::switchMode) } },
                 {
                     if (mode == ScoreMode.Percent) {
                         RichField("Result", error = maxError, hint = { if (overMax) overMaxHint() else scaleHintText("${formatNumber(calculatedPoints)} / ${formatNumber(maxParsed?.takeIf { it != 0.0 } ?: 20.0)} pts") }) {
