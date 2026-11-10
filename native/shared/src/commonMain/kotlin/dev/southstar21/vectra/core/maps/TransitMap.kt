@@ -43,7 +43,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.platform.Connectivity
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -59,7 +58,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.interaction.MapInteractions
@@ -96,8 +94,7 @@ object MapStyles {
         lock.withLock { cache[url]?.let { return it } }
         val res = http.get(url)
         if (!res.status.isSuccess()) error("OpenFreeMap style request failed (${res.status.value})")
-        val json = VectraJson.parseToJsonElement(res.bodyAsText()).jsonObject
-        val out = withParkColors(sanitizeOpenFreeMapStyle(json), isLight).toString()
+        val out = prepareOpenFreeMapStyle(res.bodyAsText(), isLight)
         lock.withLock { cache[url] = out }
         return out
     }

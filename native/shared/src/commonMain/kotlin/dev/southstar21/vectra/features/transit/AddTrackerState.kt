@@ -221,9 +221,8 @@ internal class AddTrackerState(
 
         scope.launch {
             try {
-                val res = repo.api.fetchCombinedRouteDetails(route.id)
+                val details = repo.api.fetchParsedRouteDetails(route.id)
                 if (seq != routeFetchSeq) return@launch
-                val details = parseRouteDetails(res)
                 draft.showRoute(details)
                 if (details.stops.isEmpty()) throw IllegalStateException("No stops returned for this line")
             } catch (e: CancellationException) {

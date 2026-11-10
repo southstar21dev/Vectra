@@ -92,7 +92,7 @@ fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBack: () -> 
     LaunchedEffect(routeId, reloadNonce) {
         if (routeId == null) return@LaunchedEffect
         try {
-            draft.showRoute(parseRouteDetails(repo.api.fetchCombinedRouteDetails(routeId)))
+            draft.showRoute(repo.api.fetchParsedRouteDetails(routeId))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

@@ -70,6 +70,7 @@ import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.decodePolyline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 private typealias PaneContent = @Composable ColumnScope.() -> Unit
 
@@ -435,6 +436,13 @@ internal data class RouteDetailsParsed(
     val polylines: List<List<LatLon>>,
     val stops: List<FutarStop>,
 )
+
+/**
+ * A line's route details, fetched and parsed on [work]: the editors call this from the main
+ * thread, and decoding every variant's polyline is the heavy part (audit 03 #16).
+ */
+internal suspend fun FutarApi.fetchParsedRouteDetails(routeId: String, work: CoroutineContext = Dispatchers.Default): RouteDetailsParsed =
+    withContext(work) { parseRouteDetails(fetchCombinedRouteDetails(routeId)) }
 
 internal fun parseRouteDetails(res: FutarRouteDetailsResponse): RouteDetailsParsed {
     val refs = res.data?.references?.stops.orEmpty()

@@ -7,9 +7,11 @@ import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -20,6 +22,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
+import kotlin.coroutines.CoroutineContext
 
 class FutarException(message: String) : Exception(message)
 
@@ -125,14 +128,22 @@ internal fun assertFutarOk(json: JsonElement): JsonObject {
  * /api/vectra/futar`, which injects the API key). Aborted after 40s so a hung
  * proxy never leaves a poll pending forever.
  */
-class FutarApi(private val pb: PocketBaseClient) {
+class FutarApi(
+    private val pb: PocketBaseClient,
+    /** Where responses are decoded: screens call in from the main thread (audit 03 #16). */
+    private val decodeContext: CoroutineContext = Dispatchers.Default,
+) {
 
     /**
      * Decodes straight into [T] rather than through a JSON tree: these polls run every
      * 10-20 s and their payloads are the largest the app handles. Only a response that
      * is not "OK" is parsed again, to find its error message.
      */
-    private suspend fun <T : FutarEnvelope> proxy(endpoint: String, params: Map<String, Any>, deserializer: DeserializationStrategy<T>): T {
+    private suspend fun <T : FutarEnvelope> proxy(
+        endpoint: String,
+        params: Map<String, Any>,
+        deserializer: DeserializationStrategy<T>,
+    ): T = withContext(decodeContext) {
         val body = buildJsonObject {
             put("endpoint", endpoint)
             put("params", buildJsonObject {
@@ -150,9 +161,9 @@ class FutarApi(private val pb: PocketBaseClient) {
         val text = withTimeoutOrNull(40_000) { pb.sendText("/api/vectra/futar", HttpMethod.Post, body) }
             ?: throw FutarException("Transit feed timed out")
         val decoded = runCatching { VectraJson.decodeFromString(deserializer, text) }.getOrNull()
-        if (decoded?.status == "OK") return decoded
+        if (decoded?.status == "OK") return@withContext decoded
         assertFutarOk(runCatching { VectraJson.parseToJsonElement(text) }.getOrElse { JsonPrimitive(text) })
-        return VectraJson.decodeFromString(deserializer, text)
+        VectraJson.decodeFromString(deserializer, text)
     }
 
     private suspend inline fun <reified T : FutarEnvelope> proxy(endpoint: String, params: Map<String, Any>): T =
