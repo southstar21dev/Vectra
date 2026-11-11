@@ -108,6 +108,10 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         view.backgroundColor = .clear
         if #available(iOS 26.0, *) { tabBarMinimizeBehavior = .never }
         setTabs(mainTabs, animated: false)
+        // iOS 27 only sets a search tab apart when it activates search, which the + doesn't, so it would sit
+        // in the bar as a plain item the selection lens slides to. Set once here, so the + arrives already
+        // prominent: changing it alongside setTabs would animate the circle and the + as two separate steps.
+        if #available(iOS 27.0, *) { prominentTabIdentifier = actionTab.identifier }
         view.alpha = 0
     }
 
