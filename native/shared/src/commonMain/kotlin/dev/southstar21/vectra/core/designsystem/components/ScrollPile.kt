@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
@@ -335,16 +336,20 @@ private fun PileSlot(state: PileState?, index: Int, card: PileCard) {
                 val top = card.topInset.toPx()
                 val glass = Size(size.width, size.height - top - card.bottomInset.toPx())
                 val corner = CornerRadius(GlassCorner.toPx())
-                // The card sliding over another is made opaque, or the one below shows through its glass.
-                if (f?.underlay == true) drawRoundRect(c.surfacePrimary, Offset(0f, top), glass, corner)
                 val bottom = f?.clipBottom ?: Float.MAX_VALUE
                 val dim = (if (c.isDark) DimPerLevel else DimPerLevelLight) * (f?.depth ?: 0f)
-                // The shade is clipped with the card, or it would hang below the card in front.
+                // The underlay and shade are clipped with the card, or they would hang below the card in front.
                 clipRect(-size.width, -size.height, size.width * 2, minOf(bottom, size.height * 2)) {
+                    // The card sliding over another is made opaque, or the one below shows through its glass.
+                    if (f?.underlay == true) drawRoundRect(c.surfacePrimary, Offset(0f, top), glass, corner)
                     this@drawWithContent.drawContent()
                     if (dim > 0f) drawRoundRect(shade.copy(alpha = dim), Offset(0f, top), glass, corner)
                 }
-            },
+            }
+            // This draw block reads the scroll position, so it runs every scroll frame. The card gets its
+            // own layer so those frames replay its recording: re-recording it rebuilds its blurred shadows,
+            // which Compose rasterizes on the CPU on iOS (that held Schedule's scroll at ~20 fps).
+            .graphicsLayer(),
     ) {
         // Claims touches on the glass so taps there never reach a covered card underneath.
         Box(Modifier.matchParentSize().padding(top = card.topInset, bottom = card.bottomInset).pointerInput(Unit) {})
