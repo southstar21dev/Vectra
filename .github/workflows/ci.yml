@@ -108,10 +108,11 @@ jobs:
           # The baseline profile generator runs on a device only; compiling it keeps it buildable.
           - os: ubuntu-latest
             tasks: :shared:testAndroidHostTest detekt :androidApp:assembleDebug :androidApp:lint :baselineprofile:compileNonMinifiedReleaseKotlin
-          # Compiles and links the shared tests for iOS (running them needs a simulator); the
-          # steps below also build the Swift app and widgets. release.yml builds the IPA.
+          # Runs the shared tests on an iOS simulator (Kotlin/Native's regex engine and Foundation
+          # differ from the JVM's); the steps below also build the Swift app and widgets.
+          # release.yml builds the IPA.
           - os: macos-latest
-            tasks: :shared:compileKotlinIosSimulatorArm64 :shared:linkDebugTestIosSimulatorArm64
+            tasks: :shared:compileKotlinIosSimulatorArm64 :shared:iosSimulatorArm64Test
     runs-on: ${{ matrix.os }}
     env:
       # Same reason as above: the shared tests reason in Budapest wall-clock time.
