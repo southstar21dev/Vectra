@@ -231,11 +231,11 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					78B53CC79860CBFC2F5543C6 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 3HNYQ2F575;
 						ProvisioningStyle = Automatic;
 					};
 					A58BDD7B0C5B57E1AB6C3569 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 3HNYQ2F575;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -509,7 +509,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3HNYQ2F575;
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
@@ -543,7 +543,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3HNYQ2F575;
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
@@ -575,7 +575,7 @@
 				CODE_SIGN_ENTITLEMENTS = VectraWidgets/VectraWidgets.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3HNYQ2F575;
 				INFOPLIST_FILE = VectraWidgets/Info.plist;
 				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
 				INFOPLIST_PREPROCESS = YES;
@@ -601,7 +601,7 @@
 				CODE_SIGN_ENTITLEMENTS = VectraWidgets/VectraWidgets.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3HNYQ2F575;
 				INFOPLIST_FILE = VectraWidgets/Info.plist;
 				INFOPLIST_PREFIX_HEADER = "$(DERIVED_FILE_DIR)/VectraVersion.h";
 				INFOPLIST_PREPROCESS = YES;
