@@ -624,17 +624,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3471",
+    "id": "BKK_3470",
     "shortName": "47",
-    "description": "Városház tér | Batthyány tér M+H",
+    "description": "Városház tér | Deák Ferenc tér M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3470",
+    "id": "BKK_3471",
     "shortName": "47",
-    "description": "Városház tér | Deák Ferenc tér M",
+    "description": "Városház tér | Batthyány tér M+H",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -686,6 +686,14 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
+  },
+  {
+    "id": "BKK_OP52",
+    "shortName": "52",
+    "description": "P.erzsébet, Pacsirtatelep | Határ út M",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
   },
   {
     "id": "BKK_VP52",
@@ -808,17 +816,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3610",
+    "id": "BKK_3611",
     "shortName": "61",
-    "description": "Móricz Zs. körtér M | Hűvösvölgy",
+    "description": "Hűvösvölgy | Budagyöngye",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3611",
+    "id": "BKK_3610",
     "shortName": "61",
-    "description": "Hűvösvölgy | Budagyöngye",
+    "description": "Móricz Zs. körtér M | Hűvösvölgy",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -2906,7 +2914,7 @@
   {
     "id": "volan_415",
     "shortName": "415",
-    "description": "Gyöngyös, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
+    "description": "Hort, Hősök tere 1. | Budapest, Stadion autóbusz-pályaudvar",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -4002,7 +4010,7 @@
   {
     "id": "volan_774",
     "shortName": "774",
-    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
+    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vá. (Őrmező)",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -4954,7 +4962,7 @@
   {
     "id": "volan_1251",
     "shortName": "1251",
-    "description": "Bakonybél, üdülő bejárati út | Budapest, Népliget autóbusz-pályaudvar",
+    "description": "Pápa, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5120,14 +5128,6 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "volan_H8",
-    "shortName": "H8",
-    "description": "Budapest, Örs vezér tere M+H (Kerepesi út) | Kerepes H",
-    "type": "COACH",
-    "color": "F9AB13",
-    "textColor": "000000"
-  },
-  {
     "id": "BKK_H9",
     "shortName": "H9",
     "description": "Csömör | Örs vezér tere",
@@ -5189,6 +5189,14 @@
     "description": "Kelenföld vasútállomás | Keleti pályaudvar",
     "type": "SUBWAY",
     "color": "4CA22F",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_MOZG",
+    "shortName": "MOZG",
+    "description": "Különjárat | Különjárat",
+    "type": "BUS",
+    "color": "009EE3",
     "textColor": "FFFFFF"
   },
   {
