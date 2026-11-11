@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.core.network
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
@@ -18,6 +20,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -44,7 +47,8 @@ internal fun MockRequestHandleScope.json(body: String, status: HttpStatusCode = 
 
 class PocketBaseClientTest {
     private val requests = mutableListOf<HttpRequestData>()
-    private val store = AuthStore(KeyValueStore(FakeDataStore()), PlainSecretCipher)
+    private val kv = KeyValueStore(FakeDataStore())
+    private val store = AuthStore(kv, PlainSecretCipher)
 
     private fun client(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) = PocketBaseClient(
         createHttpClient(HttpClient(MockEngine { req -> requests += req; handler(req) })),
@@ -170,6 +174,41 @@ class PocketBaseClientTest {
         assertEquals("tok", store.token)
     }
 
+    /** Refreshes [store]'s session, holding the answer until [during] has run (02 #4). */
+    private suspend fun refreshAround(during: suspend () -> Unit): AuthState? {
+        val answer = CompletableDeferred<Unit>()
+        val pb = client { answer.await(); json("""{"token":"next","record":{"id":"u1"}}""") }
+        return withContext(Dispatchers.Default) {
+            val refresh = async { pb.authRefresh() }
+            while (requests.isEmpty()) delay(1)
+            during()
+            answer.complete(Unit)
+            refresh.await()
+        }
+    }
+
+    @Test fun aRefreshAnsweredAfterASignOutDoesNotSignBackIn() = runTest {
+        signIn()
+        assertNull(refreshAround { store.clear() })
+        assertNull(store.current)
+        val next = AuthStore(kv, PlainSecretCipher).apply { restore() }
+        assertNull(next.current)
+    }
+
+    @Test fun aRefreshAnsweredAfterAnotherSignInKeepsTheNewAccount() = runTest {
+        signIn()
+        val other = AuthState("other", JsonObject(mapOf("id" to JsonPrimitive("u2"))))
+        assertNull(refreshAround { store.clear(); store.save(other) })
+        assertEquals(other, store.current)
+        assertEquals(other, AuthStore(kv, PlainSecretCipher).apply { restore() }.current)
+    }
+
+    @Test fun aRefreshWithNoSessionSendsNothing() = runTest {
+        assertNull(client { json("""{"token":"next","record":{"id":"u1"}}""") }.authRefresh())
+        assertTrue(requests.isEmpty())
+        assertNull(store.current)
+    }
+
     @Test fun aFullListWalksEveryPage() = runTest {
         val pb = client { req ->
             val page = req.url.parameters["page"]!!.toInt()
@@ -250,9 +289,54 @@ class AuthStoreTest {
         assertEquals(AuthState("tok", updated), s.current)
     }
 
+    /** A save still writing to disk when the session is cleared must not land afterwards (02 #4). */
+    @Test fun aClearDuringASaveLeavesNothingOnDisk() = runTest {
+        val disk = FakeDataStore()
+        val held = HeldDataStore(disk)
+        val s = AuthStore(KeyValueStore(held), PlainSecretCipher)
+        withContext(Dispatchers.Default) {
+            val saving = launch { s.save(AuthState("tok", record)) }
+            held.reached.await()
+            val clearing = launch { s.clear() }
+            delay(50)
+            held.release.complete(Unit)
+            saving.join()
+            clearing.join()
+        }
+        assertNull(s.current)
+        assertNull(AuthStore(KeyValueStore(disk), PlainSecretCipher).apply { restore() }.current)
+    }
+
+    @Test fun aRecordForAnotherAccountIsNotApplied() = runTest {
+        val s = store()
+        s.save(AuthState("tok", record))
+        s.updateRecord(JsonObject(mapOf("id" to JsonPrimitive("u2"))))
+        assertEquals(AuthState("tok", record), s.current)
+    }
+
+    @Test fun clearingAnotherTokenDoesNothing() = runTest {
+        val s = store()
+        s.save(AuthState("tok", record))
+        assertNull(s.clearIfCurrent("old"))
+        assertEquals("tok", s.current?.token)
+        assertEquals("tok", s.clearIfCurrent("tok")?.token)
+        assertNull(s.current)
+    }
+
     @Test fun updatingTheRecordWithoutASessionDoesNothing() = runTest {
         val s = store()
         s.updateRecord(record)
         assertNull(s.current)
+    }
+}
+
+/** Holds the first write until [release], so a test can act while it is in flight. */
+private class HeldDataStore(private val inner: DataStore<Preferences>) : DataStore<Preferences> {
+    val reached = CompletableDeferred<Unit>()
+    val release = CompletableDeferred<Unit>()
+    override val data = inner.data
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+        if (reached.complete(Unit)) release.await()
+        return inner.updateData(transform)
     }
 }

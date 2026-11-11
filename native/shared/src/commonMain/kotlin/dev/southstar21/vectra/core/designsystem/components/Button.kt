@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.LocalContentColor
 import dev.southstar21.vectra.core.designsystem.theme.LocalTextStyle
@@ -108,11 +110,12 @@ fun VButton(
             .tappable(
                 shape,
                 enabled = enabled,
-                onClickLabel = contentDescription,
                 highlight = pill == null,
                 interactionSource = interaction,
                 onClick = onClick,
             )
+            // The button's name: an icon-only button has no text of its own to read.
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
             .then(sizing)
             .defaultMinSize(minWidth = if (size == ButtonSize.Icon) 40.dp else 0.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),

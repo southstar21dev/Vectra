@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,6 +29,7 @@ internal class ReminderPrefsStore(
     val prefs: StateFlow<ReminderPrefs> = _prefs.asStateFlow()
 
     private val pushLock = Mutex()
+    private val writeLock = Mutex()
     /** The account whose profile was compared with [prefs] in this process. */
     private var syncedFor: String? = null
 
@@ -39,10 +41,9 @@ internal class ReminderPrefsStore(
     }
 
     fun update(transform: (ReminderPrefs) -> ReminderPrefs) {
-        val next = transform(_prefs.value)
-        _prefs.value = next
+        _prefs.update(transform)
         scope.launch {
-            kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next))
+            persist()
             push()
         }
     }
@@ -74,7 +75,16 @@ internal class ReminderPrefsStore(
 
     private suspend fun store(next: ReminderPrefs) {
         _prefs.value = next
-        kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), next))
+        persist()
+    }
+
+    /**
+     * Writes the settings as they are now, one write at a time: each write follows the change that
+     * caused it, so the last one to land always holds the latest settings, however two quick
+     * toggles' writes interleave.
+     */
+    private suspend fun persist() = writeLock.withLock {
+        kv.set(PrefsKey, VectraJson.encodeToString(ReminderPrefs.serializer(), _prefs.value))
     }
 
     /** Writes the latest [prefs] into the profile, beside the other preferences there. */

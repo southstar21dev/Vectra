@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.preferences.AppearancePrefs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.Profile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,8 +14,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Appearance prefs: the stored prefs paint first; once the profile loads its
- * `appearance` wins (per user, once); changes apply instantly and sync to the
- * profile in the background.
+ * `appearance` wins (per user, once), unless this device holds a change it never
+ * managed to save there; changes apply instantly and sync to the profile in the background.
  */
 class AppearanceRepository(
     private val kv: KeyValueStore,
@@ -31,12 +32,14 @@ class AppearanceRepository(
 
     suspend fun loadStored() {
         try {
-            _prefs.value = kv.get(KEY)?.let { runCatching { AppearancePrefs.normalize(VectraJson.parseToJsonElement(it)) }.getOrNull() }
-                ?: AppearancePrefs.Default
+            _prefs.value = readStored() ?: AppearancePrefs.Default
         } finally {
             _loaded.value = true
         }
     }
+
+    private suspend fun readStored(): AppearancePrefs? =
+        kv.get(KEY)?.let { runCatching { AppearancePrefs.normalize(VectraJson.parseToJsonElement(it)) }.getOrNull() }
 
     init {
         scope.launch {
@@ -44,14 +47,29 @@ class AppearanceRepository(
                 if (profile == null) {
                     if (hydratedFor != null) {
                         hydratedFor = null
+                        kv.set(UNSYNCED_KEY, null)
                         set(AppearancePrefs.Default)
                     }
                 } else if (hydratedFor != profile.id) {
                     hydratedFor = profile.id
-                    set(profile.appearance?.let(AppearancePrefs::normalize) ?: AppearancePrefs.Default)
+                    hydrate(profile)
                 }
             }
         }
+    }
+
+    /**
+     * The profile's appearance, unless this account changed it here and the save never reached
+     * the profile (offline, say): then the local prefs stay and are sent again (audit 02 #9).
+     */
+    private suspend fun hydrate(profile: Profile) {
+        val unsaved = if (kv.get(UNSYNCED_KEY) == profile.id) readStored() else null
+        if (unsaved == null) {
+            set(profile.appearance?.let(AppearancePrefs::normalize) ?: AppearancePrefs.Default)
+            return
+        }
+        set(unsaved)
+        push(profile.id, unsaved)
     }
 
     private suspend fun set(next: AppearancePrefs) {
@@ -63,13 +81,24 @@ class AppearanceRepository(
         val next = transform(_prefs.value)
         scope.launch {
             set(next)
-            if (auth.session.value != null) {
-                runSuspendCatching { auth.updateProfile(mapOf("appearance" to next.toJson())) }
-            }
+            val uid = auth.session.value?.userId?.ifEmpty { null } ?: return@launch
+            // Marked before the request, so a process killed mid-save still knows.
+            kv.set(UNSYNCED_KEY, uid)
+            push(uid, next)
         }
+    }
+
+    /** Saves [next] to [uid]'s profile; the mark goes once the newest change is saved. */
+    private suspend fun push(uid: String, next: AppearancePrefs) {
+        if (auth.session.value?.userId != uid) return
+        val saved = runSuspendCatching { auth.updateProfile(mapOf("appearance" to next.toJson())) }.isSuccess
+        if (saved && _prefs.value == next && kv.get(UNSYNCED_KEY) == uid) kv.set(UNSYNCED_KEY, null)
     }
 
     private companion object {
         const val KEY = "vectra.appearance"
+
+        /** The account whose appearance change this device has not yet saved to its profile. */
+        const val UNSYNCED_KEY = "vectra.appearance.unsynced"
     }
 }

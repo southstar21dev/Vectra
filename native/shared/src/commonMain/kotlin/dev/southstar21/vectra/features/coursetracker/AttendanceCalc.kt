@@ -136,7 +136,29 @@ private data class ClassSlot(
     val skipHolidays: Boolean,
 )
 
+/** Weeks generated when no slot has an end date (a manual class without a semester end). */
 private const val TotalWeeks = 14
+
+/** Upper bound for a dated course, so a malformed far-future end date can't run away. */
+private const val MaxWeeks = 53
+
+/**
+ * Weeks from [start] needed to reach the latest Neptun slot's end date: at least [TotalWeeks], and
+ * never more than [MaxWeeks]. A Neptun course whose own span is longer than 14 weeks (a 15-week
+ * semester, a meeting in the week before classes, a make-up class after the last week) would
+ * otherwise silently lose its last weeks. Only Neptun slots count (`!skipHolidays`): their end is
+ * the last real meeting, while a manual class's end can be a semester or exam-period end that
+ * would add weeks the class never meets.
+ */
+private fun weeksToCover(start: LocalDate, slots: List<ClassSlot>): Int {
+    val last = slots
+        .filter { !it.skipHolidays }
+        .mapNotNull { slot -> slot.endDate?.takeIf { YmdPattern.matches(it) }?.let(::parseIsoDate) }
+        .maxOrNull()
+        ?: return TotalWeeks
+    val weeks = start.daysUntil(last) / 7 + 1
+    return weeks.coerceIn(TotalWeeks, MaxWeeks)
+}
 
 /**
  * Generates the semester's sessions for a course from its schedule events (or
@@ -241,7 +263,7 @@ fun generateSessionsFromScheduleEvents(
     val result = mutableListOf<AttendanceSession>()
     val generated = HashSet<String>()
     val startDay = start.dayOfWeek.daysSinceSunday
-    for (week in 1..TotalWeeks) {
+    for (week in 1..weeksToCover(start, slots)) {
         for (slot in slots) {
             val offset = (slot.dayOfWeek - startDay + 7) % 7
             val dateStr = start.plus(DatePeriod(days = offset + (week - 1) * 7)).ymd()

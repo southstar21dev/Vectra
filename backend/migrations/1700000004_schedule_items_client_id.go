@@ -1,6 +1,9 @@
 package migrations
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pocketbase/pocketbase/core"
 	m "github.com/pocketbase/pocketbase/migrations"
 )
@@ -13,7 +16,9 @@ import (
 // is idempotent, so it is safe on both fresh and already-migrated databases.
 // Existing schedule_items rows get their record id as client_id before the
 // unique index is built. Duplicate course_tracker_data rows per user are not
-// merged here: restoring a backup that has them needs a manual dedupe first.
+// merged here (a migration never deletes user data): if a restored backup has
+// them, the migration stops with an error naming the users before that index
+// is built, and the rows have to be merged by hand first.
 //
 //   - schedule_items.client_id: the app generates its own UUID for every
 //     schedule item and keys its offline mutation queue on it; PocketBase's
@@ -56,6 +61,9 @@ func init() {
 			return err
 		}
 		if ct.GetIndex("idx_course_tracker_data_user") == "" {
+			if err := requireOneTrackerRowPerUser(app); err != nil {
+				return err
+			}
 			ct.AddIndex("idx_course_tracker_data_user", true, "user", "")
 		}
 		return app.Save(ct)
@@ -78,4 +86,26 @@ func init() {
 		}
 		return nil
 	})
+}
+
+// requireOneTrackerRowPerUser fails with an actionable error when a user has
+// more than one course_tracker_data row, which would otherwise make the unique
+// index fail with a bare constraint error. Choosing which row to keep is the
+// owner's call, so nothing is merged or deleted here.
+func requireOneTrackerRowPerUser(app core.App) error {
+	var users []string
+	err := app.DB().NewQuery(
+		"SELECT [[user]] FROM course_tracker_data GROUP BY [[user]] HAVING COUNT(*) > 1 ORDER BY [[user]]",
+	).Column(&users)
+	if err != nil {
+		return err
+	}
+	if len(users) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"course_tracker_data has more than one row for %d user(s) (%s); "+
+			"keep one row per user (merge them by hand), then run the migrations again. Nothing was changed or deleted",
+		len(users), strings.Join(users, ", "),
+	)
 }

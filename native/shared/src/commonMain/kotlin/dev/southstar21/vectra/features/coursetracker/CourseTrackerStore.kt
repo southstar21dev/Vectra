@@ -189,9 +189,21 @@ private fun CourseTrackerData.withTracker(
     return copy(trackers = commitTracker(trackers, found.key, next, found.legacyKey))
 }
 
-/** addAttendanceSession */
-fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =
-    data.withTracker(identity, now) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(it.attendance.sessions + session))) }
+/**
+ * addAttendanceSession. Adding a session at a slot removed earlier is an explicit "I want this
+ * session": its tombstone goes, or the next reconcile would delete it again (audit 04 #19).
+ */
+fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
+    val slot = sessionSlotKey(session)
+    return data.withTracker(identity, now) {
+        it.copy(
+            attendance = it.attendance.copy(
+                sessions = deduplicateSessions(it.attendance.sessions + session),
+                removedSessionKeys = it.attendance.removedSessionKeys.filter { k -> k != slot },
+            ),
+        )
+    }
+}
 
 /** removeAttendanceSession: also tombstones the slot so the reconciler never regenerates it. */
 fun applyRemoveSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =

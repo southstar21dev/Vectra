@@ -37,6 +37,37 @@ func TestNormalizeArrivalsClamps(t *testing.T) {
 	require.Equal(t, "200", p["limit"])        // clamped to [1,200]
 }
 
+// TestNormalizeArrivalsDefaultsToMaxLimit: Futár's own default is 60
+// stop-times, which truncates a 90-minute window at a big interchange, so a
+// request without a limit asks for the most Futár allows.
+func TestNormalizeArrivalsDefaultsToMaxLimit(t *testing.T) {
+	p, err := normalizeParams("arrivals-and-departures-for-stop", map[string]any{"stopId": "BKK_F01227", "minutesAfter": 90})
+	require.NoError(t, err)
+	require.Equal(t, "200", p["limit"])
+
+	p, err = normalizeParams("arrivals-and-departures-for-stop", map[string]any{"stopId": "BKK_F01227", "limit": 5})
+	require.NoError(t, err)
+	require.Equal(t, "5", p["limit"], "an explicit smaller cap is kept")
+}
+
+func TestNormalizeTripDetailsServiceDate(t *testing.T) {
+	p, err := normalizeParams("trip-details", map[string]any{"tripId": "T1", "date": "20261109"})
+	require.NoError(t, err)
+	require.Equal(t, "20261109", p["date"])
+
+	for _, absent := range []map[string]any{{"tripId": "T1"}, {"tripId": "T1", "date": ""}, {"tripId": "T1", "date": nil}} {
+		p, err = normalizeParams("trip-details", absent)
+		require.NoError(t, err)
+		_, has := p["date"]
+		require.False(t, has, "no date is forwarded for %v", absent)
+	}
+
+	for _, bad := range []any{"2026-11-09", "2026110", "20261109&key=x", 20261109} {
+		_, err = normalizeParams("trip-details", map[string]any{"tripId": "T1", "date": bad})
+		require.Error(t, err, "date %v", bad)
+	}
+}
+
 func TestNormalizeTripDetails(t *testing.T) {
 	p, err := normalizeParams("trip-details", map[string]any{"tripId": "T1", "includeSchedule": "true"})
 	require.NoError(t, err)
@@ -295,6 +326,27 @@ func TestHandlerBatchCacheConcurrent(t *testing.T) {
 	require.NoError(t, Handler(e))
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, before, hits.Load(), "identical batch within TTL must be served from cache")
+}
+
+// TestHandlerBatchAsksForMaxLimit: the batch path's upstream calls carry the
+// largest stop-times cap rather than Futár's default of 60.
+func TestHandlerBatchAsksForMaxLimit(t *testing.T) {
+	t.Setenv("FUTAR_API_KEY", sentinelKey)
+	resetStopArrivalsCache()
+
+	limits := make(chan string, 4)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limits <- r.URL.Query().Get("limit")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"OK","currentTime":1,"data":{"entry":{"stopId":%q,"stopTimes":[]},"references":{}}}`, r.URL.Query().Get("stopId"))
+	}))
+	defer srv.Close()
+	useFutarBase(t, srv.URL)
+
+	e, rec := newRequestEvent(`{"endpoint":"stop-arrivals","params":{"stopIds":"LIM1"}}`)
+	require.NoError(t, Handler(e))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "200", <-limits)
 }
 
 // TestHandlerBatchTransportFailureDoesNotLeakKey drives the batch path into a

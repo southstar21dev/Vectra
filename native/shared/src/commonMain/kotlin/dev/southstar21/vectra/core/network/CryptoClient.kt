@@ -24,6 +24,9 @@ fun isCiphertext(value: String?): Boolean = value != null && CiphertextPrefixes.
 /** How long calls are collected before the batch goes out. */
 internal const val CryptoBatchWindowMs = 5L
 
+/** The most values one request carries; the server caps a batch, so a whole collection goes out in slices. */
+internal const val MaxCryptoBatch = 1000
+
 private const val DecryptMemoEntries = 4096
 
 /** A whole-document blob is too big to pin in memory for the sake of one poll. */
@@ -31,7 +34,8 @@ private const val MaxMemoizedChars = 32 * 1024
 
 /**
  * Field encryption through the server's `/api/vectra/crypto` route. Calls made
- * within [CryptoBatchWindowMs] are coalesced into one round-trip per op; prefer
+ * within [CryptoBatchWindowMs] are coalesced into one round-trip per op (per
+ * [MaxCryptoBatch] values); prefer
  * [decryptAll] for a whole collection. Decrypted values are remembered in memory
  * only, until the session ends, so an unchanged row needs no round trip.
  *
@@ -80,11 +84,11 @@ class CryptoClient(private val pb: PocketBaseClient, private val scope: Coroutin
         if (d.isNotEmpty()) {
             val generation = lock.withLock { memoGeneration }
             val pending = d.map { (cipher, result) -> Pending(cipher, result) }
-            run("decrypt", "values", "values", pending.map { JsonPrimitive(it.input) }, pending) { clear ->
+            run("decrypt", "values", "values", pending.map { JsonPrimitive(it.input) }, pending) { offset, clear ->
                 lock.withLock {
                     if (generation != memoGeneration) return@withLock
                     clear.forEachIndexed { i, plain ->
-                        val cipher = pending[i].input
+                        val cipher = pending[offset + i].input
                         // A value echoed back still encrypted is a failed decrypt: never remember it.
                         if (cipher.length <= MaxMemoizedChars && !isCiphertext(plain)) memo[cipher] = plain
                     }
@@ -94,13 +98,28 @@ class CryptoClient(private val pb: PocketBaseClient, private val scope: Coroutin
         if (g.isNotEmpty()) run("digest", "parts", "digests", g.map { JsonArray(it.input.map(::JsonPrimitive)) }, g)
     }
 
+    /** Sends [pending] in slices of [MaxCryptoBatch]; a failed slice fails only its own values. */
     private suspend fun <T> run(
         op: String,
         inKey: String,
         outKey: String,
         payload: List<JsonElement>,
         pending: List<Pending<T>>,
-        onSuccess: suspend (List<String>) -> Unit = {},
+        onSuccess: suspend (offset: Int, clear: List<String>) -> Unit = { _, _ -> },
+    ) {
+        for (start in pending.indices step MaxCryptoBatch) {
+            val end = minOf(start + MaxCryptoBatch, pending.size)
+            runSlice(op, inKey, outKey, payload.subList(start, end), pending.subList(start, end)) { onSuccess(start, it) }
+        }
+    }
+
+    private suspend fun <T> runSlice(
+        op: String,
+        inKey: String,
+        outKey: String,
+        payload: List<JsonElement>,
+        pending: List<Pending<T>>,
+        onSuccess: suspend (List<String>) -> Unit,
     ) {
         try {
             val res = pb.send(
@@ -122,7 +141,10 @@ class CryptoClient(private val pb: PocketBaseClient, private val scope: Coroutin
 
     suspend fun decrypt(value: String?): String? = decryptAll(listOf(value)).single()
 
-    /** Decrypts many values in one round trip, keeping their order; anything already known needs none. */
+    /**
+     * Decrypts many values in as few round trips as [MaxCryptoBatch] allows, keeping their order;
+     * anything already known needs none.
+     */
     suspend fun decryptAll(values: List<String?>): List<String?> {
         val out = values.toMutableList()
         val waiting = LinkedHashMap<Int, CompletableDeferred<String>>()

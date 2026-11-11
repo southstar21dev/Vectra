@@ -47,9 +47,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  SEMANTIC_RELEASE: semantic-release@24.2.3 @semantic-release/exec@7.0.3 conventional-changelog-conventionalcommits@8.0.0
-
 jobs:
   # Decides whether CI can be skipped because this exact tree already passed on dev.
   verified:
@@ -119,16 +116,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          # semantic-release authenticates its git calls from GITHUB_TOKEN itself; keep the token
+          # out of .git/config so only the step that runs semantic-release can use it.
+          persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
 
+      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
+      # a write token, so nothing resolved fresh or run at install time may reach it.
       - name: Install semantic-release
         run: |
-          # $SEMANTIC_RELEASE is a list of packages: split on purpose.
-          # shellcheck disable=SC2086
-          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel" $SEMANTIC_RELEASE
+          mkdir -p "$RUNNER_TEMP/semrel"
+          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
+          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
 
       # An Android-only fix skips the iOS build: when every commit since the last release carries a
       # "Platforms: android" line, the release gets the APKs and AAB only. The AltStore source lists
@@ -304,6 +306,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          # semantic-release authenticates its git calls from GITHUB_TOKEN itself; keep the token
+          # out of .git/config so only the step that runs semantic-release can use it.
+          persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -314,11 +319,13 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
+      # a write token, so nothing resolved fresh or run at install time may reach it.
       - name: Install semantic-release
         run: |
-          # $SEMANTIC_RELEASE is a list of packages: split on purpose.
-          # shellcheck disable=SC2086
-          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel" $SEMANTIC_RELEASE
+          mkdir -p "$RUNNER_TEMP/semrel"
+          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
+          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
 
       - name: Tag and publish the GitHub release
         env:

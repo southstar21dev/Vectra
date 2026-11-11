@@ -194,6 +194,9 @@ private class SheetNestedScroll(
  *
  * Dragging it away, tapping the scrim or going back calls [onDismiss]; if the caller keeps
  * [open] true (say, to confirm discarding a draft) the sheet springs back.
+ *
+ * For screen readers the sheet is a pane named [title] (announced as it opens) with a dismiss
+ * action, and the page behind it leaves the accessibility tree while it is up.
  */
 @Composable
 fun VSheet(
@@ -203,6 +206,7 @@ fun VSheet(
     size: SheetSize = SheetSize.Fit,
     dragHandle: Boolean = true,
     maxWidth: Dp = 640.dp,
+    title: String? = null,
     onExited: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -267,7 +271,7 @@ fun VSheet(
     Overlay {
         val c = Vectra.colors
         val density = LocalDensity.current
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize().modalPane(title ?: "Sheet", open) { dismiss() }) {
             val windowHeight = constraints.maxHeight.toFloat()
             val topGap = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp
             val maxPanelHeight = maxHeight - topGap
@@ -276,7 +280,8 @@ fun VSheet(
                     .fillMaxSize()
                     .graphicsLayer { alpha = state.openFraction }
                     .background(c.dialogScrim)
-                    .consumeTouches(enabled = open) { dismiss() },
+                    .consumeTouches(enabled = open) { dismiss() }
+                    .scrimSemantics(enabled = open) { dismiss() },
             )
             var panelHeight by remember { mutableFloatStateOf(0f) }
             val shape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius)

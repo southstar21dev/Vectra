@@ -14,6 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +72,7 @@ private fun timeToMinutes(time: String): Int? {
     return if (h <= 23 && min <= 59) h * 60 + min else null
 }
 
-private class ItemForm(item: ScheduleItem?, initialType: String) {
+internal class ItemForm(item: ScheduleItem?, initialType: String) {
     var draftId by mutableStateOf(item?.id ?: newItemId())
     var type by mutableStateOf(item?.type ?: initialType)
     var title by mutableStateOf(item?.title.orEmpty())
@@ -78,6 +81,26 @@ private class ItemForm(item: ScheduleItem?, initialType: String) {
     var endTime by mutableStateOf(item?.endTime ?: "10:00")
     var location by mutableStateOf(item?.location.orEmpty())
     var acknowledgedSignature by mutableStateOf<String?>(null)
+
+    companion object {
+        /** Keeps the draft (and its id, so a retried save stays one item) when Android recreates the activity. */
+        val Saver: Saver<ItemForm, Any> = listSaver(
+            save = { listOf(it.draftId, it.type, it.title, it.date, it.startTime, it.endTime, it.location, it.acknowledgedSignature) },
+            restore = { saved ->
+                val v = saved.iterator()
+                ItemForm(null, "").apply {
+                    draftId = v.next() as String
+                    type = v.next() as String
+                    title = v.next() as String
+                    date = v.next() as String
+                    startTime = v.next() as String
+                    endTime = v.next() as String
+                    location = v.next() as String
+                    acknowledgedSignature = v.next()
+                }
+            },
+        )
+    }
 }
 
 /**
@@ -121,7 +144,7 @@ private fun ItemEditorContent(
     val events by repo.events.collectAsStateWithLifecycle()
     val isSubmitting by repo.isSavingItem.collectAsStateWithLifecycle()
     val timeFormat = Vectra.appearance.timeFormat
-    val form = remember { ItemForm(item, initialType) }
+    val form = rememberSaveable(saver = ItemForm.Saver) { ItemForm(item, initialType) }
     var deleting by remember { mutableStateOf(false) }
     var scrolled by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

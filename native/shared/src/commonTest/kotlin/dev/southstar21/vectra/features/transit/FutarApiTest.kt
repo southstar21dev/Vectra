@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.json.JsonObject
@@ -41,11 +43,14 @@ class FutarApiTest {
             transform(state.value).also { state.value = it }
     }
 
+    /** The batch fans out in parallel on Dispatchers.Default; a bare list add could drop a request. */
+    private val recording = Mutex()
+
     private val ok = """{"status":"OK","currentTime":1,"data":{"entry":{"stopId":"x","stopTimes":[]}}}"""
 
     private fun api(requests: MutableList<HttpRequestData>): FutarApi {
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             respond(ok, headers = headersOf(HttpHeaders.ContentType, "application/json"))
         }
         val pb = PocketBaseClient(
@@ -79,21 +84,42 @@ class FutarApiTest {
         )
     } }
 
-    @Test fun omitsLimitForCompactFetch() = runTest { withContext(Dispatchers.Default) {
+    /** Futár's own default is 60 stop-times, which truncates the 90-minute window at a big interchange. */
+    @Test fun shallowFetchAsksForTheFullCap() = runTest { withContext(Dispatchers.Default) {
         val reqs = mutableListOf<HttpRequestData>()
         val res = api(reqs).fetchStopArrivals("BKK_123", 90)
         assertEquals(
             VectraJson.parseToJsonElement(
-                """{"endpoint":"arrivals-and-departures-for-stop","params":{"stopId":"BKK_123","minutesBefore":0,"minutesAfter":90}}""",
+                """{"endpoint":"arrivals-and-departures-for-stop","params":{"stopId":"BKK_123","minutesBefore":0,"minutesAfter":90,"limit":200}}""",
             ),
             body(reqs[0]),
         )
         assertEquals("x", res.data?.entry?.stopId)
     } }
 
+    /** After midnight a trip can belong to the previous service day, which Futár can't guess. */
+    @Test fun tripDetailsCarryTheServiceDate() = runTest { withContext(Dispatchers.Default) {
+        val reqs = mutableListOf<HttpRequestData>()
+        api(reqs).fetchTripDetails("BKK_T1", "20261109")
+        api(reqs).fetchTripDetails("BKK_T1")
+        val (dated, undated) = reqs.map(::body)
+        assertEquals(
+            VectraJson.parseToJsonElement(
+                """{"endpoint":"trip-details","params":{"tripId":"BKK_T1","includeSchedule":true,"includeStatus":true}}""",
+            ),
+            undated,
+        )
+        assertEquals(
+            VectraJson.parseToJsonElement(
+                """{"endpoint":"trip-details","params":{"tripId":"BKK_T1","includeSchedule":true,"includeStatus":true,"date":"20261109"}}""",
+            ),
+            dated,
+        )
+    } }
+
     private fun apiAnswering(status: HttpStatusCode = HttpStatusCode.OK, requests: MutableList<HttpRequestData> = mutableListOf(), answer: (HttpRequestData) -> String): FutarApi {
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             respond(answer(req), status, headersOf(HttpHeaders.ContentType, "application/json"))
         }
         return FutarApi(PocketBaseClient(createHttpClient(HttpClient(engine)), "https://pb.test", AuthStore(KeyValueStore(MemoryDataStore()), PlainSecretCipher)))
@@ -145,7 +171,7 @@ class FutarApiTest {
     @Test fun aServerErrorOnTheBatchStillFallsBack() = runTest { withContext(Dispatchers.Default) {
         val requests = mutableListOf<HttpRequestData>()
         val engine = MockEngine { req ->
-            requests += req
+            recording.withLock { requests += req }
             val batch = body(req)["endpoint"]?.jsonPrimitive?.content == "stop-arrivals"
             respond(if (batch) """{"message":"bad"}""" else ok, if (batch) HttpStatusCode.BadGateway else HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
         }

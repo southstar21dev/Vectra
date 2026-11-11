@@ -33,6 +33,7 @@ import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.settings.AppearanceRepository
+import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import dev.southstar21.vectra.features.transit.DeviceLocation
 import dev.southstar21.vectra.features.transit.TrackerStopPicks
 import dev.southstar21.vectra.features.transit.TransitRepository
@@ -258,8 +259,9 @@ interface AppGraph {
         location: LocationProvider,
         http: HttpClient,
         config: VectraConfig,
+        catalogCache: CatalogDiskCache,
         scope: CoroutineScope,
-    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, scope)
+    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -285,6 +287,7 @@ interface AppGraph {
             @Provides config: VectraConfig,
             @Provides dataStore: DataStore<Preferences>,
             @Provides blobs: BlobStore,
+            @Provides catalogCache: CatalogDiskCache,
             @Provides http: HttpClient,
             @Provides cipher: SecretCipher,
             @Provides connectivity: Connectivity,

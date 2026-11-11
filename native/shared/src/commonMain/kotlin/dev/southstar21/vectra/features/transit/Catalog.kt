@@ -20,17 +20,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
-import kotlinx.io.readString
-import kotlinx.io.writeString
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.coroutines.CoroutineContext
 
 /** A BKK route (line) — /catalog/routes.json. */
 @Serializable
@@ -52,6 +47,14 @@ data class CatalogStop(val id: String, val name: String = "", val lat: Double = 
 data class CatalogRouteVariant(val h: String = "", val s: List<String> = emptyList())
 
 /**
+ * The fewest entries a downloaded catalog file may have. The live catalog has about 670
+ * routes, 2,400 stop areas and 670 variant lists; the build script refuses to publish fewer
+ * than 100 routes or 500 stops. A smaller file is a truncated or broken build: it is neither
+ * used nor cached, so the copy on disk keeps answering (audit 03 #17).
+ */
+data class CatalogFloor(val routes: Int = 100, val stops: Int = 500, val routeVariants: Int = 100)
+
+/**
  * Runtime loaders for the daily-refreshed BKK catalog served at
  * `<catalogOrigin>/catalog/`. Each file is cached on disk: a copy younger than
  * [FreshMs] is used as-is (the catalog refreshes daily). An older one still answers at
@@ -63,17 +66,22 @@ class TransitCatalog(
     private val http: HttpClient,
     catalogOrigin: String,
     private val scope: CoroutineScope,
+    private val disk: CatalogDiskCache,
     private val clock: () -> Long = ::nowMs,
+    floor: CatalogFloor = CatalogFloor(),
+    /** Where loading and parsing run, off the main thread. */
+    private val work: CoroutineContext = Dispatchers.Default,
 ) {
     private val base = catalogOrigin.trimEnd('/') + "/catalog/"
-    private val dir = Path(SystemTemporaryDirectory, "vectra-catalog")
 
-    private fun <T> lazyLoad(file: String, serializer: KSerializer<T>): suspend () -> T {
+    private class Spec<T>(val file: String, val serializer: KSerializer<T>, val minEntries: Int, val count: (T) -> Int)
+
+    private fun <T> lazyLoad(spec: Spec<T>): suspend () -> T {
         val lock = Mutex()
         var promise: Deferred<T>? = null
         return {
             val p = lock.withLock {
-                promise ?: scope.async(Dispatchers.Default) { load(file, serializer) }.also { promise = it }
+                promise ?: scope.async(work) { load(spec) }.also { promise = it }
             }
             try {
                 p.await()
@@ -87,80 +95,51 @@ class TransitCatalog(
         }
     }
 
-    private suspend fun <T> load(file: String, serializer: KSerializer<T>): T {
-        val cached = readCache(file)
+    /** [text] as a catalog, or null when it doesn't parse or is too small to be a whole one. */
+    private fun <T> decodeValid(spec: Spec<T>, text: String): T? =
+        runCatching { VectraJson.decodeFromString(spec.serializer, text) }.getOrNull()?.takeIf { spec.count(it) >= spec.minEntries }
+
+    private suspend fun <T> load(spec: Spec<T>): T {
+        val cached = disk.read(spec.file)
+        val copy = cached?.let { decodeValid(spec, it.second) }
         val age = cached?.let { clock() - it.first }
-        if (cached != null && age != null && age < MaxStaleMs) {
-            runCatching { VectraJson.decodeFromString(serializer, cached.second) }.onSuccess { parsed ->
-                if (age >= FreshMs) scope.launch { runSuspendCatching { revalidate(file, serializer) } }
-                return parsed
-            }
+        if (copy != null && age != null && age < MaxStaleMs) {
+            if (age >= FreshMs) scope.launch(work) { runSuspendCatching { revalidate(spec) } }
+            return copy
         }
         return try {
-            fetchFile(file, serializer, etag = null) ?: error("Failed to load catalog $file")
+            fetchFile(spec, etag = null) ?: error("Failed to load catalog ${spec.file}")
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            cached?.let { runCatching { return VectraJson.decodeFromString(serializer, it.second) } }
-            throw t
+            copy ?: throw t
         }
     }
 
-    /** Downloads [file] and caches it, or returns null when [etag] is still current. */
-    private suspend fun <T> fetchFile(file: String, serializer: KSerializer<T>, etag: String?): T? {
-        val res = http.get(base + file) { etag?.let { header(HttpHeaders.IfNoneMatch, it) } }
+    /** Downloads the file and caches it, or returns null when [etag] is still current. */
+    private suspend fun <T> fetchFile(spec: Spec<T>, etag: String?): T? {
+        val res = http.get(base + spec.file) { etag?.let { header(HttpHeaders.IfNoneMatch, it) } }
         if (res.status == HttpStatusCode.NotModified) return null
-        if (!res.status.isSuccess()) error("Failed to load catalog $file (HTTP ${res.status.value})")
+        if (!res.status.isSuccess()) error("Failed to load catalog ${spec.file} (HTTP ${res.status.value})")
         val text = res.bodyAsText()
-        val parsed = VectraJson.decodeFromString(serializer, text)
-        writeCache(file, text, res.headers[HttpHeaders.ETag])
+        val parsed = VectraJson.decodeFromString(spec.serializer, text)
+        val entries = spec.count(parsed)
+        if (entries < spec.minEntries) error("Catalog ${spec.file} has only $entries entries; expected at least ${spec.minEntries}")
+        disk.write(spec.file, text, res.headers[HttpHeaders.ETag], clock())
         return parsed
     }
 
-    private suspend fun <T> revalidate(file: String, serializer: KSerializer<T>) {
-        if (fetchFile(file, serializer, readEtag(file)) == null) touchCache(file)
+    private suspend fun <T> revalidate(spec: Spec<T>) {
+        if (fetchFile(spec, disk.etag(spec.file)) == null) disk.touch(spec.file, clock())
     }
 
-    private suspend fun readEtag(file: String): String? = withContext(Dispatchers.Default) {
-        runCatching {
-            val p = Path(dir, "$file.etag")
-            if (SystemFileSystem.exists(p)) SystemFileSystem.source(p).buffered().use { it.readString() }.ifEmpty { null } else null
-        }.getOrNull()
-    }
-
-    private suspend fun touchCache(file: String) = withContext(Dispatchers.Default) {
-        runCatching { writeAtomically("$file.ts", clock().toString()) }
-    }
-
-    private fun writeAtomically(name: String, text: String) {
-        val temp = Path(dir, "$name.tmp")
-        SystemFileSystem.sink(temp).buffered().use { it.writeString(text) }
-        SystemFileSystem.atomicMove(temp, Path(dir, name))
-    }
-
-    private suspend fun readCache(file: String): Pair<Long, String>? = withContext(Dispatchers.Default) {
-        runCatching {
-            val p = Path(dir, file)
-            val meta = Path(dir, "$file.ts")
-            if (!SystemFileSystem.exists(p) || !SystemFileSystem.exists(meta)) return@runCatching null
-            val ts = SystemFileSystem.source(meta).buffered().use { it.readString() }.trim().toLong()
-            ts to SystemFileSystem.source(p).buffered().use { it.readString() }
-        }.getOrNull()
-    }
-
-    private suspend fun writeCache(file: String, text: String, etag: String?) = withContext(Dispatchers.Default) {
-        runCatching {
-            SystemFileSystem.createDirectories(dir)
-            writeAtomically(file, text)
-            writeAtomically("$file.ts", clock().toString())
-            writeAtomically("$file.etag", etag.orEmpty())
-        }
-    }
-
-    val routes: suspend () -> List<CatalogRoute> = lazyLoad("routes.json", ListSerializer(CatalogRoute.serializer()))
-    val stops: suspend () -> List<CatalogStop> = lazyLoad("stops.json", ListSerializer(CatalogStop.serializer()))
-    val routeVariants: suspend () -> Map<String, List<CatalogRouteVariant>> =
-        lazyLoad("route-variants.json", MapSerializer(String.serializer(), ListSerializer(CatalogRouteVariant.serializer())))
+    val routes: suspend () -> List<CatalogRoute> =
+        lazyLoad(Spec("routes.json", ListSerializer(CatalogRoute.serializer()), floor.routes) { it.size })
+    val stops: suspend () -> List<CatalogStop> =
+        lazyLoad(Spec("stops.json", ListSerializer(CatalogStop.serializer()), floor.stops) { it.size })
+    val routeVariants: suspend () -> Map<String, List<CatalogRouteVariant>> = lazyLoad(
+        Spec("route-variants.json", MapSerializer(String.serializer(), ListSerializer(CatalogRouteVariant.serializer())), floor.routeVariants) { it.size },
+    )
 
     private val routeMapLock = Mutex()
     private var routeMapCache: Map<String, CatalogRoute>? = null
@@ -179,7 +158,7 @@ class TransitCatalog(
     /** id → stop, memoized per session; every consumer shares this one map. */
     suspend fun stopsById(): Map<String, CatalogStop> {
         stopsByIdLock.withLock { stopsByIdCache?.let { return it } }
-        val m = withContext(Dispatchers.Default) { stops().associateBy { it.id } }
+        val m = withContext(work) { stops().associateBy { it.id } }
         stopsByIdLock.withLock { stopsByIdCache = m }
         return m
     }

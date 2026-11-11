@@ -52,7 +52,7 @@ class SessionWatchdog(
     suspend fun refreshIfNeeded() = lock.withLock {
         val current = store.current ?: return@withLock
         if (!current.isValid()) {
-            auth.expire()
+            auth.expire(onlyToken = current.token)
             return@withLock
         }
         val now = Clock.System.now().epochSeconds
@@ -61,7 +61,7 @@ class SessionWatchdog(
             auth.refreshToken()
             lastRefreshAt = now
         } catch (e: PocketBaseException) {
-            if (e.isAuthRejection) auth.expire()
+            if (e.isAuthRejection) auth.expire(onlyToken = current.token)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {

@@ -103,10 +103,12 @@ targets:
             [ -n "$TAG" ] && FULL=$TAG
           fi
           NAME=${FULL%%-*}
+          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
           CODE=$(echo "$FULL" | awk -F'[.-]' '{
             b = 99
-            if ($4 == "dev") b = ($5 > 49 ? 49 : $5)
-            if ($4 == "rc") b = 50 + ($5 > 48 ? 48 : $5)
+            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
+            if ($4 == "dev") b = $5
+            if ($4 == "rc") b = 50 + $5
             print ($1 * 10000 + $2 * 100 + $3) * 100 + b
           }')
           mkdir -p "$DERIVED_FILE_DIR"
@@ -183,10 +185,12 @@ targets:
             [ -n "$TAG" ] && FULL=$TAG
           fi
           NAME=${FULL%%-*}
+          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
           CODE=$(echo "$FULL" | awk -F'[.-]' '{
             b = 99
-            if ($4 == "dev") b = ($5 > 49 ? 49 : $5)
-            if ($4 == "rc") b = 50 + ($5 > 48 ? 48 : $5)
+            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
+            if ($4 == "dev") b = $5
+            if ($4 == "rc") b = 50 + $5
             print ($1 * 10000 + $2 * 100 + $3) * 100 + b
           }')
           mkdir -p "$DERIVED_FILE_DIR"

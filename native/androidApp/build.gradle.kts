@@ -25,9 +25,10 @@ fun versionCodeOf(versionName: String): Int {
         ?: error("vectra.versionName must be major.minor.patch[-dev.N|-rc.N] with minor and patch below 100, got '$versionName'")
     val (major, minor, patch) = match.groupValues.subList(1, 4).map(String::toInt)
     val pre = match.groupValues[5].toIntOrNull() ?: 0
+    // Past dev.49 or rc.48 two builds would share a code and the later one couldn't install as an update.
     val build = when (match.groupValues[4]) {
-        "dev" -> pre.coerceAtMost(49)
-        "rc" -> 50 + pre.coerceAtMost(48)
+        "dev" -> pre.takeIf { it <= 49 } ?: error("dev prereleases stop at dev.49 (versionCode clash), got '$versionName'")
+        "rc" -> 50 + (pre.takeIf { it <= 48 } ?: error("rc prereleases stop at rc.48 (versionCode clash), got '$versionName'"))
         else -> 99
     }
     return (major * 10_000 + minor * 100 + patch) * 100 + build

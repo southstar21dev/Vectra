@@ -15,6 +15,7 @@ import dev.southstar21.vectra.platform.KeystoreSecretCipher
 import dev.southstar21.vectra.platform.ReminderRuntime
 import dev.southstar21.vectra.platform.createAndroidHttpClient
 import dev.southstar21.vectra.platform.createBlobStore
+import dev.southstar21.vectra.platform.createCatalogCache
 import dev.southstar21.vectra.platform.createDataStore
 import dev.zacsweers.metro.createGraphFactory
 import kotlinx.coroutines.runBlocking
@@ -49,6 +50,7 @@ class VectraApplication : Application() {
             ),
             dataStore = createDataStore(this),
             blobs = createBlobStore(this),
+            catalogCache = createCatalogCache(this),
             http = createAndroidHttpClient(this),
             cipher = KeystoreSecretCipher(),
             connectivity = AndroidConnectivity(this),

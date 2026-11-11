@@ -17,6 +17,17 @@ struct Snapshot: Decodable {
         else { return nil }
         return snapshot
     }
+
+    /// Days after its generation day the snapshot covers (`AheadDays` in WidgetPublisher.kt).
+    static let aheadDays = 14
+
+    /// False once `now` is past the last day the snapshot covers. It can no longer tell an empty
+    /// day from one it never saw, so the widgets ask for the app instead of saying "No classes".
+    func covers(_ now: Date) -> Bool {
+        let generated = Date(timeIntervalSince1970: generatedAtMs / 1000)
+        guard let last = Budapest.calendar.date(byAdding: .day, value: Snapshot.aheadDays, to: generated) else { return true }
+        return Budapest.day(now) <= Budapest.day(last)
+    }
 }
 
 enum Kind: String, Decodable {
@@ -61,8 +72,13 @@ struct Session: Decodable, Hashable {
     var detail: String { [kind.label, location].filter { !$0.isEmpty }.joined(separator: " · ") }
 }
 
+/// What a widget says when its snapshot has run out (audit 04 #17).
+let StaleMessage = "Open Vectra to refresh your schedule."
+
 enum NextUp {
     case noData
+    /// Signed in, but the snapshot ended before today: the app has not run for two weeks.
+    case stale
     case inClass(Session)
     case upcoming(Session)
     case examSoon(Session)
@@ -73,7 +89,7 @@ enum NextUp {
         switch self {
         case .inClass(let s), .upcoming(let s), .examSoon(let s): s
         case .dayDone(_, let next): next
-        case .noData: nil
+        case .noData, .stale: nil
         }
     }
 }
@@ -137,8 +153,12 @@ struct WeekDay: Identifiable {
 extension Optional where Wrapped == Snapshot {
     private var live: [Session] { (self?.signedIn ?? false) ? self!.sessions : [] }
 
+    /// Signed in, but the snapshot no longer reaches `now`.
+    func isStale(at now: Date) -> Bool { self.map { $0.signedIn && !$0.covers(now) } ?? false }
+
     func nextUp(now: Date) -> NextUp {
         guard let snap = self, snap.signedIn else { return .noData }
+        guard snap.covers(now) else { return .stale }
         let today = Budapest.day(now)
         let timed = snap.sessions.filter { $0.kind.isTimed }
         if let s = timed.first(where: { $0.day == today && $0.start <= now && now < $0.end }) { return .inClass(s) }

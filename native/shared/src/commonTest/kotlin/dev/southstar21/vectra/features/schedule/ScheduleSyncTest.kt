@@ -36,6 +36,11 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.Flow
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -56,6 +61,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.io.IOException
 import kotlin.test.assertTrue
 
 private const val UserId = "user-1"
@@ -85,6 +91,8 @@ private class FakeBackend {
     val writes = mutableListOf<String>()
     var itemsDown = false
     var classesDown = false
+    /** The next create lands, but its reply is lost on the way back (audit 04 #19). */
+    var loseCreateReply = false
     /** Runs inside a create, before it lands: hold it here to act mid-flight. */
     var duringCreate: (suspend (clientId: String) -> Unit)? = null
     /** Runs after the pass's single-row re-read target was chosen, before it is answered. */
@@ -188,10 +196,15 @@ private class FakeBackend {
                 val b = body(req)
                 val clientId = b.string("client_id")!!
                 duringCreate?.invoke(clientId)
-                json(lock.withLock {
+                val saved = lock.withLock {
                     writes += "create $clientId"
                     JsonObject(b + mapOf("id" to JsonPrimitive("row-${++version}"), "updated_at" to JsonPrimitive("saved-$version"))).also { itemRows += it }
-                }.toString())
+                }
+                if (loseCreateReply) {
+                    loseCreateReply = false
+                    throw IOException("connection reset")
+                }
+                json(saved.toString())
             }
             HttpMethod.Patch -> json(lock.withLock {
                 writes += "update $rowId"
@@ -216,9 +229,21 @@ private class Online(value: Boolean) : Connectivity {
     override val online = MutableStateFlow(value)
 }
 
+/** [FakeDataStore] whose reads can be held back, to open the gap between a session change and the load it triggers. */
+private class SlowReadsDataStore : DataStore<Preferences> {
+    private val inner = FakeDataStore()
+    @Volatile var readDelayMs = 0L
+    override val data: Flow<Preferences> = flow {
+        if (readDelayMs > 0) delay(readDelayMs)
+        emitAll(inner.data)
+    }
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = inner.updateData(transform)
+}
+
 private class Harness(val backend: FakeBackend, online: Boolean = true) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val kv = KeyValueStore(FakeDataStore())
+    val disk = SlowReadsDataStore()
+    val kv = KeyValueStore(disk)
     val connectivity = Online(online)
     val http = HttpClient(MockEngine { req -> backend.handle(this, req) })
     val store = AuthStore(kv, PlainSecretCipher)
@@ -279,6 +304,19 @@ class ScheduleSyncTest {
     }
 
     // ---- creates ---------------------------------------------------------------
+
+    /** 04 #19: the create landed but its reply was lost; deleting it must delete the server row too. */
+    @Test fun deletingACreateWhoseReplyWasLostDeletesTheServerRow() = scenario { b ->
+        b.loseCreateReply = true
+        start(queuedCreate(item()))
+        until { b.writes.contains("create $ItemA") && persisted()?.queue?.isNotEmpty() == true }
+        repo.deleteItem(ItemA)
+        drained()
+        assertEquals(listOf("create $ItemA", "delete row-1"), b.writes)
+        assertTrue(b.itemRows.isEmpty())
+        repo.refreshItems(force = true)
+        assertNull(stored())
+    }
 
     @Test fun aQueuedCreateReachesTheServer() = scenario { b ->
         start(queuedCreate(item()))
@@ -675,6 +713,26 @@ class ScheduleSyncTest {
         assertEquals(1, persisted()?.queue?.size)
         connectivity.online.value = true
         auth.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId))))
+        drained()
+        assertEquals(listOf("create $ItemA"), b.writes)
+    }
+
+    /**
+     * The returning account's session is visible before its kept queue is read back from disk. A
+     * refresh landing in that gap (here: a reconnect at the same moment) must not merge against the
+     * empty in-memory state and save that over the kept queue.
+     */
+    @Test fun aRefreshWhileTheReturningAccountLoadsKeepsItsQueue() = scenario(online = false) { b ->
+        start(queuedCreate(item()))
+        auth.expire()
+        until { repo.itemsState.value.items.isEmpty() }
+        connectivity.online.value = true
+        disk.readDelayMs = 300
+        val back = scope.launch { auth.adoptSession("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId)))) }
+        until { auth.session.value != null }
+        repo.refreshItems(force = true)
+        disk.readDelayMs = 0
+        back.join()
         drained()
         assertEquals(listOf("create $ItemA"), b.writes)
     }

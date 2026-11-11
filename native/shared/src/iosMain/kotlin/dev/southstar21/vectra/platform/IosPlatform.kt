@@ -6,8 +6,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.BlobStore
+import dev.southstar21.vectra.core.data.moveStorage
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.platform.SecretCipher
+import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.BetaInteropApi
@@ -22,6 +24,8 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.value
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemTemporaryDirectory
 import okio.Path.Companion.toPath
 import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFDictionaryAddValue
@@ -35,6 +39,7 @@ import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
 import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSData
 import platform.Foundation.NSDocumentDirectory
@@ -43,6 +48,7 @@ import platform.Foundation.NSNumber
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLCache
+import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.base64EncodedStringWithOptions
@@ -73,14 +79,52 @@ private fun appDirectory(kind: ULong): String {
     return requireNotNull(dir?.path) { "No app directory $kind" }
 }
 
+private const val PreferencesFile = "vectra.preferences_pb"
+private const val BlobsDir = "vectra-blobs"
+
+/**
+ * Application Support/vectra, excluded from iCloud and Finder backups like Android's data
+ * extraction rules: a restored copy is orphaned on another device, whose Keychain cannot open the
+ * session. Releases up to 1.8.3 kept the same files in Documents; the first call moves them here.
+ */
+private val storageDir: String by lazy {
+    val dir = appDirectory(NSApplicationSupportDirectory) + "/vectra"
+    moveStorage(Path(appDirectory(NSDocumentDirectory)), Path(dir), listOf(PreferencesFile, BlobsDir))
+    SystemFileSystem.createDirectories(Path(dir))
+    excludeFromBackup(dir)
+    dir
+}
+
+/** Set on the directory, so it also covers the files DataStore and BlobStore replace by rename. */
+@OptIn(ExperimentalForeignApi::class)
+private fun excludeFromBackup(path: String) {
+    NSURL.fileURLWithPath(path, isDirectory = true)
+        .setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+}
+
 fun createDataStore(): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(
     // A corrupt file would otherwise throw on every read, crashing each launch until the app is reinstalled.
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
-    produceFile = { (appDirectory(NSDocumentDirectory) + "/vectra.preferences_pb").toPath() },
+    produceFile = { "$storageDir/$PreferencesFile".toPath() },
 )
 
 /** Large values, one file each, next to the preferences file. */
-fun createBlobStore(): BlobStore = BlobStore(Path(appDirectory(NSDocumentDirectory) + "/vectra-blobs"))
+fun createBlobStore(): BlobStore = BlobStore(Path(storageDir, BlobsDir))
+
+/**
+ * The transit catalog's offline copy, in Application Support rather than tmp/, which iOS
+ * clears while the app isn't running. It is downloadable again, so it stays out of
+ * backups. Older builds kept it in tmp/; [CatalogDiskCache] moves that copy over.
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun createCatalogCache(): CatalogDiskCache {
+    val dir = appDirectory(NSApplicationSupportDirectory) + "/vectra-catalog"
+    runCatching {
+        NSFileManager.defaultManager.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
+        NSURL.fileURLWithPath(dir, isDirectory = true).setResourceValue(true, forKey = NSURLIsExcludedFromBackupKey, error = null)
+    }
+    return CatalogDiskCache(dir = Path(dir), legacyDir = Path(SystemTemporaryDirectory, "vectra-catalog"))
+}
 
 private const val HttpCacheBytes = 52_428_800uL // 50 MiB, as on Android
 private const val HttpMemoryCacheBytes = 8_388_608uL // 8 MiB

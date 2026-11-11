@@ -96,6 +96,45 @@ private class CardFrame(
     val approach: Float,
 )
 
+/**
+ * The inputs a pile's frames were last computed from. Each call stores the new values and says
+ * whether any differed; the arrays are replaced, never mutated, so they compare by identity.
+ */
+internal class FrameKey {
+    private var seen = false
+    private var scroll = 0
+    private var viewport = 0
+    private var contentTop = 0f
+    private var topPad = 0f
+    private var bottomReserve = 0f
+    private var naturalY: FloatArray? = null
+    private var heights: IntArray? = null
+
+    /** The first call always reports a change: nothing has been computed yet. */
+    fun ints(scroll: Int, viewport: Int): Boolean {
+        val changed = !seen || scroll != this.scroll || viewport != this.viewport
+        seen = true
+        this.scroll = scroll
+        this.viewport = viewport
+        return changed
+    }
+
+    fun floats(contentTop: Float, topPad: Float, bottomReserve: Float): Boolean {
+        val changed = contentTop != this.contentTop || topPad != this.topPad || bottomReserve != this.bottomReserve
+        this.contentTop = contentTop
+        this.topPad = topPad
+        this.bottomReserve = bottomReserve
+        return changed
+    }
+
+    fun arrays(naturalY: FloatArray, heights: IntArray): Boolean {
+        val changed = naturalY !== this.naturalY || heights !== this.heights
+        this.naturalY = naturalY
+        this.heights = heights
+        return changed
+    }
+}
+
 /** Scroll geometry of one pile; every frame derives from [page]'s scroll at draw time. */
 @Stable
 private class PileState(val page: PageScrollInfo) {
@@ -115,17 +154,21 @@ private class PileState(val page: PageScrollInfo) {
 
     fun stick(rank: Int, glass: Float) = minOf(page.topPad + gap * rank, visibleBottom - glass)
 
-    private var cacheKey: List<Any> = emptyList()
+    private val cacheKey = FrameKey()
     private var cache: Array<CardFrame?> = emptyArray()
 
     /**
      * Every slot asks several times a frame; the inputs are read on each call (so callers keep
-     * observing them) and the result is reused while they are unchanged.
+     * observing them) and the result is reused while they are unchanged. The key is kept field by
+     * field: this runs in the draw path, so a cache hit allocates nothing.
      */
     private fun frames(): Array<CardFrame?> {
-        val key = listOf(scroll.value, scroll.viewportSize, contentTop, naturalY, heights, page.topPad, page.bottomReserve)
-        if (key == cacheKey) return cache
-        return computeFrames().also { cache = it; cacheKey = key }
+        val k = cacheKey
+        val ints = k.ints(scroll.value, scroll.viewportSize)
+        val floats = k.floats(contentTop, page.topPad, page.bottomReserve)
+        val arrays = k.arrays(naturalY, heights)
+        if (ints || floats || arrays) cache = computeFrames()
+        return cache
     }
 
     private fun computeFrames(): Array<CardFrame?> {

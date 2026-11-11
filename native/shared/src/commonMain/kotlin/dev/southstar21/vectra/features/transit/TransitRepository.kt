@@ -61,10 +61,11 @@ class TransitRepository(
     val location: LocationProvider,
     http: HttpClient,
     catalogOrigin: String,
+    catalogCache: CatalogDiskCache,
     val scope: CoroutineScope,
 ) : SessionListener {
     val api = FutarApi(pb)
-    val catalog = TransitCatalog(http, catalogOrigin, scope)
+    val catalog = TransitCatalog(http, catalogOrigin, scope, catalogCache)
     private val cache = OfflineCache(kv, "vectra_transit_trackers_cache", ListSerializer(TransitTracker.serializer()))
     private var cachedTrackers: Pair<String, List<TransitTracker>>? = null
 
@@ -296,8 +297,10 @@ class TransitRepository(
     val memberVehicles: LiveQuery<String, FutarVehiclesForRouteResponse> =
         LiveQuery(scope, refetchIntervalMs = 10_000, staleTimeMs = 5_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { api.fetchVehiclesForRoute(it) }
 
-    val tripDetails: LiveQuery<String, FutarTripDetailsResponse> =
-        LiveQuery(scope, refetchIntervalMs = 60_000, staleTimeMs = 60_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { api.fetchTripDetails(it) }
+    val tripDetails: LiveQuery<TripDetailsKey, FutarTripDetailsResponse> =
+        LiveQuery(scope, refetchIntervalMs = 60_000, staleTimeMs = 60_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) {
+            api.fetchTripDetails(it.tripId, it.serviceDate)
+        }
 
     /** Route-level stops + geometry, combined lines merged. */
     val routeDetails: LiveQuery<String, FutarRouteDetailsResponse> =

@@ -319,11 +319,14 @@ func TestWriteRuleLockdown(t *testing.T) {
 	require.Equal(t, userA.Id, ev.GetString("user"))
 }
 
-func TestTrustedProxyConfigured(t *testing.T) {
+// The migrations no longer trust X-Forwarded-For on their own: a fresh
+// database uses the socket address until TRUSTED_PROXY=1 says a proxy sits in
+// front (internal/proxytrust).
+func TestTrustedProxyNotSetByMigrations(t *testing.T) {
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	require.Equal(t, []string{"X-Forwarded-For"}, app.Settings().TrustedProxy.Headers)
+	require.Empty(t, app.Settings().TrustedProxy.Headers)
 	require.False(t, app.Settings().TrustedProxy.UseLeftmostIP)
 }

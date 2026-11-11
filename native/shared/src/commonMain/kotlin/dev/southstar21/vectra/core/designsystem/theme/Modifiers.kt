@@ -4,8 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
@@ -23,7 +23,10 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.node.DelegatingNode
+import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -69,9 +72,32 @@ fun Modifier.tappable(
 /**
  * For surfaces that must swallow touches rather than answer them: scrims (with [onClick] to
  * dismiss) and panels sitting over something tappable. Everything else uses [tappable].
+ *
+ * Touches never reach what lies underneath, even while [enabled] is false (a closing scrim);
+ * [enabled] only gates [onClick]. Unlike a `clickable` this adds nothing to the accessibility
+ * tree: a scrim isn't an unlabelled button, and a panel's contents stay separate nodes instead of
+ * merging into one. Surfaces offer their dismissal to screen readers as a `dismiss` action.
  */
 fun Modifier.consumeTouches(enabled: Boolean = true, onClick: () -> Unit = {}): Modifier =
-    clickable(interactionSource = null, indication = null, enabled = enabled, onClick = onClick)
+    this then ConsumeTouchesElement(enabled, onClick)
+
+private class ConsumeTouchesElement(val enabled: Boolean, val onClick: () -> Unit) : ModifierNodeElement<ConsumeTouchesNode>() {
+    override fun create() = ConsumeTouchesNode(enabled, onClick)
+    override fun update(node: ConsumeTouchesNode) {
+        node.enabled = enabled
+        node.onClick = onClick
+    }
+    override fun equals(other: Any?) = other is ConsumeTouchesElement && other.enabled == enabled && other.onClick === onClick
+    override fun hashCode() = 31 * enabled.hashCode() + onClick.hashCode()
+}
+
+/** A pointer-input node with no semantics: it takes the hit (so siblings below get nothing) and runs taps. */
+private class ConsumeTouchesNode(var enabled: Boolean, var onClick: () -> Unit) : DelegatingNode() {
+    init {
+        // The fields are read when a tap lands, so updates never restart a gesture in progress.
+        delegate(SuspendingPointerInputModifierNode { detectTapGestures(onTap = { if (enabled) onClick() }) })
+    }
+}
 
 /** Outer layers of a shadow stack; paint below the background. */
 fun Modifier.boxShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {

@@ -19,6 +19,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +34,7 @@ import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DeleteRow
 import dev.southstar21.vectra.core.designsystem.components.FormField
 import dev.southstar21.vectra.core.designsystem.components.FormGroup
+import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.PillRadio
 import dev.southstar21.vectra.core.designsystem.components.ScreenColumn
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
@@ -49,9 +53,10 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatHHMM
+import dev.southstar21.vectra.core.time.parseHourMinute
+import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Monday-first, the way a Budapest timetable reads. */
@@ -92,7 +97,14 @@ private val GeneratedColors = listOf(
 
 fun generateEventColor(): String = GeneratedColors.random()
 
-private class ClassForm(event: ScheduleEvent?) {
+/** A class's `HH:mm` times are real clock times and it ends later the same day (classes never cross midnight). */
+internal fun classTimesValid(start: String, end: String): Boolean {
+    val s = parseHourMinute(start)?.takeIf { (h, m) -> h in 0..23 && m in 0..59 }
+    val e = parseHourMinute(end)?.takeIf { (h, m) -> h in 0..23 && m in 0..59 }
+    return s != null && e != null && (e.first * 60 + e.second) > (s.first * 60 + s.second)
+}
+
+internal class ClassForm(event: ScheduleEvent?) {
     var courseName by mutableStateOf(event?.courseName.orEmpty())
     var courseCode by mutableStateOf(event?.courseCode.orEmpty())
     var attendanceType by mutableStateOf(event?.attendanceType?.ifEmpty { null } ?: "unknown")
@@ -104,6 +116,35 @@ private class ClassForm(event: ScheduleEvent?) {
     var color by mutableStateOf(event?.color?.ifEmpty { null } ?: generateEventColor())
     var semester by mutableStateOf(event?.semester.orEmpty())
     var frequency by mutableStateOf(getEventFrequency(event?.csvMetadata))
+
+    companion object {
+        /** Keeps the draft when Android recreates the activity (dark mode, font scale, rotation). */
+        val Saver: Saver<ClassForm, Any> = listSaver(
+            save = {
+                listOf(
+                    it.courseName, it.courseCode, it.attendanceType, it.instructor, it.location, it.dayOfWeek,
+                    it.startTime, it.endTime, it.color, it.semester, it.frequency.key,
+                )
+            },
+            restore = { saved ->
+                val v = saved.iterator()
+                ClassForm(null).apply {
+                    courseName = v.next() as String
+                    courseCode = v.next() as String
+                    attendanceType = v.next() as String
+                    instructor = v.next() as String
+                    location = v.next() as String
+                    dayOfWeek = v.next() as Int
+                    startTime = v.next() as String
+                    endTime = v.next() as String
+                    color = v.next() as String
+                    semester = v.next() as String
+                    val key = v.next()
+                    frequency = ScheduleFrequency.entries.firstOrNull { f -> f.key == key } ?: ScheduleFrequency.Weekly
+                }
+            },
+        )
+    }
 }
 
 /**
@@ -135,11 +176,13 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
     val navigator = LocalNavigator.current
     val isSubmitting by repo.isCreatingEvent.collectAsStateWithLifecycle()
     val availableSemesters = remember(events) { scheduleSemesters(events) }
-    val form = remember { ClassForm(event) }
+    val form = rememberSaveable(saver = ClassForm.Saver) { ClassForm(event) }
     var deleting by remember { mutableStateOf(false) }
     var scrolled by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val canSave = !isSubmitting && !deleting && form.courseName.isNotBlank()
+    val toaster = LocalToaster.current
+    val timeValid = classTimesValid(form.startTime, form.endTime)
+    val canSave = !isSubmitting && !deleting && form.courseName.isNotBlank() && timeValid
 
     ScreenColumn {
         TopBar(
@@ -204,6 +247,16 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                         },
                         { FormField("Repeats") { PillRadio(form.frequency, FrequencyOptions, { form.frequency = it }, columns = 3) } },
                     )
+                    if (!timeValid) {
+                        rows.add(2) {
+                            VText(
+                                "A class has to end later on the same day it starts.",
+                                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                vtext(TypeScale.Caption, Weight.Semibold),
+                                c.tints.red.text,
+                            )
+                        }
+                    }
                     if (availableSemesters.isNotEmpty()) {
                         rows += {
                             FormField("Semester") {
@@ -256,12 +309,13 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                             deleting = true
                             scope.launch {
                                 try {
-                                    repo.deleteEvent(event.id)
-                                    exit()
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: Throwable) {
-                                    // Failed to delete: the editor stays open.
+                                    runSuspendCatching { repo.deleteEvent(event.id) }
+                                        .onSuccess { exit() }
+                                        .onFailure { e ->
+                                            // The editor stays open.
+                                            haptics.reject()
+                                            toaster.error(e.message ?: "Could not delete this class.")
+                                        }
                                 } finally {
                                     deleting = false
                                 }
@@ -275,6 +329,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
         }
         BottomBar {
             EditorSubmitButton(canSave, onClick = {
+                if (!canSave) return@EditorSubmitButton
                 val data = ScheduleFormData(
                     courseName = form.courseName,
                     attendanceType = form.attendanceType,
@@ -289,16 +344,16 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                     frequency = form.frequency,
                 )
                 scope.launch {
-                    try {
-                        if (event != null) repo.updateEvent(event.id, data) else repo.createEvent(data)
-                        haptics.confirm()
-                        exit()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Throwable) {
-                        // Keep the form so nothing typed is lost.
-                        haptics.reject()
-                    }
+                    runSuspendCatching { if (event != null) repo.updateEvent(event.id, data) else repo.createEvent(data) }
+                        .onSuccess {
+                            haptics.confirm()
+                            exit()
+                        }
+                        .onFailure { e ->
+                            // Keep the form so nothing typed is lost.
+                            haptics.reject()
+                            toaster.error(e.message ?: "Could not save this class.")
+                        }
                 }
             }) { SubmitLabel(isSubmitting, if (event != null) "Save changes" else "Add class") }
         }

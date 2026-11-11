@@ -5,28 +5,20 @@ import (
 	m "github.com/pocketbase/pocketbase/migrations"
 )
 
-// Trusts the reverse proxy's X-Forwarded-For so e.RealIP() is the actual
-// client. Production sits behind Coolify/Traefik (the only ingress, see the
-// deploy runbook), so without this every request's RemoteIP is the proxy and
-// all per-IP limiters (passkey login, Futár proxy, email change) share one
-// bucket across all users.
+// No longer changes anything. This migration used to trust X-Forwarded-For
+// unconditionally, which let a client that reaches the port directly (no proxy
+// in front) choose a fresh per-IP rate-limit bucket on every request. Whether
+// the header is trusted is now decided at runtime by the TRUSTED_PROXY
+// environment variable (internal/proxytrust), which overrides whatever this
+// migration stored on databases that already applied it. Production and dev
+// on Coolify must set TRUSTED_PROXY=1 (see backend/README.md).
 //
-// UseLeftmostIP stays false: PocketBase then takes the right-most valid IP,
-// which is the one Traefik appended itself; the left-most entries are
-// client-supplied and spoofable.
-//
-// An operator-configured value is left alone.
+// The down step still removes the header this migration used to store.
 func init() {
 	const header = "X-Forwarded-For"
 
-	m.Register(func(app core.App) error {
-		settings := app.Settings()
-		if len(settings.TrustedProxy.Headers) > 0 {
-			return nil
-		}
-		settings.TrustedProxy.Headers = []string{header}
-		settings.TrustedProxy.UseLeftmostIP = false
-		return app.Save(settings)
+	m.Register(func(core.App) error {
+		return nil
 	}, func(app core.App) error {
 		settings := app.Settings()
 		if len(settings.TrustedProxy.Headers) == 1 && settings.TrustedProxy.Headers[0] == header {

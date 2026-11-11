@@ -143,11 +143,13 @@ class PocketBaseClient(
 
     /**
      * Refresh the session. Only a real token is saved (see SessionWatchdog: a 200
-     * with an unreadable body must never wipe the session).
+     * with an unreadable body must never wipe the session), and only while the session
+     * it refreshed is still the current one (a sign-out may have happened meanwhile).
      */
     suspend fun authRefresh(): AuthState? {
+        val sent = auth.token ?: return null
         val res = send("/api/collections/users/auth-refresh", HttpMethod.Post).jsonObject
-        return if (res["token"] is JsonPrimitive && res["record"] is JsonObject) auth.saveFrom(res) else null
+        return if (res["token"] is JsonPrimitive && res["record"] is JsonObject) auth.saveFromIfCurrent(res, sent) else null
     }
 }
 

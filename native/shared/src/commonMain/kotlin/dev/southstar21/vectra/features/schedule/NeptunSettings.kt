@@ -95,6 +95,17 @@ internal fun parseSyncTimestamp(value: String?): Long? {
         ?: runCatching { Instant.parse(v.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull()
 }
 
+/**
+ * True for an absolute http(s) link with a dotted host and no spaces: anything else can't be a
+ * calendar feed, and storing it would only fail every sync. Which hosts are Neptun's is left to the proxy.
+ */
+internal fun isCalendarLink(text: String): Boolean {
+    val lower = text.trim().lowercase()
+    val rest = listOf("https://", "http://").firstOrNull(lower::startsWith)?.let { lower.removePrefix(it) }
+    val host = rest?.substringBefore('/')?.substringBefore('?')?.substringBefore('#')?.substringAfterLast('@')?.substringBefore(':')
+    return host != null && lower.none(Char::isWhitespace) && '.' in host && !host.startsWith('.') && !host.endsWith('.')
+}
+
 /** A glass panel titled with a tilted postage stamp. */
 @Composable
 private fun SettingsSectionBox(title: String, tiltLeft: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
@@ -157,10 +168,13 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     }
 
     suspend fun clearUrl() {
-        savedUrl = ""
-        urlInput = ""
-        toaster.success("Neptun link removed")
         runSuspendCatching { repo.saveNeptunUrl("") }
+            .onSuccess {
+                savedUrl = ""
+                urlInput = ""
+                toaster.success("Neptun link removed")
+            }
+            .onFailure { toaster.error("Could not remove the Neptun link", it.message) }
     }
 
     val shake = remember { Animatable(0f) }
@@ -259,7 +273,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                 Column {
                     VText("Calendar link (.ics)", style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
                     VText(
-                        "Paste your personal Neptun calendar link to sync your classes every 12 hours.",
+                        "Paste your personal Neptun calendar link to sync your classes once a day.",
                         Modifier.padding(top = 2.dp),
                         vtext(TypeScale.Caption),
                         c.textSecondary,
@@ -276,8 +290,9 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                         onClick = {
                             scope.launch {
                                 val trimmed = urlInput.trim()
-                                if (trimmed.isEmpty()) {
-                                    clearUrl()
+                                // Nothing is connected while this field shows, so there is nothing to remove.
+                                if (!isCalendarLink(trimmed)) {
+                                    toaster.error("That isn't a calendar link", "Copy the full https:// link from Neptun's calendar export.")
                                     return@launch
                                 }
                                 try {

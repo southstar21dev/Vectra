@@ -210,20 +210,26 @@ class AuthRepository(
     /**
      * The watchdog found the token dead: flag the login hint and drop the session. The user
      * did not choose to sign out, so their unsynced edits are kept for when they sign back in.
+     * With [onlyToken], nothing happens unless that token is still the session: a rejection
+     * that arrives after a sign-out, or after another account signed in, is about a session
+     * that is already gone.
      */
-    suspend fun expire() {
+    suspend fun expire(onlyToken: String? = null) {
+        if (onlyToken != null && store.current?.token != onlyToken) return
+        // The login screen reads the hint once, when the cleared session brings it up.
         _sessionExpired.value = true
-        clear(keepQueue = true)
+        if (!clear(keepQueue = true, onlyToken = onlyToken)) _sessionExpired.value = false
     }
 
     /**
      * Runs to the end even if the caller is cancelled: half a wipe leaves one account's data behind.
      * [keepQueue] keeps the signed-out account's offline queue (and notes whose it is), for an
-     * involuntary sign-out: those writes have no other copy.
+     * involuntary sign-out: those writes have no other copy. With [onlyToken], it clears only
+     * while that token is still the session, and returns false (doing nothing) otherwise.
      */
-    private suspend fun clear(keepQueue: Boolean = false) = withContext(NonCancellable) {
-        val keptFor = store.current?.userId?.ifEmpty { null }?.takeIf { keepQueue }
-        store.clear()
+    private suspend fun clear(keepQueue: Boolean = false, onlyToken: String? = null): Boolean = withContext(NonCancellable) {
+        val previous = if (onlyToken == null) store.clear() else (store.clearIfCurrent(onlyToken) ?: return@withContext false)
+        val keptFor = previous?.userId?.ifEmpty { null }?.takeIf { keepQueue }
         // A shared device must not keep the previous account's data.
         val kept = keptFor?.let(::offlineQueueKeys).orEmpty()
         runSuspendCatching {
@@ -231,6 +237,7 @@ class AuthRepository(
             kv.set(KEPT_QUEUE_OWNER_KEY, keptFor)
         }
         listeners.value.forEach { runSuspendCatching { it.onSessionCleared() } }
+        true
     }
 
     /**

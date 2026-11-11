@@ -3,6 +3,7 @@ package dev.southstar21.vectra.core.designsystem.theme
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,16 @@ class PressHighlight(private val color: Color, private val shape: Shape = Rectan
     override fun hashCode() = 31 * color.hashCode() + shape.hashCode()
 }
 
+/**
+ * Presses still down after [interaction], or null when it isn't a press at all (hover, focus,
+ * drag): those must not flash the press highlight.
+ */
+internal fun pressesAfter(presses: Int, interaction: Interaction): Int? = when (interaction) {
+    is PressInteraction.Press -> presses + 1
+    is PressInteraction.Release, is PressInteraction.Cancel -> (presses - 1).coerceAtLeast(0)
+    else -> null
+}
+
 private class PressHighlightNode(
     private val source: InteractionSource,
     private val color: Color,
@@ -49,10 +60,7 @@ private class PressHighlightNode(
         coroutineScope.launch {
             var presses = 0
             source.interactions.collect { interaction ->
-                when (interaction) {
-                    is PressInteraction.Press -> presses++
-                    is PressInteraction.Release, is PressInteraction.Cancel -> presses = (presses - 1).coerceAtLeast(0)
-                }
+                presses = pressesAfter(presses, interaction) ?: return@collect
                 val pressed = presses > 0
                 launch {
                     // A quick tap releases before the highlight lands; finish showing it first.

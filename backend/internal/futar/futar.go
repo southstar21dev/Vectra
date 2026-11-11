@@ -28,7 +28,12 @@ import (
 // public — transit arrivals are public data and the proxy's only job is
 // hiding the key).
 const (
-	upstreamTimeout   = 35 * time.Second
+	upstreamTimeout = 35 * time.Second
+	// maxArrivalsLimit is the largest stop-times cap Futár accepts. It is also
+	// what an arrivals request gets when it names none: Futár's own default
+	// is 60 stop-times, which at a station-level stop id (Deák tér, Örs
+	// vezér tere) covers only the next few minutes of metro and tram traffic,
+	// so a less frequent line in the 90-minute window would drop out.
 	maxArrivalsLimit  = 200
 	maxBatchStops     = 20
 	stopArrivalsTTL   = 15 * time.Second
@@ -98,6 +103,29 @@ func entityIDParam(params map[string]any, key string) (string, error) {
 	}
 	if !entityIDPattern.MatchString(s) {
 		return "", fmt.Errorf("%s is invalid", key)
+	}
+	return s, nil
+}
+
+// serviceDatePattern is Futár's service-date form, YYYYMMDD.
+var serviceDatePattern = regexp.MustCompile(`^[0-9]{8}$`)
+
+// serviceDateParam reads the optional trip-details date. Absent or empty means
+// none; anything that is not a YYYYMMDD string is rejected.
+func serviceDateParam(raw any) (string, error) {
+	if raw == nil {
+		return "", nil
+	}
+	s, ok := raw.(string)
+	if !ok {
+		return "", fmt.Errorf("date must be a string")
+	}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", nil
+	}
+	if !serviceDatePattern.MatchString(s) {
+		return "", fmt.Errorf("date is invalid")
 	}
 	return s, nil
 }
@@ -187,8 +215,8 @@ func clampInt(v any, fallback int) int {
 	return i
 }
 
-// toLimit returns "" (param omitted, keeping Futár's upstream default) unless
-// the caller supplied a usable value; otherwise it clamps to [1,200].
+// toLimit returns "" when the caller supplied no usable value (normalizeParams
+// then uses maxArrivalsLimit); otherwise it clamps to [1,200].
 func toLimit(v any) string {
 	if v == nil {
 		return ""
@@ -240,8 +268,9 @@ func normalizeParams(endpoint string, params map[string]any) (map[string]string,
 			"minutesBefore": strconv.Itoa(snapMinutes(params["minutesBefore"], 0, minutesBeforeBuckets)),
 			"minutesAfter":  strconv.Itoa(snapMinutes(params["minutesAfter"], 60, minutesAfterBuckets)),
 		}
-		if limit := toLimit(params["limit"]); limit != "" {
-			out["limit"] = limit
+		out["limit"] = toLimit(params["limit"])
+		if out["limit"] == "" {
+			out["limit"] = strconv.Itoa(maxArrivalsLimit)
 		}
 		return out, nil
 	case "vehicles-for-route":
@@ -255,11 +284,22 @@ func normalizeParams(endpoint string, params map[string]any) (map[string]string,
 		if err != nil {
 			return nil, err
 		}
-		return map[string]string{
+		out := map[string]string{
 			"tripId":          tripID,
 			"includeSchedule": flag(params["includeSchedule"]),
 			"includeStatus":   flag(params["includeStatus"]),
-		}, nil
+		}
+		// The trip's service day: a trip from the previous one (GTFS times past
+		// 24:00, such as the last metros after midnight) does not resolve
+		// against today's date, which is what Futár assumes without it.
+		date, err := serviceDateParam(params["date"])
+		if err != nil {
+			return nil, err
+		}
+		if date != "" {
+			out["date"] = date
+		}
+		return out, nil
 	case "route-details":
 		routeID, err := entityIDParam(params, "routeId")
 		if err != nil {
@@ -421,6 +461,7 @@ func doFetchStopArrivals(ctx context.Context, cacheKey, stopID string, minutesBe
 	q.Set("stopId", stopID)
 	q.Set("minutesBefore", strconv.Itoa(minutesBefore))
 	q.Set("minutesAfter", strconv.Itoa(minutesAfter))
+	q.Set("limit", strconv.Itoa(maxArrivalsLimit))
 	q.Set("key", apiKey)
 	u.RawQuery = q.Encode()
 

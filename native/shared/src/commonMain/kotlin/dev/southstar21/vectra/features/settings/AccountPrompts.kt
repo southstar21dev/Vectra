@@ -67,7 +67,7 @@ fun CurrentPasswordDialog(
             }
         }
     }
-    VDialog(open, close, modifier, showClose = false) {
+    VDialog(open, close, modifier, showClose = false, title = title) {
         DialogHeader(Modifier.padding(top = 4.dp)) {
             DialogTitle(title)
             DialogDescription(description, Modifier.padding(top = 2.dp))

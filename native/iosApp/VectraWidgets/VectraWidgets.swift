@@ -108,6 +108,7 @@ struct SmallNextClass: View {
         VStack(alignment: .leading, spacing: 0) {
             switch up {
             case .noData: EmptyMessage(text: "Open Vectra and sign in to see your classes here.")
+            case .stale: EmptyMessage(text: StaleMessage)
             case .upcoming(let s):
                 HStack {
                     StatusLabel(text: s.kind.label, kind: s.kind)
@@ -224,6 +225,9 @@ struct RectangularAccessory: View {
             case .noData:
                 Text("Vectra").font(VFont.inter(15, 800))
                 Text("Sign in to see your classes").font(VFont.inter(12, 500))
+            case .stale:
+                Text("Vectra").font(VFont.inter(15, 800))
+                Text("Open Vectra to refresh").font(VFont.inter(12, 500))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -266,6 +270,7 @@ struct InlineAccessory: View {
         case .examSoon(let s): Text("Exam \(Budapest.weekday(s.day)) \(Budapest.clock(s.start))")
         case .dayDone(_, let next): Text(next.map { "\(Budapest.weekday($0.day)) \(Budapest.clock($0.start)) \($0.title)" } ?? "No classes coming up")
         case .noData: Text("Vectra")
+        case .stale: Text("Open Vectra to refresh")
         }
     }
 }

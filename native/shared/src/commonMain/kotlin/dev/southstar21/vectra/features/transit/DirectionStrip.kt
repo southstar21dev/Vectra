@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,8 @@ fun DirectionStrip(
     /** Frozen stopsLeft for this direction while the live screen is up (unset = live). */
     frozenStopsLeft: Int? = null,
     hasFrozenStopsLeft: Boolean = false,
+    /** The times are from a stale snapshot ([now] is that snapshot's time): dimmed, never "live" green. */
+    frozen: Boolean = false,
 ) {
     val c = Vectra.colors
     val stops = direction.stops
@@ -124,9 +127,10 @@ fun DirectionStrip(
                     )
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.alpha(if (frozen) 0.5f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (eta != null) {
                     val ink = when {
+                        frozen -> c.textPrimary
                         minutes <= 0 -> c.tints.emerald.text
                         minutes <= 2 -> c.tints.amber.text
                         else -> c.textPrimary
@@ -162,7 +166,7 @@ fun DirectionStrip(
                     VText("NEXT", style = vtext(TypeScale.Micro, Weight.Bold, 0.14.em), color = c.textMuted)
                     Box(Modifier.weight(1f).height(1.dp).background(c.borderSubtle))
                 }
-                Row(Modifier.padding(top = 12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.padding(top = 12.dp).fillMaxWidth().alpha(if (frozen) 0.5f else 1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val cellShape = Radius.Panel
                     for (i in 0 until 3) {
                         val a = direction.upcoming.getOrNull(i)

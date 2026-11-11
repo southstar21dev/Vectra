@@ -1,5 +1,8 @@
 package dev.southstar21.vectra.core.maps
 
+import dev.southstar21.vectra.core.network.VectraJson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -9,6 +12,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
 
 /*
@@ -112,3 +116,14 @@ fun withParkColors(style: JsonObject, isLight: Boolean): JsonObject {
     if (before >= 0) layers.addAll(before, overlays) else layers.addAll(overlays)
     return JsonObject(style + ("layers" to JsonArray(layers)))
 }
+
+/**
+ * A downloaded OpenFreeMap style, sanitized and with the park overlays, as a style document.
+ * The style is a few hundred KB of JSON and the maps fetch it from a composable's effect on
+ * the main thread, so parsing and re-serializing happen on [work] (audit 03 #16).
+ */
+suspend fun prepareOpenFreeMapStyle(text: String, isLight: Boolean, work: CoroutineContext = Dispatchers.Default): String =
+    withContext(work) {
+        val style = VectraJson.parseToJsonElement(text) as? JsonObject ?: error("OpenFreeMap style is not an object")
+        withParkColors(sanitizeOpenFreeMapStyle(style), isLight).toString()
+    }

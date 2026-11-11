@@ -12,9 +12,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"vectra/pb/internal/crypto"
+	"vectra/pb/internal/dedupekey"
 	"vectra/pb/internal/legacyvc2"
 	"vectra/pb/internal/migrate"
 	"vectra/pb/internal/passkeys"
+	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/push"
 	"vectra/pb/internal/routes"
 	"vectra/pb/internal/schema"
@@ -23,6 +25,10 @@ import (
 
 func main() {
 	app := pocketbase.New()
+
+	// Trust a proxy's client-IP header only when TRUSTED_PROXY says one sits in
+	// front (cloudflare or 1); otherwise per-IP rate limits key on the socket address.
+	proxytrust.Register(app)
 
 	schema.RegisterTimestamps(app)
 	// Reject push subscriptions whose endpoint is not a known push service, so
@@ -115,6 +121,14 @@ func registerMigrateSupabaseCommand(app *pocketbase.PocketBase) {
 				return fmt.Errorf("import finished, but re-encrypting vc2 to vc3 failed (the imported vc2 rows are unchanged): %w", err)
 			}
 			cmd.Printf("re-encrypted %d vc2 value(s) to vc3; %d left unchanged\n", up.Converted, len(up.Left))
+			// Supabase's transit_trackers.dedupe_key values are old global
+			// digests; rewrite them to the per-user form the crypto route
+			// returns now (migration 1700000014 only ran once, at its first serve).
+			dk, err := dedupekey.Upgrade(app, crypto.DigestKeyFromEnv)
+			if err != nil {
+				return fmt.Errorf("import finished, but rewriting transit tracker dedupe keys failed (the imported keys are unchanged): %w", err)
+			}
+			cmd.Printf("rewrote %d transit tracker dedupe key(s); %d left unchanged\n", dk.Converted, len(dk.Left))
 			return nil
 		},
 	}

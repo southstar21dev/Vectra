@@ -7,9 +7,11 @@ import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -20,6 +22,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
+import kotlin.coroutines.CoroutineContext
 
 class FutarException(message: String) : Exception(message)
 
@@ -29,8 +32,9 @@ interface FutarEnvelope {
 }
 
 /**
- * Stop-times cap for chained trip planning. 200 is the ceiling Futár accepts
- * and covers 60–90+ min even at Deák tér.
+ * Stop-times cap every arrivals request asks for. 200 is the ceiling Futár accepts
+ * and covers 60–90+ min even at Deák tér; without it Futár stops at 60, which at a
+ * station-level stop id is only minutes of metro and tram traffic.
  */
 const val DeepArrivalsLimit = 200
 
@@ -124,14 +128,22 @@ internal fun assertFutarOk(json: JsonElement): JsonObject {
  * /api/vectra/futar`, which injects the API key). Aborted after 40s so a hung
  * proxy never leaves a poll pending forever.
  */
-class FutarApi(private val pb: PocketBaseClient) {
+class FutarApi(
+    private val pb: PocketBaseClient,
+    /** Where responses are decoded: screens call in from the main thread (audit 03 #16). */
+    private val decodeContext: CoroutineContext = Dispatchers.Default,
+) {
 
     /**
      * Decodes straight into [T] rather than through a JSON tree: these polls run every
      * 10-20 s and their payloads are the largest the app handles. Only a response that
      * is not "OK" is parsed again, to find its error message.
      */
-    private suspend fun <T : FutarEnvelope> proxy(endpoint: String, params: Map<String, Any>, deserializer: DeserializationStrategy<T>): T {
+    private suspend fun <T : FutarEnvelope> proxy(
+        endpoint: String,
+        params: Map<String, Any>,
+        deserializer: DeserializationStrategy<T>,
+    ): T = withContext(decodeContext) {
         val body = buildJsonObject {
             put("endpoint", endpoint)
             put("params", buildJsonObject {
@@ -149,9 +161,9 @@ class FutarApi(private val pb: PocketBaseClient) {
         val text = withTimeoutOrNull(40_000) { pb.sendText("/api/vectra/futar", HttpMethod.Post, body) }
             ?: throw FutarException("Transit feed timed out")
         val decoded = runCatching { VectraJson.decodeFromString(deserializer, text) }.getOrNull()
-        if (decoded?.status == "OK") return decoded
+        if (decoded?.status == "OK") return@withContext decoded
         assertFutarOk(runCatching { VectraJson.parseToJsonElement(text) }.getOrElse { JsonPrimitive(text) })
-        return VectraJson.decodeFromString(deserializer, text)
+        VectraJson.decodeFromString(deserializer, text)
     }
 
     private suspend inline fun <reified T : FutarEnvelope> proxy(endpoint: String, params: Map<String, Any>): T =
@@ -163,7 +175,8 @@ class FutarApi(private val pb: PocketBaseClient) {
             "minutesBefore" to 0,
             "minutesAfter" to minutesAfter,
         )
-        if (limit != null && limit > 0) params["limit"] = limit
+        // An explicit cap even for shallow polls: Futár's default (60) truncates big interchanges.
+        params["limit"] = limit?.takeIf { it > 0 } ?: DeepArrivalsLimit
         return proxy("arrivals-and-departures-for-stop", params)
     }
 
@@ -222,8 +235,15 @@ class FutarApi(private val pb: PocketBaseClient) {
     suspend fun fetchVehiclesForRoute(routeId: String): FutarVehiclesForRouteResponse =
         proxy("vehicles-for-route", mapOf("routeId" to routeId))
 
-    suspend fun fetchTripDetails(tripId: String): FutarTripDetailsResponse =
-        proxy("trip-details", mapOf("tripId" to tripId, "includeSchedule" to true, "includeStatus" to true))
+    /**
+     * Without a service date Futár resolves the trip against today, so a trip from the previous
+     * service day (past midnight, GTFS times over 24:00) would 404 or come back a day ahead.
+     */
+    suspend fun fetchTripDetails(tripId: String, serviceDate: String? = null): FutarTripDetailsResponse {
+        val params = mutableMapOf<String, Any>("tripId" to tripId, "includeSchedule" to true, "includeStatus" to true)
+        if (!serviceDate.isNullOrEmpty()) params["date"] = serviceDate
+        return proxy("trip-details", params)
+    }
 
     /** Route-level stop list + per-direction geometry. */
     suspend fun fetchRouteDetails(routeId: String): FutarRouteDetailsResponse =
