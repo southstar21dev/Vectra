@@ -111,7 +111,11 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         // iOS 27 only sets a search tab apart when it activates search, which the + doesn't, so it would sit
         // in the bar as a plain item the selection lens slides to. Set once here, so the + arrives already
         // prominent: changing it alongside setTabs would animate the circle and the + as two separate steps.
+        // prominentTabIdentifier only exists in the iOS 27 SDK (Xcode 27, Swift 6.4); CI's runner image may
+        // still build with Xcode 26, where the name isn't known at compile time.
+        #if compiler(>=6.4)
         if #available(iOS 27.0, *) { prominentTabIdentifier = actionTab.identifier }
+        #endif
         view.alpha = 0
     }
 
