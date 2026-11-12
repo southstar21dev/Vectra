@@ -688,14 +688,6 @@
     "textColor": "000000"
   },
   {
-    "id": "BKK_OP52",
-    "shortName": "52",
-    "description": "P.erzsébet, Pacsirtatelep | Határ út M",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
     "id": "BKK_VP52",
     "shortName": "52",
     "description": "P.erzsébet, Pacsirtatelep | Határ út M",
