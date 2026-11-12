@@ -1,5 +1,9 @@
 package dev.southstar21.vectra.features.coursetracker
 
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.ui.draw.clip
+import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.theme.glass
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -27,6 +31,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
+import dev.southstar21.vectra.core.designsystem.components.LocalScreenInCard
 import dev.southstar21.vectra.core.designsystem.components.ScreenColumn
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
 import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
@@ -99,6 +104,27 @@ data class CourseTrackerCourse(
  */
 @Composable
 fun CourseHubScreen(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onBack: () -> Unit) {
+    CourseHubFor(repo, schedule, connectivity, courseKey, onBack, embedded = false)
+}
+
+/**
+ * The Course Hub as the wide Schedule tab's side pane: the same pages on a rounded surface,
+ * with a close X instead of back. [onClose] empties the pane.
+ */
+@Composable
+fun CourseHubPane(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onClose: () -> Unit) {
+    CourseHubFor(repo, schedule, connectivity, courseKey, onClose, embedded = true)
+}
+
+@Composable
+private fun CourseHubFor(
+    repo: CourseTrackerRepository,
+    schedule: ScheduleRepository,
+    connectivity: Connectivity,
+    courseKey: String,
+    onBack: () -> Unit,
+    embedded: Boolean,
+) {
     val online by connectivity.online.collectAsStateWithLifecycle()
     val events by schedule.events.collectAsStateWithLifecycle()
     val eventsLoading by schedule.eventsLoading.collectAsStateWithLifecycle()
@@ -115,10 +141,10 @@ fun CourseHubScreen(repo: CourseTrackerRepository, schedule: ScheduleRepository,
     LaunchedEffect(missing, eventsLoading, trackerLoading) { if (missing && !eventsLoading && !trackerLoading) exit() }
 
     if (course == null || missing) {
-        ScreenColumn { TopBar("Course Hub", BarLeading.Back, exit) }
+        if (!embedded) ScreenColumn { TopBar("Course Hub", BarLeading.Back, exit) }
         return
     }
-    CourseHub(repo, course, events, online, exit)
+    CourseHub(repo, course, events, online, exit, embedded)
 }
 
 @Composable
@@ -128,6 +154,7 @@ private fun CourseHub(
     events: List<ScheduleEvent>,
     online: Boolean,
     onBack: () -> Unit,
+    embedded: Boolean,
 ) {
     val c = Vectra.colors
     val data by repo.data.collectAsStateWithLifecycle()
@@ -208,12 +235,20 @@ private fun CourseHub(
     val selected = tabs[pager.targetPage]
     // Derived, so scrolling recomposes only when the bar's hairline flips.
     val scrolled by remember { derivedStateOf { scrolls[pager.currentPage].value > 2 } }
-    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottomInset = if (embedded || LocalScreenInCard.current) 0.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // A pushed screen runs edge to edge; the pane is a rounded card beside the day list.
+    val surface: @Composable (@Composable ColumnScope.() -> Unit) -> Unit = { body ->
+        if (embedded) {
+            Column(Modifier.fillMaxSize().glass(Radius.Card).clip(Radius.Card).background(c.surfacePrimary), content = body)
+        } else {
+            ScreenColumn(content = body)
+        }
+    }
 
-    ScreenColumn {
+    surface {
         TopBar(
             title = tracker.courseName,
-            leading = BarLeading.Back,
+            leading = if (embedded) BarLeading.Close else BarLeading.Back,
             onLeading = onBack,
             scrolled = scrolled,
             background = c.surfacePrimary,

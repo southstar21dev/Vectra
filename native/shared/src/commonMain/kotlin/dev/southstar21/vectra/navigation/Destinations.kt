@@ -16,6 +16,7 @@ import dev.southstar21.vectra.features.transit.TransitScreen
 import dev.southstar21.vectra.features.weather.LocationSettingRow
 import dev.southstar21.vectra.features.weather.WeatherRadarScreen
 // Schedule & course hub
+import dev.southstar21.vectra.features.coursetracker.CourseHubPane
 import dev.southstar21.vectra.features.coursetracker.CourseHubScreen
 import dev.southstar21.vectra.features.schedule.ClassEditorScreen
 import dev.southstar21.vectra.features.schedule.ItemEditorScreen
@@ -26,7 +27,9 @@ import dev.southstar21.vectra.features.schedule.NeptunImportScreen
 fun TabPage(graph: AppGraph, route: Route) {
     when (route) {
         Route.Dashboard -> DashboardScreen(graph)
-        Route.Schedule -> ScheduleScreen(graph.scheduleRepository, graph.courseTrackerHooks)
+        Route.Schedule -> ScheduleScreen(graph.scheduleRepository, graph.courseTrackerHooks) { courseKey, onClose ->
+            CourseHubPane(graph.courseTrackerRepository, graph.scheduleRepository, graph.connectivity, courseKey, onClose)
+        }
         Route.Transit -> TransitScreen(graph.transitRepository, graph.deviceLocation, graph.kv)
         Route.Settings -> SettingsScreen(
             graph,

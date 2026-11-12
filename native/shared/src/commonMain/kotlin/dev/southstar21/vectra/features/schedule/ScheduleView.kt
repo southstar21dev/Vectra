@@ -240,6 +240,8 @@ internal fun ScheduleView(
     onItemClick: (ScheduleItem) -> Unit,
     onToggleTaskCompleted: (ScheduleItem) -> Unit,
     onResolveSyncConflict: (String, String) -> Unit,
+    /** The course open in the wide layout's side pane. */
+    selectedCourseKey: String? = null,
 ) {
     val c = Vectra.colors
     val clock = rememberMinuteClock()
@@ -382,6 +384,7 @@ internal fun ScheduleView(
                                             itemConflictsById = byItemDate,
                                             classConflictsByEventId = byEventDate,
                                             intensiveCourses = intensiveKeys,
+                                            selectedCourseKey = selectedCourseKey,
                                         )
                                     }
                                 }

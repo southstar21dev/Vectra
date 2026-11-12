@@ -14,8 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import dev.southstar21.vectra.core.designsystem.theme.ContentMaxWidth
+import dev.southstar21.vectra.core.designsystem.theme.LocalWideLayout
+import dev.southstar21.vectra.core.designsystem.theme.WideColumnGap
+import dev.southstar21.vectra.core.designsystem.theme.WideContentMaxWidth
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
@@ -65,9 +70,22 @@ fun DashboardScreen(graph: AppGraph) {
     val schedule = graph.scheduleRepository
     val online by schedule.isOnline.collectAsStateWithLifecycle()
     val favorites = rememberFavoriteTrackers(graph.transitRepository)
+    val wide = LocalWideLayout.current
+    val transit = @Composable { bottom: Dp ->
+        TransitDashboardWidget(
+            graph.transitRepository,
+            graph.deviceLocation,
+            graph.auth,
+            favorites = favorites,
+            onOpenTracker = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
+            onOpenTransit = { navigator.navigate(Route.Transit) },
+            modifier = Modifier.padding(bottom = bottom),
+        )
+    }
 
     VectraPage(
         spacing = 0,
+        maxWidth = if (wide) WideContentMaxWidth else ContentMaxWidth,
         onRefresh = {
             coroutineScope {
                 launch { graph.weatherRepository.refreshNow() }
@@ -79,35 +97,36 @@ fun DashboardScreen(graph: AppGraph) {
         },
     ) {
         if (!online) OfflineBanner(message = "No internet connection — Dashboard operating in cached offline mode")
-        // The cards pile up under each other as the page scrolls (see ScrollPile).
-        ScrollPile(
-            cards = listOf(
-                PileCard("weather", "weather", bottomInset = 24.dp) { Reveal(0) { WeatherCard(graph.weatherRepository) } },
-                PileCard("holidays", "holidays", bottomInset = 24.dp) { Reveal(1) { HolidayCard() } },
-                // Today's classes: separate cards straight on the page, finished ones stacked on top.
-                PileCard("today", "today's schedule", bottomInset = 24.dp, flat = true) { Reveal(2) { TodaySection(graph) } },
-                PileCard("transit", "transit", bottomInset = 24.dp) {
-                    Reveal(3) {
-                        TransitDashboardWidget(
-                            graph.transitRepository,
-                            graph.deviceLocation,
-                            graph.auth,
-                            favorites = favorites,
-                            onOpenTracker = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
-                            onOpenTransit = { navigator.navigate(Route.Transit) },
-                            modifier = Modifier.padding(bottom = 24.dp),
-                        )
-                    }
-                },
-            ),
-        )
+        if (wide) {
+            // Two columns: weather, holidays and transit on the left, today's classes on the right.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WideColumnGap)) {
+                Column(Modifier.weight(1f)) {
+                    // Weather and holidays each leave 24dp under themselves.
+                    Reveal(0) { WeatherCard(graph.weatherRepository) }
+                    Reveal(1) { HolidayCard() }
+                    Reveal(2) { transit(24.dp) }
+                }
+                Column(Modifier.weight(1f)) { Reveal(3) { TodaySection(graph, topGap = 0.dp) } }
+            }
+        } else {
+            // The cards pile up under each other as the page scrolls (see ScrollPile).
+            ScrollPile(
+                cards = listOf(
+                    PileCard("weather", "weather", bottomInset = 24.dp) { Reveal(0) { WeatherCard(graph.weatherRepository) } },
+                    PileCard("holidays", "holidays", bottomInset = 24.dp) { Reveal(1) { HolidayCard() } },
+                    // Today's classes: separate cards straight on the page, finished ones stacked on top.
+                    PileCard("today", "today's schedule", bottomInset = 24.dp, flat = true) { Reveal(2) { TodaySection(graph) } },
+                    PileCard("transit", "transit", bottomInset = 24.dp) { Reveal(3) { transit(24.dp) } },
+                ),
+            )
+        }
     }
 
 }
 
 /** Today's classes: a header, then separate cards straight on the page, finished ones stacked on top. */
 @Composable
-private fun TodaySection(graph: AppGraph) {
+private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
     val navigator = LocalNavigator.current
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -126,8 +145,9 @@ private fun TodaySection(graph: AppGraph) {
     val plainItems = remember(items) { items.map { it.toItem() } }
     val firstLoad = !localReady || (eventsLoading && events.isEmpty() && items.isEmpty())
 
-    // A 40dp gap above, less the 24dp the holiday card already leaves below itself.
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // A 40dp gap above, less the 24dp the holiday card already leaves below itself
+    // (none in the wide layout, where today heads its own column).
+    Column(Modifier.fillMaxWidth().padding(top = topGap, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         DayListHeader("Today", "${getDayName(now.dayOfWeek)} ${now.day} ${monthName(now.month).take(3)}")
         if (firstLoad) {
             DayListLoading()

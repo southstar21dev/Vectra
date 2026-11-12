@@ -1,5 +1,12 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.Dp
+import dev.southstar21.vectra.core.designsystem.theme.LocalWideLayout
+import dev.southstar21.vectra.core.designsystem.theme.WideContentMaxWidth
+import dev.southstar21.vectra.features.shell.PagePane
+import dev.southstar21.vectra.features.shell.PaneSide
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -167,10 +174,10 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     val sectionsCovered = coverMode == CoverMode.Content || coverMode == CoverMode.All
 
     @Composable
-    fun BoxScope.Cover(region: CoverMode) {
-        val pinned = region != CoverMode.Map
+    fun BoxScope.Cover(vararg regions: CoverMode) {
+        val pinned = CoverMode.Map !in regions
         LoadingOverlay(
-            show = coverMode == region,
+            show = coverMode in regions,
             modifier = Modifier.zIndex(30f),
             label = coverLabel,
             maxDurationMs = 15_000,
@@ -196,103 +203,103 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
         )
     }
 
+    val wide = LocalWideLayout.current
+
+    @Composable
+    fun MapStrip(height: Dp, modifier: Modifier = Modifier) {
+        Box(modifier.fillMaxWidth()) {
+            NearbyMapStrip(
+                status = nearbyStops.status,
+                position = nearbyStops.position,
+                stops = peekStops,
+                onOpen = { navigator.push(Screen.NearbyExplorer) },
+                onLocate = nearbyStops.refreshLocation,
+                onMapPendingChange = { mapPending = it },
+                showLoadingOverlay = false,
+                height = height,
+            )
+            Cover(CoverMode.Map)
+        }
+    }
+
+    /** Your trackers as stop monitors, under their postage stamp. */
+    @Composable
+    fun Trackers() {
+        Box(Modifier.fillMaxWidth()) {
+            // Trackers
+            Box(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 44.dp, bottom = 16.dp)) {
+                    when {
+                        trackers.isEmpty() -> EmptyState("No trackers yet", Modifier.offset(y = (-16).dp), emoji = "🚋")
+                        allInactive -> {
+                            // When all tracked lines are off-service (e.g. late night).
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        Modifier.size(36.dp).background(Palette.Indigo500.copy(alpha = 0.1f), CircleShape).border(1.dp, Palette.Indigo500.copy(alpha = 0.2f), CircleShape),
+                                        contentAlignment = Alignment.Center,
+                                    ) { SleepingIcon(size = 16.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400) }
+                                    Column {
+                                        VText("All tracked lines are currently off-service", style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary)
+                                        VText("No departures are running right now.", style = vtext(TypeScale.Caption), color = c.textMuted)
+                                    }
+                                }
+                                TrackerGrid { trackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
+                            }
+                        }
+                        else -> {
+                            TrackerGrid { activeTrackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
+                            if (inactiveTrackers.isNotEmpty()) {
+                                InactiveFold(inactiveTrackers, showInactive, onToggle = {
+                                    showInactive = !showInactive
+                                    val next = showInactive
+                                    scope.launch { runSuspendCatching { kv.set(ShowInactiveKey, next.toString()) } }
+                                }) { TrackerCard(it) }
+                            }
+                        }
+                    }
+                }
+                SectionStamp(
+                    "Trackers",
+                    "${trackers.size} ${if (trackers.size == 1) "line" else "lines"}",
+                    sectionsCovered,
+                    Modifier.offset(x = 16.dp, y = (-28).dp).rotate(-3f),
+                )
+            }
+            // Wide, the trackers have a card of their own, so a full cover reaches them too.
+            if (wide) Cover(CoverMode.Content, CoverMode.All) else Cover(CoverMode.Content)
+        }
+    }
+
+    val shape = Radius.Card
     VectraPage(
+        maxWidth = if (wide) WideContentMaxWidth else ContentMaxWidth,
+        // Wide: the map stays put on the left while the trackers scroll beside it.
+        pane = if (!wide) null else PagePane(PaneSide.Start, weight = 0.5f) {
+            BoxWithConstraints(Modifier.fillMaxSize().glass(shape).clip(shape)) {
+                MapStrip(maxHeight)
+                Cover(CoverMode.All)
+            }
+        },
         onRefresh = { repo.refresh() },
     ) {
         if (isOffline) {
             OfflineBanner(Modifier.widthIn(max = ContentMaxWidth), message = "No internet connection — live arrivals may be stale", badgeLabel = "Offline")
         }
-        // One card: the map around you (tap for the nearby sheet), then your
-        // trackers as stop monitors.
         Reveal(0, Modifier.fillMaxWidth()) {
-            val shape = Radius.Card
-            Box(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth).glass(shape).clip(shape)) {
-                Column(Modifier.fillMaxWidth()) {
-                    Box(Modifier.fillMaxWidth()) {
-                        NearbyMapStrip(
-                            status = nearbyStops.status,
-                            position = nearbyStops.position,
-                            stops = peekStops,
-                            onOpen = { navigator.push(Screen.NearbyExplorer) },
-                            onLocate = nearbyStops.refreshLocation,
-                            onMapPendingChange = { mapPending = it },
-                            showLoadingOverlay = false,
-                        )
-                        Cover(CoverMode.Map)
+            if (wide) {
+                // The stamp hangs above the trackers; the card clips, so it starts inside the card.
+                Box(Modifier.fillMaxWidth().glass(shape).clip(shape).padding(top = 30.dp)) { Trackers() }
+            } else {
+                // One card: the map around you (tap for the nearby sheet), then your
+                // trackers as stop monitors.
+                Box(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth).glass(shape).clip(shape)) {
+                    Column(Modifier.fillMaxWidth()) {
+                        MapStrip(NearbyMapStripHeight)
+                        Trackers()
                     }
-                    Box(Modifier.fillMaxWidth()) {
-                        Column(Modifier.fillMaxWidth()) {
-                            // Trackers
-                            Box(Modifier.fillMaxWidth()) {
-                                Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 44.dp, bottom = 16.dp)) {
-                                    when {
-                                        trackers.isEmpty() -> EmptyState("No trackers yet", Modifier.offset(y = (-16).dp), emoji = "🚋")
-                                        allInactive -> {
-                                            // When all tracked lines are off-service (e.g. late night).
-                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                    Box(
-                                                        Modifier.size(36.dp).background(Palette.Indigo500.copy(alpha = 0.1f), CircleShape).border(1.dp, Palette.Indigo500.copy(alpha = 0.2f), CircleShape),
-                                                        contentAlignment = Alignment.Center,
-                                                    ) { SleepingIcon(size = 16.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400) }
-                                                    Column {
-                                                        VText("All tracked lines are currently off-service", style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary)
-                                                        VText("No departures are running right now.", style = vtext(TypeScale.Caption), color = c.textMuted)
-                                                    }
-                                                }
-                                                TrackerGrid { trackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
-                                            }
-                                        }
-                                        else -> {
-                                            TrackerGrid { activeTrackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
-                                            if (inactiveTrackers.isNotEmpty()) {
-                                                // Lines with no upcoming departures fold into one quiet row.
-                                                Column(Modifier.padding(top = 10.dp, bottom = 12.dp)) {
-                                                    val chevron by animateFloatAsState(if (showInactive) 180f else 0f, tween(200), label = "chev")
-                                                    Column(
-                                                        Modifier
-                                                            .fillMaxWidth()
-                                                            .clip(Radius.Control)
-                                                            .tappable(role = null) {
-                                                                showInactive = !showInactive
-                                                                val next = showInactive
-                                                                scope.launch { runSuspendCatching { kv.set(ShowInactiveKey, next.toString()) } }
-                                                            }
-                                                            .padding(horizontal = 4.dp, vertical = 8.dp),
-                                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                                    ) {
-                                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                            VText("Not running right now", Modifier.weight(1f), vtext(TypeScale.Body, Weight.Medium), c.textSecondary)
-                                                            VIcon(RemixIcons.ArrowDownSLine, Modifier.rotate(chevron), tint = c.textMuted)
-                                                        }
-                                                        // Any number of lines wraps instead of squeezing the label.
-                                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                            inactiveTrackers.forEach { t ->
-                                                                RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
-                                                            }
-                                                        }
-                                                    }
-                                                    // Inactive monitors stay composed (hidden) so their arrivals keep polling.
-                                                    TrackerGrid(Modifier.padding(top = if (showInactive) 8.dp else 0.dp).hiddenButComposed(!showInactive)) {
-                                                        inactiveTrackers.forEach { t -> key(t.id) { TrackerCard(t) } }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                SectionStamp(
-                                    "Trackers",
-                                    "${trackers.size} ${if (trackers.size == 1) "line" else "lines"}",
-                                    sectionsCovered,
-                                    Modifier.offset(x = 16.dp, y = (-28).dp).rotate(-3f),
-                                )
-                            }
-                        }
-                        Cover(CoverMode.Content)
-                    }
+                    Cover(CoverMode.All)
                 }
-                Cover(CoverMode.All)
             }
         }
     }
@@ -314,4 +321,36 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
             },
         ),
     )
+}
+
+/** Lines with no upcoming departures fold into one quiet row that opens to their monitors. */
+@Composable
+private fun InactiveFold(trackers: List<TransitTracker>, open: Boolean, onToggle: () -> Unit, card: @Composable (TransitTracker) -> Unit) {
+    val c = Vectra.colors
+    Column(Modifier.padding(top = 10.dp, bottom = 12.dp)) {
+        val chevron by animateFloatAsState(if (open) 180f else 0f, tween(200), label = "chev")
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(Radius.Control)
+                .tappable(role = null, onClick = onToggle)
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                VText("Not running right now", Modifier.weight(1f), vtext(TypeScale.Body, Weight.Medium), c.textSecondary)
+                VIcon(RemixIcons.ArrowDownSLine, Modifier.rotate(chevron), tint = c.textMuted)
+            }
+            // Any number of lines wraps instead of squeezing the label.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                trackers.forEach { t ->
+                    RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
+                }
+            }
+        }
+        // Inactive monitors stay composed (hidden) so their arrivals keep polling.
+        TrackerGrid(Modifier.padding(top = if (open) 8.dp else 0.dp).hiddenButComposed(!open)) {
+            trackers.forEach { t -> key(t.id) { card(t) } }
+        }
+    }
 }

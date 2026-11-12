@@ -60,6 +60,7 @@ internal fun ClassCard(
     onClick: ((ScheduleEvent) -> Unit)?,
     streak: () -> Int,
     onSetStatus: (AttendanceStatus) -> Unit,
+    selected: Boolean = false,
 ) {
     val event = state.entry.event
     val raw = parseOpaqueHexColor(event.color.ifEmpty { "#38bdf8" })
@@ -88,6 +89,7 @@ internal fun ClassCard(
         room = event.location,
         group = extractGroupCode(event.courseCode),
         clickLabel = "Open ${event.courseName}",
+        selected = selected,
     )
     val look = OrbLook(course, state.focus, state.live, state.pendingSync, d.ring, d.card)
     DayCard(
