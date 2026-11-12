@@ -8,6 +8,7 @@ import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.AttendanceStatus as CardStatus
 import dev.southstar21.vectra.features.schedule.normalizeTime
+import dev.southstar21.vectra.core.time.nowInBudapest
 
 /**
  * The course tracker's side of the schedule: the class card's check-in button and
@@ -36,14 +37,17 @@ class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : Sched
     @Composable
     override fun attendanceStatus(event: ScheduleEvent, date: String): CardStatus {
         val data by repo.data.collectAsStateWithLifecycle()
-        return when (activeSession(data, event, date)?.status) {
+        return cardStatus(data, event, date)
+    }
+
+    private fun cardStatus(data: CourseTrackerData, event: ScheduleEvent, date: String): CardStatus =
+        when (activeSession(data, event, date)?.status) {
             AttendanceStatus.Present -> CardStatus.Present
             AttendanceStatus.Absent -> CardStatus.Absent
             AttendanceStatus.Excused -> CardStatus.Excused
             AttendanceStatus.Cancelled -> CardStatus.Cancelled
             else -> CardStatus.Unmarked
         }
-    }
 
     override fun setAttendanceStatus(event: ScheduleEvent, date: String, status: CardStatus) {
         val session = activeSession(repo.data.value, event, date)
@@ -66,6 +70,30 @@ class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : Sched
     }
 
     override fun courseKey(event: ScheduleEvent): String = resolveCourseKey(event)
+
+    override fun presentStreak(event: ScheduleEvent, date: String): Int {
+        val tracker = findTracker(repo.data.value, identity(event)) ?: return 0
+        // "In a row" for this class: a seminar's streak skips the same course's lectures and labs.
+        val type = getEventSessionType(event)
+        return presentStreak(tracker.attendance.sessions.filter { it.sessionType == type }, date, normalizeTime(event.startTime))
+    }
+}
+
+/**
+ * One class's sessions attended in a row (the caller passes one course's sessions of one type),
+ * counted back from the session at [date] / [startTime]
+ * (included). Excused and cancelled sessions are skipped; an absence or a past class nobody
+ * checked in to ends the run. Later sessions are ignored.
+ */
+internal fun presentStreak(sessions: List<AttendanceSession>, date: String, startTime: String?): Int {
+    val upTo = "$date ${startTime.orEmpty()}"
+    fun at(s: AttendanceSession) = "${s.date} ${normalizeTime(s.startTime).orEmpty()}"
+    return deduplicateSessions(sessions)
+        .filter { at(it) <= upTo }
+        .filter { it.status != AttendanceStatus.Excused && it.status != AttendanceStatus.Cancelled }
+        .sortedByDescending { at(it) }
+        .takeWhile { it.status == AttendanceStatus.Present }
+        .size
 }
 
 /** After a Neptun sync, refresh the tracker blob and reconcile it against the new schedule. */
