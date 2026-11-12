@@ -24,10 +24,10 @@ attendance you can actually keep track of. Built for students at Corvinus in Bud
 
 <br />
 
-<img src=".github/readme/dashboard.png" width="24%" alt="Dashboard: weather, today's classes and the breaks between them" />
-<img src=".github/readme/schedule.png" width="24%" alt="Schedule: the week's classes by day" />
-<img src=".github/readme/nearby-route.png" width="24%" alt="Nearby explorer: a night bus's route and live position" />
-<img src=".github/readme/radar.png" width="24%" alt="Weather radar over Hungary" />
+<img src=".github/readme/dashboard-iphone.png" width="15.8%" alt="Dashboard on an iPhone 18 Pro Max: weather, today's classes and the breaks between them" />
+<img src=".github/readme/dashboard-duo.png" width="22%" alt="Dashboard on a folded iPhone Duo's outer display" />
+<img src=".github/readme/dashboard-fold.png" width="20.6%" alt="Dashboard on a Galaxy Z Fold8 cover screen" />
+<img src=".github/readme/dashboard-fold-open.png" width="38.5%" alt="Dashboard on an unfolded Galaxy Z Fold8: weather and nearby transit beside today's classes" />
 
 </div>
 
