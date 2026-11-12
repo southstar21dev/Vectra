@@ -32,6 +32,8 @@
 #
 # Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (Android signing).
 # The IPA is unsigned; AltStore signs it with the installing user's Apple ID.
+# TestFlight gets a separately signed App Store build of the same release (the testflight job),
+# once the App Store Connect key secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 are set.
 name: Release
 
 on:
@@ -337,6 +339,101 @@ jobs:
             echo "::error::Planned $VERSION but released '${RELEASED:-nothing}' (the branch moved?)."
             exit 1
           fi
+
+  # Sends the released version to TestFlight: a signed App Store build of the same commit and
+  # version as the GitHub release (the AltStore IPA above stays unsigned). Runs only after publish,
+  # so TestFlight never gets a build that wasn't released. Signing is cloud-managed: xcodebuild
+  # fetches the distribution certificate and profiles with the App Store Connect API key, so no
+  # certificate is stored here. Skipped (with a note in the summary) until these secrets exist:
+  #   ASC_KEY_ID      the key's ID
+  #   ASC_ISSUER_ID   the issuer ID shown above the keys list
+  #   ASC_KEY_P8      the contents of the downloaded AuthKey_<id>.p8
+  # The key needs the Admin role (cloud-managed distribution signing requires it).
+  testflight:
+    name: TestFlight
+    needs: [plan, publish]
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.plan.outputs.ios == 'true' }}
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - id: key
+        name: Check for the App Store Connect key
+        run: |
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "TestFlight upload skipped: set ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 to enable it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - id: kotlin
+        if: steps.key.outputs.ok == 'true'
+        name: Read the Kotlin version
+        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+      - if: steps.key.outputs.ok == 'true'
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+
+      - if: steps.key.outputs.ok == 'true'
+        name: Set the version
+        run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
+
+      - if: steps.key.outputs.ok == 'true'
+        name: Archive and upload to TestFlight
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild archive \
+            -project native/iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -archivePath "$RUNNER_TEMP/Vectra.xcarchive" \
+            "${AUTH[@]}"
+          # destination=upload: the export sends the build straight to App Store Connect.
+          cat > "$RUNNER_TEMP/export.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>3HNYQ2F575</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Vectra.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            "${AUTH[@]}"
+          echo "Uploaded $VERSION to TestFlight; it appears there once App Store Connect finishes processing." >> "$GITHUB_STEP_SUMMARY"
+
+      - if: always() && steps.key.outputs.ok == 'true'
+        name: Remove the key
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
 
   pages:
     name: AltStore/SideStore sources

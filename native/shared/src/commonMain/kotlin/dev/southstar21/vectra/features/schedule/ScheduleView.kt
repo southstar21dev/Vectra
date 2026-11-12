@@ -164,91 +164,6 @@ internal fun rememberWeekNavigation(events: List<ScheduleEvent>, selectedSemeste
 }
 
 @Composable
-internal fun ScheduleToolbar(
-    nav: WeekNavResult,
-    selectedDay: Int?,
-    onDayChange: (Int?) -> Unit,
-) {
-    val c = Vectra.colors
-    Column(
-        Modifier.fillMaxWidth().flushGlass(Radius.Card).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.weight(1f).height(40.dp).glass(CircleShape).padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RoundIconButton(RemixIcons.ArrowLeftSLine, "Previous Week", nav.onPrev)
-                Row(
-                    Modifier.weight(1f).padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VText(
-                        nav.activeWeek.rangeLabel,
-                        Modifier.weight(1f, fill = false),
-                        vtext(TypeScale.Caption, Weight.Bold, mono = true),
-                        c.textPrimary,
-                        maxLines = 1,
-                    )
-                    if (!nav.isAtDefaultWeek) {
-                        Box(
-                            Modifier.size(20.dp).tappable(
-                                CircleShape,
-                                role = null,
-                                onClickLabel = if (nav.semesterInfo.status == "upcoming") "Jump to semester start" else "Jump to current week",
-                                onClick = nav.onReset,
-                            ),
-                            contentAlignment = Alignment.Center,
-                        ) { VIcon(RemixIcons.ResetLeftLine, size = 12.dp, tint = c.tints.blue.text) }
-                    }
-                }
-                RoundIconButton(RemixIcons.ArrowRightSLine, "Next Week", nav.onNext)
-            }
-            nav.academicWeekInfo?.let { week ->
-                val ink = if (week.isStarted) c.accentPrimary else c.textSecondary
-                Row(
-                    Modifier.height(40.dp).padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VIcon(RemixIcons.GraduationCapLine, size = 14.dp, tint = ink)
-                    VText(week.label, style = vtext(TypeScale.Caption, Weight.Bold, mono = true), color = ink, maxLines = 1)
-                }
-            }
-        }
-
-        val options = remember { listOf<Int?>(null) + DayOrder }
-        VTabs(
-            selected = selectedDay,
-            options = options,
-            onSelect = onDayChange,
-            modifier = Modifier.fillMaxWidth(),
-            columns = options.size,
-            triggerHeight = 32.dp,
-        ) { day, _ ->
-            VText(
-                if (day == null) "All" else getShortDayName(day),
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Visible,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RoundIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        Modifier.pressScale(interaction).size(32.dp).tappable(role = null, onClickLabel = label, highlight = false, interactionSource = interaction, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { VIcon(icon, size = 16.dp, tint = c.textSecondary, contentDescription = label) }
-}
-
-@Composable
 internal fun SemesterStatusBanner(
     info: SemesterInfo,
     selectedSemester: String,
@@ -368,7 +283,7 @@ internal fun ScheduleView(
     }
 
     Column(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Reveal(0) { ScheduleToolbar(nav, selectedDay) { selectedDay = it } }
+        Reveal(0) { ScheduleToolbar(nav, selectedDay, todayStr) { selectedDay = it } }
         if (shouldShowSemesterStatus(nav.semesterInfo, selectedSemester)) {
             Reveal(1) {
                 SemesterStatusBanner(nav.semesterInfo, selectedSemester, week.rangeLabel, nav.isAtDefaultWeek, nav.onReset)
@@ -426,7 +341,7 @@ internal fun ScheduleView(
                     )
                 } else {
                     val days = if (selectedDay != null) agenda else activeDays
-                    // Each day piles under the next as the page scrolls; the 24dp above a day's glass is its stamp.
+                    // Each day piles under the next as the page scrolls.
                     ScrollPile(
                         spacing = 16.dp,
                         cards = days.mapNotNull { agendaDay ->
@@ -446,20 +361,21 @@ internal fun ScheduleView(
                                         VText("Swipe left or right to browse other days", Modifier.padding(top = 8.dp), vtext(TypeScale.Micro), c.textMuted, align = TextAlign.Center)
                                     }
                                 }
-                                else -> PileCard(day, getDayName(day), topInset = 24.dp) {
-                                    DayCard(
-                                        day = day,
-                                        info = info,
-                                        modifier = Modifier.daySwipe(swipe),
-                                    ) {
-                                        ScheduleDayTimeline(
+                                else -> PileCard(day, getDayName(day), flat = true) {
+                                    // Like the dashboard: a day header, then the cards straight on the page.
+                                    Column(Modifier.fillMaxWidth().daySwipe(swipe).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        DayListHeader(
+                                            if (info.isToday) "Today" else getDayName(day),
+                                            if (info.isToday) "${getDayName(day)} ${formatDayMonth(info.dateStr)}" else formatDayMonth(info.dateStr),
+                                        )
+                                        ScheduleDayList(
                                             events = agendaDay.events,
                                             tracker = tracker,
-                                            items = agendaDay.items,
                                             dateStr = info.dateStr,
+                                            items = agendaDay.items,
                                             onEventClick = onEventClick,
                                             onItemClick = onItemClick,
-                                            onToggleTaskCompleted = onToggleTaskCompleted,
+                                            onToggleTaskComplete = onToggleTaskCompleted,
                                             onResolveSyncConflict = onResolveSyncConflict,
                                             syncConflictIds = viewSyncIds,
                                             needsAcknowledgmentIds = needsAck,
@@ -503,41 +419,6 @@ private fun buildAgenda(
             byDay[day].orEmpty().filter { classOccursOnDate(it, info.dateStr, index) },
             occurrences.filter { it.date == info.dateStr },
         )
-    }
-}
-
-/** A day of the agenda: postage-stamp title stuck over the card's top edge. */
-@Composable
-private fun DayCard(day: Int, info: DayDateInfo, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val c = Vectra.colors
-    val shape = Radius.Card
-    Box(modifier.fillMaxWidth().padding(top = 24.dp)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .then(if (info.isToday) Modifier.boxShadow(shape, listOf(BoxShadow(blur = 24f, color = rgba(56, 189, 248, 0.15f)))) else Modifier)
-                .flushGlass(shape)
-                .then(if (info.isToday) Modifier.border(1.dp, c.accentPrimary.copy(alpha = 0.4f), shape) else Modifier)
-                .padding(start = 12.dp, end = 12.dp, top = 32.dp, bottom = 12.dp),
-        ) { content() }
-        PostageStamp(
-            Modifier
-                .padding(start = 16.dp)
-                .offset(y = (-20).dp)
-                .rotate(if (day % 2 == 0) 2f else -3f)
-                .then(
-                    if (info.isToday) Modifier.boxShadow(
-                        Radius.Tag,
-                        listOf(BoxShadow(blur = 22f, color = c.accentPrimary.mixTransparent(55f))),
-                    ) else Modifier,
-                ),
-            innerModifier = Modifier
-                .then(if (info.isToday) Modifier.border(1.5.dp, c.accentPrimary, Radius.Hairline) else Modifier)
-                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 4.dp),
-        ) {
-            VText(getDayName(day), style = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight, lineHeight = 16.sp), color = c.textPrimary, maxLines = 1)
-            VText(formatDayMonth(info.dateStr), style = vtext(11.sp to 11.sp, Weight.Semibold).tnum(), color = c.accentPrimary, maxLines = 1)
-        }
     }
 }
 
