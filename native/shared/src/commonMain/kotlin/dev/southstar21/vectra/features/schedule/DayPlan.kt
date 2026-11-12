@@ -5,13 +5,14 @@ package dev.southstar21.vectra.features.schedule
  * where the break strips go, which strip is current, and which entries clash.
  */
 
+private val ClockTime = Regex("""^\s*(\d{1,2}):(\d{1,2})""")
+
 /** "HH:mm" (or "HH:mm:ss") → minute of the day; "24:00" is 1440. */
 internal fun minuteOf(time: String?): Int? {
-    val parts = time?.trim()?.split(':') ?: return null
-    val h = parts.getOrNull(0)?.toIntOrNull() ?: return null
-    val m = parts.getOrNull(1)?.toIntOrNull() ?: return null
-    if (h !in 0..24 || m !in 0..59 || (h == 24 && m != 0)) return null
-    return h * 60 + m
+    val match = time?.let { ClockTime.find(it) } ?: return null
+    val (h, m) = match.destructured
+    val minute = h.toInt() * 60 + m.toInt()
+    return minute.takeIf { m.toInt() < 60 && it <= 24 * 60 }
 }
 
 /** One class or personal item on the day, with its span in minutes. */
@@ -83,11 +84,19 @@ internal fun buildDayPlan(entries: List<DayEntry>, nowMinute: Int?, collapseFini
     )
     val finished = if (collapseFinished && nowMinute != null) sorted.filter { it.end <= nowMinute } else emptyList()
     val remaining = sorted - finished.toSet()
+    val hidePast = collapseFinished && nowMinute != null
+    val rows = placeRows(remaining, startCursor = finished.filter { !it.cancelled }.maxOfOrNull { it.end }, nowMinute.takeIf { hidePast })
+    return DayPlan(finished, withBreakStates(rows, nowMinute), findOverlaps(sorted), focusKeyOf(remaining, nowMinute))
+}
 
+/**
+ * The entries in order with a break strip wherever a gap of [MinBreakMinutes] or more opens.
+ * A break goes straight after the last entry that holds time, before any cancelled ones, so a
+ * cancelled class never splits it. Breaks already over by [pastBefore] are left out.
+ */
+private fun placeRows(remaining: List<DayEntry>, startCursor: Int?, pastBefore: Int?): List<DayRow> {
     val rows = mutableListOf<DayRow>()
-    // The latest end of the entries placed so far; a break opens from here.
-    var cursor: Int? = finished.filter { !it.cancelled }.maxOfOrNull { it.end }
-    // Where a break goes: straight after the last entry that holds time, before any cancelled ones.
+    var cursor = startCursor
     var insertAt = 0
     for (e in remaining) {
         if (e.cancelled) {
@@ -95,8 +104,7 @@ internal fun buildDayPlan(entries: List<DayEntry>, nowMinute: Int?, collapseFini
             continue
         }
         val from = cursor
-        // A break that is already over goes with the stack.
-        val past = collapseFinished && nowMinute != null && e.start <= nowMinute
+        val past = pastBefore != null && e.start <= pastBefore
         if (from != null && e.start - from >= MinBreakMinutes && !past) {
             rows.add(insertAt, DayRow.Break(from, e.start, BreakState.Later))
         }
@@ -104,32 +112,39 @@ internal fun buildDayPlan(entries: List<DayEntry>, nowMinute: Int?, collapseFini
         insertAt = rows.size
         cursor = maxOf(cursor ?: e.end, e.end)
     }
+    return rows
+}
 
-    // The break you're in is "now"; otherwise the first one still ahead is "next".
-    var sawNow = false
-    var sawNext = false
-    val withStates = rows.map { row ->
-        if (row !is DayRow.Break || nowMinute == null) return@map row
+/** The break you're in is "now"; otherwise the first one still ahead is "next". */
+private fun withBreakStates(rows: List<DayRow>, nowMinute: Int?): List<DayRow> {
+    if (nowMinute == null) return rows
+    val nowIndex = rows.indexOfFirst { it is DayRow.Break && nowMinute in it.start until it.end }
+    val nextIndex = if (nowIndex >= 0) -1 else rows.indexOfFirst { it is DayRow.Break && it.start >= nowMinute }
+    return rows.mapIndexed { i, row ->
         when {
-            nowMinute in row.start until row.end -> row.copy(state = BreakState.Now).also { sawNow = true }
-            !sawNow && !sawNext && row.start >= nowMinute -> row.copy(state = BreakState.Next).also { sawNext = true }
+            row !is DayRow.Break -> row
+            i == nowIndex -> row.copy(state = BreakState.Now)
+            i == nextIndex -> row.copy(state = BreakState.Next)
             else -> row
         }
     }
+}
 
-    // Classes and shifts that run at the same time; tasks are deadlines, not places to be.
+/** Classes and shifts that run at the same time; tasks are deadlines, not places to be. */
+private fun findOverlaps(sorted: List<DayEntry>): Map<String, Overlap> {
     val timed = sorted.filter { !it.cancelled && !(it is DayEntry.Item && it.occurrence.item.isTask) }
     val overlaps = LinkedHashMap<String, Overlap>()
     for ((i, later) in timed.withIndex()) {
         val earlier = timed.subList(0, i).lastOrNull { it.end > later.start && it.start < later.end } ?: continue
         overlaps[later.key] = Overlap(earlier.title, maxOf(earlier.start, later.start), minOf(earlier.end, later.end))
     }
+    return overlaps
+}
 
-    val focus = if (nowMinute == null) null else remaining.firstOrNull {
-        it is DayEntry.Class && !it.cancelled && !it.event.isExam() && it.end > nowMinute
-    }?.key
-
-    return DayPlan(finished, withStates, overlaps, focus)
+/** The class to check in to next: the one on now, else the next one (never an exam or a cancelled one). */
+private fun focusKeyOf(remaining: List<DayEntry>, nowMinute: Int?): String? {
+    if (nowMinute == null) return null
+    return remaining.firstOrNull { it is DayEntry.Class && !it.cancelled && !it.event.isExam() && it.end > nowMinute }?.key
 }
 
 /** "15 min", "1 h 15 min", "2 h". */

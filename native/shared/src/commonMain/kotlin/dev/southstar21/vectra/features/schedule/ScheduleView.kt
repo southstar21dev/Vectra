@@ -375,7 +375,7 @@ internal fun ScheduleView(
                                             items = agendaDay.items,
                                             onEventClick = onEventClick,
                                             onItemClick = onItemClick,
-                                            onToggleTaskCompleted = onToggleTaskCompleted,
+                                            onToggleTaskComplete = onToggleTaskCompleted,
                                             onResolveSyncConflict = onResolveSyncConflict,
                                             syncConflictIds = viewSyncIds,
                                             needsAcknowledgmentIds = needsAck,

@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.clipRect
+import dev.southstar21.vectra.core.designsystem.theme.VectraColors
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -200,24 +202,7 @@ private class PileState(val page: PageScrollInfo) {
             if (r == n - 1) 0f
             else (1f - (pinned[r + 1] - pinned[r] - gap) / glassHeight(act[r])).coerceIn(0f, 1f)
         }
-        // A covered card never shows below the cards in front of it. A glass card hides what lies
-        // under it, so that is its bottom edge; a flat group has gaps between its cards, so the card
-        // under it stops at the group's top edge instead.
-        val limit = FloatArray(n)
-        val softLimit = BooleanArray(n)
-        var front = Float.MAX_VALUE
-        var frontFlat = false
-        for (r in n - 1 downTo 0) {
-            limit[r] = front
-            softLimit[r] = frontFlat
-            val i = act[r]
-            val flat = flats.getOrElse(i) { false }
-            val edge = if (flat) pinned[r] else pinned[r] + glassHeight(i)
-            if (edge < front) {
-                front = edge
-                frontFlat = flat
-            }
-        }
+        val (limit, softLimit) = frontEdges(act, pinned)
         for (r in 0 until n) {
             val i = act[r]
             var later = 0f
@@ -234,6 +219,31 @@ private class PileState(val page: PageScrollInfo) {
             )
         }
         return out
+    }
+
+    /**
+     * For each pile rank, where the cards in front of it start hiding it, and whether that edge
+     * belongs to a flat group. A covered card never shows below the cards in front of it. A glass
+     * card hides what lies under it, so that is its bottom edge; a flat group has gaps between its
+     * cards, so the card under it stops at the group's top edge instead (and fades out there).
+     */
+    private fun frontEdges(act: List<Int>, pinned: FloatArray): Pair<FloatArray, BooleanArray> {
+        val n = act.size
+        val limit = FloatArray(n)
+        val soft = BooleanArray(n)
+        var front = Float.MAX_VALUE
+        var frontFlat = false
+        for (r in n - 1 downTo 0) {
+            limit[r] = front
+            soft[r] = frontFlat
+            val flat = flats.getOrElse(act[r]) { false }
+            val edge = if (flat) pinned[r] else pinned[r] + glassHeight(act[r])
+            if (edge < front) {
+                front = edge
+                frontFlat = flat
+            }
+        }
+        return limit to soft
     }
 
     fun frame(i: Int): CardFrame? = frames().getOrNull(i)
@@ -339,56 +349,14 @@ private fun PileSlot(state: PileState?, index: Int, card: PileCard) {
         return
     }
     val c = Vectra.colors
-    val shade = if (c.isDark) Palette.Black else Palette.Slate900
     val reduceMotion = Vectra.reduceMotion
     val scope = rememberCoroutineScope()
     val covered by remember(state, index) { derivedStateOf { (state.frame(index)?.cover ?: 0f) > 0.5f } }
     val approach = remember(state, index) { { state.frame(index)?.approach ?: 1f } }
     Box(
         Modifier
-            .fadeLayer {
-                val f = state.frame(index) ?: return@fadeLayer
-                translationY = f.translation
-                // The soft edge masks with DstIn, which needs this layer offscreen (its bleed keeps shadows).
-                compositingStrategy = if (f.softEdge) CompositingStrategy.Offscreen else CompositingStrategy.Auto
-                if (!reduceMotion) {
-                    val s = 1f - ShrinkPerLevel * f.depth
-                    scaleX = s
-                    scaleY = s
-                    // Shrink toward the glass's top edge so the visible strip stays put.
-                    val bleed = (size.height - state.heights.getOrElse(index) { 0 }) / 2f
-                    val pivot = (bleed + state.topInsets.getOrElse(index) { 0f }) / size.height
-                    transformOrigin = TransformOrigin(0.5f, pivot.coerceIn(0f, 1f))
-                }
-            }
-            .drawWithContent {
-                val f = state.frame(index)
-                val top = card.topInset.toPx()
-                val glass = Size(size.width, size.height - top - card.bottomInset.toPx())
-                val corner = CornerRadius(GlassCorner.toPx())
-                val bottom = f?.clipBottom ?: Float.MAX_VALUE
-                val dim = (if (c.isDark) DimPerLevel else DimPerLevelLight) * (f?.depth ?: 0f)
-                // The underlay and shade are clipped with the card, or they would hang below the card in front.
-                clipRect(-size.width, -size.height, size.width * 2, minOf(bottom, size.height * 2)) {
-                    // The card sliding over another is made opaque, or the one below shows through its glass.
-                    if (f?.underlay == true && !card.flat) drawRoundRect(c.surfacePrimary, Offset(0f, top), glass, corner)
-                    this@drawWithContent.drawContent()
-                    // A flat group is not shaded: it fades out at the soft edge instead.
-                    if (dim > 0f && !card.flat) drawRoundRect(shade.copy(alpha = dim), Offset(0f, top), glass, corner)
-                    if (f?.softEdge == true) {
-                        // Fade out over the last stretch above the group in front, so nothing is cut on a hard line.
-                        val fade = SoftEdge.toPx()
-                        val end = minOf(bottom, size.height * 2)
-                        val start = (end - fade).coerceAtLeast(-size.height)
-                        drawRect(
-                            Brush.verticalGradient(0f to Color.Black, 1f to Color.Transparent, startY = start, endY = end),
-                            topLeft = Offset(-size.width, start),
-                            size = Size(size.width * 3, end - start),
-                            blendMode = BlendMode.DstIn,
-                        )
-                    }
-                }
-            }
+            .pileLayer(state, index, reduceMotion)
+            .pileDraw(state, index, card, c)
             // This draw block reads the scroll position, so it runs every scroll frame. The card gets its
             // own layer so those frames replay its recording: re-recording it rebuilds its blurred shadows,
             // which Compose rasterizes on the CPU on iOS (that held Schedule's scroll at ~20 fps).
@@ -408,4 +376,52 @@ private fun PileSlot(state: PileState?, index: Int, card: PileCard) {
             )
         }
     }
+}
+
+/** The card's place in the pile this frame: slid, shrunk toward its top edge, offscreen for a soft edge. */
+private fun Modifier.pileLayer(state: PileState, index: Int, reduceMotion: Boolean): Modifier = fadeLayer {
+    val f = state.frame(index) ?: return@fadeLayer
+    translationY = f.translation
+    // The soft edge masks with DstIn, which needs this layer offscreen (its bleed keeps shadows).
+    compositingStrategy = if (f.softEdge) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    if (!reduceMotion) {
+        val s = 1f - ShrinkPerLevel * f.depth
+        scaleX = s
+        scaleY = s
+        // Shrink toward the glass's top edge so the visible strip stays put.
+        val bleed = (size.height - state.heights.getOrElse(index) { 0 }) / 2f
+        val pivot = (bleed + state.topInsets.getOrElse(index) { 0f }) / size.height
+        transformOrigin = TransformOrigin(0.5f, pivot.coerceIn(0f, 1f))
+    }
+}
+
+/** Clips the card where the cards in front start, with its underlay, shade or soft edge. */
+private fun Modifier.pileDraw(state: PileState, index: Int, card: PileCard, c: VectraColors): Modifier = drawWithContent {
+    val f = state.frame(index)
+    val top = card.topInset.toPx()
+    val glass = Size(size.width, size.height - top - card.bottomInset.toPx())
+    val corner = CornerRadius(GlassCorner.toPx())
+    val bottom = minOf(f?.clipBottom ?: Float.MAX_VALUE, size.height * 2)
+    val shade = if (c.isDark) Palette.Black else Palette.Slate900
+    val dim = (if (c.isDark) DimPerLevel else DimPerLevelLight) * (f?.depth ?: 0f)
+    // The underlay and shade are clipped with the card, or they would hang below the card in front.
+    clipRect(-size.width, -size.height, size.width * 2, bottom) {
+        // The card sliding over another is made opaque, or the one below shows through its glass.
+        // A flat group gets neither: it has no glass, and it fades out at the soft edge instead.
+        if (f?.underlay == true && !card.flat) drawRoundRect(c.surfacePrimary, Offset(0f, top), glass, corner)
+        this@drawWithContent.drawContent()
+        if (dim > 0f && !card.flat) drawRoundRect(shade.copy(alpha = dim), Offset(0f, top), glass, corner)
+        if (f?.softEdge == true) softEdgeMask(bottom)
+    }
+}
+
+/** Fades the content out over [SoftEdge] above [end], so nothing is cut on a hard line. */
+private fun DrawScope.softEdgeMask(end: Float) {
+    val start = (end - SoftEdge.toPx()).coerceAtLeast(-size.height)
+    drawRect(
+        Brush.verticalGradient(0f to Color.Black, 1f to Color.Transparent, startY = start, endY = end),
+        topLeft = Offset(-size.width, start),
+        size = Size(size.width * 3, end - start),
+        blendMode = BlendMode.DstIn,
+    )
 }

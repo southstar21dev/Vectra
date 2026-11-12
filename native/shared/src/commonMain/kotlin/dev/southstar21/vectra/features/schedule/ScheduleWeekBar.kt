@@ -111,11 +111,12 @@ internal fun ScheduleToolbar(
                     selected = on,
                     today = today,
                     d = d,
+                    onClick = {
+                        if (!on) haptics.tick()
+                        onDayChange(day)
+                    },
                     modifier = Modifier.weight(1f),
-                ) {
-                    if (!on) haptics.tick()
-                    onDayChange(day)
-                }
+                )
             }
         }
     }
@@ -145,8 +146,8 @@ private fun DayPick(
     selected: Boolean,
     today: Boolean,
     d: DayColors,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val accent = Vectra.colors.accentPrimary
     Column(

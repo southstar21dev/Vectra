@@ -62,28 +62,8 @@ import kotlin.time.Clock
 @Composable
 fun DashboardScreen(graph: AppGraph) {
     val navigator = LocalNavigator.current
-    val toaster = LocalToaster.current
-    val scope = rememberCoroutineScope()
     val schedule = graph.scheduleRepository
-    val tracker = graph.courseTrackerRepository
-    val events by schedule.events.collectAsStateWithLifecycle()
-    val itemsState by schedule.itemsState.collectAsStateWithLifecycle()
-    val conflicts by schedule.conflicts.collectAsStateWithLifecycle()
     val online by schedule.isOnline.collectAsStateWithLifecycle()
-    val localReady by schedule.localReady.collectAsStateWithLifecycle()
-    val eventsLoading by schedule.eventsLoading.collectAsStateWithLifecycle()
-    val items = itemsState.items
-
-    val now = nowInBudapest(Clock.System.now())
-    val todayStr = now.ymd
-    val intensive = remember(events) { ScheduleCourses.intensiveCourseKeys(events) }
-    // Cancelled classes stay in the list (faded, struck through) so the day still makes sense.
-    val todayEvents = remember(events, todayStr) { scheduleTodayEvents(events) }
-    val plainItems = remember(items) { items.map { it.toItem() } }
-    val todayItems = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) }
-    val needsAck = remember(conflicts) { conflicts.filter { it.needsAcknowledgment }.flatMap { listOfNotNull(it.itemId, it.otherItemId) }.toSet() }
-    val syncIds = remember(items) { items.filter { it.syncConflict != null }.map { it.id }.toSet() }
-
     val favorites = rememberFavoriteTrackers(graph.transitRepository)
 
     VectraPage(
@@ -93,7 +73,7 @@ fun DashboardScreen(graph: AppGraph) {
                 launch { graph.weatherRepository.refreshNow() }
                 launch { schedule.refreshEvents(force = true) }
                 launch { schedule.refreshItems(force = true) }
-                launch { runSuspendCatching { tracker.refresh() } }
+                launch { runSuspendCatching { graph.courseTrackerRepository.refresh() } }
                 launch { graph.transitRepository.refresh() }
             }
         },
@@ -105,55 +85,7 @@ fun DashboardScreen(graph: AppGraph) {
                 PileCard("weather", "weather", bottomInset = 24.dp) { Reveal(0) { WeatherCard(graph.weatherRepository) } },
                 PileCard("holidays", "holidays", bottomInset = 24.dp) { Reveal(1) { HolidayCard() } },
                 // Today's classes: separate cards straight on the page, finished ones stacked on top.
-                PileCard("today", "today's schedule", bottomInset = 24.dp, flat = true) {
-                    Reveal(2) {
-                        // A 40dp gap above, less the 24dp the holiday card already leaves below itself.
-                        Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            DayListHeader("Today", "${getDayName(now.dayOfWeek)} ${now.day} ${monthName(now.month).take(3)}")
-                            if (!localReady || (eventsLoading && events.isEmpty() && items.isEmpty())) {
-                                DayListLoading()
-                            } else {
-                                ScheduleDayList(
-                                    events = todayEvents,
-                                    tracker = graph.courseTrackerHooks,
-                                    dateStr = todayStr,
-                                    items = todayItems,
-                                    onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.push(Screen.CourseHub(resolveCourseKey(e))) },
-                                    onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
-                                    onToggleTaskCompleted = { item ->
-                                        scope.launch {
-                                            try {
-                                                schedule.toggleTaskCompleted(item)
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (_: ScheduleItemConflictException) {
-                                                navigator.push(Screen.ItemEditor(item.id, item.type, reopen = true))
-                                            } catch (e: Throwable) {
-                                                toaster.error(e.message ?: "Could not update task.")
-                                            }
-                                        }
-                                    },
-                                    onResolveSyncConflict = { id, res -> schedule.resolveSyncConflict(id, res) },
-                                    syncConflictIds = syncIds,
-                                    needsAcknowledgmentIds = needsAck,
-                                    itemConflictsById = remember(conflicts) {
-                                        buildMap<String, MutableList<ScheduleConflict>> {
-                                            for (cf in conflicts) for (id in listOfNotNull(cf.itemId, cf.otherItemId)) getOrPut("${cf.date}:$id") { mutableListOf() } += cf
-                                        }
-                                    },
-                                    classConflictsByEventId = remember(conflicts) { conflicts.filter { it.classId != null }.groupBy { "${it.date}:${it.classId}" } },
-                                    intensiveCourses = intensive,
-                                    collapseFinished = true,
-                                    offline = !online,
-                                    emptyPlaceholder = {
-                                        val next = remember(events, plainItems, todayStr) { nextScheduledStart(events, plainItems, todayStr) }
-                                        NothingScheduledCard(next?.first, next?.second?.let { formatTime(it, Vectra.appearance.timeFormat) })
-                                    },
-                                )
-                            }
-                        }
-                    }
-                },
+                PileCard("today", "today's schedule", bottomInset = 24.dp, flat = true) { Reveal(2) { TodaySection(graph) } },
                 PileCard("transit", "transit", bottomInset = 24.dp) {
                     Reveal(3) {
                         TransitDashboardWidget(
@@ -172,3 +104,73 @@ fun DashboardScreen(graph: AppGraph) {
     }
 
 }
+
+/** Today's classes: a header, then separate cards straight on the page, finished ones stacked on top. */
+@Composable
+private fun TodaySection(graph: AppGraph) {
+    val navigator = LocalNavigator.current
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
+    val schedule = graph.scheduleRepository
+    val events by schedule.events.collectAsStateWithLifecycle()
+    val itemsState by schedule.itemsState.collectAsStateWithLifecycle()
+    val conflicts by schedule.conflicts.collectAsStateWithLifecycle()
+    val online by schedule.isOnline.collectAsStateWithLifecycle()
+    val localReady by schedule.localReady.collectAsStateWithLifecycle()
+    val eventsLoading by schedule.eventsLoading.collectAsStateWithLifecycle()
+    val items = itemsState.items
+    val now = nowInBudapest(Clock.System.now())
+    val todayStr = now.ymd
+    // Cancelled classes stay in the list (with a CANCELLED stamp) so the day still makes sense.
+    val todayEvents = remember(events, todayStr) { scheduleTodayEvents(events) }
+    val plainItems = remember(items) { items.map { it.toItem() } }
+    val firstLoad = !localReady || (eventsLoading && events.isEmpty() && items.isEmpty())
+
+    // A 40dp gap above, less the 24dp the holiday card already leaves below itself.
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        DayListHeader("Today", "${getDayName(now.dayOfWeek)} ${now.day} ${monthName(now.month).take(3)}")
+        if (firstLoad) {
+            DayListLoading()
+            return@Column
+        }
+        ScheduleDayList(
+            events = todayEvents,
+            tracker = graph.courseTrackerHooks,
+            dateStr = todayStr,
+            items = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) },
+            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.push(Screen.CourseHub(resolveCourseKey(e))) },
+            onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
+            onToggleTaskComplete = { item ->
+                scope.launch {
+                    try {
+                        schedule.toggleTaskCompleted(item)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: ScheduleItemConflictException) {
+                        navigator.push(Screen.ItemEditor(item.id, item.type, reopen = true))
+                    } catch (e: Throwable) {
+                        toaster.error(e.message ?: "Could not update task.")
+                    }
+                }
+            },
+            onResolveSyncConflict = { id, res -> schedule.resolveSyncConflict(id, res) },
+            syncConflictIds = remember(items) { items.filter { it.syncConflict != null }.map { it.id }.toSet() },
+            needsAcknowledgmentIds = remember(conflicts) { conflicts.filter { it.needsAcknowledgment }.flatMap { listOfNotNull(it.itemId, it.otherItemId) }.toSet() },
+            itemConflictsById = remember(conflicts) { itemConflictsByDate(conflicts) },
+            classConflictsByEventId = remember(conflicts) { conflicts.filter { it.classId != null }.groupBy { "${it.date}:${it.classId}" } },
+            intensiveCourses = remember(events) { ScheduleCourses.intensiveCourseKeys(events) },
+            collapseFinished = true,
+            offline = !online,
+            emptyPlaceholder = {
+                val next = remember(events, plainItems, todayStr) { nextScheduledStart(events, plainItems, todayStr) }
+                NothingScheduledCard(next?.first, next?.second?.let { formatTime(it, Vectra.appearance.timeFormat) })
+            },
+        )
+    }
+}
+
+/** Item conflicts keyed "date:itemId", for both items of each clash. */
+private fun itemConflictsByDate(conflicts: List<ScheduleConflict>): Map<String, List<ScheduleConflict>> =
+    buildMap<String, MutableList<ScheduleConflict>> {
+        for (cf in conflicts) for (id in listOfNotNull(cf.itemId, cf.otherItemId)) getOrPut("${cf.date}:$id") { mutableListOf() } += cf
+    }
