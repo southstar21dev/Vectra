@@ -66,7 +66,6 @@ internal fun LiveStopTimeline(
     val vehicleRow = vehicleRow(direction)
     val collapsed = collapsedRows(stops.size, you, vehicleRow)
     val shown = if (showAll) stops.indices else collapsed
-    val approx = direction.approxVehicle != null && direction.vehicles.isEmpty()
     // The rows beyond the collapsed stretch grow in and out instead of the list jumping.
     val enter = if (Vectra.reduceMotion) fadeIn(tween(150)) else expandVertically(VectraSprings.settle(), Alignment.Top) + fadeIn(tween(220, 60))
     val exit = if (Vectra.reduceMotion) fadeOut(tween(150)) else shrinkVertically(VectraSprings.settle(), Alignment.Top) + fadeOut(tween(140))
@@ -82,7 +81,6 @@ internal fun LiveStopTimeline(
                         isYou = i == you,
                         lineAbove = i > shown.first,
                         lineBelow = i < shown.last,
-                        approx = approx,
                     ),
                     colors = colors,
                 )
@@ -123,7 +121,7 @@ private fun stopClock(direction: DirectionView, i: Int, you: Int): String? {
 }
 
 /** What the gutter draws for one row. */
-private class TimelineMarker(val state: StopState, val isYou: Boolean, val lineAbove: Boolean, val lineBelow: Boolean, val approx: Boolean)
+private class TimelineMarker(val state: StopState, val isYou: Boolean, val lineAbove: Boolean, val lineBelow: Boolean)
 
 @Composable
 private fun TimelineRow(name: String, time: String?, marker: TimelineMarker, colors: StripColors) {
@@ -161,14 +159,10 @@ private fun DrawScope.drawTimelineMarker(m: TimelineMarker, colors: StripColors)
     if (m.lineBelow) drawLine(below, at, Offset(at.x, size.height), lineW)
     when {
         m.state == StopState.Vehicle -> {
-            // An estimated position (the metro, from the timetable) is drawn faded; a solid disc
-            // under it, no wider than the token, keeps the line from showing through.
-            if (m.approx) drawCircle(colors.card.copy(alpha = 1f), 11.dp.toPx(), at)
             drawVehicleToken(
                 at, 11.dp.toPx(), colors.marker, colors.markerInk,
                 // Straight on the line: a cut-out ring in the card's colour reads as a gap on the glass sheet.
                 headingDeg = 180f, ring = colors.ring,
-                alpha = if (m.approx) 0.7f else 1f,
             )
         }
         m.isYou -> {

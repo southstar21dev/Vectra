@@ -70,7 +70,7 @@ private final class ClearPage: UIViewController {
     }
 }
 
-final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, IosTabBarHost {
+final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, IosTabBarHost {
     // Same order as the shared PrimaryNavItems.
     private static let items: [(title: String, symbol: String)] = [
         ("Dashboard", "square.grid.2x2"),
@@ -139,6 +139,53 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         #endif
         view.alpha = 0
         view.addSubview(sideActionButton)
+        // Holding a tab (Transit: the nearby map grows out of it). Alongside the bar's own gestures,
+        // so dragging the selection still works.
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(handleHold(_:)))
+        hold.minimumPressDuration = 0.45
+        hold.delegate = self
+        view.addGestureRecognizer(hold)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
+    }
+
+    @objc private func handleHold(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began, isInteractive, !isVertical else { return }
+        let point = recognizer.location(in: view)
+        guard let (index, frame) = tabItem(at: point) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        // The Compose app fills the window, in pixels.
+        let scale = traitCollection.displayScale
+        let window = view.convert(frame, to: nil)
+        IosTabBar.shared.hold(
+            index: Int32(index),
+            left: Float(window.minX * scale), top: Float(window.minY * scale),
+            right: Float(window.maxX * scale), bottom: Float(window.maxY * scale)
+        )
+    }
+
+    /// The main tab under [point] (in this controller's view) and its frame. The bar's buttons are
+    /// private views, found by their titles; failing that, the bar's strip split evenly.
+    private func tabItem(at point: CGPoint) -> (Int, CGRect)? {
+        func search(_ node: UIView) -> (Int, CGRect)? {
+            if node.isHidden || node === sideActionButton { return nil }
+            let frame = node.convert(node.bounds, to: view)
+            if frame.contains(point), frame.width < view.bounds.width / 2,
+               let label = node.accessibilityLabel, let index = Self.items.firstIndex(where: { $0.title == label }) {
+                return (index, frame)
+            }
+            for sub in node.subviews { if let hit = search(sub) { return hit } }
+            return nil
+        }
+        if let hit = search(view) { return hit }
+        var strip = tabBar.convert(tabBar.bounds, to: view)
+        if tabs.contains(where: { $0 === actionTab }) { strip.size.width -= strip.height + 12 }
+        guard strip.contains(point), strip.width > 0 else { return nil }
+        let width = strip.width / CGFloat(mainTabs.count)
+        let index = min(mainTabs.count - 1, max(0, Int((point.x - strip.minX) / width)))
+        return (index, CGRect(x: strip.minX + width * CGFloat(index), y: strip.minY, width: width, height: strip.height))
     }
 
     // MARK: IosTabBarHost

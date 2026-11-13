@@ -113,7 +113,7 @@ radar for the last two hours from RainViewer.
 </td>
 </tr>
 <tr>
-<td align="center"><img src=".github/readme/nearby.png" width="70%" alt="Nearby explorer: live departures around Keleti" /></td>
+<td align="center"><img src=".github/readme/nearby.png" width="70%" alt="Nearby explorer: live departures around Blaha Lujza tér" /></td>
 <td align="center"><img src=".github/readme/radar.png" width="70%" alt="Weather radar" /></td>
 </tr>
 </table>

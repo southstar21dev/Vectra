@@ -377,7 +377,11 @@ fun VSheet(
                         onDragStopped = { velocity -> release(velocity) },
                     )
                     .then(if (open && !pinnedOpen) Modifier.nestedScroll(nested) else Modifier)
-                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom)),
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom))
+                    // A floating sheet redraws its outline every frame of a pull: its content gets
+                    // a layer of its own, replayed instead of repainted (a full hub per frame lagged
+                    // on older iPhones).
+                    .then(if (floating) Modifier.graphicsLayer() else Modifier),
             ) {
                 if (dragHandle) SheetHandle(Modifier.align(Alignment.CenterHorizontally))
                 CompositionLocalProvider(LocalSurfaceEdgeToEdge provides false) { content() }

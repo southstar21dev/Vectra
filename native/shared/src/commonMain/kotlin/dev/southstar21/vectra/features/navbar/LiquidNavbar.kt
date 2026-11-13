@@ -1,6 +1,9 @@
 package dev.southstar21.vectra.features.navbar
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -12,6 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -78,6 +82,20 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 /** Height the dock and its + button share; pages clear it (ShellState). */
 internal val DockHeight = 62.dp
 
+/** The dock's height tucked away while a page scrolls down. */
+internal val CompactDockHeight = 50.dp
+
+/** Each tab's width in the tucked-away dock. */
+private val CompactTabWidth = 64.dp
+
+/** Takes all the width it's offered, narrowing toward [compact] as [collapse] goes 0..1 (read in layout only). */
+private fun Modifier.narrowTo(compact: Dp, collapse: () -> Float): Modifier = layout { measurable, constraints ->
+    val full = constraints.maxWidth
+    val target = androidx.compose.ui.util.lerp(full.toFloat(), minOf(full, compact.roundToPx()).toFloat(), collapse().coerceIn(0f, 1f)).toInt()
+    val placeable = measurable.measure(constraints.copy(minWidth = target, maxWidth = target))
+    layout(target, placeable.height) { placeable.place(0, 0) }
+}
+
 /**
  * The Kaloria dock: a Liquid Glass tab bar whose selection is itself a drop of glass you can press
  * and drag between tabs (it magnifies the tab beneath with a little chromatic aberration and
@@ -90,6 +108,10 @@ fun LiquidNavbar(
     onNavigate: (Route) -> Unit,
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
+    /** Tucked away while a page scrolls down: smaller, labels hidden (see [NavbarCompact]). */
+    compact: Boolean = false,
+    /** The tabs [onLongPress] is for; holding any other is just a tap. */
+    holdable: (Route) -> Boolean = { true },
     /** A tab held down, with where it is in the window (Transit: the nearby map grows out of it). */
     onLongPress: ((Route, Rect?) -> Unit)? = null,
 ) {
@@ -107,6 +129,13 @@ fun LiquidNavbar(
     // Like iOS: the bar floats just above the screen edge, over the gesture handle, but clear of
     // 3-button navigation.
     val safeBottom = (WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() - 4.dp).coerceAtLeast(12.dp)
+    val tuck = remember { Animatable(0f) }
+    val reduced = Vectra.reduceMotion
+    LaunchedEffect(compact) {
+        val to = if (compact) 1f else 0f
+        if (reduced) tuck.snapTo(to) else tuck.animateTo(to, spring(dampingRatio = 0.86f, stiffness = 420f))
+    }
+    val collapse = { tuck.value }
 
     Box(modifier.fillMaxSize()) {
         AnimatedVisibility(menuOpen, Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(160))) {
@@ -130,7 +159,9 @@ fun LiquidNavbar(
                 haptics.tick()
                 actions.execute(action.id)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Tucked away, the tabs narrow to their icons; the + keeps its own animation beside
+            // them and the pair stays centred, so a tab switch (the + coming or going) stays smooth.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 val activeIndex = items.indexOfFirst { it.route == current }.coerceAtLeast(0)
                 LiquidTabs(
                     count = items.size,
@@ -143,16 +174,19 @@ fun LiquidNavbar(
                     // iOS selects with a neutral grey pill; only the item itself takes the accent.
                     selection = if (c.isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f),
                     container = dockMaterial(),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f, fill = false).narrowTo(CompactTabWidth * items.size + 8.dp, collapse),
                     height = DockHeight,
+                    compactHeight = CompactDockHeight,
+                    collapse = collapse,
                     frosted = frosted,
                     onLongPress = onLongPress?.let { hold -> { index, bounds -> hold(items[index].route, bounds) } },
+                    holdable = { index -> holdable(items[index].route) },
                 ) { index, tinted ->
                     val item = items[index]
                     val ink = if (tinted) c.accentPrimary else c.textPrimary
                     // As in the iOS tab bar: filled glyphs with the title beneath.
                     VIcon(item.activeIcon, size = 25.dp, tint = ink, contentDescription = null)
-                    VText(item.label, style = vtext(TypeScale.Micro, Weight.Semibold), color = ink, maxLines = 1)
+                    VText(item.label, Modifier.foldAway(collapse), vtext(TypeScale.Micro, Weight.Semibold), ink, maxLines = 1)
                 }
                 // The + only exists on pages with actions; it grows out beside the bar.
                 AnimatedVisibility(
@@ -164,7 +198,7 @@ fun LiquidNavbar(
                 ) {
                     Row {
                         Spacer(Modifier.width(10.dp))
-                        AddButton(menuOpen, config?.icon ?: RemixIcons.AddLine, backdrop) {
+                        AddButton(menuOpen, config?.icon ?: RemixIcons.AddLine, backdrop, collapse) {
                             haptics.contextClick()
                             menuOpen = !menuOpen
                         }
@@ -218,7 +252,7 @@ private fun ActionMenu(open: Boolean, actions: List<NavbarAction>, backdrop: Bac
 }
 
 @Composable
-private fun AddButton(open: Boolean, icon: ImageVector, backdrop: Backdrop, onClick: () -> Unit) {
+private fun AddButton(open: Boolean, icon: ImageVector, backdrop: Backdrop, collapse: () -> Float, onClick: () -> Unit) {
     val scope = rememberCoroutineScope()
     val highlight = remember(scope) { InteractiveHighlight(scope) }
     // The + turns into a ×; any other glyph stays upright.
@@ -226,7 +260,12 @@ private fun AddButton(open: Boolean, icon: ImageVector, backdrop: Backdrop, onCl
     val rotation by animateFloatAsState(if (open) turn else 0f, spring(dampingRatio = 0.55f, stiffness = 380f), label = "add")
     Box(
         Modifier
-            .size(DockHeight)
+            // Shrinks with the bar as it tucks away.
+            .layout { measurable, _ ->
+                val px = androidx.compose.ui.unit.lerp(DockHeight, CompactDockHeight, collapse().coerceIn(0f, 1f)).roundToPx()
+                val placeable = measurable.measure(Constraints.fixed(px, px))
+                layout(px, px) { placeable.place(0, 0) }
+            }
             .dockGlass(Capsule(), backdrop, GlassThickness.Control, highlight)
             .tappable(Capsule(), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = if (open) "Close page actions" else "Page actions" },

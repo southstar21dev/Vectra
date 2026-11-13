@@ -3,6 +3,13 @@ package dev.southstar21.vectra.features.transit
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +38,6 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.maps.GlassMapControls
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
-import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 import dev.southstar21.vectra.core.time.nowMs
 import kotlinx.coroutines.delay
 import org.maplibre.compose.map.MapState
@@ -56,6 +62,8 @@ fun NearbyExplorerScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     opened: Boolean = true,
+    /** False drops the map itself (the rest stays), as the view shrinks away where it can't be clipped. */
+    showMap: Boolean = true,
 ) {
     val explorer = rememberNearbyExplorer(repo, deviceLocation, auth)
     var cameraRequest by remember { mutableStateOf<ExplorerCameraRequest?>(null) }
@@ -84,7 +92,7 @@ fun NearbyExplorerScreen(
     val chrome = ChipChrome(top = safeTop + IslandBand, controlsBottom = safeTop + IslandBand + 52.dp, bottom = sheetCovered.dp)
 
     Box(modifier.fillMaxSize().background(Vectra.colors.surfacePrimary)) {
-        if (opened) {
+        if (opened && showMap) {
             ExplorerMap(explorer, cameraRequest, sheetCovered.dp, { sheetLive.floatValue.dp }, chrome, { mapState = it }) { mapReady = true }
         }
         // The orb while the map and its stops come in; it bursts away once they're there.
@@ -226,12 +234,6 @@ private fun ExplorerMap(
         chipChrome = chrome,
         onChipTap = { chip -> explorer.focusStop(chip.stopId, null) },
         onMapState = onMapState,
-        // Keyed by stop, not the focus: it keeps its rows while it shrinks away after the focus clears.
-        board = { stopId ->
-            val groups = remember(explorer.feed, stopId) { groupDepartures(explorer.feed.filter { it.stopId == stopId }) }
-            val chip = explorer.chips.firstOrNull { it.stopId == stopId }
-            StopBoard(chip?.name ?: focused?.name.orEmpty(), groups, explorer.clearFocus)
-        },
     )
 }
 
@@ -260,17 +262,35 @@ private fun BoxScope.ExplorerChrome(explorer: NearbyExplorerState, safeTop: Dp, 
         Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = safeTop + IslandBand, start = 12.dp, end = 68.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (explorer.selection == null && explorer.focusedStop != null && !composeOverlaysTrackMap) {
-            // Where chips can't ride the map (iOS), the picked stop's board sits here instead.
-            val stop = explorer.focusedStop
-            val groups = remember(explorer.feed) { groupDepartures(explorer.feed) }
-            StopBoard(stop.name, groups, explorer.clearFocus)
-        }
+        PinnedStopBoard(explorer)
         if (explorer.anchor?.outsideHungary == true) {
             IslandNotice("Outside Hungary — showing Budapest center.", c.tints.amber.text)
         }
         if (explorer.geoState.status == WatchLocationStatus.Error) {
             IslandNotice(explorer.geoState.errorMessage.orEmpty(), c.tints.red.text, action = "Retry" to explorer.refreshLocation)
         }
+    }
+}
+
+
+/**
+ * The picked stop's board, pinned under the island (the map pans its stop just below it). It
+ * keeps its stop while it fades away, so it never empties as it goes.
+ */
+@Composable
+private fun PinnedStopBoard(explorer: NearbyExplorerState) {
+    val stop = explorer.focusedStop.takeIf { explorer.selection == null }
+    var last by remember { mutableStateOf(stop) }
+    if (stop != null) last = stop
+    val reduced = Vectra.reduceMotion
+    AnimatedVisibility(
+        stop != null,
+        enter = if (reduced) fadeIn(tween(150)) else fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.8f, stiffness = 420f), 0.92f, TransformOrigin(0.5f, 0f)),
+        exit = if (reduced) fadeOut(tween(150)) else fadeOut(tween(140)) + scaleOut(tween(160), 0.94f, TransformOrigin(0.5f, 0f)),
+    ) {
+        val shown = last ?: return@AnimatedVisibility
+        val feed = explorer.feed
+        val groups = remember(feed, shown.id) { groupDepartures(feed.filter { it.stopId == shown.id }) }
+        StopBoard(shown.name, groups, explorer.clearFocus)
     }
 }

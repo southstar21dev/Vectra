@@ -128,24 +128,47 @@ fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<String?>, l
     return remember(ids, states) { ids.associateWith { (states[it] ?: QueryState()).toEntry() } }
 }
 
-/** Arrivals for several stops, all from one proxy request. */
+/**
+ * Arrivals for several stops, all from one proxy request. When the set of stops changes (a map
+ * pans), the new request starts empty: each stop keeps its last arrivals until it lands, so stops
+ * still in view don't blank out and pop back.
+ */
 @Composable
 fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): Map<String, StopArrivalsEntry> {
     val ids = remember(stopIds) { stopIds.filterNotNull().filter { it.isNotEmpty() }.distinct() }
     val key = remember(ids) { ids.sorted().joinToString(",") }
     val q = repo.batchArrivals.collect(key.ifEmpty { null })
+    val last = remember { LastArrivals() }
     return remember(ids, q) {
         val loading = q.isLoading || q.isFetching
+        q.data?.responses?.forEach { (id, data) -> last.put(id, data, q.dataUpdatedAt) }
         ids.associateWith { id ->
+            val fresh = q.data?.responses?.get(id)
+            val kept = if (fresh == null) last[id] else null
             StopArrivalsEntry(
-                data = q.data?.responses?.get(id),
+                data = fresh ?: kept?.first,
                 isLoading = loading,
-                isError = q.data?.errors?.containsKey(id) == true || (q.isError && q.data?.responses?.get(id) == null),
-                dataUpdatedAt = q.dataUpdatedAt,
+                isError = q.data?.errors?.containsKey(id) == true || (q.isError && fresh == null && kept == null),
+                dataUpdatedAt = if (fresh != null) q.dataUpdatedAt else kept?.second ?: 0L,
             )
         }
     }
 }
+
+/** The last arrivals seen per stop (with when they landed), the oldest dropped past [MaxKeptStops]. */
+private class LastArrivals {
+    private val map = LinkedHashMap<String, Pair<FutarArrivalsResponse, Long>>()
+
+    operator fun get(id: String): Pair<FutarArrivalsResponse, Long>? = map[id]
+
+    fun put(id: String, data: FutarArrivalsResponse, at: Long) {
+        map.remove(id)
+        map[id] = data to at
+        while (map.size > MaxKeptStops) map.remove(map.keys.first())
+    }
+}
+
+private const val MaxKeptStops = 60
 
 private val SpacedSlash = Regex("""\s*/\s*""")
 

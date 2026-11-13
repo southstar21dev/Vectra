@@ -50,6 +50,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
@@ -96,18 +98,26 @@ fun LiquidTabs(
     /** The resting fill of the selection drop. */
     selection: Color = accent.copy(alpha = 0.25f),
     height: Dp = 64.dp,
+    /** The bar's height once tucked away ([collapse] 1). */
+    compactHeight: Dp = height,
+    /** How far the bar is tucked away, 0..1; read in layout and draw only. */
+    collapse: () -> Float = { 0f },
     frosted: Boolean = false,
     /** The drop crossed onto another item: a detent, for a haptic tick. */
     onCross: () -> Unit = {},
     /** An item held down (instead of tapped), with where it is in the window. */
     onLongPress: ((index: Int, bounds: Rect?) -> Unit)? = null,
+    /** Which items [onLongPress] is for; holding any other is just a tap. */
+    holdable: (index: Int) -> Boolean = { true },
     item: @Composable ColumnScope.(index: Int, tinted: Boolean) -> Unit,
 ) {
     val selectedNow by rememberUpdatedState(selectedIndex)
     val onSelectNow by rememberUpdatedState(onSelect)
     val shadowColor = Color.Black.copy(alpha = 0.10f)
     val itemsBackdrop = rememberLayerBackdrop()
-    val pillHeight = height - 8.dp
+    // The bar's height as it tucks away; the selection pill sits 4 dp inside it.
+    val barHeight: () -> Dp = { lerp(height, compactHeight, collapse().coerceIn(0f, 1f)) }
+    val pillHeight: () -> Dp = { barHeight() - 8.dp }
 
     // The width is state read only by layout, draw and gesture lambdas: the bar narrowing as the +
     // grows in must not recompose the tabs every frame (it made the + stutter in).
@@ -188,7 +198,7 @@ fun LiquidTabs(
                             onDown = {
                                 if (index != currentIndex) {
                                     drag.press()
-                                    drag.updateValue(index.toFloat())
+                                    drag.glideTo(index.toFloat())
                                 }
                             },
                             onUp = {
@@ -201,7 +211,7 @@ fun LiquidTabs(
                         .tappable(
                             role = Role.Tab,
                             highlight = false,
-                            onLongClick = onLongPressNow?.let { hold -> { hold(index, itemBounds[index]) } },
+                            onLongClick = onLongPressNow?.takeIf { holdable(index) }?.let { hold -> { hold(index, itemBounds[index]) } },
                         ) { currentIndex = index }
                         .semantics { selected = index == selectedIndex }
                         .fillMaxHeight()
@@ -237,7 +247,7 @@ fun LiquidTabs(
                     onDrawSurface = { drawRect(container) },
                 )
                 .then(highlight.modifier)
-                .height(height)
+                .liveHeight(barHeight)
                 .fillMaxWidth()
                 .padding(4.dp),
         )
@@ -275,7 +285,7 @@ fun LiquidTabs(
                     },
                 )
                 .then(highlight.modifier)
-                .height(pillHeight)
+                .liveHeight(pillHeight)
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp)
                 .graphicsLayer(colorFilter = ColorFilter.tint(accent)),
@@ -289,7 +299,7 @@ fun LiquidTabs(
                 .graphicsLayer { translationX = drag.value * itemWidth + panelOffset }
                 .then(highlight.gestureModifier)
                 // The drop covers the selected item: held still, it's that item held.
-                .longHold(onLongPressNow != null) {
+                .longHold(onLongPressNow != null && holdable(selectedIndex)) {
                     // The items' long click plays this itself; the drop's hold has to.
                     haptics.longPress()
                     onLongPressNow?.invoke(selectedNow, itemBounds.getOrNull(selectedNow))
@@ -320,10 +330,17 @@ fun LiquidTabs(
                         drawRect(Color.Black.copy(alpha = 0.054f * p))
                     },
                 )
-                .height(pillHeight)
+                .liveHeight(pillHeight)
                 .fillMaxWidth(1f / count),
         )
     }
+}
+
+/** A height that follows [height] each layout pass, without recomposing. */
+private fun Modifier.liveHeight(height: () -> Dp): Modifier = layout { measurable, constraints ->
+    val px = height().roundToPx().coerceIn(constraints.minHeight, constraints.maxHeight)
+    val placeable = measurable.measure(constraints.copy(minHeight = px, maxHeight = px))
+    layout(placeable.width, px) { placeable.place(0, 0) }
 }
 
 /** Watches a press on an item without consuming it: [onDown] as it lands, [onUp] once every finger has lifted. */

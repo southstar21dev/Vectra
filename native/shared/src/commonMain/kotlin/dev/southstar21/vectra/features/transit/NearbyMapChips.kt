@@ -10,16 +10,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
@@ -79,9 +77,9 @@ internal fun rememberThinnedChips(map: MapState?, loaded: Boolean, chips: List<N
 }
 
 /**
- * The chips over their stops (each hanging just above its dot) and, over a picked stop, its
- * [board] instead of its chip: it springs out of the chip and shrinks back into it, the chip
- * popping back once it has. [dimmed] fades the chips while a line is being followed.
+ * The chips over their stops, each hanging just above its dot. The picked stop's chip steps aside
+ * while its board is up (pinned under the island, see ExplorerChrome). [dimmed] fades the chips
+ * while a line is being followed.
  */
 @Composable
 internal fun MapOverlayScope.NearbyChipOverlay(
@@ -90,56 +88,15 @@ internal fun MapOverlayScope.NearbyChipOverlay(
     focusedId: String?,
     dimmed: Boolean,
     onTap: (NearbyChip) -> Unit,
-    board: (@Composable (stopId: String) -> Unit)?,
 ) {
-    val boardId = rememberBoardOpening(focusedId)
     for (chip in chips) {
-        if (chip.stopId !in shown || chip.stopId == focusedId || chip.stopId == boardId.id) continue
+        if (chip.stopId !in shown || chip.stopId == focusedId) continue
         key(chip.stopId) {
             Box(Modifier.placedAt(LatLon(chip.lat, chip.lon).position, Alignment.BottomCenter)) {
                 PoppingChip(chip, dimmed) { onTap(chip) }
             }
         }
     }
-    val open = boardId.id?.let { id -> chips.firstOrNull { it.stopId == id } }
-    if (open != null && board != null) {
-        key("board-" + open.stopId) {
-            Box(Modifier.placedAt(LatLon(open.lat, open.lon).position, Alignment.BottomCenter)) {
-                Box(
-                    Modifier.offset(y = -ChipGap).graphicsLayer {
-                        val v = boardId.progress()
-                        transformOrigin = TransformOrigin(0.5f, 1f)
-                        scaleX = 0.55f + 0.45f * v
-                        scaleY = 0.4f + 0.6f * v
-                        alpha = (v * 1.6f).coerceIn(0f, 1f)
-                    },
-                ) { board(open.stopId) }
-            }
-        }
-    }
-}
-
-/** The board on screen ([id], kept while it closes) and how open it is (0..1, read in draw). */
-internal class BoardOpening(val id: String?, val progress: () -> Float)
-
-@Composable
-private fun rememberBoardOpening(focusedId: String?): BoardOpening {
-    val reduced = Vectra.reduceMotion
-    var id by remember { mutableStateOf<String?>(null) }
-    val open = remember { Animatable(0f) }
-    LaunchedEffect(focusedId) {
-        if (focusedId != null) {
-            if (id != focusedId) {
-                id = focusedId
-                open.snapTo(0f)
-            }
-            if (reduced) open.snapTo(1f) else open.animateTo(1f, spring(dampingRatio = 0.78f, stiffness = 380f))
-        } else if (id != null) {
-            if (reduced) open.snapTo(0f) else open.animateTo(0f, tween(200, easing = FastOutLinearInEasing))
-            id = null
-        }
-    }
-    return BoardOpening(id) { open.value }
 }
 
 /** A chip that springs up out of its stop the first time it shows. */

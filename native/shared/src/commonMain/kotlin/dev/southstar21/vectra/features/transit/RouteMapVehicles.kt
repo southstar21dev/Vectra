@@ -31,7 +31,6 @@ import dev.southstar21.vectra.core.maps.MapFontStack
 import dev.southstar21.vectra.core.maps.VehicleToken
 import dev.southstar21.vectra.core.maps.VehicleTokenBodyPainter
 import dev.southstar21.vectra.core.maps.VehicleTokenPointPainter
-import dev.southstar21.vectra.core.maps.VehicleVariant
 import dev.southstar21.vectra.core.maps.position
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -64,9 +63,6 @@ internal data class TokenStyle(val fill: Color, val ink: Color)
 /** A vehicle's countdown label; [soon] (due now or in a minute) is green. */
 @Immutable
 internal data class VehicleCallout(val label: String, val soon: Boolean)
-
-/** Estimated positions (the metro, from the timetable) are drawn a little faded. */
-private const val ApproximateAlpha = 0.7f
 
 /** Every vehicle's callout, by vehicle id. */
 internal fun calloutsFor(vehicles: List<RouteMapVehicle>): Map<String, VehicleCallout> =
@@ -101,7 +97,6 @@ internal fun MapOverlayScope.RoundVehicleMarkers(
                     style.fill, style.ink,
                     headingDeg = { rotation.value },
                     modifier = Modifier.align(Alignment.Center),
-                    alpha = if (f.variant == VehicleVariant.Approximate) ApproximateAlpha else 1f,
                 )
             }
         }
@@ -148,7 +143,6 @@ internal fun RoundVehicleLayers(
                 f.position.lat, f.position.lon,
                 buildJsonObject {
                     put("bearing", JsonPrimitive(f.bearing))
-                    put("kind", JsonPrimitive(if (f.variant == VehicleVariant.Approximate) "approx" else "live"))
                     callouts[f.id]?.let {
                         put("label", JsonPrimitive(it.label))
                         put("tone", JsonPrimitive(if (it.soon) "soon" else "later"))
@@ -169,17 +163,15 @@ internal fun RoundVehicleLayers(
         iconAllowOverlap = const(true),
         iconIgnorePlacement = const(true),
     )
-    for ((kind, alpha) in listOf("live" to 1f, "approx" to ApproximateAlpha)) {
-        val body = remember(style, alpha) { VehicleTokenBodyPainter(style.fill, style.ink, alpha) }
-        SymbolLayer(
-            id = "$idPrefix-vehicle-body-$kind", source = source,
-            filter = feature["kind"].asString() eq const(kind),
-            iconImage = image(body, box),
-            iconSize = const(scale),
-            iconAllowOverlap = const(true),
-            iconIgnorePlacement = const(true),
-        )
-    }
+    // Live or estimated (the metro), a vehicle is drawn solid.
+    val body = remember(style) { VehicleTokenBodyPainter(style.fill, style.ink, 1f) }
+    SymbolLayer(
+        id = "$idPrefix-vehicle-body", source = source,
+        iconImage = image(body, box),
+        iconSize = const(scale),
+        iconAllowOverlap = const(true),
+        iconIgnorePlacement = const(true),
+    )
     for ((tone, ink) in listOf("soon" to c.tints.emerald.text, "later" to Vectra.monitor.live)) {
         SymbolLayer(
             id = "$idPrefix-vehicle-label-$tone", source = source,
