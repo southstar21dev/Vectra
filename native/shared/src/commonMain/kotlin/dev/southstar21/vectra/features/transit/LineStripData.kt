@@ -21,13 +21,9 @@ fun DirectionView.distanceOf(location: LatLon?): Double? {
 fun DirectionView.destination(): String =
     extractHeadsignDestination(arrival?.headSign?.takeIf { it.isNotEmpty() } ?: stops.lastOrNull()?.name)
 
-/**
- * This direction as the strip needs it. [routeVehicles]: every live vehicle on the route, to
- * place the one after the next. [leftAt]: when its last vehicle left your stop.
- */
-fun DirectionView.toStripDirection(routeVehicles: List<FutarVehicle> = emptyList(), leftAt: Long? = null): StripDirection {
+/** This direction as the strip needs it. */
+fun DirectionView.toStripDirection(): StripDirection {
     val next = upcoming.firstOrNull()
-    val nextLocation = next?.tripId?.takeIf { it.isNotEmpty() }?.let { trip -> routeVehicles.firstOrNull { it.tripId == trip }?.location }
     val origin = trackedIndex == 0 && stops.size > 1
     return StripDirection(
         destination = destination(),
@@ -41,8 +37,6 @@ fun DirectionView.toStripDirection(routeVehicles: List<FutarVehicle> = emptyList
             origin -> if (vehicles.isNotEmpty()) 0.0 else null
             else -> vehicleDistance()
         },
-        nextDistance = distanceOf(nextLocation),
-        leftAt = leftAt,
         approach = stops.getOrNull(trackedIndex - 1)?.name,
         origin = origin,
         terminus = stops.size > 1 && trackedIndex == stops.lastIndex,
@@ -60,19 +54,3 @@ internal fun unplacedAt(heading: Int, minutes: Int): Float = when {
     else -> (StripStopCount - 1).toFloat()
 }
 
-/** A direction's lead trip as last seen: [dueMs] at your stop, in arrivals fetched at [fetchedAt]. */
-internal class SeenLead(val tripId: String, val dueMs: Long, val fetchedAt: Long)
-
-/** Arrivals fetched longer ago than this are old news: a lead change against them isn't a departure seen now. */
-private const val FreshArrivalsMs = 90_000L
-
-/**
- * Whether a direction's lead trip changing from [prev] to [nextTrip] means its vehicle just left
- * your stop: [prev] came from freshly fetched arrivals and was due within a minute either side of
- * [now]. Cached arrivals being replaced on opening (or after a while in the background) only look
- * like a departure: the lead they had left long ago, or is still on its way.
- */
-internal fun justDeparted(prev: SeenLead, nextTrip: String, now: Long): Boolean {
-    if (prev.tripId == nextTrip || now - prev.fetchedAt > FreshArrivalsMs) return false
-    return prev.dueMs in (now - JustLeftMs)..(now + JustLeftMs)
-}

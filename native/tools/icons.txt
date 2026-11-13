@@ -10,6 +10,7 @@ RiArrowRightFill
 RiArrowRightLine
 RiArrowRightSLine
 RiArrowUpDownLine
+RiArrowUpSLine
 RiAwardLine
 RiBankLine
 RiBookOpenLine
@@ -21,10 +22,10 @@ RiCalendar2Line
 RiCalendarCheckLine
 RiCalendarCloseLine
 RiCalendarLine
-RiCheckboxCircleFill
-RiCheckboxCircleLine
 RiCheckFill
 RiCheckLine
+RiCheckboxCircleFill
+RiCheckboxCircleLine
 RiCloseLine
 RiCloudyFill
 RiCloudyLine
@@ -51,6 +52,7 @@ RiFocus3Line
 RiFoggyFill
 RiFoggyLine
 RiFootprintLine
+RiFullscreenExitLine
 RiFullscreenLine
 RiGobletLine
 RiGraduationCapLine
@@ -60,6 +62,7 @@ RiHome5Line
 RiInformationLine
 RiLink
 RiLinkM
+RiLinkUnlinkM
 RiLoader4Line
 RiLockLine
 RiLogoutBoxRLine
@@ -86,6 +89,7 @@ RiSearchLine
 RiSendPlaneLine
 RiSettings3Fill
 RiSettings3Line
+RiShieldCheckLine
 RiShieldCrossLine
 RiShip2Line
 RiSnowflakeLine

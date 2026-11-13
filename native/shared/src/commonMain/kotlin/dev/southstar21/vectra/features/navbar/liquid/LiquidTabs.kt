@@ -1,6 +1,14 @@
 // Tab bar construction adapted from Kyant0/AndroidLiquidGlass's LiquidBottomTabs (Apache-2.0), via the Kaloria app.
 package dev.southstar21.vectra.features.navbar.liquid
 
+import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
@@ -25,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -90,6 +99,8 @@ fun LiquidTabs(
     frosted: Boolean = false,
     /** The drop crossed onto another item: a detent, for a haptic tick. */
     onCross: () -> Unit = {},
+    /** An item held down (instead of tapped), with where it is in the window. */
+    onLongPress: ((index: Int, bounds: Rect?) -> Unit)? = null,
     item: @Composable ColumnScope.(index: Int, tinted: Boolean) -> Unit,
 ) {
     val selectedNow by rememberUpdatedState(selectedIndex)
@@ -157,6 +168,9 @@ fun LiquidTabs(
             }
         }
 
+        val onLongPressNow by rememberUpdatedState(onLongPress)
+        val haptics = Vectra.haptics
+        val itemBounds = remember(count) { arrayOfNulls<Rect>(count) }
         val highlight = remember(scope) {
             InteractiveHighlight(scope, position = { size, _ -> Offset((drag.value + 0.5f) * itemWidth + panelOffset, size.height / 2f) })
         }
@@ -167,7 +181,28 @@ fun LiquidTabs(
                 Column(
                     Modifier
                         .clip(Capsule())
-                        .tappable(role = Role.Tab, highlight = false) { currentIndex = index }
+                        .then(if (tinted) Modifier else Modifier.onGloballyPositioned { itemBounds[index] = it.boundsInWindow() })
+                        // Pressed, the drop slides over and swells there while held; let go without a
+                        // tap or hold landing it, it goes back. (On both copies: the tinted one is on top.)
+                        .pressPreview(
+                            onDown = {
+                                if (index != currentIndex) {
+                                    drag.press()
+                                    drag.updateValue(index.toFloat())
+                                }
+                            },
+                            onUp = {
+                                scope.launch {
+                                    withFrameNanos { }
+                                    if (abs(drag.targetValue - currentIndex) > 0.01f) drag.animateToValue(currentIndex.toFloat()) else drag.release()
+                                }
+                            },
+                        )
+                        .tappable(
+                            role = Role.Tab,
+                            highlight = false,
+                            onLongClick = onLongPressNow?.let { hold -> { hold(index, itemBounds[index]) } },
+                        ) { currentIndex = index }
                         .semantics { selected = index == selectedIndex }
                         .fillMaxHeight()
                         .weight(1f)
@@ -253,6 +288,12 @@ fun LiquidTabs(
                 .padding(horizontal = 4.dp)
                 .graphicsLayer { translationX = drag.value * itemWidth + panelOffset }
                 .then(highlight.gestureModifier)
+                // The drop covers the selected item: held still, it's that item held.
+                .longHold(onLongPressNow != null) {
+                    // The items' long click plays this itself; the drop's hold has to.
+                    haptics.longPress()
+                    onLongPressNow?.invoke(selectedNow, itemBounds.getOrNull(selectedNow))
+                }
                 .then(drag.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, itemsBackdrop),
@@ -282,5 +323,37 @@ fun LiquidTabs(
                 .height(pillHeight)
                 .fillMaxWidth(1f / count),
         )
+    }
+}
+
+/** Watches a press on an item without consuming it: [onDown] as it lands, [onUp] once every finger has lifted. */
+private fun Modifier.pressPreview(onDown: () -> Unit, onUp: () -> Unit): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        onDown()
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+        } while (event.changes.any { it.pressed })
+        onUp()
+    }
+}
+
+/**
+ * Calls [onHold] once a press stays down, and still, for the long-press timeout. Watches without
+ * consuming, so the drop's own drag and tap carry on as usual.
+ */
+private fun Modifier.longHold(enabled: Boolean, onHold: () -> Unit): Modifier = if (!enabled) this else pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val slop = viewConfiguration.touchSlop
+        val released = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            var gone = false
+            while (!gone) {
+                val ch = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                gone = ch == null || !ch.pressed || (ch.position - down.position).getDistance() > slop
+            }
+            true
+        }
+        if (released == null) onHold()
     }
 }

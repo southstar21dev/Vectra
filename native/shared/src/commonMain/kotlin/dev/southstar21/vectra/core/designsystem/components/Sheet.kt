@@ -116,7 +116,15 @@ val LocalScreenInCard = staticCompositionLocalOf { false }
 @Stable
 class SheetDragState internal constructor(private val haptics: VectraHaptics) {
     internal val offset = Animatable(Float.NaN)
-    internal var anchors by mutableStateOf(emptyList<Float>())
+    private var anchorList by mutableStateOf(emptyList<Float>())
+    internal var anchors: List<Float>
+        get() = anchorList
+        set(value) {
+            anchorList = value
+            // Never above the top anchor: a fast fling's spring overshoot (or a pull past the top)
+            // would lift the panel off the window's bottom edge and show the page under it.
+            offset.updateBounds(lowerBound = value.firstOrNull())
+        }
     var dragging by mutableStateOf(false)
         internal set
 
@@ -131,14 +139,10 @@ class SheetDragState internal constructor(private val haptics: VectraHaptics) {
         return (1f - current / half).coerceIn(0f, 1f)
     }
 
-    /** Moves by [delta] px; pulling above the top anchor is resisted. Returns what was consumed. */
+    /** Moves by [delta] px, stopping at the top anchor. Returns what was consumed. */
     internal suspend fun dragBy(delta: Float): Float {
         if (anchors.isEmpty()) return 0f
-        val from = current
-        val top = anchors.first()
-        val raw = from + delta
-        val next = if (raw < top) top + (raw - top) * Resistance else raw
-        offset.snapTo(next.coerceAtMost(hidden))
+        offset.snapTo((current + delta).coerceIn(anchors.first(), hidden))
         return delta
     }
 
@@ -161,6 +165,9 @@ class SheetDragState internal constructor(private val haptics: VectraHaptics) {
 
     private fun nearest(position: Float) = anchors.minBy { abs(it - position) }
 
+    /** The resting height the sheet is at (or nearest to). */
+    internal fun nearestIndex(): Int = anchors.indexOf(nearest(current))
+
     internal suspend fun animateTo(target: Float, spec: AnimationSpec<Float>) {
         offset.animateTo(target, spec)
     }
@@ -168,7 +175,6 @@ class SheetDragState internal constructor(private val haptics: VectraHaptics) {
     internal suspend fun snapTo(target: Float) = offset.snapTo(target)
 
     private companion object {
-        const val Resistance = 0.2f
         const val FlingVelocity = 1200f
     }
 }
@@ -241,6 +247,11 @@ fun VSheet(
     floating: Boolean = false,
     /** [SheetSize.Expandable]: the share of the window the sheet covers at its half-height rest. */
     halfFraction: Float = 0.5f,
+    /**
+     * Held fully open and still (content that takes the whole sheet and its touches, such as a
+     * map grown to fill it); when released the sheet returns to the height it had before.
+     */
+    pinnedOpen: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var mounted by remember { mutableStateOf(open) }
@@ -298,6 +309,19 @@ fun VSheet(
         }
     }
 
+    val restoreTo = remember { intArrayOf(-1) }
+    LaunchedEffect(pinnedOpen, state.anchors.isNotEmpty()) {
+        if (state.anchors.isEmpty() || !currentOpen) return@LaunchedEffect
+        if (pinnedOpen) {
+            if (restoreTo[0] < 0) restoreTo[0] = state.nearestIndex()
+            state.animateTo(state.anchors.first(), spec)
+        } else if (restoreTo[0] >= 0) {
+            val to = state.anchors.getOrNull(restoreTo[0])
+            restoreTo[0] = -1
+            if (to != null && to != state.hidden) state.animateTo(to, spec)
+        }
+    }
+
     val back = rememberPredictiveBack(enabled = open) { dismiss() }
     val nested = remember(state) { SheetNestedScroll(state, scope, ::release) }
 
@@ -348,11 +372,11 @@ fun VSheet(
                     .draggable(
                         rememberDraggableState { delta -> scope.launch { state.dragBy(delta) } },
                         Orientation.Vertical,
-                        enabled = open,
+                        enabled = open && !pinnedOpen,
                         onDragStarted = { state.dragging = true },
                         onDragStopped = { velocity -> release(velocity) },
                     )
-                    .then(if (open) Modifier.nestedScroll(nested) else Modifier)
+                    .then(if (open && !pinnedOpen) Modifier.nestedScroll(nested) else Modifier)
                     .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom)),
             ) {
                 if (dragHandle) SheetHandle(Modifier.align(Alignment.CenterHorizontally))

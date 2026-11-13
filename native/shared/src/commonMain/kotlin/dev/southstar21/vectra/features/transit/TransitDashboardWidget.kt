@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.components.CardLaunch
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +32,6 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.navigation.LocalNavigator
-import dev.southstar21.vectra.navigation.Screen
 
 /** From this many pinned trackers the dashboard shows slim cards. */
 private const val SlimCardsFrom = 4
@@ -60,7 +61,7 @@ fun TransitDashboardWidget(
     val hasPinned = favorites.isNotEmpty()
     val nearby = rememberNearbyData(repo, deviceLocation, modeFilter, departures = !hasPinned)
     val navigator = LocalNavigator.current
-    val openNearby = { navigator.push(Screen.NearbyExplorer) }
+    val openNearby = { navigator.nearbyMap = CardLaunch(null) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (hasPinned) {
@@ -69,9 +70,9 @@ fun TransitDashboardWidget(
             favorites.forEachIndexed { i, tracker ->
                 key(tracker.id) {
                     if (slim) {
-                        LineStripSlimCard(repo, tracker, nearby.position, onOpenTracker)
+                        LineStripSlimCard(repo, tracker, nearby.position, onOpenTracker, revealIndex = i)
                     } else {
-                        LineStripCard(repo, tracker, nearby.position, onOpenTracker, onAskLocation = if (i == 0) nearby.refreshLocation else null)
+                        LineStripCard(repo, tracker, onOpenTracker, revealIndex = i)
                     }
                 }
             }
@@ -82,7 +83,7 @@ fun TransitDashboardWidget(
             if (lines.isEmpty()) {
                 Box(Modifier.fillMaxWidth().stripCardSurface().padding(14.dp)) { NearbyDeparturesList(nearby.radarItems, nearby.status) }
             } else {
-                lines.forEach { t -> key(t.id) { LineStripCard(repo, t, nearby.position, onOpen = { openNearby() }) } }
+                lines.forEachIndexed { i, t -> key(t.id) { LineStripCard(repo, t, onOpen = { openNearby() }, revealIndex = i) } }
             }
             Row(
                 Modifier

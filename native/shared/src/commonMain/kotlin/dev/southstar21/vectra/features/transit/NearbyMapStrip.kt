@@ -47,11 +47,52 @@ import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.designsystem.theme.tappable
+import dev.southstar21.vectra.core.designsystem.theme.glass
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 private fun statusText(status: NearbyLocationStatus): String = when (status) {
     NearbyLocationStatus.Tracking, NearbyLocationStatus.Locating -> "Finding your location…"
     NearbyLocationStatus.Failed -> "Location unavailable"
     NearbyLocationStatus.Off -> "Turn on location to see stops near you"
+}
+
+/**
+ * Before there's a position: one glass prompt saying what location brings, with Allow (or a
+ * spinner while it's being found).
+ */
+@Composable
+private fun LocationPrompt(status: NearbyLocationStatus, onLocate: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Vectra.colors
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        modifier.padding(horizontal = 16.dp).glass(shape).padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (status == NearbyLocationStatus.Locating) {
+            NearbyBorderSpinner(16.dp, c.tints.blue.text, c.tints.blue.text.copy(alpha = 0.3f))
+        } else {
+            VIcon(RemixIcons.MapPinLine, size = 18.dp, tint = c.textSecondary)
+        }
+        VText(
+            if (status == NearbyLocationStatus.Locating) statusText(status) else "See the stops and departures around you",
+            Modifier.weight(1f, fill = false),
+            vtext(TypeScale.Caption, Weight.Semibold),
+            c.textPrimary,
+        )
+        if (status != NearbyLocationStatus.Locating) {
+            VText(
+                "Allow",
+                Modifier
+                    .border(1.dp, c.accentPrimary.copy(alpha = 0.6f), CircleShape)
+                    .tappable(CircleShape, role = androidx.compose.ui.semantics.Role.Button, haptic = { tick() }, onClick = onLocate)
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                vtext(TypeScale.Caption, Weight.Bold),
+                c.accentPrimary,
+                maxLines = 1,
+            )
+        }
+    }
 }
 
 /** A spinning ring: a faint [track] circle with one [color] arc. */
@@ -73,8 +114,8 @@ internal fun NearbyBorderSpinner(size: Dp, color: Color, track: Color, stroke: D
     }
 }
 
-/** The strip's usual height, on top of the Transit card. */
-val NearbyMapStripHeight = 132.dp
+/** The strip's usual height, on top of the Transit card: room for the nearest stops' chips. */
+val NearbyMapStripHeight = 196.dp
 
 /**
  * The top of the transit cards: a slice of the map around you that opens the
@@ -97,6 +138,7 @@ fun NearbyMapStrip(
     onMapPendingChange: ((Boolean) -> Unit)? = null,
     showLoadingOverlay: Boolean = true,
     height: Dp = NearbyMapStripHeight,
+    chips: List<NearbyChip> = emptyList(),
 ) {
     val c = Vectra.colors
     var mapReady by remember { mutableStateOf(false) }
@@ -120,22 +162,12 @@ fun NearbyMapStrip(
                 highlightStopId = highlightStopId,
                 onReady = { mapReady = true },
                 modifier = Modifier.fillMaxSize(),
+                chips = chips,
             )
         } else {
-            Column(
-                Modifier.fillMaxSize().padding(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (status == NearbyLocationStatus.Locating) {
-                    NearbyBorderSpinner(16.dp, c.tints.blue.text, c.tints.blue.text.copy(alpha = 0.3f))
-                } else {
-                    VIcon(RemixIcons.Crosshair2Line, size = 20.dp, tint = c.tints.blue.text)
-                }
-                VText(statusText(status), style = vtext(TypeScale.Caption, Weight.Semibold), color = c.textSecondary)
-            }
+            LocationPrompt(status, onLocate, Modifier.align(Alignment.Center).padding(bottom = 16.dp))
         }
-        if (tracking && showLoadingOverlay) LoadingOverlay(show = !mapReady, label = "Loading map…")
+        if (tracking && showLoadingOverlay) MapLoadingOrb(show = !mapReady, label = "Loading map…")
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -158,32 +190,17 @@ fun NearbyMapStrip(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (status == NearbyLocationStatus.Failed) {
-                // Small outlined pill button.
-                val locatePress = remember { MutableInteractionSource() }
-                Box(
-                    Modifier
-                        .pressScale(locatePress)
-                        .pillGlass(CircleShape)
-                        .tappable(role = null, highlight = false, interactionSource = locatePress, onClick = onLocate)
-                        .height(32.dp)
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) { VText("Locate", style = vtext(TypeScale.Caption), color = c.textPrimary, maxLines = 1) }
-            }
             val press = remember { MutableInteractionSource() }
             Box(
                 Modifier
                     .pressScale(press)
-                    .size(32.dp)
-                    .boxShadow(CircleShape, NearbyShadows.sm())
-                    .background(c.surfaceSecondary.copy(alpha = c.surfaceSecondary.alpha * 0.8f), CircleShape)
-                    .border(1.dp, c.borderSubtle, CircleShape)
+                    .size(36.dp)
+                    .glass(CircleShape)
                     .tappable(role = null, highlight = false, interactionSource = press, onClick = onOpen)
                     .semantics { contentDescription = "Open the nearby transit map" },
                 contentAlignment = Alignment.Center,
             ) {
-                VIcon(RemixIcons.FullscreenLine, size = 14.dp, tint = c.textSecondary)
+                VIcon(RemixIcons.FullscreenLine, size = 15.dp, tint = c.textPrimary)
             }
         }
     }

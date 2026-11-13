@@ -106,13 +106,23 @@ private class DayListScope(
         }
     }
 
-    fun stackActions(onToggleTask: ((ScheduleItem) -> Unit)?) = StackActions(
+    fun stackActions(
+        onToggleTask: ((ScheduleItem) -> Unit)?,
+        onOpenEvent: ((ScheduleEvent) -> Unit)?,
+        onOpenItem: ((ScheduleItem) -> Unit)?,
+    ) = StackActions(
         statusOf = ::stackStatus,
         onDisc = { e ->
             when {
                 e is DayEntry.Class && canCheckIn(e) -> { { setStatus(e, nextStatus(statusOf(e.event))) } }
                 e is DayEntry.Item && e.occurrence.item.isTask && onToggleTask != null -> { { onToggleTask(e.occurrence.item) } }
                 else -> null
+            }
+        },
+        onOpen = { e ->
+            when (e) {
+                is DayEntry.Class -> onOpenEvent?.let { open -> { open(e.event) } }
+                is DayEntry.Item -> onOpenItem?.let { open -> { open(e.occurrence.item) } }
             }
         },
     )
@@ -192,7 +202,7 @@ private fun DayListBody(scope: DayListScope, cards: DayListCards, modifier: Modi
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (plan.finished.isNotEmpty()) {
-            FinishedStack(plan.finished, stackOpen, scope.d, cards.timeFormat, scope.stackActions(cards.onToggleTaskComplete), onToggle = { stackOpen = !stackOpen })
+            FinishedStack(plan.finished, stackOpen, scope.d, cards.timeFormat, scope.stackActions(cards.onToggleTaskComplete, cards.onEventClick, cards.onItemClick), onToggle = { stackOpen = !stackOpen })
         }
         for (row in plan.rows) key(row.key) { DayRowView(row, scope, cards) }
         if (plan.dayIsOver) DayDoneCard(scope.summary(), scope.d)

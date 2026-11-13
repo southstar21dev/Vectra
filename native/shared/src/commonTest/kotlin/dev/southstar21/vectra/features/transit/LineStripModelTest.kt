@@ -83,23 +83,21 @@ class LineStripModelTest {
     }
 
     @Test
-    fun aDepartureSeenBetweenClockTicksShowsAtOnce() {
-        // Stamped a few seconds after the strip's clock last ticked.
-        val d = dir("A", 6, 2.0).copy(leftAt = now + 4_000)
-        assertTrue(buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles.any { it.faded })
-    }
-
-    @Test
     fun aDueTripWithoutAPositionSitsAtYourStop() {
         // Arrivals and positions update apart: the due trip's vehicle can briefly be missing.
-        val d = dir("A", 0, null, next = 2).copy(nextDistance = 1.5)
-        val vs = buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles
-        val due = vs.single { !it.second }
+        val d = dir("A", 0, null, next = 2)
+        val due = buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles.single()
         assertEquals(StripSideStops.toFloat(), due.position)
         assertEquals("NOW", due.label)
         assertFalse(due.showMarker)
-        // The one after it, which does report a position, is still drawn.
-        assertTrue(vs.single { it.second }.showMarker)
+    }
+
+    @Test
+    fun oneVehicleEachWayAtMost() {
+        // The one after the next, even when it is on the strip, isn't drawn.
+        val m = buildStripModel(listOf(dir("A", 2, 1.0, next = 4), dir("B", 3, 1.5, next = 6)), now, metro = false, frozen = false)
+        assertEquals(1, m.vehicles.count { it.heading > 0 })
+        assertEquals(1, m.vehicles.count { it.heading < 0 })
     }
 
     @Test
@@ -107,40 +105,6 @@ class LineStripModelTest {
         val m = buildStripModel(listOf(dir("A", 7, 2.5)), now, metro = false, frozen = false)
         assertTrue(m.dimRight)
         assertNull(m.leftEnd)
-    }
-
-    @Test
-    fun theOneAfterTheNextIsDrawnQuieter() {
-        val d = dir("A", 2, 1.0, next = 7).copy(nextDistance = 2.9)
-        val vs = buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles
-        assertEquals(2, vs.size)
-        val second = vs.single { it.second }
-        assertEquals("7'", second.label)
-        assertTrue(second.position < vs.single { !it.second }.position)
-    }
-
-    @Test
-    fun crowdedSecondLabelDropsItsTime() {
-        val d = dir("A", 2, 1.0, next = 3).copy(nextDistance = 1.5)
-        val second = buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles.single { it.second }
-        assertNull(second.label)
-        assertTrue(second.showMarker)
-    }
-
-    @Test
-    fun secondVehicleBeyondTheStripIsLeftOut() {
-        val d = dir("A", 2, 1.0, next = 12).copy(nextDistance = 5.0)
-        assertEquals(1, buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles.size)
-    }
-
-    @Test
-    fun justLeftStaysFadedForAMinute() {
-        val d = dir("A", 6, 2.0).copy(leftAt = now - 20_000)
-        val ghost = buildStripModel(listOf(d), now, metro = false, frozen = false).vehicles.single { it.faded }
-        assertTrue(ghost.position > StripSideStops)
-        assertNull(ghost.label)
-        val later = buildStripModel(listOf(d.copy(leftAt = now - JustLeftMs - 1)), now, metro = false, frozen = false)
-        assertTrue(later.vehicles.none { it.faded })
     }
 
     @Test
@@ -154,10 +118,24 @@ class LineStripModelTest {
         val fork = m.fork!!
         // The drawn pair comes in from opposite sides; the third splits off its sibling's end.
         assertTrue(setOf(m.leftEnd, m.rightEnd).contains("Széll Kálmán tér M"))
-        assertEquals(3, m.vehicles.size)
-        assertEquals(2, m.vehicles.count { it.heading == fork.heading })
+        // One vehicle each way: on the forked side the sooner branch, named after where it goes.
+        assertEquals(2, m.vehicles.size)
+        assertEquals(shortDestination("Újbuda-központ M"), m.vehicles.single { it.heading == fork.heading }.sub)
         assertTrue(extraDirections(dirs).isEmpty())
         assertEquals("Móricz", shortDestination("Móricz Zsigmond körtér M"))
+    }
+
+    @Test
+    fun theForkedBranchShowsWhenItIsSooner() {
+        val dirs = listOf(
+            dir("Újbuda-központ M", 9, 2.5).copy(approach = "Király utca"),
+            dir("Móricz Zsigmond körtér M", 4, 1.0).copy(approach = "Király utca"),
+            dir("Széll Kálmán tér M", 1, 1.5).copy(approach = "Jókai tér"),
+        )
+        val m = buildStripModel(dirs, now, metro = false, frozen = false)
+        val side = m.vehicles.filter { it.heading == m.fork!!.heading }
+        assertEquals(1, side.size)
+        assertEquals("Móricz", side.single().sub)
     }
 
     @Test

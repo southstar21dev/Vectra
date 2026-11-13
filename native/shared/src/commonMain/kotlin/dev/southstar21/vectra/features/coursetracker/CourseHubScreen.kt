@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.features.coursetracker
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.glass
@@ -8,11 +7,8 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -31,8 +27,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
-import dev.southstar21.vectra.core.designsystem.components.LocalScreenInCard
-import dev.southstar21.vectra.core.designsystem.components.ScreenColumn
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
 import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
 import dev.southstar21.vectra.core.designsystem.components.TopBar
@@ -50,6 +44,33 @@ import dev.southstar21.vectra.features.schedule.TrackerCourses
 import dev.southstar21.vectra.features.schedule.isExamEvent
 import dev.southstar21.vectra.features.schedule.normalizeTime
 import dev.southstar21.vectra.features.schedule.rememberExitOnce
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.BarButton
+import dev.southstar21.vectra.core.designsystem.components.Spinner
+import dev.southstar21.vectra.core.designsystem.components.SheetSize
+import dev.southstar21.vectra.core.designsystem.components.VSheet
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
+import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
+import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.features.schedule.parseOpaqueHexColor
+import dev.southstar21.vectra.navigation.AppNavigator
 import kotlinx.coroutines.launch
 
 private enum class TrackerTab(val label: String) { Attendance("Attendance"), Grades("Grades"), Rules("Rules") }
@@ -100,12 +121,40 @@ data class CourseTrackerCourse(
  * The Course Hub for the course stored under [courseKey] (see [resolveCourseKey]):
  * Attendance / Grades / Rules as swipeable pages under a tab row. The course's details
  * come from the timetable, or from the tracker itself once the class has left the
- * timetable; with neither, the screen closes.
+ * timetable; with neither, the hub closes.
+ *
+ * It opens ([AppNavigator.openCourseHub]) as a floating sheet over whatever is showing, resting
+ * at about half height with the course, the tab row and the top of the page in view; pulled up,
+ * it settles onto the window's edges.
  */
 @Composable
-fun CourseHubScreen(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onBack: () -> Unit) {
-    CourseHubFor(repo, schedule, connectivity, courseKey, onBack, embedded = false)
+fun CourseHubSheetHost(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, navigator: AppNavigator) {
+    val subject = navigator.courseHub
+    // The last course stays while the sheet animates away.
+    var shown by remember { mutableStateOf(subject) }
+    if (subject != null && subject != shown) shown = subject
+    val courseKey = shown ?: return
+    VSheet(
+        open = subject != null,
+        onDismiss = navigator::closeCourseHub,
+        size = SheetSize.Expandable,
+        title = "Course Hub",
+        floating = true,
+        halfFraction = SheetHalfFraction,
+        onExited = { if (navigator.courseHub == null) shown = null },
+    ) {
+        key(courseKey) {
+            // Only closes the hub it belongs to, never one opened after it.
+            CourseHubFor(repo, schedule, connectivity, courseKey, { if (navigator.courseHub == courseKey) navigator.closeCourseHub() }, HubSurface.Sheet)
+        }
+    }
 }
+
+/** Share of the window the hub sheet covers at rest: the course, the tabs and the page's first cards. */
+private const val SheetHalfFraction = 0.62f
+
+/** Where the hub is drawn: a sheet over the app, or the wide Schedule tab's side pane. */
+private enum class HubSurface { Sheet, Pane }
 
 /**
  * The Course Hub as the wide Schedule tab's side pane: the same pages on a rounded surface,
@@ -113,7 +162,7 @@ fun CourseHubScreen(repo: CourseTrackerRepository, schedule: ScheduleRepository,
  */
 @Composable
 fun CourseHubPane(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onClose: () -> Unit) {
-    CourseHubFor(repo, schedule, connectivity, courseKey, onClose, embedded = true)
+    CourseHubFor(repo, schedule, connectivity, courseKey, onClose, HubSurface.Pane)
 }
 
 @Composable
@@ -123,7 +172,7 @@ private fun CourseHubFor(
     connectivity: Connectivity,
     courseKey: String,
     onBack: () -> Unit,
-    embedded: Boolean,
+    surface: HubSurface,
 ) {
     val online by connectivity.online.collectAsStateWithLifecycle()
     val events by schedule.events.collectAsStateWithLifecycle()
@@ -141,10 +190,10 @@ private fun CourseHubFor(
     LaunchedEffect(missing, eventsLoading, trackerLoading) { if (missing && !eventsLoading && !trackerLoading) exit() }
 
     if (course == null || missing) {
-        if (!embedded) ScreenColumn { TopBar("Course Hub", BarLeading.Back, exit) }
+        if (surface == HubSurface.Sheet) Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) { Spinner() }
         return
     }
-    CourseHub(repo, course, events, online, exit, embedded)
+    CourseHub(repo, course, events, online, exit, surface)
 }
 
 @Composable
@@ -154,7 +203,7 @@ private fun CourseHub(
     events: List<ScheduleEvent>,
     online: Boolean,
     onBack: () -> Unit,
-    embedded: Boolean,
+    surface: HubSurface,
 ) {
     val c = Vectra.colors
     val data by repo.data.collectAsStateWithLifecycle()
@@ -235,45 +284,47 @@ private fun CourseHub(
     val selected = tabs[pager.targetPage]
     // Derived, so scrolling recomposes only when the bar's hairline flips.
     val scrolled by remember { derivedStateOf { scrolls[pager.currentPage].value > 2 } }
-    val bottomInset = if (embedded || LocalScreenInCard.current) 0.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // A pushed screen runs edge to edge; the pane is a rounded card beside the day list.
-    val surface: @Composable (@Composable ColumnScope.() -> Unit) -> Unit = { body ->
-        if (embedded) {
-            Column(Modifier.fillMaxSize().glass(Radius.Card).clip(Radius.Card).background(c.surfacePrimary), content = body)
-        } else {
-            ScreenColumn(content = body)
+    val sheet = surface == HubSurface.Sheet
+    val tabRow: @Composable (Modifier) -> Unit = { modifier ->
+        VTabs(selected, tabs, { next ->
+            scope.launch {
+                if (reduceMotion) pager.scrollToPage(next.ordinal)
+                else pager.animateScrollToPage(next.ordinal, animationSpec = VectraSprings.settle())
+            }
+        }, modifier) { t, _ ->
+            VIcon(
+                when (t) {
+                    TrackerTab.Attendance -> RemixIcons.CalendarCheckLine
+                    TrackerTab.Grades -> RemixIcons.AwardLine
+                    TrackerTab.Rules -> RemixIcons.EqualizerLine
+                },
+            )
+            VText(t.label, maxLines = 1)
         }
     }
 
-    surface {
-        TopBar(
-            title = tracker.courseName,
-            leading = if (embedded) BarLeading.Close else BarLeading.Back,
-            onLeading = onBack,
-            scrolled = scrolled,
-            background = c.surfacePrimary,
-            wrapTitle = true,
-            accessory = {
-                VTabs(selected, tabs, { next ->
-                    scope.launch {
-                        if (reduceMotion) pager.scrollToPage(next.ordinal)
-                        else pager.animateScrollToPage(next.ordinal, animationSpec = VectraSprings.settle())
-                    }
-                }, Modifier.fillMaxWidth()) { t, _ ->
-                    VIcon(
-                        when (t) {
-                            TrackerTab.Attendance -> RemixIcons.CalendarCheckLine
-                            TrackerTab.Grades -> RemixIcons.AwardLine
-                            TrackerTab.Rules -> RemixIcons.EqualizerLine
-                        },
-                    )
-                    VText(t.label, maxLines = 1)
-                }
-            },
-        )
+    // The sheet's own glass shows through; the pane is a rounded card beside the day list.
+    Column(
+        if (sheet) Modifier.fillMaxSize()
+        else Modifier.fillMaxSize().glass(Radius.Card).clip(Radius.Card).background(c.surfacePrimary),
+    ) {
+        if (sheet) {
+            HubSheetHeader(tracker, onClose = onBack) { tabRow(it) }
+        } else {
+            TopBar(
+                title = tracker.courseName,
+                leading = BarLeading.Close,
+                onLeading = onBack,
+                scrolled = scrolled,
+                background = c.surfacePrimary,
+                wrapTitle = true,
+                accessory = { tabRow(Modifier.fillMaxWidth()) },
+            )
+        }
+        val rule by animateColorAsState(if (sheet && scrolled) c.borderSubtle else Color.Transparent, tween(200, easing = VectraEasing.Fade), label = "hubRule")
         HorizontalPager(
             state = pager,
-            modifier = Modifier.weight(1f).fillMaxWidth().background(c.surfacePrimary),
+            modifier = Modifier.weight(1f).fillMaxWidth().then(if (sheet) Modifier.topRule(rule) else Modifier.background(c.surfacePrimary)),
             beyondViewportPageCount = 1,
         ) { page ->
             val scroll = scrolls[page]
@@ -281,7 +332,7 @@ private fun CourseHub(
                 ScrollBody(
                     modifier = Modifier.onGloballyPositioned { viewportTop = it.positionInRoot().y },
                     scrollState = scroll,
-                    contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, top = 16.dp, bottom = 32.dp + bottomInset),
+                    contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, top = 16.dp, bottom = 32.dp),
                 ) {
                     when (tabs[page]) {
                         TrackerTab.Attendance -> AttendanceTab(
@@ -318,5 +369,37 @@ private fun CourseHub(
                 }
             }
         }
+    }
+}
+
+/**
+ * The hub sheet's top: the course in large type with its code and teacher under a dot in the
+ * class's colour, a close button, and the page [tabs]. Drags on it move the sheet.
+ */
+@Composable
+private fun HubSheetHeader(tracker: CourseTracker, onClose: () -> Unit, tabs: @Composable (Modifier) -> Unit) {
+    val c = Vectra.colors
+    val details = listOfNotNull(tracker.courseCode.nonEmpty(), tracker.instructor.nonEmpty()).joinToString(" · ")
+    Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 14.dp, bottom = 12.dp)) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f).padding(top = 2.dp, end = 12.dp)) {
+                VText(
+                    tracker.courseName,
+                    Modifier.semantics { heading() },
+                    style = vtext(21.sp to 26.sp, Weight.Bold),
+                    color = c.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (details.isNotEmpty()) {
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).background(parseOpaqueHexColor(tracker.color, c.accentPrimary), CircleShape))
+                        VText(details, style = vtext(TypeScale.Caption, Weight.Medium), color = c.textSecondary, maxLines = 1)
+                    }
+                }
+            }
+            BarButton(RemixIcons.CloseLine, "Close", onClose)
+        }
+        tabs(Modifier.fillMaxWidth().padding(top = 14.dp, end = 6.dp))
     }
 }

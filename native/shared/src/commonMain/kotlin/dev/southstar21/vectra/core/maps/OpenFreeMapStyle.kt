@@ -23,8 +23,15 @@ import kotlin.time.Clock
 
 private const val OpenFreeMapStyleBase = "https://tiles.openfreemap.org/styles"
 
-/** Attribution printed with every OpenFreeMap basemap. */
-const val OpenFreeMapAttribution = "OPF © OMT © OSM"
+/**
+ * Attribution printed with every OpenFreeMap basemap, spelled out in full: OpenFreeMap serves the
+ * tiles, built with OpenMapTiles from OpenStreetMap data (whose licence asks for "© OpenStreetMap
+ * contributors" and a way to its copyright page, [OpenStreetMapCopyrightUrl]).
+ */
+const val OpenFreeMapAttribution = "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
+
+/** Where a tap on the map credits goes: OpenStreetMap's copyright and licence page. */
+const val OpenStreetMapCopyrightUrl = "https://www.openstreetmap.org/copyright"
 
 fun openFreeMapStyleUrl(isLight: Boolean, nowMs: Long = Clock.System.now().toEpochMilliseconds()): String {
     // A daily cache-buster defeats caches that kept a broken provider style.

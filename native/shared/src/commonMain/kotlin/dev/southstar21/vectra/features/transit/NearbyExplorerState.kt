@@ -129,6 +129,8 @@ data class NearbyExplorerState(
     val vehicles: List<PlacedVehicle>,
     val feed: List<RadarDepartureItem>,
     val feedCount: Int,
+    /** Every polled stop's soonest departure, nearest first: the map's chips. */
+    val chips: List<NearbyChip>,
     val arrivalsEnabled: Boolean,
     val isArrivalsLoading: Boolean,
     val modeFilter: List<String>,
@@ -233,6 +235,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
         if (focusedStopId == null && focusedStopIdState != null) focusedStopIdState = null
     }
 
+    val chips = remember(feed, stopsInView) { nearbyChips(feed, stopsInView) }
     val visibleFeed = remember(feed, focusedStopId) { if (focusedStopId != null) feed.filter { it.stopId == focusedStopId } else feed }
     val focusedStop = remember(focusedStopId, stopsInView) { focusedStopId?.let { id -> stopsInView.firstOrNull { it.id == id } } }
 
@@ -396,6 +399,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
         vehicles = vehicles,
         feed = visibleFeed,
         feedCount = feed.size,
+        chips = chips,
         arrivalsEnabled = arrivalsEnabled,
         isArrivalsLoading = isArrivalsLoading,
         modeFilter = modeFilter,

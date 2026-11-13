@@ -13,7 +13,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -85,13 +84,8 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
     val updatedAt = q.dataUpdatedAt.takeIf { it > 0 }
     val frozen = isArrivalsStale(updatedAt, now, offline)
     val metro = tracker.routeType == "SUBWAY"
-    val routeVehicles = live.routeVehicles
-    val departed = rememberDepartures(live.directions, updatedAt)
-    val leftAt = departed.toMap()
     // Enriched: the metro, which reports no GPS, gets its timetable-estimated position.
-    val dirs = remember(live.enriched, routeVehicles, leftAt) {
-        live.enriched.map { it.toStripDirection(routeVehicles, leftAt[it.destination()]) }
-    }
+    val dirs = remember(live.enriched) { live.enriched.map { it.toStripDirection() } }
     val model = remember(dirs, now, metro, frozen) { buildStripModel(dirs, now, metro, frozen) }
     val alerts = remember(q.data, tracker, stop.stopId, now / 60_000) {
         parseAlerts(q.data, AlertContext(tracker.routeId, tracker.routeShortName, tracker.routeType, stop.stopId), now)
@@ -111,40 +105,6 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
 }
 
 /**
- * When each direction's last vehicle left your stop (see [justDeparted]), keyed by destination;
- * entries older than [JustLeftMs] stop showing. [updatedAt] is when the arrivals were fetched.
- */
-@Composable
-private fun rememberDepartures(directions: List<DirectionView>, updatedAt: Long?): Map<String, Long> {
-    val leads = remember { HashMap<String, SeenLead>() }
-    val left = remember { mutableStateMapOf<String, Long>() }
-    LaunchedEffect(directions) {
-        val now = nowMs()
-        for (d in directions) {
-            val a = d.arrival ?: continue
-            val dest = d.destination()
-            val prev = leads[dest]
-            if (prev != null && justDeparted(prev, a.tripId, now)) left[dest] = now
-            leads[dest] = SeenLead(a.tripId, a.arrivalMs, updatedAt ?: 0L)
-        }
-    }
-    return left
-}
-
-/** Longest walk worth showing: further than this, you aren't walking there. */
-internal const val MaxShownWalkMinutes = 60
-
-/** Walking time from [position] to [stop], from the stop catalog; null past [MaxShownWalkMinutes]. */
-@Composable
-internal fun rememberWalkMinutes(repo: TransitRepository, stop: TrackerStop, position: LatLon?): Int? {
-    val coords = rememberCatalogStopsById(repo).data
-    return remember(coords, stop.stopId, position) {
-        val at = coords?.get(stop.stopId) ?: return@remember null
-        position?.let { calculateWalkMinutes(haversineMeters(it, LatLon(at.lat, at.lon))) }?.takeIf { it <= MaxShownWalkMinutes }
-    }
-}
-
-/**
  * A tracker as a line strip: the line through your stop with the vehicles coming each way.
  * A tracker with several stops gets one slim row per stop instead. The card opens the live
  * view of its stop; a long press opens the tracker's menu.
@@ -153,14 +113,13 @@ internal fun rememberWalkMinutes(repo: TransitRepository, stop: TrackerStop, pos
 fun LineStripCard(
     repo: TransitRepository,
     tracker: TransitTracker,
-    position: LatLon?,
     onOpen: (TransitTracker) -> Unit,
     modifier: Modifier = Modifier,
     onLongPress: ((TransitTracker) -> Unit)? = null,
     onHasDeparturesChange: ((String, Boolean) -> Unit)? = null,
     onPendingChange: ((String, Boolean) -> Unit)? = null,
-    /** Asks for location when there is none (first card only). */
-    onAskLocation: (() -> Unit)? = null,
+    /** Its place in the list: its entrance starts a beat after the cards above. */
+    revealIndex: Int = 0,
 ) {
     val now = rememberNowMillis(5_000)
     val offline = !rememberOnline(repo.connectivity)
@@ -201,31 +160,30 @@ fun LineStripCard(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (stops.size > 1) {
-            MultiStopBody(repo, tracker, strips, position, open)
+            MultiStopBody(tracker, strips, revealIndex, open)
         } else {
-            val walk = rememberWalkMinutes(repo, first.stop, position)
             StripHeader(
                 tracker,
                 title = first.stop.stopName.ifEmpty { tracker.stopName },
-                walk = walk,
                 grey = first.noDepartures,
                 alert = first.alerts.isNotEmpty(),
                 replaced = first.replaced,
-                onAskLocation = if (position == null) onAskLocation else null,
             )
-            StopStripBody(repo, tracker, first)
+            StopStripBody(repo, tracker, first, revealIndex)
         }
     }
 }
 
 @Composable
-private fun StopStripBody(repo: TransitRepository, tracker: TransitTracker, s: StopStrip) {
+private fun StopStripBody(repo: TransitRepository, tracker: TransitTracker, s: StopStrip, revealIndex: Int) {
     val card = rememberDayColors().card
     val grey = s.loading || s.error || s.noDepartures
     val colors = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey)
+    val entrance = rememberStripEntrance(s.loading, revealIndex)
+    val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey = true)
     val description = remember(s.model) { stripDescription(s.model) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        LineStrip(s.model, colors, Modifier.semantics { contentDescription = description })
+        LineStrip(s.model, colors, Modifier.semantics { contentDescription = description }, entrance = entrance, skeletonColors = skeleton)
         StripStatus(repo, tracker, s)
     }
 }
@@ -234,10 +192,8 @@ private fun StopStripBody(repo: TransitRepository, tracker: TransitTracker, s: S
 private fun StripHeader(
     tracker: TransitTracker,
     title: String,
-    walk: Int?,
     grey: Boolean,
     alert: Boolean,
-    onAskLocation: (() -> Unit)?,
     subtitle: String? = null,
     /** The alert is replacement buses: a bus in bus blue rather than a warning. */
     replaced: Boolean = false,
@@ -252,21 +208,7 @@ private fun StripHeader(
         )
         Column(Modifier.weight(1f)) {
             VText(title, style = vtext(17.sp to 22.sp, Weight.Bold), color = if (grey) c.textSecondary else c.textPrimary, maxLines = 2)
-            when {
-                subtitle != null -> VText(subtitle, style = vtext(13.sp to 18.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
-                walk != null -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    VIcon(RemixIcons.WalkLine, size = 14.dp, tint = c.textSecondary)
-                    VText("$walk min walk", style = vtext(13.sp to 18.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
-                }
-                onAskLocation != null -> Row(
-                    Modifier.tappable(role = null, onClick = onAskLocation),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VIcon(RemixIcons.Focus3Line, size = 14.dp, tint = c.textSecondary)
-                    VText("Turn on location for walking times", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.accentPrimary, maxLines = 1)
-                }
-            }
+            if (subtitle != null) VText(subtitle, style = vtext(13.sp to 18.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
         }
         if (replaced) VIcon(RemixIcons.BusLine, size = 18.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
         else if (alert) VIcon(RemixIcons.AlertLine, size = 18.dp, tint = c.tints.amber.text, contentDescription = "Service alert")
@@ -275,23 +217,24 @@ private fun StripHeader(
 
 /** Option A for several stops: one slim row per stop under a "3 stops" header. */
 @Composable
-private fun MultiStopBody(repo: TransitRepository, tracker: TransitTracker, strips: List<StopStrip>, position: LatLon?, open: (TrackerStop) -> Unit) {
+private fun MultiStopBody(tracker: TransitTracker, strips: List<StopStrip>, revealIndex: Int, open: (TrackerStop) -> Unit) {
     val ends = strips.firstOrNull { it.model.leftEnd != null || it.model.rightEnd != null }?.model
     val subtitle = ends?.let { listOfNotNull(it.leftEnd, it.rightEnd).joinToString(" ↔ ") }
     Column(Modifier.fillMaxWidth()) {
-        StripHeader(tracker, "${strips.size} stops", walk = null, grey = strips.all { it.noDepartures }, alert = strips.any { it.alerts.isNotEmpty() }, onAskLocation = null, subtitle = subtitle, replaced = strips.any { it.replaced })
-        strips.forEachIndexed { i, s -> StopRow(repo, tracker, s, position, divider = i > 0) { open(s.stop) } }
+        StripHeader(tracker, "${strips.size} stops", grey = strips.all { it.noDepartures }, alert = strips.any { it.alerts.isNotEmpty() }, subtitle = subtitle, replaced = strips.any { it.replaced })
+        strips.forEachIndexed { i, s -> StopRow(tracker, s, divider = i > 0, revealIndex = revealIndex + i) { open(s.stop) } }
     }
 }
 
-/** One stop of a several-stop tracker: name, walk, a short strip and both times. */
+/** One stop of a several-stop tracker: name, a short strip and both times. */
 @Composable
-private fun StopRow(repo: TransitRepository, tracker: TransitTracker, s: StopStrip, position: LatLon?, divider: Boolean, onOpen: () -> Unit) {
+private fun StopRow(tracker: TransitTracker, s: StopStrip, divider: Boolean, revealIndex: Int, onOpen: () -> Unit) {
     val c = Vectra.colors
     val d = rememberDayColors()
     val rule = d.border
-    val walk = rememberWalkMinutes(repo, s.stop, position)
     val colors = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, s.loading || s.error || s.noDepartures)
+    val entrance = rememberStripEntrance(s.loading, revealIndex)
+    val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, grey = true)
     Row(
         Modifier
             .fillMaxWidth()
@@ -302,14 +245,8 @@ private fun StopRow(repo: TransitRepository, tracker: TransitTracker, s: StopStr
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                VText(s.stop.stopName, Modifier.weight(1f, fill = false), vtext(14.sp to 18.sp, Weight.Bold), c.textPrimary, maxLines = 1)
-                if (walk != null) {
-                    VIcon(RemixIcons.WalkLine, size = 12.dp, tint = c.textSecondary)
-                    VText("$walk min", style = vtext(12.sp to 16.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
-                }
-            }
-            LineStrip(s.model, colors, labels = false)
+            VText(s.stop.stopName, style = vtext(14.sp to 18.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
+            LineStrip(s.model, colors, labels = false, entrance = entrance, skeletonColors = skeleton)
         }
         SlimTimes(s.model, if (s.error) "—" else null)
     }

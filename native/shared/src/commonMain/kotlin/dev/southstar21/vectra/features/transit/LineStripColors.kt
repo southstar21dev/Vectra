@@ -25,7 +25,10 @@ internal class StripColors(
     val busInk: Color = Color.White,
     /** The ring around a vehicle token and its heading point. */
     val ring: Color = Color.White,
-)
+) {
+    /** The same, with the line drawn in [line] (the route map's own colour, say). */
+    fun withLine(line: Color) = StripColors(line, marker, markerInk, card, you, track, bus, busInk, ring)
+}
 
 /** BKK's bus blue, for replacement buses. */
 internal val BusBlue = Color(0xFF009EE3)

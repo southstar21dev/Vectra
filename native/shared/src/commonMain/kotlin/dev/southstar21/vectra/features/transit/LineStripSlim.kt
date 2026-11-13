@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -28,6 +30,9 @@ import dev.southstar21.vectra.core.maps.haversineMeters
 import dev.southstar21.vectra.features.schedule.rememberDayColors
 
 private val SlimCardShape = RoundedCornerShape(18.dp)
+
+/** Room for the widest usual badge ("200E", "M3"), so every slim card lines up. */
+private val SlimBadgeSlot = 48.dp
 
 /** The right-hand times of a slim strip: → next right-heading, ← next left-heading. */
 @Composable
@@ -61,7 +66,15 @@ internal fun SlimTimes(model: StripModel, fallback: String? = null) {
  * a short strip and both times at the right.
  */
 @Composable
-fun LineStripSlimCard(repo: TransitRepository, tracker: TransitTracker, position: LatLon?, onOpen: (TransitTracker) -> Unit, modifier: Modifier = Modifier) {
+fun LineStripSlimCard(
+    repo: TransitRepository,
+    tracker: TransitTracker,
+    position: LatLon?,
+    onOpen: (TransitTracker) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Its place in the list: its entrance starts a beat after the cards above. */
+    revealIndex: Int = 0,
+) {
     val c = Vectra.colors
     val now = rememberNowMillis(5_000)
     val offline = !rememberOnline(repo.connectivity)
@@ -74,7 +87,10 @@ fun LineStripSlimCard(repo: TransitRepository, tracker: TransitTracker, position
     }
     val s = rememberStopStrip(repo, tracker, stops, stop, now, offline)
     val grey = s.loading || s.error || s.noDepartures
-    val colors = stripColors(tracker.routeColor, tracker.routeTextColor, rememberDayColors().card, grey)
+    val card = rememberDayColors().card
+    val colors = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey)
+    val entrance = rememberStripEntrance(s.loading, revealIndex)
+    val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey = true)
     val shape = SlimCardShape
     Row(
         modifier
@@ -86,10 +102,14 @@ fun LineStripSlimCard(repo: TransitRepository, tracker: TransitTracker, position
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), if (grey) null else tracker.routeColor, if (grey) null else tracker.routeTextColor, size = RouteBadgeSize.Sm)
+        // One width for every badge, so the cards' names and lines start in one column.
+        Box(Modifier.widthIn(min = SlimBadgeSlot), contentAlignment = Alignment.CenterStart) {
+            RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), if (grey) null else tracker.routeColor, if (grey) null else tracker.routeTextColor, size = RouteBadgeSize.Sm)
+        }
         Column(Modifier.weight(1f)) {
-            VText(stop.stopName, style = vtext(13.sp to 17.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
-            LineStrip(s.model, colors, labels = false)
+            VText(stop.stopName, Modifier.padding(start = EdgeInset), vtext(13.sp to 17.sp, Weight.Bold), c.textPrimary, maxLines = 1)
+            // Clipped: the line's fade past its ends stays out from under the badge and the times.
+            LineStrip(s.model, colors, Modifier.clipToBounds(), labels = false, entrance = entrance, skeletonColors = skeleton)
         }
         SlimTimes(s.model, if (s.noDepartures) "—" else null)
     }

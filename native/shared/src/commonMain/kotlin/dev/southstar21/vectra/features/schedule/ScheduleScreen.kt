@@ -177,7 +177,7 @@ fun ScheduleScreen(
             // Neptun classes open their Course Hub; exams have no attendance, so never one.
             if (!event.isExam()) {
                 val key = tracker.courseKey(event)
-                if (wide) picked = key else navigator.push(Screen.CourseHub(key))
+                if (wide) picked = key else navigator.openCourseHub(key)
             }
         } else {
             navigator.push(Screen.ClassEditor(event.id))

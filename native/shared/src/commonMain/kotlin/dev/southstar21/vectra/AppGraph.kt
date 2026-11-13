@@ -35,7 +35,6 @@ import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.settings.AppearanceRepository
 import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import dev.southstar21.vectra.features.transit.DeviceLocation
-import dev.southstar21.vectra.features.transit.TrackerStopPicks
 import dev.southstar21.vectra.features.transit.TransitRepository
 import dev.southstar21.vectra.features.weather.WeatherRepository
 import dev.zacsweers.metro.AppScope
@@ -79,7 +78,6 @@ interface AppGraph {
     val courseTrackerRepository: CourseTrackerRepository
     val courseTrackerHooks: ScheduleCourseTrackerHooks
     val transitRepository: TransitRepository
-    val trackerStopPicks: TrackerStopPicks
     val deviceLocation: DeviceLocation
     val weatherRepository: WeatherRepository
     val reminders: ReminderScheduler
@@ -133,7 +131,6 @@ interface AppGraph {
         crypto: CryptoClient,
         transit: TransitRepository,
         notifications: NotificationsRepository,
-        stopPicks: TrackerStopPicks,
         reminders: ReminderScheduler,
         widgets: WidgetPublisher,
         passkeys: PasskeyRepository,
@@ -152,7 +149,6 @@ interface AppGraph {
         },
         transit,
         notifications,
-        stopPicks,
         reminders,
         widgets,
         passkeys,
@@ -262,10 +258,6 @@ interface AppGraph {
         catalogCache: CatalogDiskCache,
         scope: CoroutineScope,
     ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope, demoFeed = config.isDebug)
-
-    @SingleIn(AppScope::class)
-    @Provides
-    fun provideTrackerStopPicks(): TrackerStopPicks = TrackerStopPicks()
 
     @SingleIn(AppScope::class)
     @Provides

@@ -107,10 +107,16 @@ fun Modifier.fadeLayer(bleed: Dp = 32.dp, block: GraphicsLayerScope.() -> Unit):
 
 /** A surface tile with a dashed accent frame. */
 @Composable
-fun PostageStamp(modifier: Modifier = Modifier, innerModifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun PostageStamp(
+    modifier: Modifier = Modifier,
+    innerModifier: Modifier = Modifier,
+    /** The perforation's ink; the accent by default. */
+    ink: Color = Vectra.colors.accentPrimary,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val c = Vectra.colors
     val outer = Radius.Tag
-    val dash = c.accentPrimary.copy(alpha = 0.55f)
+    val dash = ink.copy(alpha = 0.55f)
     Box(
         modifier
             .boxShadow(outer, listOf(BoxShadow(y = 6f, blur = 16f, color = rgba(15, 23, 42, 0.14f))))

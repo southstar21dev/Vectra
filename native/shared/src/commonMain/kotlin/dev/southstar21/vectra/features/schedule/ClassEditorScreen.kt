@@ -198,7 +198,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                             .height(40.dp)
                             .background(c.surfaceOverlay, CircleShape)
                             .tappable(CircleShape, onClickLabel = "Open Course Hub", pressedScale = 0.95f) {
-                                navigator.push(Screen.CourseHub(tracker.courseKey(event)))
+                                navigator.openCourseHub(tracker.courseKey(event))
                             }
                             .padding(horizontal = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),

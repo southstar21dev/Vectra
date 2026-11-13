@@ -31,26 +31,32 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * A faint dotted orb rising over a
- * dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue, the Rock
- * Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the
- * Danube. Shapes live in fixed scene units (260 wide, waterline at B), are
- * rasterised once and sampled into dots; frames only draw dots, batched.
+ * A faint dotted orb over a dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue,
+ * the Rock Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the Danube.
+ * Shapes live in fixed scene units (260 wide, waterline at B), are rasterised once and sampled
+ * into dots, sparse and sized by depth; the bridge lamps and the chapel's cross glow in the
+ * accent. Frames only draw dots, batched. The exit disperses every dot outwards ([DisperseExitMs]).
  */
-const val SCENE_W = 260f
+const val SceneW = 260f
 const val B = 424f
-const val SUNRISE_EXIT_MS = 700f
+const val DisperseExitMs = 700f
 private const val TAU = (PI * 2).toFloat()
 
-private fun ease(x: Float) = 1f - (1f - x.coerceIn(0f, 1f)).pow(3)
-private fun easeIn(x: Float) = x.coerceIn(0f, 1f).pow(2)
-
-data class SunriseExit(val orbLift: Float, val orbFade: Float, val citySink: Float, val cityFade: Float)
-
-fun sunriseExit(ms: Float): SunriseExit {
-    val orbT = ms / SUNRISE_EXIT_MS
-    return SunriseExit(ease(orbT) * orbT * 442f, 1f - easeIn(orbT), easeIn(ms / 560f) * 110f, 1f - ease(ms / 630f))
+internal fun ease(x: Float) = 1f - (1f - x.coerceIn(0f, 1f)).pow(3)
+internal fun easeIn(x: Float) = x.coerceIn(0f, 1f).pow(2)
+internal fun smoothstep(a: Float, b: Float, x: Float): Float {
+    val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
+    return u * u * (3 - 2 * u)
 }
+
+/** How far a dot (its [seed] 0..1) has drifted out (scene units) at disperse progress [u]. */
+internal fun disperseDrift(u: Float, seed: Float, far: Float, base: Float, near: Float) = easeIn(u) * (base + far * seed) + ease(u) * near
+
+/** A dot's remaining opacity at disperse progress [u]: each fades on its own beat. */
+internal fun disperseFade(u: Float, seed: Float) = 1f - smoothstep(0.1f + 0.3f * seed, 0.75f + 0.2f * seed, u)
+
+/** Spacing between sampled dots: sparser than the first scene, so lighter and crisper. */
+private const val SPACING = 1.4f
 
 private const val BL = 58f
 private const val BR = 202f
@@ -197,14 +203,20 @@ private fun rasterise(build: (Shape) -> Unit, x0: Float, y0: Float, w: Float, h:
     }
 }
 
-/** x, y, brightness, phase, radius */
-private class SkyDot(val x: Float, val y: Float, val e: Float, val r: Float, val rad: Float)
+/** x, y, brightness, phase, radius, whether it is a lamp head (drawn in the accent). */
+private class SkyDot(val x: Float, val y: Float, val e: Float, val r: Float, val rad: Float, val lamp: Boolean = false)
+
+/** The lamp heads: the pylons' globes, the abutments' lamps, the chapel's cross. */
+private val Lamps = listOf(P1 to B - 57, P2 to B - 57, BL + 3 to B - 32, BR - 3 to B - 32, 22.6f to B - 62.6f)
+
+private fun lampAt(x: Float, y: Float) = Lamps.any { (lx, ly) -> hypot(x - lx, y - ly) < 3.2f }
 
 private const val TRAM_W = 30f
 private const val TRAM_H = 8f
 private const val TRAM_Y = B - 16 - TRAM_H
 private const val TRAM_LOOP_MS = 7000f
 private const val ORB_R = 230f
+private const val OrbDots = 620
 private const val ORB_CY = B - 81
 private const val LIGHTS_START_MS = 100f
 private val TramColor = Color(255, 205, 0)
@@ -219,35 +231,36 @@ class SplashScene(seed: Int = 7) {
     private val orbPts: List<FloatArray>
 
     init {
-        val far = rasterise(::farShape, -2f, 300f, SCENE_W + 4, B - 298, 1f)
-        val near = rasterise({ nearShape(it); chapelShape(it) }, -2f, 330f, SCENE_W + 4, B - 328, 1f)
+        val far = rasterise(::farShape, -2f, 300f, SceneW + 4, B - 298, 1f)
+        val near = rasterise({ nearShape(it); chapelShape(it) }, -2f, 330f, SceneW + 4, B - 328, 1f)
         val chapel = rasterise(::chapelShape, -2f, B - 72, 62f, 74f, 4f)
         val statue = rasterise(::statueShape, SX - 10, SG - 40, 20f, 44f, 4f)
-        val out = ArrayList<SkyDot>(9000)
+        val out = ArrayList<SkyDot>(5000)
         fun nearby(x: Float, y: Float) = near(x, y) > 40 || near(x - 2, y) > 40 || near(x + 2, y) > 40 || near(x, y - 2) > 40 || near(x, y + 2) > 40
         var y = 340f
         while (y < B + 2) {
             var x = 0f
-            while (x < SCENE_W) {
+            while (x < SceneW) {
                 if (near(x, y) >= 80 && chapel(x, y) == 0 && !isWindow(x, y)) {
                     val edge = near(x, y - 3) < 80 || near(x - 3, y) < 80 || near(x + 3, y) < 80
-                    out += SkyDot(x, y, if (edge) 1f else 0.45f, rnd.nextFloat(), if (edge) 0.85f else 0.65f)
+                    out += SkyDot(x, y, if (edge) 1f else 0.45f, rnd.nextFloat(), if (edge) 0.95f else 0.7f, lampAt(x, y))
                 }
-                x += 2.1f
+                x += 2.1f * SPACING
             }
-            y += 2.1f
+            y += 2.1f * SPACING
         }
         y = 300f
         while (y < B + 2) {
             var x = 0f
-            while (x < SCENE_W) {
+            while (x < SceneW) {
                 if (far(x, y) >= 80 && !nearby(x, y)) {
                     val edge = far(x, y - 3) < 80 || far(x - 3, y) < 80 || far(x + 3, y) < 80
-                    out += SkyDot(x, y, if (edge) 0.6f else 0.18f, rnd.nextFloat(), 0.65f)
+                    // Further back, smaller.
+                    out += SkyDot(x, y, if (edge) 0.6f else 0.18f, rnd.nextFloat(), if (edge) 0.6f else 0.45f)
                 }
-                x += 2.4f
+                x += 2.4f * SPACING
             }
-            y += 2.4f
+            y += 2.4f * SPACING
         }
         y = B - 70
         while (y < B) {
@@ -256,25 +269,25 @@ class SplashScene(seed: Int = 7) {
                 if (chapel(x, y) >= 100 && !isOpening(x, y)) {
                     val edge = chapel(x, y - 1.6f) < 100 || chapel(x - 1.6f, y) < 100 || chapel(x + 1.6f, y) < 100 ||
                         isOpening(x, y + 1.6f) || isOpening(x - 1.6f, y) || isOpening(x + 1.6f, y)
-                    out += SkyDot(x, y, if (edge) 1.1f else 0.4f, rnd.nextFloat(), 0.5f)
+                    out += SkyDot(x, y, if (edge) 1.1f else 0.4f, rnd.nextFloat(), 0.5f, lampAt(x, y))
                 }
-                x += 1.15f
+                x += 1.15f * min(SPACING, 1.25f)
             }
-            y += 1.15f
+            y += 1.15f * min(SPACING, 1.25f)
         }
         y = SG - 38
         while (y < SG + 2) {
             var x = SX - 9
             while (x < SX + 9) {
                 if (statue(x, y) > 100) out += SkyDot(x, y, if (y > SG - 32 * SK) 0.8f else 1.5f, rnd.nextFloat(), 0.42f)
-                x += 0.55f
+                x += 0.55f * min(SPACING, 1.2f)
             }
-            y += 0.55f
+            y += 0.55f * min(SPACING, 1.2f)
         }
         skyDots = out
         tramDots = sampleTram()
-        orbPts = List(900) { i ->
-            val yy = 1f - (i / 899f) * 2f
+        orbPts = List(OrbDots) { i ->
+            val yy = 1f - (i / (OrbDots - 1f)) * 2f
             val r = sqrt(1f - yy * yy)
             val t = i * 2.39996f
             floatArrayOf(cos(t) * r, yy, sin(t) * r)
@@ -338,42 +351,68 @@ class SplashScene(seed: Int = 7) {
     private val solid = Shape().also { farShape(it); nearShape(it); chapelShape(it); statueShape(it) }
 
     private val fg = Batch()
+    private val lamp = Batch()
     private val tram = Batch()
 
-    /** Draws one frame. The DrawScope must already map scene units to the screen. */
-    fun draw(d: DrawScope, elapsed: Float, exitElapsed: Float?, time: Float, view: Rect, fgColor: Color, bg: Color, gain: Float) {
-        val exit = exitElapsed?.let(::sunriseExit)
-        drawOrb(d, elapsed, time, exit?.orbLift ?: 0f, exit?.orbFade ?: 1f, view, fgColor, bg, gain)
-        drawSkyline(d, elapsed, time, exit?.citySink ?: 0f, exit?.cityFade ?: 1f, view, fgColor, bg, gain)
+    // The disperse in progress (0 while the splash stands): every dot drifts out from (cx, cy).
+    private var u = 0f
+    private var cx = 0f
+    private var cy = 0f
+
+    /** Adds a dot, moved, shrunk and faded by the disperse. [seed] staggers it. */
+    private fun put(batch: Batch, x: Float, y: Float, r: Float, a: Float, seed: Float) {
+        if (u <= 0f) {
+            batch.add(x, y, r, a)
+            return
+        }
+        val dx = x - cx
+        val dy = y - cy
+        val len = hypot(dx, dy).takeIf { it > 0f } ?: 1f
+        val k = disperseDrift(u, seed, far = 120f, base = 50f, near = 14f)
+        batch.add(x + dx / len * k, y + dy / len * k, r * (1 - 0.55f * u), a * disperseFade(u, seed))
+    }
+
+    /**
+     * Draws one frame. The DrawScope must already map scene units to the screen. [exit] is the
+     * disperse's progress (null while the splash stands); [centerY] where it spreads from (scene units).
+     */
+    fun draw(d: DrawScope, elapsed: Float, exit: Float?, time: Float, view: Rect, colors: SplashColors, gain: Float, centerY: Float) {
+        u = exit ?: 0f
+        cx = SceneW / 2
+        cy = centerY
+        drawOrb(d, elapsed, time, view, colors.fg, colors.bg, gain)
+        drawSkyline(d, elapsed, time, view, colors, gain)
     }
 
     private fun rotY(p: FloatArray, a: Float) = floatArrayOf(p[0] * cos(a) + p[2] * sin(a), p[1], -p[0] * sin(a) + p[2] * cos(a))
     private fun rotX(p: FloatArray, a: Float) = floatArrayOf(p[0], p[1] * cos(a) - p[2] * sin(a), p[1] * sin(a) + p[2] * cos(a))
 
-    private fun drawOrb(d: DrawScope, elapsed: Float, time: Float, lift: Float, k: Float, view: Rect, fgColor: Color, bg: Color, gain: Float) {
-        val fade = ease(elapsed / 900f) * k
-        val cx = SCENE_W / 2
-        val cy = ORB_CY - lift
+    private fun drawOrb(d: DrawScope, elapsed: Float, time: Float, view: Rect, fgColor: Color, bg: Color, gain: Float) {
+        val fade = ease(elapsed / 900f)
+        val ox = SceneW / 2
+        val oy = ORB_CY
         if (fade > 0) {
-            for (pt in orbPts) {
+            orbPts.forEachIndexed { i, pt ->
                 val q = rotX(rotY(pt, time * 0.00009f), -0.5f)
                 val depth = (q[2] + 1) / 2
-                fg.add(cx + q[0] * ORB_R, cy + q[1] * ORB_R, 0.6f + depth * 1.1f, fade * (0.03f + depth * 0.2f))
+                put(fg, ox + q[0] * ORB_R, oy + q[1] * ORB_R, 0.6f + depth * 1.1f, fade * (0.03f + depth * 0.2f), seedOf(i, 5.1f))
             }
             for (i in 0 until 70) {
                 val a = time * 0.00035f + i * (TAU / 70)
                 val trail = if (i % 35 < 10) 1f - (i % 35) / 10f else 0.1f
                 val q = rotY(rotX(floatArrayOf(cos(a) * 1.02f, 0f, sin(a) * 1.02f), 0.42f), 0.3f)
                 val depth = (q[2] + 1) / 2
-                fg.add(cx + q[0] * ORB_R, cy + q[1] * ORB_R, (0.7f + depth * 1.4f) * (0.6f + trail * 0.6f), fade * (0.05f + trail * 0.45f) * (0.3f + depth * 0.7f))
+                put(fg, ox + q[0] * ORB_R, oy + q[1] * ORB_R, (0.7f + depth * 1.4f) * (0.6f + trail * 0.6f), fade * (0.05f + trail * 0.45f) * (0.3f + depth * 0.7f), seedOf(i, 9.7f))
             }
             fg.flush(d, fgColor, gain)
         }
+        // The vignette lifts as the dots disperse.
+        val vignette = 1f - smoothstep(0f, 0.4f, u)
         d.drawRect(
             Brush.radialGradient(
                 (104f / 390f) to bg.copy(alpha = 0f),
-                1f to bg.copy(alpha = 0.85f * max(0f, k)),
-                center = Offset(cx, B - 190),
+                1f to bg.copy(alpha = 0.85f * vignette),
+                center = Offset(ox, B - 190),
                 radius = 390f,
             ),
             topLeft = view.topLeft,
@@ -381,59 +420,74 @@ class SplashScene(seed: Int = 7) {
         )
     }
 
-    private fun drawSkyline(d: DrawScope, elapsed: Float, time: Float, sink: Float, fade: Float, view: Rect, fgColor: Color, bg: Color, gain: Float) {
-        if (fade <= 0) return
-        d.drawContext.transform.translate(0f, sink)
-        // Solid silhouette hides the orb behind the city; the river below is opaque.
-        d.drawPath(solid.fill, bg, alpha = fade)
-        for ((p, w) in solid.strokes) d.drawPath(p, bg, alpha = fade, style = Stroke(w))
+    private fun drawSkyline(d: DrawScope, elapsed: Float, time: Float, view: Rect, colors: SplashColors, gain: Float) {
+        val bg = colors.bg
+        // Solid silhouette hides the orb behind the city; the river below is opaque. Both melt
+        // away early in the disperse, so the city's dots drift over whatever is behind.
+        val solidFade = 1f - smoothstep(0f, 0.3f, u)
+        d.drawPath(solid.fill, bg, alpha = solidFade)
+        for ((p, w) in solid.strokes) d.drawPath(p, bg, alpha = solidFade, style = Stroke(w))
         d.drawRect(
             Brush.verticalGradient(0f to bg.copy(alpha = 0.95f), 1f to bg, startY = B, endY = view.bottom),
             topLeft = Offset(view.left, B + 1),
             size = Size(view.width, max(0f, view.bottom - B)),
-            alpha = fade,
+            alpha = solidFade,
         )
         val wide = view.left < -4
-        fun edge(x: Float) = if (wide) min(1f, min(max(0f, (x + 2) / 30f), max(0f, (SCENE_W + 2 - x) / 30f))) else 1f
-        fun lights(x: Float, r: Float) = ease((elapsed - LIGHTS_START_MS - (x / SCENE_W) * 600 - r * 80) / 350f)
+        fun edge(x: Float) = if (wide) min(1f, min(max(0f, (x + 2) / 30f), max(0f, (SceneW + 2 - x) / 30f))) else 1f
+        fun lights(x: Float, r: Float) = ease((elapsed - LIGHTS_START_MS - (x / SceneW) * 600 - r * 80) / 350f)
         for (dot in skyDots) {
-            val on = lights(dot.x, dot.r) * fade * edge(dot.x)
+            val on = lights(dot.x, dot.r) * edge(dot.x)
             if (on <= 0) continue
-            val twinkle = if (dot.e < 1 && dot.r > 0.93f) 0.35f * (0.5f + 0.5f * sin(time * 0.003f + dot.r * 40)) else 0f
-            fg.add(dot.x, dot.y, dot.rad, on * (0.08f + dot.e * 0.32f + twinkle))
+            if (dot.lamp) {
+                put(lamp, dot.x, dot.y, dot.rad * 1.15f, on, dot.r)
+            } else {
+                val twinkle = if (dot.e < 1 && dot.r > 0.93f) 0.35f * (0.5f + 0.5f * sin(time * 0.003f + dot.r * 40)) else 0f
+                put(fg, dot.x, dot.y, dot.rad, on * (0.08f + dot.e * 0.32f + twinkle), dot.r)
+            }
             val ry = B + (B - dot.y) * 0.55f + 3
-            fg.add(dot.x + sin(time * 0.002f + dot.y * 0.35f) * 1.4f, ry, 0.6f, on * (0.03f + dot.e * 0.07f) * (1 - (ry - B) / 60))
+            put(fg, dot.x + sin(time * 0.002f + dot.y * 0.35f) * 1.4f, ry, 0.6f, on * (0.03f + dot.e * 0.07f) * (1 - (ry - B) / 60), dot.r)
         }
         var x = 1f
-        while (x < SCENE_W) { fg.add(x, B + 2, 0.5f, lights(x, 0f) * fade * edge(x) * 0.12f); x += 3.2f }
-        fg.flush(d, fgColor, gain)
+        while (x < SceneW) { put(fg, x, B + 2, 0.5f, lights(x, 0f) * edge(x) * 0.12f, seedOf(x.toInt(), 2.2f)); x += 3.2f }
+        fg.flush(d, colors.fg, gain)
+        lamp.flush(d, colors.lamp, 1f)
 
         val tramT = elapsed - LIGHTS_START_MS - 500
         if (tramT > 0) {
             val k = (tramT % TRAM_LOOP_MS) / TRAM_LOOP_MS
             val x0 = BL - TRAM_W + k * (BR - BL + TRAM_W)
-            val arrive = ease(tramT / 400f) * fade
-            for (p in tramDots) {
+            val arrive = ease(tramT / 400f)
+            tramDots.forEachIndexed { i, p ->
                 val tx = x0 + p.x
                 val a = arrive * min(1f, min(max(0f, (tx - BL - 2) / 8f), max(0f, (BR - 2 - tx) / 8f)))
-                if (a <= 0) continue
-                val ty = TRAM_Y - 5 + p.y
-                tram.add(tx, ty, 0.7f, a * 0.9f)
-                val ry = B + (B - ty) * 0.55f + 3
-                tram.add(tx + sin(time * 0.002f + ty * 0.35f) * 1.4f, ry, 0.6f, a * 0.16f * (1 - (ry - B) / 60))
+                if (a > 0) {
+                    val ty = TRAM_Y - 5 + p.y
+                    put(tram, tx, ty, 0.7f, a * 0.9f, seedOf(i, 3.3f))
+                    val ry = B + (B - ty) * 0.55f + 3
+                    put(tram, tx + sin(time * 0.002f + ty * 0.35f) * 1.4f, ry, 0.6f, a * 0.16f * (1 - (ry - B) / 60), seedOf(i, 6.6f))
+                }
             }
             tram.flush(d, TramColor, 1f)
         }
-        d.drawContext.transform.translate(0f, -sink)
     }
+}
+
+/** The scene's inks: the dots, the lamps (the accent, lifted a little), and the backdrop they melt into. */
+class SplashColors(val fg: Color, val lamp: Color, val bg: Color)
+
+/** A steady pseudo-random 0..1 for [i]: staggers dots that have no phase of their own. */
+private fun seedOf(i: Int, salt: Float): Float {
+    val h = sin(i * 12.9898f + salt * 78.233f) * 43758.547f
+    return h - kotlin.math.floor(h)
 }
 
 /** Maps the scene onto a screen: skyline spans the width, waterline at 81.5% height. */
 data class SceneMapping(val scale: Float, val offsetX: Float, val offsetY: Float, val view: Rect)
 
 fun sceneTransform(screenW: Float, screenH: Float, density: Float): SceneMapping {
-    val scale = min(screenW / SCENE_W, 2.4f * density)
-    val offsetX = screenW / 2 - (SCENE_W / 2) * scale
+    val scale = min(screenW / SceneW, 2.4f * density)
+    val offsetX = screenW / 2 - (SceneW / 2) * scale
     val offsetY = screenH * 0.815f - B * scale
     return SceneMapping(scale, offsetX, offsetY, Rect(-offsetX / scale, -offsetY / scale, (screenW - offsetX) / scale, (screenH - offsetY) / scale))
 }

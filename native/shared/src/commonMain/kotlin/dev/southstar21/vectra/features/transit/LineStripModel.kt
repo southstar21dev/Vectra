@@ -2,7 +2,6 @@ package dev.southstar21.vectra.features.transit
 
 import androidx.compose.runtime.Immutable
 import dev.southstar21.vectra.core.time.formatBudapestHm
-import kotlin.math.abs
 import kotlin.math.ceil
 
 /** Stops drawn on each side of your stop. */
@@ -36,14 +35,9 @@ data class StripVehicle(
     /** Last known position of out-of-date data. */
     val faded: Boolean = false,
     val metro: Boolean = false,
-    /** The one after the next in the same direction: a quieter label. */
-    val second: Boolean = false,
     /** A replacement bus standing in for the line: drawn as a bus. */
     val replacement: Boolean = false,
-) {
-    /** Drawn where it is, or due at your stop: a vehicle after it can be drawn too. */
-    val atYourStopOrPlaced: Boolean get() = showMarker || arriving
-}
+)
 
 /** Everything one line strip draws. */
 @Immutable
@@ -67,10 +61,9 @@ data class StripModel(
     val leftBus: Boolean = false,
     val rightBus: Boolean = false,
 ) {
-    val hasLabelsAbove get() = vehicles.any { it.heading > 0 && (it.label != null || it.sub != null) }
-    val hasLabelsBelow get() = vehicles.any { it.heading < 0 && (it.label != null || it.sub != null) }
-    val hasSubsAbove get() = vehicles.any { it.heading > 0 && it.sub != null }
-    val hasSubsBelow get() = vehicles.any { it.heading < 0 && it.sub != null }
+    /** Every vehicle's time sits on one row above the line. */
+    val hasLabels get() = vehicles.any { it.label != null || it.sub != null }
+    val hasSubs get() = vehicles.any { it.sub != null }
 }
 
 /** One tracked direction, reduced to what the strip needs. */
@@ -81,10 +74,6 @@ data class StripDirection(
     val next: Arrival?,
     /** Stops between the vehicle and your stop (fractional); null without a live position. */
     val vehicleDistance: Double?,
-    /** The same for the vehicle of [next]; null without one or without a live position. */
-    val nextDistance: Double? = null,
-    /** When this direction's last vehicle left your stop, for a minute after it did. */
-    val leftAt: Long? = null,
     /** The stop before yours on the way in: directions sharing it come from the same side. */
     val approach: String? = null,
     /** Trips start at your stop: vehicles wait here instead of coming in. */
@@ -99,20 +88,6 @@ data class StripDirection(
 @Immutable
 data class StripFork(val heading: Int, val destination: String)
 
-/** A departed vehicle stays on the strip, faded, this long. */
-const val JustLeftMs = 60_000L
-
-/** How far past your stop (in stops) a just-departed vehicle is drawn. */
-private const val JustLeftOffset = 0.55f
-
-/**
- * The strip's clock ticks every few seconds while a departure is stamped the moment it is seen,
- * so a departure can read as a little in the future; it shows straight away all the same.
- */
-private const val ClockSlackMs = 10_000L
-
-/** Two labels on one side closer than this (in stops) would overlap: the later one drops its time. */
-internal const val LabelGapStops = 1.4f
 
 /** "NOW", "4'" or, past 99 minutes, the clock time. */
 fun stripTimeLabel(arrivalMs: Long, now: Long): String {
@@ -154,35 +129,11 @@ fun buildStripModel(directions: List<StripDirection>, now: Long, metro: Boolean,
     )
 }
 
-/**
- * A direction's vehicles: the next one, the one after it while it is on the strip (at most
- * two, its time dropped when the labels would overlap), and for a minute after one leaves,
- * that one just past your stop, faded.
- */
+/** A direction's one vehicle on the strip: its next departure (a strip shows one each way, no more). */
 private fun directionVehicles(d: StripDirection, heading: Int, now: Long, metro: Boolean, frozen: Boolean): List<StripVehicle> {
     val first = stripVehicle(d, heading, now, metro, frozen) ?: return emptyList()
-    val all = listOf(first) + listOfNotNull(secondVehicle(d, first, heading, now, frozen), justLeft(d, heading, now))
-    return if (d.replacement) all.map { it.copy(replacement = true) } else all
+    return listOf(if (d.replacement) first.copy(replacement = true) else first)
 }
-
-/**
- * The one after the next, while it is on the strip; its time dropped when the labels would
- * overlap. Drawn when the next one is (or is due at your stop), never ahead of an unplaced one.
- */
-private fun secondVehicle(d: StripDirection, first: StripVehicle, heading: Int, now: Long, frozen: Boolean): StripVehicle? {
-    val next = d.next
-    val dist = d.nextDistance?.takeIf { it <= StripSideStops && it > (d.vehicleDistance ?: 0.0) }
-    if (next == null || dist == null || !first.atYourStopOrPlaced) return null
-    val pos = (StripSideStops - heading * dist).toFloat()
-    val crowded = abs(pos - first.position) < LabelGapStops
-    return StripVehicle(pos, heading, if (crowded) null else stripTimeLabel(next.arrivalMs, now), null, timeKind(next, false, frozen), faded = frozen, second = true)
-}
-
-/** For a minute after a vehicle leaves your stop, it stays just past it, faded. */
-private fun justLeft(d: StripDirection, heading: Int, now: Long): StripVehicle? =
-    d.leftAt?.takeIf { now - it in -ClockSlackMs until JustLeftMs }?.let {
-        StripVehicle(StripSideStops + heading * JustLeftOffset, heading, null, "just left", StripTimeKind.Scheduled, faded = true)
-    }
 
 /** Only a live prediction (or the metro, which runs to its timetable) reads as live. */
 private fun timeKind(a: Arrival, metro: Boolean, frozen: Boolean) =

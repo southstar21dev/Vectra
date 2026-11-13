@@ -28,27 +28,47 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 
 private val LabelW = 120.dp
 
-/** A vehicle's time beside its marker: centred, or held in from the strip's ends. */
+/** The least room between two times on the row. */
+private val LabelGap = 64.dp
+
+/**
+ * Where each vehicle's time goes along the row (strip units): over its marker, except that two
+ * closer than [LabelGap] are pushed apart evenly, and none past the strip's ends.
+ */
+internal fun spreadLabels(positions: List<Float>, span: Int, width: Dp): List<Float> {
+    if (positions.size < 2 || width <= 0.dp) return positions
+    val gap = LabelGap / width * span
+    val order = positions.indices.sortedBy { positions[it] }
+    val out = positions.toFloatArray()
+    // Twice over: a push can bring a pair further along too close.
+    repeat(2) {
+        for (k in 1 until order.size) {
+            val a = order[k - 1]
+            val b = order[k]
+            val short = gap - (out[b] - out[a])
+            if (short > 0f) {
+                out[a] -= short / 2
+                out[b] += short / 2
+            }
+        }
+    }
+    return out.map { it.coerceIn(0f, span.toFloat()) }
+}
+
+/** A vehicle's time over its marker: centred, or held in from the strip's ends. All sit on one row above the line. */
 @Composable
 internal fun PlacedLabel(v: StripVehicle, x: Dp, frac: Float, mid: Dp) {
-    val above = v.heading > 0
     val (left, align) = when {
         frac < 0.1f -> (x - 8.dp) to Alignment.Start
         frac > 0.9f -> (x - LabelW + 8.dp) to Alignment.End
         else -> (x - LabelW / 2) to Alignment.CenterHorizontally
     }
     val boxAlign = when (align) {
-        Alignment.Start -> if (above) Alignment.BottomStart else Alignment.TopStart
-        Alignment.End -> if (above) Alignment.BottomEnd else Alignment.TopEnd
-        else -> if (above) Alignment.BottomCenter else Alignment.TopCenter
+        Alignment.Start -> Alignment.BottomStart
+        Alignment.End -> Alignment.BottomEnd
+        else -> Alignment.BottomCenter
     }
-    Box(
-        Modifier
-            .offset(x = left, y = if (above) 0.dp else mid + 14.dp)
-            .width(LabelW)
-            .then(if (above) Modifier.height(mid - 14.dp) else Modifier),
-        contentAlignment = boxAlign,
-    ) { VehicleLabel(v, align) }
+    Box(Modifier.offset(x = left).width(LabelW).height(mid - 14.dp), contentAlignment = boxAlign) { VehicleLabel(v, align) }
 }
 
 /** A vehicle's time colour: green when it is (nearly) here, the board's ink otherwise. */
@@ -58,19 +78,18 @@ internal fun stripTimeColor(v: StripVehicle): Color {
     val ink = Vectra.monitor
     return when {
         v.faded -> c.textMuted
-        v.second -> c.textSecondary
         v.arriving || (v.kind == StripTimeKind.Live && v.label == "1'") -> c.tints.emerald.text
         v.kind == StripTimeKind.Scheduled -> ink.sched
         else -> ink.live
     }
 }
 
-/** Live signal, timetable clock, or nothing for faded and second vehicles. */
+/** Live signal, timetable clock, or nothing for faded (out-of-date) vehicles. */
 @Composable
 private fun TimeIcon(v: StripVehicle) {
     val c = Vectra.colors
     when {
-        v.faded || v.second -> Unit
+        v.faded -> Unit
         v.replacement -> VIcon(RemixIcons.BusLine, size = 13.dp, tint = BusBlue)
         v.kind == StripTimeKind.Scheduled -> VIcon(RemixIcons.TimeLine, size = 12.dp, tint = Vectra.monitor.sched)
         else -> LiveSignalIcon(size = 11.dp, tint = if (v.metro) c.tints.purple.text else c.tints.emerald.text)
@@ -84,8 +103,7 @@ private fun VehicleLabel(v: StripVehicle, align: Alignment.Horizontal) {
         if (v.label != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                 TimeIcon(v)
-                val size = if (v.second) 13.sp to 17.sp else 16.sp to 20.sp
-                VText(v.label, style = vtext(size, Weight.Extrabold, mono = true).tnum(), color = stripTimeColor(v), maxLines = 1, softWrap = false)
+                VText(v.label, style = vtext(16.sp to 20.sp, Weight.Extrabold, mono = true).tnum(), color = stripTimeColor(v), maxLines = 1, softWrap = false)
             }
         }
     }
@@ -103,7 +121,7 @@ private fun VehicleLabel(v: StripVehicle, align: Alignment.Horizontal) {
     }
     Column(horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(1.dp)) {
         // A far-away marker's stop count reads above its time; a time without a marker leads.
-        if (v.heading > 0 && v.showMarker) { sub(); main() } else { main(); sub() }
+        if (v.showMarker) { sub(); main() } else { main(); sub() }
     }
 }
 

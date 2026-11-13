@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.ui.text.style.TextAlign
+import dev.southstar21.vectra.core.maps.MapAttribution
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -29,7 +31,6 @@ import dev.southstar21.vectra.core.maps.GeoJson
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
 import dev.southstar21.vectra.core.maps.MapControls
-import dev.southstar21.vectra.core.maps.OpenFreeMapAttribution
 import dev.southstar21.vectra.core.maps.TransitMap
 import dev.southstar21.vectra.core.maps.boundsOf
 import dev.southstar21.vectra.core.maps.fitBounds
@@ -190,12 +191,6 @@ fun RoutePreviewMap(
         ) {
             MapControls(controls, Modifier.align(Alignment.TopEnd))
         }
-        VText(
-            OpenFreeMapAttribution,
-            Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 6.dp),
-            vtext(9.sp to 11.25.sp, mono = true),
-            Color(120, 120, 130, (0.85f * 255).toInt()),
-            maxLines = 1,
-        )
+        MapAttribution(Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 8.dp, bottom = 6.dp), align = TextAlign.Center)
     }
 }

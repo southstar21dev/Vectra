@@ -289,7 +289,7 @@ fun ColumnScope.LineStopPicker(
                         routeStops.orEmpty().firstOrNull { it.id == stopId }?.let(onToggleStop)
                     },
                 )
-                LoadingOverlay(show = loadingRouteStops || !routeMapReady, label = "Loading route map…")
+                MapLoadingOrb(show = loadingRouteStops || !routeMapReady, label = "Loading route map…")
                 MapBottomFade()
             }
         }
