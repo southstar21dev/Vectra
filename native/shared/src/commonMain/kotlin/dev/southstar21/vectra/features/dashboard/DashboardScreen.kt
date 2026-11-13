@@ -76,7 +76,7 @@ fun DashboardScreen(graph: AppGraph) {
             graph.deviceLocation,
             graph.auth,
             favorites = favorites,
-            onOpenTracker = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
+            onOpenTracker = { navigator.openLiveTracker(it.id, it.stopId) },
             onOpenTransit = { navigator.navigate(Route.Transit) },
             modifier = Modifier.padding(bottom = bottom),
         )

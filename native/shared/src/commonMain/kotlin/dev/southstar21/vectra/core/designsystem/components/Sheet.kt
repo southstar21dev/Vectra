@@ -44,7 +44,20 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -111,6 +124,12 @@ class SheetDragState internal constructor(private val haptics: VectraHaptics) {
     val current: Float get() = offset.value.takeUnless { it.isNaN() } ?: hidden
     /** 1 when fully open, 0 when hidden. */
     val openFraction: Float get() = if (hidden <= 0f) 0f else (1f - current / hidden).coerceIn(0f, 1f)
+
+    /** An expandable sheet's climb from its half-height rest (0, or anywhere lower) to fully open (1). */
+    val expansion: Float get() {
+        val half = anchors.takeIf { it.size == 3 }?.get(1)?.takeIf { it > 0f } ?: return 1f
+        return (1f - current / half).coerceIn(0f, 1f)
+    }
 
     /** Moves by [delta] px; pulling above the top anchor is resisted. Returns what was consumed. */
     internal suspend fun dragBy(delta: Float): Float {
@@ -215,6 +234,13 @@ fun VSheet(
     maxWidth: Dp = 640.dp,
     title: String? = null,
     onExited: (() -> Unit)? = null,
+    /**
+     * Floats at its half-height rest: inset from the window's sides and bottom with every corner
+     * rounded, settling onto the edges as it is pulled fully open (iOS 26 sheets). Glass surface.
+     */
+    floating: Boolean = false,
+    /** [SheetSize.Expandable]: the share of the window the sheet covers at its half-height rest. */
+    halfFraction: Float = 0.5f,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var mounted by remember { mutableStateOf(open) }
@@ -302,7 +328,7 @@ fun VSheet(
                     .onSizeChanged { s ->
                         panelHeight = s.height.toFloat()
                         val hidden = s.height + with(density) { 24.dp.toPx() }
-                        val half = (s.height - windowHeight * 0.5f).coerceAtLeast(0f)
+                        val half = (s.height - windowHeight * halfFraction).coerceAtLeast(0f)
                         state.anchors = if (size == SheetSize.Expandable && half > 0f) listOf(0f, half, hidden) else listOf(0f, hidden)
                     }
                     .offset { IntOffset(0, state.current.takeIf { panelHeight > 0f }?.roundToInt() ?: constraints.maxHeight) }
@@ -314,8 +340,10 @@ fun VSheet(
                         translationY = p * 32.dp.toPx()
                         transformOrigin = TransformOrigin(0.5f, 1f)
                     }
-                    .boxShadow(shape, cardDepthShadows(c.isDark))
-                    .background(c.surfaceSecondary, shape)
+                    .then(
+                        if (floating) Modifier.floatingSheetSurface(state, c.glassBgElevated, c.glassBorder, c.glassBorderSpecular)
+                        else Modifier.boxShadow(shape, cardDepthShadows(c.isDark)).background(c.surfaceSecondary, shape),
+                    )
                     .consumeTouches()
                     .draggable(
                         rememberDraggableState { delta -> scope.launch { state.dragBy(delta) } },
@@ -338,6 +366,71 @@ fun VSheet(
 private fun SheetHandle(modifier: Modifier = Modifier) {
     Box(modifier.padding(top = 8.dp, bottom = 4.dp).size(36.dp, 5.dp).background(Vectra.colors.textMuted.copy(alpha = 0.4f), CircleShape))
 }
+
+/**
+ * A sheet's grab handle for content drawn edge to edge (a map at the top): pass
+ * `dragHandle = false` and place this over the content. Drags on it move the sheet, not what is under it.
+ */
+@Composable
+fun SheetGrabber(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(width = 120.dp, height = 24.dp)
+            // A hit target of its own, so the drag reaches the sheet instead of the map under it.
+            .pointerInput(Unit) {},
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Box(Modifier.padding(top = 7.dp).size(36.dp, 5.dp).background(Color.White.copy(alpha = 0.55f), CircleShape))
+    }
+}
+
+/** How far a floating sheet sits in from the window's sides and bottom at its half-height rest. */
+private val FloatingInset = 8.dp
+private val FloatingCorner = 32.dp
+
+/** The visible part of a floating sheet: inset and fully rounded at half height, square to the window's bottom when open. */
+private class FloatingSheetShape(
+    private val inset: Float,
+    private val visibleHeight: Float,
+    private val topCorner: Float,
+    private val bottomCorner: Float,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
+        Outline.Rounded(
+            RoundRect(
+                left = inset, top = 0f, right = size.width - inset, bottom = visibleHeight.coerceIn(0f, size.height),
+                topLeftCornerRadius = CornerRadius(topCorner), topRightCornerRadius = CornerRadius(topCorner),
+                bottomRightCornerRadius = CornerRadius(bottomCorner), bottomLeftCornerRadius = CornerRadius(bottomCorner),
+            ),
+        )
+}
+
+private fun Density.floatingShape(size: Size, state: SheetDragState): FloatingSheetShape {
+    val rest = 1f - state.expansion
+    val inset = FloatingInset.toPx() * rest
+    // The window's bottom edge, in the panel's own coordinates, lifted by the inset.
+    val visible = size.height - state.current - inset
+    return FloatingSheetShape(inset, visible, FloatingCorner.toPx(), FloatingCorner.toPx() * rest)
+}
+
+/** Glass fill, clip, shadow and a specular top edge that all follow [floatingShape]. */
+private fun Modifier.floatingSheetSurface(state: SheetDragState, fill: Color, side: Color, top: Color): Modifier =
+    graphicsLayer {
+        shape = floatingShape(size, state)
+        clip = true
+        shadowElevation = 24.dp.toPx()
+        ambientShadowColor = Color.Black
+        spotShadowColor = Color.Black
+    }.drawWithContent {
+        val outline = floatingShape(size, state).createOutline(size, layoutDirection, this)
+        drawOutline(outline, fill)
+        drawContent()
+        drawOutline(
+            outline,
+            Brush.verticalGradient(0f to top, 0.5f to side, 1f to side, startY = 0f, endY = 48.dp.toPx()),
+            style = Stroke(1.dp.toPx()),
+        )
+    }
 
 /**
  * Registers a back handler that reports the predictive back gesture's progress (0 when idle),

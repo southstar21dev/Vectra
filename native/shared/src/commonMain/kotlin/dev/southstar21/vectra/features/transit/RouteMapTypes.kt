@@ -15,6 +15,10 @@ data class RouteMapVehicle(
     val location: LatLon,
     val isApproximate: Boolean? = null,
     val bearing: Double? = null,
+    /** Its countdown to your stop ("1'", "NOW"), shown above it on the map. */
+    val label: String? = null,
+    /** Due now or within a minute: the label turns green. */
+    val labelSoon: Boolean = false,
 )
 
 data class RouteMapSecondaryLine(

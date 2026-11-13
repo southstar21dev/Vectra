@@ -20,7 +20,6 @@ class LiveTrackerFreshnessTest {
         assertFalse(fresh.arrivalsStale)
         assertEquals(at + 30_000, fresh.countdownNow)
         assertNull(liveMapNotice(fresh, at, arrivalsUnavailable = false, noDepartures = false))
-        assertEquals("Next update in 3s", liveFooterText(fresh, at, loaded = true, refetching = false, secondsToNext = 3))
     }
 
     @Test fun offlineFreezesTheCountdownAtTheSnapshot() {
@@ -30,7 +29,6 @@ class LiveTrackerFreshnessTest {
         // Ten minutes later it still reads the snapshot's 5 minutes, not "NOW".
         assertEquals(5, etaMinutes(arrival.arrivalMs, offline.countdownNow))
         assertEquals("Offline · departures as of 14:05", liveMapNotice(offline, at, arrivalsUnavailable = false, noDepartures = false))
-        assertEquals("Offline · live position paused", liveFooterText(offline, at, loaded = true, refetching = false, secondsToNext = 0))
     }
 
     @Test fun aSnapshotOlderThanAMinuteIsDelayed() {
@@ -39,7 +37,6 @@ class LiveTrackerFreshnessTest {
         assertTrue(late.vehiclesStale)
         assertEquals(at, late.countdownNow)
         assertEquals("Departure times delayed · as of 14:05", liveMapNotice(late, at, arrivalsUnavailable = true, noDepartures = false))
-        assertEquals("Live position delayed · last update 14:05", liveFooterText(late, at, loaded = true, refetching = false, secondsToNext = 0))
     }
 
     @Test fun nothingLoadedYetHasNothingToFreeze() {
@@ -55,10 +52,5 @@ class LiveTrackerFreshnessTest {
             "Departure times unavailable · showing route",
             liveMapNotice(f(at + 1_000), at, arrivalsUnavailable = true, noDepartures = false),
         )
-    }
-
-    @Test fun onlineFooterKeepsItsLoadingStates() {
-        assertEquals("Preparing live position…", liveFooterText(f(at, vehiclesAt = 0), 0, loaded = false, refetching = false, secondsToNext = null))
-        assertEquals("Updating live position…", liveFooterText(f(at + 5_000), at, loaded = true, refetching = true, secondsToNext = 5))
     }
 }

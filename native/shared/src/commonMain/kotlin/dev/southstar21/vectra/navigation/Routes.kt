@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -36,8 +37,6 @@ sealed interface Screen : NavKey {
     @Serializable data object AddTracker : Screen
     @Serializable data object ManageTrackers : Screen
     @Serializable data class EditTracker(val trackerId: String) : Screen
-    /** [stopId] picks which of a multi-stop tracker's stops opens first. */
-    @Serializable data class LiveTracker(val trackerId: String, val stopId: String? = null) : Screen
     @Serializable data class TrackerMap(val trackerId: String, val stopId: String? = null) : Screen
     @Serializable data object NearbyExplorer : Screen
     // Schedule & course hub
@@ -71,6 +70,10 @@ val PrimaryNavItems: List<NavItem> = listOf(
 
 val PrimaryRoutes: List<Route> = PrimaryNavItems.map { it.route }
 
+/** The live tracker sheet's subject; [stopId] picks which of a multi-stop tracker's stops shows. */
+@Serializable
+data class LiveTrackerSheet(val trackerId: String, val stopId: String? = null)
+
 /** Tabs whose navbar shows a + actions button. */
 val ActionRoutes: Set<Route> = setOf(Route.Transit, Route.Schedule)
 
@@ -91,12 +94,34 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
 
     val current: Route get() = backStack.last()
 
+    /**
+     * The tracker whose live sheet is open over the tabs. It shows only while no screen is pushed
+     * (the full-screen map covers it, and it comes back when that closes).
+     */
+    var liveTracker by mutableStateOf<LiveTrackerSheet?>(null)
+        private set
+
+    fun openLiveTracker(trackerId: String, stopId: String? = null) {
+        popToTabs()
+        liveTracker = LiveTrackerSheet(trackerId, stopId)
+    }
+
+    /** The sheet switched to another of the tracker's stops: reopening it keeps that stop. */
+    fun showLiveTrackerStop(stopId: String) {
+        liveTracker = liveTracker?.copy(stopId = stopId)
+    }
+
+    fun closeLiveTracker() {
+        liveTracker = null
+    }
+
     /** Bumped when the current tab is selected again: its page scrolls back to the top. */
     var reselections by mutableIntStateOf(0)
         private set
 
     fun navigate(to: Route) {
         popToTabs()
+        liveTracker = null
         if (to == current) {
             reselections++
             return

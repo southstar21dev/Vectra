@@ -23,6 +23,8 @@ internal class StripColors(
     /** Replacement buses: BKK's bus blue, whatever the line's colour. */
     val bus: Color = BusBlue,
     val busInk: Color = Color.White,
+    /** The ring around a vehicle token and its heading point. */
+    val ring: Color = Color.White,
 )
 
 /** BKK's bus blue, for replacement buses. */

@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
@@ -23,6 +21,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.maps.drawVehicleToken
 import kotlin.math.abs
 
 
@@ -30,8 +29,8 @@ private val DotRadius = 5.dp
 private val DotStroke = 2.5.dp
 private val YouRadius = 10.dp
 private val YouRing = 5.dp
-private val MarkerW = 30.dp
-private val MarkerH = 20.dp
+/** The round vehicle token's diameter (its heading point reaches a little further). */
+private val MarkerW = 26.dp
 private val Halo = 3.dp
 private val LineW = 4.dp
 private val EdgeInset = 6.dp
@@ -164,24 +163,21 @@ private fun DrawScope.drawStops(model: StripModel, colors: StripColors, mid: Flo
 }
 
 private fun DrawScope.drawMarkers(markers: List<Pair<StripVehicle, Float>>, colors: StripColors, mid: Float) {
-    val mw = MarkerW.toPx()
-    val mh = MarkerH.toPx()
+    val r = MarkerW.toPx() / 2
     val halo = Halo.toPx()
-    val corner = CornerRadius(7.dp.toPx())
     for ((v, cx) in markers) {
-        val alpha = if (v.faded) 0.35f else 1f
-        drawRoundRect(colors.card, Offset(cx - mw / 2 - halo, mid - mh / 2 - halo), Size(mw + halo * 2, mh + halo * 2), CornerRadius(corner.x + halo))
         val (fill, ink) = if (v.replacement) colors.bus to colors.busInk else colors.marker to colors.markerInk
-        drawRoundRect(fill.copy(alpha = alpha), Offset(cx - mw / 2, mid - mh / 2), Size(mw, mh), corner)
-        val chev = 3.5.dp.toPx()
-        val path = Path().apply {
-            if (v.heading > 0) {
-                moveTo(cx - chev / 2, mid - chev); lineTo(cx + chev / 2, mid); lineTo(cx - chev / 2, mid + chev)
-            } else {
-                moveTo(cx + chev / 2, mid - chev); lineTo(cx - chev / 2, mid); lineTo(cx + chev / 2, mid + chev)
-            }
-        }
-        drawPath(path, ink.copy(alpha = alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawVehicleToken(
+            center = Offset(cx, mid),
+            radius = r,
+            fill = fill,
+            ink = ink,
+            headingDeg = if (v.heading > 0) 90f else 270f,
+            ring = colors.ring,
+            gap = colors.card,
+            gapWidth = halo,
+            alpha = if (v.faded) 0.35f else 1f,
+        )
     }
 }
 
