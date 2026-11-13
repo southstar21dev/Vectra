@@ -25,8 +25,6 @@ import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.AppGraph
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.OfflineBanner
-import dev.southstar21.vectra.core.designsystem.components.PileCard
-import dev.southstar21.vectra.core.designsystem.components.ScrollPile
 import dev.southstar21.vectra.core.designsystem.components.Reveal
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
@@ -41,6 +39,7 @@ import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.coursetracker.resolveCourseKey
 import dev.southstar21.vectra.features.holidays.HolidayCard
 import dev.southstar21.vectra.features.schedule.DayListHeader
+import dev.southstar21.vectra.features.schedule.DemoScheduleSeedEffect
 import dev.southstar21.vectra.features.schedule.DayListLoading
 import dev.southstar21.vectra.features.schedule.NothingScheduledCard
 import dev.southstar21.vectra.features.schedule.ScheduleConflict
@@ -109,16 +108,13 @@ fun DashboardScreen(graph: AppGraph) {
                 Column(Modifier.weight(1f)) { Reveal(3) { TodaySection(graph, topGap = 0.dp) } }
             }
         } else {
-            // The cards pile up under each other as the page scrolls (see ScrollPile).
-            ScrollPile(
-                cards = listOf(
-                    PileCard("weather", "weather", bottomInset = 24.dp) { Reveal(0) { WeatherCard(graph.weatherRepository) } },
-                    PileCard("holidays", "holidays", bottomInset = 24.dp) { Reveal(1) { HolidayCard() } },
-                    // Today's classes: separate cards straight on the page, finished ones stacked on top.
-                    PileCard("today", "today's schedule", bottomInset = 24.dp, flat = true) { Reveal(2) { TodaySection(graph) } },
-                    PileCard("transit", "transit", bottomInset = 24.dp) { Reveal(3) { transit(24.dp) } },
-                ),
-            )
+            // Weather and holidays each leave 24dp under themselves.
+            Reveal(0) { WeatherCard(graph.weatherRepository) }
+            Reveal(1) { HolidayCard() }
+            // Today's classes: separate cards straight on the page, finished ones stacked on top.
+            Reveal(2) { TodaySection(graph) }
+            // Transit: a header and separate line-strip cards, like today's classes.
+            Reveal(3) { transit(24.dp) }
         }
     }
 
@@ -131,6 +127,8 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
     val schedule = graph.scheduleRepository
+    // Debug builds: the transit demo account gets a made-up week of classes.
+    DemoScheduleSeedEffect(schedule, graph.transitRepository.userEmail, graph.transitRepository.demoFeed)
     val events by schedule.events.collectAsStateWithLifecycle()
     val itemsState by schedule.itemsState.collectAsStateWithLifecycle()
     val conflicts by schedule.conflicts.collectAsStateWithLifecycle()

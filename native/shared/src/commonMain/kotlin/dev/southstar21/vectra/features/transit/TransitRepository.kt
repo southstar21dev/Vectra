@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.time.nowMs
+
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.LiveQuery
 import dev.southstar21.vectra.core.data.OfflineCache
@@ -63,13 +65,17 @@ class TransitRepository(
     catalogOrigin: String,
     catalogCache: CatalogDiskCache,
     val scope: CoroutineScope,
+    /** Debug builds: DEMO_ trackers (the demo accounts') get [DemoFeed]'s fake data. */
+    val demoFeed: Boolean = false,
 ) : SessionListener {
+    private fun demo(id: String?) = demoFeed && DemoFeed.handles(id)
     val api = FutarApi(pb)
     val catalog = TransitCatalog(http, catalogOrigin, scope, catalogCache)
     private val cache = OfflineCache(kv, "vectra_transit_trackers_cache", ListSerializer(TransitTracker.serializer()))
     private var cachedTrackers: Pair<String, List<TransitTracker>>? = null
 
     val userId: String? get() = pb.auth.current?.userId?.takeIf { it.isNotEmpty() }
+    val userEmail: String? get() = pb.auth.current?.email
     private fun requireUserId(): String = userId ?: throw NotSignedInException()
 
     // ---- trackers -----------------------------------------------------------
@@ -271,7 +277,9 @@ class TransitRepository(
 
     /** One stop's arrivals: 20s poll, 10s stale, coalesced into batches. */
     val arrivals: LiveQuery<String, FutarArrivalsResponse> =
-        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops) { arrivalsLoader.load(it) }
+        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops) {
+            if (demo(it)) DemoFeed.arrivals(it, nowMs()) else arrivalsLoader.load(it)
+        }
 
     /** Deep arrivals (trip planning): key = stopId to stop-times limit. */
     val deepArrivals: LiveQuery<Pair<String, Int>, FutarArrivalsResponse> =
@@ -283,7 +291,7 @@ class TransitRepository(
      */
     val batchArrivals: LiveQuery<String, StopArrivalsBatch> =
         LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { key ->
-            val ids = key.split(',').filter { it.isNotEmpty() }
+            val ids = key.split(',').filter { it.isNotEmpty() && !demo(it) }
             api.fetchStopArrivalsBatch(ids, ArrivalsMinutesAfter).also { batch ->
                 batch.responses.forEach { (id, r) -> arrivals.setData(id, r) }
             }
@@ -291,20 +299,26 @@ class TransitRepository(
 
     /** Live vehicles on a route (combined groups merged): 10s poll. */
     val vehicles: LiveQuery<String, FutarVehiclesForRouteResponse> =
-        LiveQuery(scope, refetchIntervalMs = 10_000, staleTimeMs = 5_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { api.fetchVehiclesForRouteCombined(it) }
+        LiveQuery(scope, refetchIntervalMs = 10_000, staleTimeMs = 5_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) {
+            if (demo(it)) DemoFeed.vehicles(it, nowMs()) else api.fetchVehiclesForRouteCombined(it)
+        }
 
     /** Live vehicles for one member route. */
     val memberVehicles: LiveQuery<String, FutarVehiclesForRouteResponse> =
-        LiveQuery(scope, refetchIntervalMs = 10_000, staleTimeMs = 5_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { api.fetchVehiclesForRoute(it) }
+        LiveQuery(scope, refetchIntervalMs = 10_000, staleTimeMs = 5_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) {
+            if (demo(it)) DemoFeed.vehicles(it, nowMs()) else api.fetchVehiclesForRoute(it)
+        }
 
     val tripDetails: LiveQuery<TripDetailsKey, FutarTripDetailsResponse> =
         LiveQuery(scope, refetchIntervalMs = 60_000, staleTimeMs = 60_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) {
-            api.fetchTripDetails(it.tripId, it.serviceDate)
+            if (demo(it.tripId)) DemoFeed.tripDetails(it.tripId, nowMs()) else api.fetchTripDetails(it.tripId, it.serviceDate)
         }
 
     /** Route-level stops + geometry, combined lines merged. */
     val routeDetails: LiveQuery<String, FutarRouteDetailsResponse> =
-        LiveQuery(scope, refetchIntervalMs = 60_000, staleTimeMs = 60_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { api.fetchCombinedRouteDetails(it) }
+        LiveQuery(scope, refetchIntervalMs = 60_000, staleTimeMs = 60_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) {
+            if (demo(it)) DemoFeed.routeDetails(it, nowMs()) else api.fetchCombinedRouteDetails(it)
+        }
 
     /** Member route ids for a set of routes (combined groups expand). */
     fun memberRouteIds(routeIds: List<String?>): List<String> =

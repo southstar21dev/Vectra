@@ -58,12 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import dev.southstar21.vectra.core.designsystem.components.PageScrollInfo
-import dev.southstar21.vectra.core.designsystem.components.LocalPageScroll
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.layout.onPlaced
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 import dev.southstar21.vectra.core.designsystem.components.PullToRefresh
@@ -117,11 +112,6 @@ fun VectraPage(
     PageScrollEffects(scroll, reportScrolled = pane == null)
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp
     val bottom = pageBottomReserve()
-    val pageScroll = remember(scroll) { PageScrollInfo(scroll) }
-    with(LocalDensity.current) {
-        pageScroll.topPad = top.toPx()
-        pageScroll.bottomReserve = bottom.toPx()
-    }
     // Side cutouts, or the sensor housing and side tab bar of an unfolded iPhone Duo.
     val sides = horizontalSafeArea()
     val dir = LocalLayoutDirection.current
@@ -139,7 +129,6 @@ fun VectraPage(
             Column(
                 modifier
                     .fillMaxSize()
-                    .onPlaced { pageScroll.viewport = it }
                     .verticalScroll(scroll)
                     .padding(start = start, end = end, top = top, bottom = bottom),
                 // On wide screens the column stops growing and sits centred.
@@ -148,13 +137,11 @@ fun VectraPage(
             )
         } else {
             PanedPage(pane, PaddingValues(start = start, end = end, top = top, bottom = bottom), maxWidth, { scroll.value > 10 }, modifier) { inner ->
-                Column(Modifier.fillMaxSize().onPlaced { pageScroll.viewport = it }.verticalScroll(scroll).padding(inner), content = column)
+                Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(inner), content = column)
             }
         }
     }
-    CompositionLocalProvider(LocalPageScroll provides pageScroll) {
-        if (onRefresh != null) PullToRefresh(onRefresh) { page() } else page()
-    }
+    if (onRefresh != null) PullToRefresh(onRefresh) { page() } else page()
 }
 
 /** Reports the page's scroll to the shell, and sends it back to the top on leaving or reselecting the tab. */
@@ -174,7 +161,7 @@ private fun PageScrollEffects(scroll: ScrollState, reportScrolled: Boolean) {
             shell.scrolling = false
         }
     }
-    // Leaving the tab resets the page to its top (and its pile unstacked) for the next visit.
+    // Leaving the tab resets the page to its top for the next visit.
     val selected = LocalTabSelected.current
     LaunchedEffect(scroll, selected) { if (!selected) scroll.scrollTo(0) }
     val reselections = LocalNavigator.current.reselections

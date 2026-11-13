@@ -1,29 +1,37 @@
 package dev.southstar21.vectra.features.transit
 
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.unit.Dp
-import dev.southstar21.vectra.core.designsystem.theme.LocalWideLayout
-import dev.southstar21.vectra.core.designsystem.theme.WideContentMaxWidth
-import dev.southstar21.vectra.features.shell.PagePane
-import dev.southstar21.vectra.features.shell.PaneSide
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.Stable
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,77 +44,124 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.southstar21.vectra.core.data.KeyValueStore
-import dev.southstar21.vectra.core.designsystem.components.LocalToaster
-import dev.southstar21.vectra.core.designsystem.components.SheetAction
 import dev.southstar21.vectra.core.designsystem.components.ActionSheet
-import dev.southstar21.vectra.core.designsystem.components.EmptyState
+import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.OfflineBanner
-import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.Reveal
+import dev.southstar21.vectra.core.designsystem.components.SheetAction
 import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.ContentMaxWidth
-import dev.southstar21.vectra.core.designsystem.theme.TypeScale
-import dev.southstar21.vectra.core.designsystem.theme.Tracking
+import dev.southstar21.vectra.core.designsystem.theme.LocalWideLayout
+import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.WideContentMaxWidth
 import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.navbar.NavbarAction
 import dev.southstar21.vectra.features.navbar.NavbarActionConfig
 import dev.southstar21.vectra.features.navbar.NavbarActionVariant
 import dev.southstar21.vectra.features.navbar.RegisterNavbarActions
+import dev.southstar21.vectra.features.schedule.rememberDayColors
+import dev.southstar21.vectra.features.shell.PagePane
+import dev.southstar21.vectra.features.shell.PaneSide
 import dev.southstar21.vectra.features.shell.VectraPage
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.launch
-import dev.southstar21.vectra.core.designsystem.theme.Palette
-import dev.southstar21.vectra.core.designsystem.theme.Radius
-import dev.southstar21.vectra.core.designsystem.theme.tappable
 
 private const val ShowInactiveKey = "vectra_show_inactive_transits"
 
-private enum class CoverMode { All, Map, Content }
+/** Badges the not-running stack shows before "+N". */
+private const val StackBadges = 8
 
-/** Composed (so arrivals keep polling) but takes no space and draws nothing. */
-private fun Modifier.hiddenButComposed(hidden: Boolean): Modifier =
-    if (!hidden) this else layout { measurable, constraints ->
-        measurable.measure(constraints)
-        layout(0, 0) {}
-    }
+/**
+ * Always composed (so arrivals keep polling), but only [fraction] of its height is laid out:
+ * 0 takes no space, 1 is its full height. Only the bottom is clipped (to what is laid out), so
+ * the cards' shadows still spill out at the sides.
+ */
+private fun Modifier.unfold(fraction: () -> Float, onFullHeight: (Int) -> Unit): Modifier = drawWithContent {
+    // Fully open, nothing is cut: the last card's shadow spills below too.
+    if (fraction() >= 1f) drawContent()
+    else clipRect(-size.width, -size.height, size.width * 2, size.height) { this@drawWithContent.drawContent() }
+}.layout { measurable, constraints ->
+    val p = measurable.measure(constraints)
+    onFullHeight(p.height)
+    val f = fraction().coerceIn(0f, 1f)
+    layout(p.width, (p.height * f).roundToInt()) { if (f > 0f) p.place(0, 0) }
+}
 
-/** A section title as a postage stamp stuck onto the card's edge. */
-@Composable
-private fun SectionStamp(title: String, caption: String, covered: Boolean, modifier: Modifier) {
-    val c = Vectra.colors
-    val alpha by animateFloatAsState(if (covered) 0f else 1f, tween(300), label = "stamp")
-    PostageStamp(
-        modifier.zIndex(40f).graphicsLayer { this.alpha = alpha },
-        innerModifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 4.dp),
-    ) {
-        VText(title, style = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight, lineHeight = 16.sp), color = c.textPrimary)
-        VText(caption, style = vtext(11.sp to 11.sp, Weight.Semibold), color = c.accentPrimary)
+/**
+ * Brings the not-running stack's cards into view when the user opens it: the stack sits at the
+ * bottom of the page, so they would otherwise unfold off screen. Opening it by restoring the saved
+ * state doesn't scroll; only [open] does.
+ */
+@Stable
+private class StackReveal {
+    val requester = BringIntoViewRequester()
+    /** The cards' full height (px), however far they have unfolded. */
+    var fullHeight = 0
+    var requests by mutableIntStateOf(0)
+
+    fun open() {
+        requests++
     }
 }
 
-/** Tracker monitors stacked in one column. */
+/** [fan]: how far the cards have unfolded, 0 to 1. */
 @Composable
-private fun TrackerGrid(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
+private fun rememberStackReveal(fan: () -> Float): StackReveal {
+    val reveal = remember { StackReveal() }
+    val barRoom = with(LocalDensity.current) { RevealBarRoom.toPx() }
+    val unfolded by rememberUpdatedState(fan)
+    LaunchedEffect(reveal.requests) {
+        if (reveal.requests == 0) return@LaunchedEffect
+        // A request on cards still laid out at no height is dropped, so wait until they show,
+        // then ask for their full height: the page glides up while they finish unfolding.
+        snapshotFlow { unfolded() }.first { it >= RevealFrom }
+        reveal.requester.bringIntoView(Rect(0f, 0f, 1f, reveal.fullHeight + barRoom))
+    }
+    return reveal
 }
 
-/** The Transit tab: the map around you and your trackers as stop monitors. */
+/** How far the not-running cards unfold before the page starts scrolling them into view. */
+private const val RevealFrom = 0.25f
+
+/** Room asked for below the last card, so it comes to rest above the floating tab bar. */
+private val RevealBarRoom = 110.dp
+
+/**
+ * One edge peeking out below the folded stack's front card, [inset] narrower on each side and
+ * [drop] lower. [folded] (1 folded, 0 open) slides it up under the front card and fades it.
+ */
+private fun Modifier.peekEdge(inset: Dp, drop: Dp, fill: Color, border: Color, corner: Dp, folded: () -> Float): Modifier =
+    padding(horizontal = inset)
+        .graphicsLayer { translationY = drop.toPx() * folded(); alpha = folded() }
+        .background(fill, RoundedCornerShape(corner))
+        .border(1.dp, border, RoundedCornerShape(corner))
+
+/** Adds [fraction] of [extra] as room below the content (the folded stack's peeking edges). */
+private fun Modifier.roomBelow(extra: Dp, fraction: () -> Float): Modifier = layout { measurable, constraints ->
+    val p = measurable.measure(constraints)
+    layout(p.width, p.height + (extra.toPx() * fraction()).roundToInt()) { p.place(0, 0) }
+}
+
+/** The Transit tab: the map around you, then your trackers as line strips straight on the page. */
 @Composable
 fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore) {
     val scope = rememberCoroutineScope()
@@ -121,6 +176,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     val trackers = trackersState.data.orEmpty()
     // First ever fetch still in flight (no offline cache to seed from yet).
     val firstLoad = trackersState.isFetching && !trackersState.isFetched
+    DemoSeedEffect(repo, trackers, trackersState.isFetched && trackersState.data != null)
 
     val navigator = LocalNavigator.current
     var menuTracker by remember { mutableStateOf<TransitTracker?>(null) }
@@ -132,13 +188,8 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     var showInactive by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { showInactive = runSuspendCatching { kv.get(ShowInactiveKey) == "true" }.getOrDefault(false) }
 
-    // Loading / stale cover: one spinner covers everything below the map — or
-    // the whole card while the map itself hasn't loaded. A loaded map is never covered again.
-    val pendingMap = remember { mutableStateMapOf<String, Boolean>() }
-    var mapPending by remember { mutableStateOf(false) }
-
     // The active/inactive split waits until every tracker has reported once, so
-    // no-departure trackers don't jump into the folded row mid-glance.
+    // no-departure trackers don't jump into the stack mid-glance.
     val departuresSettled = trackers.isNotEmpty() && trackers.all { hasDepartures[it.id] != null }
     val activeTrackers = if (departuresSettled) trackers.filter { hasDepartures[it.id] != false } else trackers
     val inactiveTrackers = if (departuresSettled) trackers.filter { hasDepartures[it.id] == false } else emptyList()
@@ -159,127 +210,77 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
         ),
     )
 
-    val dataPending = firstLoad || trackers.any { pendingMap[it.id] ?: true }
-    val coverMode = when {
-        dataPending && mapPending -> CoverMode.All
-        dataPending -> CoverMode.Content
-        mapPending -> CoverMode.Map
-        else -> null
-    }
-    val coverLabel = when {
-        coverMode == CoverMode.Map -> "Loading map…"
-        firstLoad || coverMode == CoverMode.All -> "Loading transit…"
-        else -> "Updating departures…"
-    }
-    val sectionsCovered = coverMode == CoverMode.Content || coverMode == CoverMode.All
-
-    @Composable
-    fun BoxScope.Cover(vararg regions: CoverMode) {
-        val pinned = CoverMode.Map !in regions
-        LoadingOverlay(
-            show = coverMode in regions,
-            modifier = Modifier.zIndex(30f),
-            label = coverLabel,
-            maxDurationMs = 15_000,
-            // Trackers can run below the fold: one large orb near the top instead of centred.
-            contentAlignment = if (pinned) Alignment.TopCenter else Alignment.Center,
-            contentModifier = if (pinned) Modifier.padding(top = 96.dp) else Modifier,
-            contentSpacing = if (pinned) 40.dp else 12.dp,
-            indicator = {
-                ThinkingOrb(Modifier.graphicsLayer { if (pinned) { scaleX = 1.75f; scaleY = 1.75f } }, size = 64.dp)
-            },
-        )
-    }
-
     @Composable
     fun TrackerCard(tracker: TransitTracker) {
-        TransitCard(
+        LineStripCard(
             repo = repo,
             tracker = tracker,
+            position = nearbyStops.position,
             onOpen = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
             onLongPress = { menuTracker = it },
             onHasDeparturesChange = { id, has -> if (hasDepartures[id] != has) hasDepartures[id] = has },
-            onPendingChange = { id, p -> if (pendingMap[id] != p) pendingMap[id] = p },
+            // Without location, the first card asks once for walking times.
+            onAskLocation = if (tracker.id == (activeTrackers.firstOrNull() ?: trackers.firstOrNull())?.id) nearbyStops.refreshLocation else null,
         )
     }
 
     val wide = LocalWideLayout.current
+    val shape = Radius.Card
 
     @Composable
     fun MapStrip(height: Dp, modifier: Modifier = Modifier) {
-        Box(modifier.fillMaxWidth()) {
-            NearbyMapStrip(
-                status = nearbyStops.status,
-                position = nearbyStops.position,
-                stops = peekStops,
-                onOpen = { navigator.push(Screen.NearbyExplorer) },
-                onLocate = nearbyStops.refreshLocation,
-                onMapPendingChange = { mapPending = it },
-                showLoadingOverlay = false,
-                height = height,
-            )
-            Cover(CoverMode.Map)
-        }
+        NearbyMapStrip(
+            status = nearbyStops.status,
+            position = nearbyStops.position,
+            stops = peekStops,
+            onOpen = { navigator.push(Screen.NearbyExplorer) },
+            onLocate = nearbyStops.refreshLocation,
+            modifier = modifier,
+            height = height,
+        )
     }
 
-    /** Your trackers as stop monitors, under their postage stamp. */
+    /** Your trackers under a "Trackers" header, the lines with nothing coming folded into a stack. */
     @Composable
     fun Trackers() {
-        Box(Modifier.fillMaxWidth()) {
-            // Trackers
-            Box(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 44.dp, bottom = 16.dp)) {
-                    when {
-                        trackers.isEmpty() -> EmptyState("No trackers yet", Modifier.offset(y = (-16).dp), emoji = "🚋")
-                        allInactive -> {
-                            // When all tracked lines are off-service (e.g. late night).
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        Modifier.size(36.dp).background(Palette.Indigo500.copy(alpha = 0.1f), CircleShape).border(1.dp, Palette.Indigo500.copy(alpha = 0.2f), CircleShape),
-                                        contentAlignment = Alignment.Center,
-                                    ) { SleepingIcon(size = 16.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400) }
-                                    Column {
-                                        VText("All tracked lines are currently off-service", style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary)
-                                        VText("No departures are running right now.", style = vtext(TypeScale.Caption), color = c.textMuted)
-                                    }
-                                }
-                                TrackerGrid { trackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
-                            }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val count = trackers.size
+            TransitSectionHeader("Trackers", if (count > 0) "$count ${if (count == 1) "line" else "lines"}" else null)
+            when {
+                trackers.isEmpty() && firstLoad -> TrackersLoading()
+                trackers.isEmpty() -> NoTrackersCard(onAdd = { navigator.push(Screen.AddTracker) })
+                allInactive -> {
+                    // Every tracked line is off-service (late at night): say so, and show them all.
+                    Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(36.dp).background(Palette.Indigo500.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
+                            SleepingIcon(size = 16.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400)
                         }
-                        else -> {
-                            TrackerGrid { activeTrackers.forEach { t -> key(t.id) { TrackerCard(t) } } }
-                            if (inactiveTrackers.isNotEmpty()) {
-                                InactiveFold(inactiveTrackers, showInactive, onToggle = {
-                                    showInactive = !showInactive
-                                    val next = showInactive
-                                    scope.launch { runSuspendCatching { kv.set(ShowInactiveKey, next.toString()) } }
-                                }) { TrackerCard(it) }
-                            }
+                        Column {
+                            VText("All tracked lines are off-service", style = vtext(15.sp to 20.sp, Weight.Bold), color = c.textPrimary)
+                            VText("Nothing is running right now.", style = vtext(13.sp to 18.sp), color = c.textSecondary)
                         }
                     }
+                    trackers.forEach { t -> key(t.id) { TrackerCard(t) } }
                 }
-                SectionStamp(
-                    "Trackers",
-                    "${trackers.size} ${if (trackers.size == 1) "line" else "lines"}",
-                    sectionsCovered,
-                    Modifier.offset(x = 16.dp, y = (-28).dp).rotate(-3f),
-                )
+                else -> {
+                    activeTrackers.forEach { t -> key(t.id) { TrackerCard(t) } }
+                    if (inactiveTrackers.isNotEmpty()) {
+                        InactiveStack(inactiveTrackers, showInactive, onToggle = {
+                            showInactive = !showInactive
+                            val next = showInactive
+                            scope.launch { runSuspendCatching { kv.set(ShowInactiveKey, next.toString()) } }
+                        }) { TrackerCard(it) }
+                    }
+                }
             }
-            // Wide, the trackers have a card of their own, so a full cover reaches them too.
-            if (wide) Cover(CoverMode.Content, CoverMode.All) else Cover(CoverMode.Content)
         }
     }
 
-    val shape = Radius.Card
     VectraPage(
         maxWidth = if (wide) WideContentMaxWidth else ContentMaxWidth,
         // Wide: the map stays put on the left while the trackers scroll beside it.
         pane = if (!wide) null else PagePane(PaneSide.Start, weight = 0.5f) {
-            BoxWithConstraints(Modifier.fillMaxSize().glass(shape).clip(shape)) {
-                MapStrip(maxHeight)
-                Cover(CoverMode.All)
-            }
+            BoxWithConstraints(Modifier.fillMaxSize().glass(shape).clip(shape)) { MapStrip(maxHeight) }
         },
         onRefresh = { repo.refresh() },
     ) {
@@ -287,19 +288,10 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
             OfflineBanner(Modifier.widthIn(max = ContentMaxWidth), message = "No internet connection — live arrivals may be stale", badgeLabel = "Offline")
         }
         Reveal(0, Modifier.fillMaxWidth()) {
-            if (wide) {
-                // The stamp hangs above the trackers; the card clips, so it starts inside the card.
-                Box(Modifier.fillMaxWidth().glass(shape).clip(shape).padding(top = 30.dp)) { Trackers() }
-            } else {
-                // One card: the map around you (tap for the nearby sheet), then your
-                // trackers as stop monitors.
-                Box(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth).glass(shape).clip(shape)) {
-                    Column(Modifier.fillMaxWidth()) {
-                        MapStrip(NearbyMapStripHeight)
-                        Trackers()
-                    }
-                    Cover(CoverMode.All)
-                }
+            Column(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // The map around you as its own card (tap for the nearby sheet).
+                if (!wide) Box(Modifier.fillMaxWidth().glass(shape).clip(shape)) { MapStrip(NearbyMapStripHeight) }
+                Trackers()
             }
         }
     }
@@ -323,33 +315,107 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     )
 }
 
-/** Lines with no upcoming departures fold into one quiet row that opens to their monitors. */
+/** First load with nothing cached: two cards in the real shape, no spinner. */
 @Composable
-private fun InactiveFold(trackers: List<TransitTracker>, open: Boolean, onToggle: () -> Unit, card: @Composable (TransitTracker) -> Unit) {
+private fun TrackersLoading() {
+    val d = rememberDayColors()
+    repeat(2) {
+        Box(Modifier.fillMaxWidth().height(156.dp).stripCardSurface()) {
+            Box(Modifier.padding(16.dp).size(32.dp).background(d.placeholder, RoundedCornerShape(8.dp)))
+        }
+    }
+}
+
+/** Before the first tracker: what a tracker is, and a way to add one. */
+@Composable
+private fun NoTrackersCard(onAdd: () -> Unit) {
     val c = Vectra.colors
-    Column(Modifier.padding(top = 10.dp, bottom = 12.dp)) {
-        val chevron by animateFloatAsState(if (open) 180f else 0f, tween(200), label = "chev")
+    // What a tracker looks like: a greyed line with your stop and one vehicle on the way.
+    val sample = remember { StripModel(vehicles = listOf(StripVehicle(1.4f, 1, null))) }
+    val colors = stripColors(null, null, rememberDayColors().card, grey = true)
+    Column(
+        Modifier.fillMaxWidth().stripCardSurface().padding(horizontal = 20.dp, vertical = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        LineStrip(sample, colors, Modifier.padding(bottom = 6.dp), labels = false)
+        VText("No trackers yet", style = vtext(17.sp to 22.sp, Weight.Bold), color = c.textPrimary)
+        VText(
+            "Pick a line and a stop, and it shows up here with its vehicles on the way.",
+            style = vtext(13.sp to 18.sp),
+            color = c.textSecondary,
+            align = TextAlign.Center,
+        )
+        VButton("Add a tracker", onClick = onAdd, Modifier.padding(top = 8.dp), icon = RemixIcons.AddLine)
+    }
+}
+
+/**
+ * Lines with nothing coming fold into a stack: one card with their badges and two edges
+ * peeking under it. Tapping fans the full cards out below.
+ */
+@Composable
+private fun InactiveStack(trackers: List<TransitTracker>, open: Boolean, onToggle: () -> Unit, card: @Composable (TransitTracker) -> Unit) {
+    val c = Vectra.colors
+    val d = rememberDayColors()
+    // The same spring as today's finished-classes stack, so both fold and unfold alike.
+    val fan by animateFloatAsState(
+        if (open) 1f else 0f,
+        if (Vectra.reduceMotion) tween(150) else spring(dampingRatio = 0.86f, stiffness = 300f),
+        label = "inactiveFan",
+    )
+    val front = RoundedCornerShape(18.dp)
+    val reveal = rememberStackReveal { fan }
+    val toggle = {
+        if (!open) reveal.open()
+        onToggle()
+    }
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // The two edges peeking out below tuck up under the front card as the stack opens.
+        Box(Modifier.fillMaxWidth().roomBelow(14.dp) { 1f - fan }) {
+            if (fan < 1f) {
+                Box(Modifier.matchParentSize().peekEdge(22.dp, 14.dp, d.edgeFar, d.border, 14.dp) { 1f - fan })
+                Box(Modifier.matchParentSize().peekEdge(11.dp, 7.dp, d.edgeNear, d.border, 15.dp) { 1f - fan })
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .stripCardSurface(front)
+                    .clip(front)
+                    .tappable(front, role = null, onClickLabel = if (open) "Fold away" else "Show them", onClick = toggle)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                VIcon(RemixIcons.MoonFill, size = 18.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    VText("Not running right now", style = vtext(14.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                    // One badge per line: several trackers on the same line read as one.
+                    val lines = remember(trackers) { trackers.distinctBy { formatRouteDisplayName(it.routeShortName, it.routeId) } }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        lines.take(StackBadges).forEach { t ->
+                            RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
+                        }
+                        if (lines.size > StackBadges) {
+                            Box(Modifier.height(28.dp).background(c.surfaceOverlay, CircleShape).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
+                                VText("+${lines.size - StackBadges}", style = vtext(11.sp to 14.sp, Weight.Bold), color = c.textSecondary)
+                            }
+                        }
+                    }
+                }
+                VIcon(RemixIcons.ArrowDownSLine, Modifier.graphicsLayer { rotationZ = 180f * fan }, tint = c.textMuted)
+            }
+        }
+        // Folded cards stay composed (hidden) so their arrivals keep polling. They unfold from
+        // under the front card: the room grows with the spring while they slide down and fade in.
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(Radius.Control)
-                .tappable(role = null, onClick = onToggle)
-                .padding(horizontal = 4.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .bringIntoViewRequester(reveal.requester)
+                .unfold({ fan }) { reveal.fullHeight = it }
+                .graphicsLayer { alpha = fan; translationY = -24.dp.toPx() * (1f - fan) },
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                VText("Not running right now", Modifier.weight(1f), vtext(TypeScale.Body, Weight.Medium), c.textSecondary)
-                VIcon(RemixIcons.ArrowDownSLine, Modifier.rotate(chevron), tint = c.textMuted)
-            }
-            // Any number of lines wraps instead of squeezing the label.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                trackers.forEach { t ->
-                    RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
-                }
-            }
-        }
-        // Inactive monitors stay composed (hidden) so their arrivals keep polling.
-        TrackerGrid(Modifier.padding(top = if (open) 8.dp else 0.dp).hiddenButComposed(!open)) {
             trackers.forEach { t -> key(t.id) { card(t) } }
         }
     }

@@ -150,6 +150,8 @@ internal class LiveRoute(
     val enriched: List<DirectionView>,
     val secondaryLines: List<RouteMapSecondaryLine>,
     val leadVehicles: List<RouteMapVehicle>,
+    /** Every live vehicle on the route, and on its replacement-bus route while one runs. */
+    val routeVehicles: List<FutarVehicle>,
     /** The geometry source failed with nothing to render. */
     val feedError: Boolean,
     val routeColor: String,
@@ -167,10 +169,15 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
     // Next arrival per tracked direction → the trips we're following.
     val arrivals = remember(arrivalsQuery.data, tracker, activeStop) {
         if (tracker == null || activeStop == null) emptyList()
-        else parseStopArrivals(arrivalsQuery.data, tracker.routeId, activeStop.headsign?.takeIf { it.isNotEmpty() })
+        else parseStopArrivals(arrivalsQuery.data, tracker.routeId, activeStop.headsign?.takeIf { it.isNotEmpty() }, shortName = tracker.routeShortName)
+    }
+    // While replacement buses stand in for the line, their positions come from their own route.
+    val replacementQuery = repo.vehicles.collect(remember(arrivals) { arrivals.firstOrNull { it.isReplacementBus }?.routeId })
+    val routeVehicles = remember(vehiclesQuery.data, replacementQuery.data) {
+        vehiclesQuery.data?.data?.list.orEmpty() + replacementQuery.data?.data?.list.orEmpty()
     }
     val tripIds = remember(arrivals) { trackedTripIds(arrivals) }
-    val vehicles = remember(vehiclesQuery.data, tripIds) { matchingVehicles(vehiclesQuery.data?.data?.list.orEmpty(), tripIds) }
+    val vehicles = remember(routeVehicles, tripIds) { matchingVehicles(routeVehicles, tripIds) }
 
     // All directions are tracked; the LEAD one (map emphasis + first card) is
     // the one with a live vehicle, else the soonest arrival.
@@ -328,6 +335,7 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
         enriched = enriched,
         secondaryLines = secondaryLines,
         leadVehicles = leadVehicles,
+        routeVehicles = routeVehicles,
         feedError = feedError,
         routeColor = tracker?.routeColor?.takeIf { it.isNotEmpty() } ?: "3b82f6",
     )

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -43,8 +44,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.PileCard
-import dev.southstar21.vectra.core.designsystem.components.ScrollPile
 import dev.southstar21.vectra.core.designsystem.components.LocalAppPresented
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.Reveal
@@ -343,15 +342,13 @@ internal fun ScheduleView(
                     )
                 } else {
                     val days = if (selectedDay != null) agenda else activeDays
-                    // Each day piles under the next as the page scrolls.
-                    ScrollPile(
-                        spacing = 16.dp,
-                        cards = days.mapNotNull { agendaDay ->
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        days.forEach { agendaDay ->
                             val day = agendaDay.day
                             val info = agendaDay.info
                             when {
-                                agendaDay.isEmpty && selectedDay == null -> null
-                                agendaDay.isEmpty -> PileCard(day, getDayName(day)) {
+                                agendaDay.isEmpty && selectedDay == null -> Unit
+                                agendaDay.isEmpty -> key(day) {
                                     Column(
                                         Modifier.fillMaxWidth().daySwipe(swipe).flushGlass(Radius.Card).padding(32.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -363,7 +360,7 @@ internal fun ScheduleView(
                                         VText("Swipe left or right to browse other days", Modifier.padding(top = 8.dp), vtext(TypeScale.Micro), c.textMuted, align = TextAlign.Center)
                                     }
                                 }
-                                else -> PileCard(day, getDayName(day), flat = true) {
+                                else -> key(day) {
                                     // Like the dashboard: a day header, then the cards straight on the page.
                                     Column(Modifier.fillMaxWidth().daySwipe(swipe).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         DayListHeader(
@@ -389,8 +386,8 @@ internal fun ScheduleView(
                                     }
                                 }
                             }
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
