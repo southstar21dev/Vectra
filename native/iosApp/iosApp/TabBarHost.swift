@@ -52,7 +52,7 @@ private final class PassthroughView: UIView {
         }
         guard tabs.isInteractive else { return nil }
         let bar = tabs.tabBar
-        guard bar.point(inside: convert(point, to: bar), with: event) else { return nil }
+        guard bar.point(inside: convert(point, to: bar), with: event) || tabs.sideActionButtonHit(convert(point, to: tabs.view)) else { return nil }
         return super.hitTest(point, with: event)
     }
 
@@ -95,6 +95,27 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
     private var state: SystemNavbarState?
     private var hidden = true
     private var covered: CGFloat = 0
+    /// The bar's shape at the last render, to redo the + when folding or unfolding turns it.
+    private var renderedVertical: Bool?
+
+    /// The bar runs down the side (an unfolded iPhone Duo) instead of along the bottom.
+    private var isVertical: Bool { tabBar.bounds.height > tabBar.bounds.width }
+
+    /// Down the side the + is a glass button of the app's own, just above the tabs. As a system tab it
+    /// would shove the whole bar up or down each time it comes and goes with the page, and iOS draws
+    /// that tab's glass where it can't be faded; this one simply fades in and out.
+    private lazy var sideActionButton: UIButton = {
+        var config: UIButton.Configuration
+        if #available(iOS 26.0, *) { config = .glass() } else { config = .gray() }
+        config.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold))
+        config.baseForegroundColor = .label
+        config.cornerStyle = .capsule
+        let button = UIButton(configuration: config, primaryAction: UIAction { [weak self] _ in self?.presentActions() })
+        button.accessibilityLabel = actionTab.title
+        button.alpha = 0
+        button.isHidden = true
+        return button
+    }()
 
     /// The + menu is showing (the overlay then shields the Compose app from the dismissing tap).
     var menuOpen = false
@@ -117,6 +138,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         if #available(iOS 27.0, *) { prominentTabIdentifier = actionTab.identifier }
         #endif
         view.alpha = 0
+        view.addSubview(sideActionButton)
     }
 
     // MARK: IosTabBarHost
@@ -125,10 +147,16 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         loadViewIfNeeded()
         self.state = state
 
-        let wanted = state.actions.isEmpty ? mainTabs : mainTabs + [actionTab]
+        // Along the bottom the + is a tab that comes and goes with the page. Down the side it is
+        // sideActionButton instead, so the bar itself never changes.
+        let vertical = isVertical
+        renderedVertical = vertical
+        let wanted = state.actions.isEmpty || vertical ? mainTabs : mainTabs + [actionTab]
+        let animated = view.window != nil && view.alpha > 0
         if tabs.map(\.identifier) != wanted.map(\.identifier) {
-            setTabs(wanted, animated: view.window != nil && view.alpha > 0)
+            setTabs(wanted, animated: animated)
         }
+        showSideActionButton(vertical && !state.actions.isEmpty, animated: animated)
         let index = Int(state.selectedIndex)
         if mainTabs.indices.contains(index), selectedTab !== mainTabs[index] {
             selectedTab = mainTabs[index]
@@ -141,8 +169,24 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
 
     func cover(fraction: Float) {
         covered = CGFloat(fraction)
-        // A pushed screen slides in from the right; the bar leaves just ahead of its edge.
-        view.transform = CGAffineTransform(translationX: -view.bounds.width * covered, y: 0)
+        if isVertical {
+            // Down the side, sliding left would drag the bar across the page (and a card leaves the
+            // tabs showing around it): the bar fades out instead of staying there, dead to taps.
+            view.transform = .identity
+            view.alpha = shownAlpha
+        } else {
+            // A pushed screen slides in from the right; the bar leaves just ahead of its edge.
+            view.transform = CGAffineTransform(translationX: -view.bounds.width * covered, y: 0)
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if let state, let rendered = renderedVertical, rendered != isVertical {
+            render(state: state)
+            cover(fraction: Float(covered))
+        }
+        placeSideActionButton()
     }
 
     func remove() {
@@ -166,11 +210,59 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
 
     // MARK: Private
 
+    /// Whether [point] (in this controller's view) is on the side + while it shows.
+    func sideActionButtonHit(_ point: CGPoint) -> Bool {
+        !sideActionButton.isHidden && sideActionButton.alpha > 0.01 && sideActionButton.frame.contains(point)
+    }
+
+    private func showSideActionButton(_ show: Bool, animated: Bool) {
+        let button = sideActionButton
+        guard show != (button.alpha > 0 && !button.isHidden) else { return }
+        if show {
+            placeSideActionButton()
+            button.isHidden = false
+        }
+        let change = { button.alpha = show ? 1 : 0 }
+        let done: (Bool) -> Void = { _ in if button.alpha == 0 { button.isHidden = true } }
+        if animated {
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: change, completion: done)
+        } else {
+            change()
+            done(true)
+        }
+    }
+
+    /// Centred over the tabs' pill, a gap above it.
+    private func placeSideActionButton() {
+        guard isVertical, let pill = tabsPillFrame() else { return }
+        let size: CGFloat = 52
+        sideActionButton.frame = CGRect(x: pill.midX - size / 2, y: pill.minY - 12 - size, width: size, height: size)
+    }
+
+    /// Where the floating bar draws the tabs' pill. It lives in a container of the bar's own, not in
+    /// `tabBar`, and UIKit doesn't hand it out: it is the tall, narrow view over the bar's strip.
+    private func tabsPillFrame() -> CGRect? {
+        let strip = tabBar.convert(tabBar.bounds, to: view)
+        func find(_ node: UIView) -> CGRect? {
+            if node === tabBar || node === sideActionButton || node.isHidden { return nil }
+            let frame = node.convert(node.bounds, to: view)
+            // Tall and narrow, but not the full-height strip iOS keeps beside the bar.
+            if (40...80).contains(frame.width), frame.height >= 2 * frame.width, frame.height < strip.height * 0.8,
+               strip.intersects(frame) { return frame }
+            for sub in node.subviews { if let hit = find(sub) { return hit } }
+            return nil
+        }
+        return view.subviews.lazy.compactMap(find).first
+    }
+
+    /// Fully shown, less how far a pushed screen covers the tabs where the bar fades for it.
+    private var shownAlpha: CGFloat { hidden ? 0 : (isVertical ? 1 - covered : 1) }
+
     private func setHidden(_ value: Bool) {
         guard value != hidden else { return }
         hidden = value
         UIView.animate(withDuration: value ? 0.16 : 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
-            self.view.alpha = value ? 0 : 1
+            self.view.alpha = self.shownAlpha
         }
     }
 
@@ -187,8 +279,13 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         }
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in self?.menuOpen = false })
         if let popover = sheet.popoverPresentationController {
-            popover.sourceView = tabBar
-            popover.sourceRect = CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height)
+            if isVertical {
+                popover.sourceView = sideActionButton
+                popover.sourceRect = sideActionButton.bounds
+            } else {
+                popover.sourceView = tabBar
+                popover.sourceRect = CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height)
+            }
             popover.delegate = self
         }
         menuOpen = true

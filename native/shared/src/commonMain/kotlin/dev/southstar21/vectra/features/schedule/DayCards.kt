@@ -65,6 +65,8 @@ internal data class DayCardContent(
     val room: String? = null,
     val group: String? = null,
     val clickLabel: String = title,
+    /** Open in the wide Schedule tab's side pane. */
+    val selected: Boolean = false,
 )
 
 /**
@@ -102,8 +104,11 @@ private fun Modifier.dayCardSurface(content: DayCardContent, d: DayColors, onCli
     .boxShadow(CardShape, d.cardShadow)
     .background(if (content.cancelled) d.cancelledCard else d.card, CardShape)
     .then(
-        if (content.clash) Modifier.specularBorder(CardShape, d.clashBorder, d.clashBorder)
-        else Modifier.specularBorder(CardShape, d.border, d.borderTop),
+        when {
+            content.clash -> Modifier.specularBorder(CardShape, d.clashBorder, d.clashBorder)
+            content.selected -> Modifier.specularBorder(CardShape, d.selectedBorder, d.selectedBorder)
+            else -> Modifier.specularBorder(CardShape, d.border, d.borderTop)
+        },
     )
     .then(if (onClick != null) Modifier.tappable(CardShape, role = null, onClickLabel = content.clickLabel, onClick = onClick) else Modifier)
     // Faded after the background: the card itself stays opaque, so the connector line behind

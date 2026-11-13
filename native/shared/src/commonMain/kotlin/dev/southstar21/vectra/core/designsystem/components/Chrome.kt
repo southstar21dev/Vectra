@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +53,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +68,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.horizontalSafeArea
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -109,6 +113,23 @@ private fun edgeBottom(): Dp =
     } else {
         12.dp
     }
+
+/** Left/right safe area an edge-to-edge screen's bars and body pad; none inside a sheet. */
+@Composable
+private fun edgeSides(): PaddingValues = if (LocalSurfaceEdgeToEdge.current) horizontalSafeArea() else PaddingValues(0.dp)
+
+/** [SurfaceGutter] on both sides, plus the safe area on an edge-to-edge screen. */
+@Composable
+private fun Modifier.gutterPadding(top: Dp, bottom: Dp): Modifier {
+    val sides = edgeSides()
+    val dir = LocalLayoutDirection.current
+    return padding(
+        start = SurfaceGutter + sides.calculateStartPadding(dir),
+        end = SurfaceGutter + sides.calculateEndPadding(dir),
+        top = top,
+        bottom = bottom,
+    )
+}
 
 /**
  * Padding under a [BottomBar] on an edge-to-edge screen. [ScreenColumn] already lifts the bar
@@ -160,7 +181,7 @@ fun TopBar(
                 val h = 1.dp.toPx()
                 drawRect(border, Offset(0f, size.height - h), Size(size.width, h))
             }
-            .padding(start = SurfaceGutter, end = SurfaceGutter, top = edgeTop(), bottom = 8.dp),
+            .gutterPadding(top = edgeTop(), bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.defaultMinSize(minWidth = 40.dp)) {
@@ -225,6 +246,7 @@ fun ColumnScope.ScrollBody(
             .fillMaxWidth()
             .then(fades)
             .verticalScroll(scrollState)
+            .padding(edgeSides())
             .padding(contentPadding),
         content = content,
     )
@@ -247,10 +269,17 @@ fun ColumnScope.LazyScrollBody(
         scrollKey = state,
         onScrolledChange = onScrolledChange,
     )
+    val sides = edgeSides()
+    val dir = LocalLayoutDirection.current
     LazyColumn(
         modifier.weight(1f, fill = true).fillMaxWidth().then(fades),
         state = state,
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(
+            start = contentPadding.calculateStartPadding(dir) + sides.calculateStartPadding(dir),
+            top = contentPadding.calculateTopPadding(),
+            end = contentPadding.calculateEndPadding(dir) + sides.calculateEndPadding(dir),
+            bottom = contentPadding.calculateBottomPadding(),
+        ),
         content = content,
     )
 }
@@ -332,7 +361,7 @@ fun BottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
             .fillMaxWidth()
             .background(c.surfaceSecondary)
             .drawBehind { drawRect(c.borderSubtle, size = Size(size.width, 1.dp.toPx())) }
-            .padding(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = edgeBottom()),
+            .gutterPadding(top = 12.dp, bottom = edgeBottom()),
         content = content,
     )
 }
@@ -375,7 +404,7 @@ fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifie
  */
 @Composable
 fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    CompositionLocalProvider(LocalSurfaceEdgeToEdge provides true) {
+    CompositionLocalProvider(LocalSurfaceEdgeToEdge provides !LocalScreenInCard.current) {
         Column(
             modifier.fillMaxSize().background(Vectra.colors.surfaceSecondary).imePadding(),
             content = content,

@@ -90,6 +90,13 @@ enum class SheetSize {
 val LocalSurfaceEdgeToEdge = staticCompositionLocalOf { false }
 
 /**
+ * The pushed screen sits in a card in the middle of a wide window, away from the system bars,
+ * so its [ScreenColumn] doesn't pad them. Set by the app shell around the screen.
+ */
+@Suppress("CompositionLocalAllowlist")
+val LocalScreenInCard = staticCompositionLocalOf { false }
+
+/**
  * Vertical offset of a draggable sheet, measured down from its fully expanded position.
  * [anchors] are the resting offsets (ascending); the last one is fully hidden.
  */

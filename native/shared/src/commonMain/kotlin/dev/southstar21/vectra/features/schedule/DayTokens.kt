@@ -42,6 +42,8 @@ internal class DayColors(val isDark: Boolean) {
     val edgeFar = if (isDark) Color(0xFF101117) else Color(0xFFE2E7EE)
     val placeholder = if (isDark) rgba(255, 255, 255, 0.07f) else rgba(15, 23, 42, 0.07f)
     val placeholderStrip = if (isDark) Color(0xFF121318) else Color(0xFFE9EDF3)
+    /** The class open in the wide Schedule tab's side pane: a brighter neutral edge, no colour. */
+    val selectedBorder = if (isDark) rgba(255, 255, 255, 0.42f) else rgba(15, 23, 42, 0.38f)
     val clashBorder = rgba(248, 113, 113, 0.45f)
     val clashIcon = if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
     val clashText = if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)

@@ -74,6 +74,12 @@ import dev.southstar21.vectra.features.navbar.NavbarActionConfig
 import dev.southstar21.vectra.features.navbar.NavbarActionVariant
 import dev.southstar21.vectra.features.navbar.RegisterNavbarActions
 import dev.southstar21.vectra.features.shell.VectraPage
+import dev.southstar21.vectra.features.shell.PagePane
+import dev.southstar21.vectra.features.shell.PaneSide
+import dev.southstar21.vectra.core.designsystem.theme.ContentMaxWidth
+import dev.southstar21.vectra.core.designsystem.theme.LocalWideLayout
+import dev.southstar21.vectra.core.designsystem.theme.WideContentMaxWidth
+import androidx.compose.runtime.key
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.CancellationException
@@ -86,9 +92,17 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 /** Line length of the empty schedule's explanation. */
 private val EmptyScheduleTextWidth = 448.dp
 
-/** The Schedule tab. */
+/**
+ * The Schedule tab. On a wide screen a class opens beside the day list in [classPane] (the
+ * Course Hub; passed in, since the schedule never imports the course tracker) instead of on a
+ * screen of its own.
+ */
 @Composable
-fun ScheduleScreen(repo: ScheduleRepository, tracker: ScheduleCourseTrackerHooks) {
+fun ScheduleScreen(
+    repo: ScheduleRepository,
+    tracker: ScheduleCourseTrackerHooks,
+    classPane: (@Composable (courseKey: String, onClose: () -> Unit) -> Unit)? = null,
+) {
     LaunchedEffect(repo) { repo.ensureFresh() }
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -150,10 +164,21 @@ fun ScheduleScreen(repo: ScheduleRepository, tracker: ScheduleCourseTrackerHooks
         items.firstOrNull { it.id == item.id }?.let { stored -> navigator.push(Screen.ItemEditor(stored.id, stored.type)) }
     }
 
+    val wide = LocalWideLayout.current && classPane != null
+    // The class beside the day list (wide only): the one on now or next today until a tap
+    // picks another; closing the pane leaves it empty until the next tap.
+    var picked by remember { mutableStateOf<String?>(null) }
+    var paneClosed by remember { mutableStateOf(false) }
+    val upcoming = remember(events, clock) { upcomingTrackedClass(events, Instant.fromEpochMilliseconds(clock))?.let(tracker::courseKey) }
+    val paneKey = picked ?: upcoming.takeIf { !paneClosed }
+
     val handleEventClick: (ScheduleEvent) -> Unit = { event ->
         if (event.source == "neptun") {
             // Neptun classes open their Course Hub; exams have no attendance, so never one.
-            if (!event.isExam()) navigator.push(Screen.CourseHub(tracker.courseKey(event)))
+            if (!event.isExam()) {
+                val key = tracker.courseKey(event)
+                if (wide) picked = key else navigator.push(Screen.CourseHub(key))
+            }
         } else {
             navigator.push(Screen.ClassEditor(event.id))
         }
@@ -161,6 +186,22 @@ fun ScheduleScreen(repo: ScheduleRepository, tracker: ScheduleCourseTrackerHooks
 
     VectraPage(
         spacing = 0,
+        maxWidth = if (wide) WideContentMaxWidth else ContentMaxWidth,
+        pane = classPane?.takeIf { wide }?.let { showClass ->
+            PagePane(PaneSide.End, weight = 0.5f) {
+                val course = paneKey
+                if (course == null) {
+                    ClassPanePlaceholder()
+                } else {
+                    key(course) {
+                        showClass(course) {
+                            picked = null
+                            paneClosed = true
+                        }
+                    }
+                }
+            }
+        },
         onRefresh = {
             coroutineScope {
                 launch { repo.refreshEvents(force = true) }
@@ -193,6 +234,7 @@ fun ScheduleScreen(repo: ScheduleRepository, tracker: ScheduleCourseTrackerHooks
                     onItemClick = handleItemClick,
                     onToggleTaskCompleted = handleToggleTask,
                     onResolveSyncConflict = { id, r -> repo.resolveSyncConflict(id, r) },
+                    selectedCourseKey = if (wide) paneKey else null,
                 )
             }
         }
@@ -349,4 +391,33 @@ private fun ScheduleActionButtons(onSync: () -> Unit, onAddClass: () -> Unit, on
             }
         }
     }
+}
+
+/** The wide layout's side pane before any class is open. */
+@Composable
+private fun ClassPanePlaceholder() {
+    val c = Vectra.colors
+    Column(
+        Modifier.fillMaxSize().glass(Radius.Card).padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+    ) {
+        VIcon(RemixIcons.CalendarCheckLine, size = 28.dp, tint = c.textMuted)
+        VText("Tap a class", style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, align = TextAlign.Center)
+        VText(
+            "Its attendance, grades and rules open here.",
+            Modifier.widthIn(max = 260.dp),
+            vtext(TypeScale.Caption),
+            c.textSecondary,
+            align = TextAlign.Center,
+        )
+    }
+}
+
+/** Today's next Neptun class you can check in to (the one on now counts), or null. */
+internal fun upcomingTrackedClass(events: List<ScheduleEvent>, now: Instant): ScheduleEvent? {
+    val wall = nowInBudapest(now)
+    return scheduleTodayEvents(events, now)
+        .filter { it.source == "neptun" && !it.isExam() && (minuteOf(it.endTime) ?: 0) > wall.minuteOfDay }
+        .minByOrNull { minuteOf(it.startTime) ?: Int.MAX_VALUE }
 }

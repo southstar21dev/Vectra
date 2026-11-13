@@ -53,6 +53,13 @@ sealed interface Screen : NavKey {
     @Serializable data class CourseHub(val courseKey: String) : Screen
 }
 
+/** On a wide window this screen opens as a centred card over the tabs; maps keep the whole window. */
+val Screen.opensAsCard: Boolean
+    get() = when (this) {
+        Screen.Tabs, Screen.WeatherRadar, Screen.NearbyExplorer, is Screen.TrackerMap -> false
+        else -> true
+    }
+
 data class NavItem(val route: Route, val label: String, val icon: ImageVector, val activeIcon: ImageVector)
 
 val PrimaryNavItems: List<NavItem> = listOf(

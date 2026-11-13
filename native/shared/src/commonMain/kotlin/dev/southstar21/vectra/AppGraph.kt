@@ -261,7 +261,7 @@ interface AppGraph {
         config: VectraConfig,
         catalogCache: CatalogDiskCache,
         scope: CoroutineScope,
-    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope)
+    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope, demoFeed = config.isDebug)
 
     @SingleIn(AppScope::class)
     @Provides

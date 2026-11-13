@@ -57,6 +57,7 @@ private class DayListCards(
     val needsAcknowledgmentIds: Set<String>,
     val classConflictsByEventId: Map<String, List<ScheduleConflict>>,
     val itemConflictsById: Map<String, List<ScheduleConflict>>,
+    val selectedCourseKey: String?,
 )
 
 /** One day's state: its plan, the statuses, "now", and what a check-in does. */
@@ -156,6 +157,8 @@ fun ScheduleDayList(
     intensiveCourses: Set<String>? = null,
     collapseFinished: Boolean = false,
     offline: Boolean = false,
+    /** The course open in the wide Schedule tab's side pane; its cards are outlined. */
+    selectedCourseKey: String? = null,
     emptyPlaceholder: (@Composable () -> Unit)? = null,
 ) {
     val clock = rememberMinuteClock()
@@ -174,7 +177,7 @@ fun ScheduleDayList(
     val scope = DayListScope(rememberDayColors(), dateStr, nowMinute, statuses, plan, tracker, pendingSync, offline)
     val cards = DayListCards(
         timeFormat, intensiveCourses, onEventClick, onItemClick, onToggleTaskComplete, onResolveSyncConflict,
-        syncConflictIds, needsAcknowledgmentIds, classConflictsByEventId, itemConflictsById,
+        syncConflictIds, needsAcknowledgmentIds, classConflictsByEventId, itemConflictsById, selectedCourseKey,
     )
     DayListBody(scope, cards, modifier)
 }
@@ -217,6 +220,7 @@ private fun DayRowView(row: DayRow, scope: DayListScope, cards: DayListCards) {
                 cards.onEventClick,
                 streak = { scope.tracker.presentStreak(e.event, scope.dateStr) },
                 onSetStatus = { scope.setStatus(e, it) },
+                selected = cards.selectedCourseKey != null && scope.tracker.courseKey(e.event) == cards.selectedCourseKey,
             )
             is DayEntry.Item -> {
                 val id = e.occurrence.item.id

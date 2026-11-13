@@ -73,6 +73,9 @@ internal fun NearbyBorderSpinner(size: Dp, color: Color, track: Color, stroke: D
     }
 }
 
+/** The strip's usual height, on top of the Transit card. */
+val NearbyMapStripHeight = 132.dp
+
 /**
  * The top of the transit cards: a slice of the map around you that opens the
  * nearby sheet, with a round expand button (and Locate when the fix failed).
@@ -93,7 +96,7 @@ fun NearbyMapStrip(
     /** Reports whether a map is still loading, for a parent that covers it with its own spinner. */
     onMapPendingChange: ((Boolean) -> Unit)? = null,
     showLoadingOverlay: Boolean = true,
-    height: Dp = 132.dp,
+    height: Dp = NearbyMapStripHeight,
 ) {
     val c = Vectra.colors
     var mapReady by remember { mutableStateOf(false) }

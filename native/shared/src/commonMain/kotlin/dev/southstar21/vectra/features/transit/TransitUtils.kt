@@ -163,37 +163,88 @@ private val FallbackShortNames = mapOf(
 )
 
 /**
- * Upcoming arrivals for one route from a stop's Futár response, narrowed to
- * [headsign] when set. Paired lines combine.
+ * BKK runs a line's replacement buses as a route of their own, named after the line it stands in
+ * for: BKK_VP28 "28" for tram 28 (villamospótló), BKK_MP52 "M2" for the M2 (metrópótló), HP for
+ * the HÉV. Demo ids follow the same shape (DEMO_VP_…).
  */
-fun parseStopArrivals(data: FutarArrivalsResponse?, routeId: String, headsign: String? = null, now: Long = nowMs()): List<Arrival> {
+private val ReplacementRouteId = Regex("^[A-Za-z]+_(VP|MP|HP)\\w")
+
+/** Whether [routeId] is a replacement-bus route (see [ReplacementRouteId]). */
+fun isReplacementRouteId(routeId: String?): Boolean = routeId != null && ReplacementRouteId.containsMatchIn(routeId)
+
+/** A trip on a replacement-bus route standing in for a line. */
+val Arrival.isReplacementBus: Boolean get() = isReplacementRouteId(routeId)
+
+private fun lineKey(name: String) = name.uppercase().replace(" ", "")
+
+/**
+ * Whether the trip route [tripRouteId] (named [tripShortName]) is a replacement bus for the line
+ * [routeId] / [shortName]: a replacement route carrying that line's name, or a paired member's
+ * (VP46 "4-6" stands in for the 4 and the 6).
+ */
+fun isReplacementFor(tripRouteId: String?, tripShortName: String?, routeId: String, shortName: String?): Boolean {
+    if (!isReplacementRouteId(tripRouteId) || tripShortName.isNullOrBlank() || isReplacementRouteId(routeId)) return false
+    val names = buildSet {
+        shortName?.takeIf { it.isNotBlank() }?.let { add(lineKey(it)) }
+        findCombinedGroup(routeId, shortName)?.shortNames?.forEach { add(lineKey(it)) }
+    }
+    return lineKey(tripShortName) in names
+}
+
+/**
+ * Upcoming arrivals for one route from a stop's Futár response, narrowed to
+ * [headsign] when set. Paired lines combine, and the line's replacement buses count as the line
+ * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them.
+ * [shortName]: the line's name, to recognise its replacement buses (else read from the response).
+ */
+fun parseStopArrivals(
+    data: FutarArrivalsResponse?,
+    routeId: String,
+    headsign: String? = null,
+    now: Long = nowMs(),
+    shortName: String? = null,
+): List<Arrival> {
     val stopTimes = data?.data?.entry?.stopTimes.orEmpty()
     val refs = data?.data?.references
     val trips = refs?.trips.orEmpty()
     val routes = refs?.routes.orEmpty()
+    val lineName = shortName?.takeIf { it.isNotBlank() } ?: routes[routeId]?.shortName ?: FallbackShortNames[routeId]
+    fun serves(tripRouteId: String?) =
+        isRouteMatch(tripRouteId, routeId) || isReplacementFor(tripRouteId, tripRouteId?.let { routes[it]?.shortName }, routeId, lineName)
     return stopTimes
-        .filter { !it.canceled && isRouteMatch(trips[it.tripId]?.routeId, routeId) }
-        .map { st ->
-            val trip = trips[st.tripId]
-            val tripRouteId = trip?.routeId
-            val route = tripRouteId?.let { routes[it] }
-            val predicted = st.predictedArrivalTime ?: st.predictedDepartureTime
-            val scheduled = st.arrivalTime ?: st.departureTime
-            val t = predicted ?: scheduled ?: 0L
-            Arrival(
-                arrivalMs = (if (t > 0) t else 0L) * 1000,
-                headSign = st.stopHeadsign?.takeIf { it.isNotEmpty() } ?: trip?.tripHeadsign.orEmpty(),
-                tripHeadsign = trip?.tripHeadsign.orEmpty(),
-                isPredicted = predicted != null,
-                tripId = st.tripId,
-                routeId = tripRouteId,
-                routeShortName = route?.shortName?.takeIf { it.isNotEmpty() } ?: FallbackShortNames[tripRouteId],
-                serviceDate = st.serviceDate,
-            )
-        }
+        .filter { !it.canceled && serves(trips[it.tripId]?.routeId) }
+        .map { st -> st.toArrival(trips[st.tripId], routes) }
         .filter { it.arrivalMs > 0 && it.arrivalMs >= now - 60_000 }
-        .filter { isHeadsignMatch(headsign, it.headSign, it.tripHeadsign) }
+        .filter { it.isReplacementBus || isHeadsignMatch(headsign, it.headSign, it.tripHeadsign) }
         .sortedBy { it.arrivalMs }
+}
+
+/** One stop time as an arrival: the live estimate when there is one, else the timetable. */
+private fun FutarStopTime.toArrival(trip: FutarTripRef?, routes: Map<String, FutarRoute>): Arrival {
+    val tripRouteId = trip?.routeId
+    val route = tripRouteId?.let { routes[it] }
+    val predicted = predictedArrivalTime ?: predictedDepartureTime
+    val t = predicted ?: arrivalTime ?: departureTime ?: 0L
+    return Arrival(
+        arrivalMs = (if (t > 0) t else 0L) * 1000,
+        headSign = stopHeadsign?.takeIf { it.isNotEmpty() } ?: trip?.tripHeadsign.orEmpty(),
+        tripHeadsign = trip?.tripHeadsign.orEmpty(),
+        isPredicted = predicted != null,
+        tripId = tripId,
+        routeId = tripRouteId,
+        routeShortName = route?.shortName?.takeIf { it.isNotEmpty() } ?: FallbackShortNames[tripRouteId],
+        serviceDate = serviceDate,
+    )
+}
+
+/**
+ * Whether [alert] announces replacement buses: BKK heads these "replacement bus service between …"
+ * (in Hungarian "autóbuszos pótlás …"). Only the header: a combined alert's description can
+ * mention another line's replacement.
+ */
+fun isReplacementAlert(alert: TransitAlert): Boolean {
+    val header = alert.header.lowercase()
+    return "replacement bus" in header || "pótlás" in header || "pótlóbusz" in header
 }
 
 private fun Arrival.directionKey(): String = tripHeadsign?.takeIf { it.isNotEmpty() } ?: headSign.ifEmpty { "Unknown" }

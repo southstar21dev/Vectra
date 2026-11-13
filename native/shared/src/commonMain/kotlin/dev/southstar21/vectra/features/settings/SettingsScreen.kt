@@ -18,8 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.AppGraph
-import dev.southstar21.vectra.core.designsystem.components.PileCard
-import dev.southstar21.vectra.core.designsystem.components.ScrollPile
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
@@ -66,54 +64,52 @@ fun SettingsScreen(
 ) {
     val c = Vectra.colors
     VectraPage(spacing = 28) {
-        // Each section piles under the next as the page scrolls; the 20dp above each glass is its title stamp.
-        ScrollPile(
-            modifier = Modifier.widthIn(max = SettingsColumnWidth).fillMaxWidth().align(Alignment.CenterHorizontally),
-            spacing = 28.dp,
-            cards = listOfNotNull(
-                PileCard("look", "look", topInset = 20.dp) { Reveal(0) { AppearanceSettings(graph.appearanceRepository) } },
-                PileCard("account", "account", topInset = 20.dp) { Reveal(1) {
-                    SettingsSection("Account", tilt = StampTilt.Right, rows = accountRows(graph.auth) + passkeyRows(graph.passkeyRepository))
-                } },
-                neptunSection?.let { section -> PileCard("neptun", "Neptun", topInset = 20.dp) { Reveal(2) { section() } } },
-                PileCard("reminders", "class reminders", topInset = 20.dp) { Reveal(3) {
-                    SettingsSection("Class reminders", tilt = StampTilt.Left, rows = classReminderRows(graph.reminders, graph.notifier))
-                } },
-                PileCard("commute", "commute", topInset = 20.dp) { Reveal(4) {
-                    SettingsSection("Commute", tilt = StampTilt.Right, rows = commuteRows(graph.reminders, graph.transitRepository, graph.notifier))
-                } },
-                PileCard("permissions", "permissions", topInset = 20.dp) { Reveal(5) {
-                    SettingsSection("Permissions", tilt = StampTilt.Left, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
-                } },
-                PileCard("about", "about", topInset = 20.dp) { Reveal(6) {
-                    SettingsSection("About", tilt = StampTilt.Right, rows = listOf(
-                        {
-                            SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
-                                VText("${graph.config.appVersion}-$platformName", style = vtext(TypeScale.Body), color = c.textSecondary)
+        Column(
+            Modifier.widthIn(max = SettingsColumnWidth).fillMaxWidth().align(Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
+            Reveal(0) { AppearanceSettings(graph.appearanceRepository) }
+            Reveal(1) {
+                SettingsSection("Account", tilt = StampTilt.Right, rows = accountRows(graph.auth) + passkeyRows(graph.passkeyRepository))
+            }
+            neptunSection?.let { section -> Reveal(2) { section() } }
+            Reveal(3) {
+                SettingsSection("Class reminders", tilt = StampTilt.Left, rows = classReminderRows(graph.reminders, graph.notifier))
+            }
+            Reveal(4) {
+                SettingsSection("Commute", tilt = StampTilt.Right, rows = commuteRows(graph.reminders, graph.transitRepository, graph.notifier))
+            }
+            Reveal(5) {
+                SettingsSection("Permissions", tilt = StampTilt.Left, rows = listOfNotNull(locationRow) + notificationRows(graph.notificationsRepository))
+            }
+            Reveal(6) {
+                SettingsSection("About", tilt = StampTilt.Right, rows = listOf(
+                    {
+                        SettingsRow(RemixIcons.InformationLine, c.tints.sky.bg, c.tints.sky.text, "Version") {
+                            VText("${graph.config.appVersion}-$platformName", style = vtext(TypeScale.Body), color = c.textSecondary)
+                        }
+                    },
+                    {
+                        val uri = LocalUriHandler.current
+                        SettingsRow(RemixIcons.ExternalLinkLine, c.tints.purple.bg, c.tints.purple.text, "Privacy policy", "What Vectra stores and how to remove it") {
+                            VButton(onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
+                                VText("Open", style = vtext(TypeScale.Caption, Weight.Bold))
                             }
-                        },
-                        {
-                            val uri = LocalUriHandler.current
-                            SettingsRow(RemixIcons.ExternalLinkLine, c.tints.purple.bg, c.tints.purple.text, "Privacy policy", "What Vectra stores and how to remove it") {
-                                VButton(onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
-                                    VText("Open", style = vtext(TypeScale.Caption, Weight.Bold))
-                                }
-                            }
-                        },
-                        {
-                            SettingsRow(RemixIcons.LogoutBoxRLine, c.surfaceOverlay, c.textSecondary, "Sign out", "End your session on this device") {
-                                SignOutButton(graph.auth)
-                            }
-                        },
-                        {
-                            SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.bg, c.tints.red.text, "Delete account", "Permanently delete your account and data", danger = true) {
-                                DeleteAccountButton(graph.auth)
-                            }
-                        },
-                    ))
-                } },
-            ),
-        )
+                        }
+                    },
+                    {
+                        SettingsRow(RemixIcons.LogoutBoxRLine, c.surfaceOverlay, c.textSecondary, "Sign out", "End your session on this device") {
+                            SignOutButton(graph.auth)
+                        }
+                    },
+                    {
+                        SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.bg, c.tints.red.text, "Delete account", "Permanently delete your account and data", danger = true) {
+                            DeleteAccountButton(graph.auth)
+                        }
+                    },
+                ))
+            }
+        }
     }
 }
 
