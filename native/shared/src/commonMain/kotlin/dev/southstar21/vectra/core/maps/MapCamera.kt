@@ -119,28 +119,45 @@ private fun Bounds.box() = BoundingBox(west = minLon, south = minLat, east = max
 /**
  * `map.fitBounds(bounds, { padding, maxZoom, animate })`. A degenerate box
  * (one point) centres on it at [maxZoom] (or the current zoom).
+ *
+ * [bottomInset]: the map's bottom part is out of sight (a map taller than the box showing it), so
+ * the fit keeps clear of it. Null leaves the camera's own padding as it is.
  */
-suspend fun MapState.fitBounds(bounds: Bounds, padding: Dp, maxZoom: Double? = null, animate: Boolean = false) {
+suspend fun MapState.fitBounds(bounds: Bounds, padding: Dp, maxZoom: Double? = null, animate: Boolean = false, bottomInset: Dp? = null) {
     val degenerate = bounds.minLat == bounds.maxLat && bounds.minLon == bounds.maxLon
+    // A point is centred in the visible part through the camera's padding; a box through the fit's.
+    val camPadding = when {
+        bottomInset == null -> cameraPosition.padding
+        degenerate -> DpPadding(bottom = bottomInset)
+        else -> DpPadding()
+    }
     val target: CameraPosition = if (degenerate) {
         cameraPosition.copy(
             center = LatLon(bounds.minLat, bounds.minLon).position,
             zoom = maxZoom ?: cameraPosition.zoom,
         )
     } else {
-        val cam = cameraForBounds(bounds.box(), CameraFit(fitPadding = DpPadding(padding, padding, padding, padding)))
+        val fit = DpPadding(padding, padding, padding, padding + (bottomInset ?: 0.dp))
+        val cam = cameraForBounds(bounds.box(), CameraFit(fitPadding = fit))
         if (maxZoom != null && cam.zoom > maxZoom) cam.copy(zoom = maxZoom) else cam
     }
     if (animate) {
-        animateCamera(CameraUpdate(center = target.center, zoom = target.zoom, bearing = target.bearing), DefaultEase)
+        animateCamera(CameraUpdate(center = target.center, zoom = target.zoom, bearing = target.bearing, padding = camPadding), DefaultEase)
     } else {
-        setCameraPosition(target.copy(padding = cameraPosition.padding))
+        setCameraPosition(target.copy(padding = camPadding))
     }
 }
 
-/** `map.jumpTo({ center, zoom })`. */
-fun MapState.jumpTo(center: LatLon, zoom: Double) {
-    setCameraPosition(cameraPosition.copy(center = center.position, zoom = zoom))
+/** `map.easeTo({ center, zoom })`: [jumpTo], gliding there. */
+suspend fun MapState.easeTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
+    val padding = if (bottomInset == null) cameraPosition.padding else DpPadding(bottom = bottomInset)
+    animateCamera(CameraUpdate(center = center.position, zoom = zoom, padding = padding), DefaultEase)
+}
+
+/** `map.jumpTo({ center, zoom })`; [bottomInset] as in [fitBounds]. */
+fun MapState.jumpTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
+    val padding = if (bottomInset == null) cameraPosition.padding else DpPadding(bottom = bottomInset)
+    setCameraPosition(cameraPosition.copy(center = center.position, zoom = zoom, padding = padding))
 }
 
 /** `map.getBounds().contains(p)` against the last rendered viewport (false before one exists). */

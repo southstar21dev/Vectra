@@ -21,6 +21,9 @@ class MainActivity : ComponentActivity() {
         val graph = app.graph
         val appearance = graph.appearanceRepository
         splash.setKeepOnScreenCondition { !appearance.loaded.value }
+        // The app's own splash draws the same owl in the same place underneath: drop the system
+        // splash at once (its default fade-out would blink the owl), and the owl just carries on.
+        splash.setOnExitAnimationListener { it.remove() }
         // Only a fresh launch carries a new link: a recreate (dark mode, font size) re-delivers the same
         // intent, and replaying it would pop whatever screen is open now.
         if (savedInstanceState == null) handle(intent)

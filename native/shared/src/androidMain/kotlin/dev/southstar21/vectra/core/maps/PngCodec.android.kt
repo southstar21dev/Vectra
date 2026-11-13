@@ -1,6 +1,8 @@
 package dev.southstar21.vectra.core.maps
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.BitmapFactory
 import java.io.ByteArrayOutputStream
 
@@ -17,3 +19,6 @@ actual fun encodePng(image: ArgbImage): ByteArray? {
     val out = ByteArrayOutputStream()
     return if (bmp.compress(Bitmap.CompressFormat.PNG, 100, out)) out.toByteArray() else null
 }
+
+actual fun ArgbImage.toImageBitmap(): ImageBitmap =
+    Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()

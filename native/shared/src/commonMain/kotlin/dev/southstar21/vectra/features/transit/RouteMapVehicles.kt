@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -77,12 +78,24 @@ internal fun MapOverlayScope.RoundVehicleMarkers(
     mapBearing: () -> Double,
     style: TokenStyle,
     callouts: Map<String, VehicleCallout>,
+    /** The [index]th vehicle's entrance pop (1 = shown); read in draw only. */
+    scale: (index: Int) -> Float = { 1f },
 ) {
-    for (f in frames) {
+    frames.forEachIndexed { index, f ->
         key(f.id) {
             val rotation = rememberMarkerRotation(f.bearing, mapBearing)
             // The token sits at the box's centre; the label clears its heading point above.
-            Box(Modifier.placedAt(f.position.position, Alignment.Center).size(72.dp, 96.dp)) {
+            Box(
+                Modifier
+                    .placedAt(f.position.position, Alignment.Center)
+                    .size(72.dp, 96.dp)
+                    .graphicsLayer {
+                        val s = scale(index)
+                        scaleX = s
+                        scaleY = s
+                        alpha = s.coerceIn(0f, 1f)
+                    },
+            ) {
                 callouts[f.id]?.let { CalloutPill(it, Modifier.align(Alignment.TopCenter)) }
                 VehicleToken(
                     style.fill, style.ink,
@@ -120,7 +133,14 @@ private fun CalloutPill(callout: VehicleCallout, modifier: Modifier = Modifier) 
 /** The same vehicles as map layers: body (never turns), heading point (turns with the bearing), countdown. */
 @Composable
 @MaplibreComposable
-internal fun RoundVehicleLayers(idPrefix: String, frames: List<VehicleFrame>, style: TokenStyle, callouts: Map<String, VehicleCallout>) {
+internal fun RoundVehicleLayers(
+    idPrefix: String,
+    frames: List<VehicleFrame>,
+    style: TokenStyle,
+    callouts: Map<String, VehicleCallout>,
+    /** The entrance pop (1 = shown). */
+    scale: Float = 1f,
+) {
     val c = Vectra.colors
     val json = GeoJson.collection(
         frames.map { f ->
@@ -145,6 +165,7 @@ internal fun RoundVehicleLayers(idPrefix: String, frames: List<VehicleFrame>, st
         iconImage = image(point, box),
         iconRotate = feature["bearing"].asNumber(),
         iconRotationAlignment = const(IconRotationAlignment.Map),
+        iconSize = const(scale),
         iconAllowOverlap = const(true),
         iconIgnorePlacement = const(true),
     )
@@ -154,6 +175,7 @@ internal fun RoundVehicleLayers(idPrefix: String, frames: List<VehicleFrame>, st
             id = "$idPrefix-vehicle-body-$kind", source = source,
             filter = feature["kind"].asString() eq const(kind),
             iconImage = image(body, box),
+            iconSize = const(scale),
             iconAllowOverlap = const(true),
             iconIgnorePlacement = const(true),
         )
@@ -172,6 +194,7 @@ internal fun RoundVehicleLayers(idPrefix: String, frames: List<VehicleFrame>, st
             textColor = const(ink),
             textHaloColor = const(c.glassBgElevated),
             textHaloWidth = const(3.dp),
+            textOpacity = const(scale.coerceIn(0f, 1f)),
         )
     }
 }

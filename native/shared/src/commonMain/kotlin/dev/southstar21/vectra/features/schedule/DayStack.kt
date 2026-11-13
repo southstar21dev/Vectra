@@ -1,5 +1,9 @@
 package dev.southstar21.vectra.features.schedule
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Dp
+import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.components.VIcon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -87,11 +91,18 @@ private fun SmallCard(
     }
 }
 
-/** What the stack does with each finished entry: its status disc, and what a disc tap does. */
+/**
+ * What the stack does with each finished entry: its status disc, what a disc tap does, and what
+ * tapping the card does once the stack is open (its Course Hub, or the item's editor).
+ */
 internal class StackActions(
     val statusOf: (DayEntry) -> AttendanceStatus?,
     val onDisc: (DayEntry) -> (() -> Unit)?,
-)
+    val onOpen: (DayEntry) -> (() -> Unit)? = { null },
+) {
+    /** What tapping [e] does: opens it when [opens] and it can be opened, else [fold]s or fans the stack. */
+    fun tap(e: DayEntry, opens: Boolean, fold: () -> Unit): () -> Unit = (if (opens) onOpen(e) else null) ?: fold
+}
 
 /**
  * Finished classes as a stack. Every card stays composed and one spring ([open] 0 → 1) moves
@@ -117,17 +128,22 @@ internal fun FinishedStack(
         label = "stackFan",
     )
     val label = "$n finished ${if (n == 1) "item" else "items"}. ${if (open) "Tap to stack them" else "Tap to show them"}"
-    Layout(
-        modifier = modifier.fillMaxWidth(),
-        measurePolicy = stackMeasurePolicy(n, fan),
-        content = {
-            finished.forEachIndexed { i, e ->
-                key(e.key) {
-                    StackedCard(e, depth = n - 1 - i, total = n, fan = { fan }, open, d, timeFormat, actions, label, onToggle)
+    Column(modifier.fillMaxWidth()) {
+        // Open, the cards open their own course; this folds them back.
+        // One card is no stack: nothing to fold, and a tap opens it at once.
+        if (n > 1 && fan > 0.01f) FoldPill(onToggle, (FoldPillDp * fan.coerceIn(0f, 1f)).dp, Modifier.align(Alignment.CenterHorizontally).graphicsLayer { alpha = fan.coerceIn(0f, 1f) })
+        Layout(
+            modifier = Modifier.fillMaxWidth(),
+            measurePolicy = stackMeasurePolicy(n, fan),
+            content = {
+                finished.forEachIndexed { i, e ->
+                    key(e.key) {
+                        StackedCard(e, depth = n - 1 - i, total = n, fan = { fan }, open, d, timeFormat, actions, label, onToggle)
+                    }
                 }
-            }
-        },
-    )
+            },
+        )
+    }
 }
 
 /** One card of the stack at its depth (0 is the newest, in front; 1 and 2 peek out below it). */
@@ -151,6 +167,9 @@ private fun StackedCard(
         1 -> d.edgeNear
         else -> d.edgeFar
     }
+    // Open (or a lone card), a tap opens the entry; folded, it fans the stack out.
+    val opens = open || total == 1
+    val tap = actions.tap(e, opens, onToggle)
     val f = fan()
     val look = SmallCardLook(
         bg = lerp(edgeBg, d.card, f.coerceIn(0f, 1f)),
@@ -166,9 +185,9 @@ private fun StackedCard(
         look,
         d,
         timeFormat,
-        tapLabel = label,
+        tapLabel = if (opens) "Open ${e.title}" else label,
         onDisc = actions.onDisc(e),
-        onTap = onToggle,
+        onTap = tap,
         modifier = modifier
             .then(if (depth > 0 && !open) Modifier.clearAndSetSemantics { } else Modifier)
             .graphicsLayer {
@@ -178,6 +197,30 @@ private fun StackedCard(
                 if (depth > 2) alpha = fan().coerceIn(0f, 1f)
             },
     )
+}
+
+/** Room the fold pill takes above the open stack (its own height plus the gap under it). */
+private const val FoldPillDp = 40
+
+/** "Fold" over the open stack: stacks the finished cards back up. */
+@Composable
+private fun FoldPill(onFold: () -> Unit, height: Dp, modifier: Modifier = Modifier) {
+    val d = rememberDayColors()
+    Box(modifier.height(height), contentAlignment = Alignment.TopCenter) {
+        Row(
+            Modifier
+                .height(30.dp)
+                .background(d.card, RoundedCornerShape(50))
+                .specularBorder(RoundedCornerShape(50), d.border, d.smallBorderTop)
+                .tappable(RoundedCornerShape(50), role = Role.Button, onClickLabel = "Stack the finished classes", onClick = onFold)
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            VIcon(RemixIcons.ArrowUpSLine, size = 14.dp, tint = d.muted)
+            VText("Fold", style = vtext(12.sp to 16.sp, Weight.Bold), color = d.muted)
+        }
+    }
 }
 
 /** Places the cards between their stacked spots and their list rows, [fan] of the way. */

@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.features.navbar.dockMaterial
+
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -94,7 +97,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 private const val SheetFraction = 0.72f
-private const val PeekVisibleFraction = 0.34f
+private const val PeekVisibleFraction = 0.3f
 
 private data class ModeChip(val id: String, val label: String)
 
@@ -153,40 +156,58 @@ fun NearbyDeparturesSheet(
     /** Stops actually polled for departures (the arrivals cap). */
     polledStopCount: Int,
     modifier: Modifier = Modifier,
+    /** The sheet's heading ("Departures near you", or the picked stop) and how many stops are in view. */
+    title: String = "Departures near you",
+    subtitle: String? = null,
+    /** Pinned under the heading, above the filter (the departure being followed); the peek rises to show it. */
+    pinned: (@Composable () -> Unit)? = null,
     onCoverageChange: ((coveredDp: Float, settled: Boolean) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val viewportHeight = maxHeight.value
         val expandedHeight = (viewportHeight * SheetFraction).roundToInt().toFloat()
-        val peekOffset = (viewportHeight * (SheetFraction - PeekVisibleFraction)).roundToInt().toFloat()
+        val peek = (viewportHeight * (SheetFraction - PeekVisibleFraction)).roundToInt().toFloat()
+        val peekOffset = if (pinned != null) (peek - PinnedRise).coerceAtLeast(0f) else peek
         SheetBody(
-            expandedHeight, peekOffset, feed, selection, onSelectItem, modeFilter, onToggleMode,
-            arrivalsEnabled, isLoading, visibleStopCount, polledStopCount, onCoverageChange,
+            expandedHeight, peekOffset, SheetFeed(feed, selection, arrivalsEnabled, isLoading, visibleStopCount, polledStopCount),
+            SheetHeading(title, subtitle, pinned), onSelectItem, modeFilter, onToggleMode, onCoverageChange,
         )
     }
 }
+
+/** What the sheet's feed shows. */
+private class SheetFeed(
+    val feed: List<RadarDepartureItem>,
+    val selection: NearbySelectionKey?,
+    val arrivalsEnabled: Boolean,
+    val isLoading: Boolean,
+    val visibleStopCount: Int,
+    val polledStopCount: Int,
+)
+
+private class SheetHeading(val title: String, val subtitle: String?, val pinned: (@Composable () -> Unit)?)
+
+/** How much higher the peek sits while a departure is pinned in the sheet (dp). */
+private const val PinnedRise = 96f
 
 @Composable
 private fun BoxScope.SheetBody(
     expandedHeight: Float,
     peekOffset: Float,
-    feed: List<RadarDepartureItem>,
-    selection: NearbySelectionKey?,
+    content: SheetFeed,
+    heading: SheetHeading,
     onSelectItem: (RadarDepartureItem) -> Unit,
     modeFilter: List<String>,
     onToggleMode: (String) -> Unit,
-    arrivalsEnabled: Boolean,
-    isLoading: Boolean,
-    visibleStopCount: Int,
-    polledStopCount: Int,
     onCoverageChange: ((Float, Boolean) -> Unit)?,
 ) {
     val c = Vectra.colors
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    // Sheet offset from expanded, in dp. Opens pulled up (0). Plain state written straight from
-    // the pointer loop, so a drag moves the sheet on the very frame the finger moves.
-    val y = remember { mutableFloatStateOf(0f) }
+    // Sheet offset from expanded, in dp. Opens at its low peek, so the map and its chips get most
+    // of the screen. Plain state written straight from the pointer loop, so a drag moves the
+    // sheet on the very frame the finger moves.
+    val y = remember { mutableFloatStateOf(peekOffset) }
     // Velocity of the running settle, so a grab mid-flight hands its speed on.
     val settleVelocity = remember { floatArrayOf(0f) }
     val settleJob = remember { arrayOfNulls<Job>(1) }
@@ -240,12 +261,14 @@ private fun BoxScope.SheetBody(
     val feedBounds = remember { arrayOf(Rect.Zero) }
     val tabsBounds = remember { arrayOf(Rect.Zero) }
 
-    val sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    val sheetShape = RoundedCornerShape(28.dp)
     val safeBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Column(
         Modifier
             .align(Alignment.BottomCenter)
+            // Floating: inset from the sides like the map's other glass, its rounded corners all round.
+            .padding(horizontal = 8.dp)
             .fillMaxWidth()
             .height(expandedHeight.dp)
             // A layer translation: the sheet, its shadow and feed move as one cached picture, with
@@ -386,8 +409,10 @@ private fun BoxScope.SheetBody(
                 .semantics { contentDescription = "Toggle departures sheet" },
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.size(width = 44.dp, height = 6.dp).background(c.textSecondary.copy(alpha = 0.45f), CircleShape))
+            Box(Modifier.size(width = 40.dp, height = 5.dp).background(c.textSecondary.copy(alpha = 0.4f), CircleShape))
         }
+        SheetTitle(heading)
+        heading.pinned?.let { Box(Modifier.padding(top = 4.dp, bottom = 4.dp)) { it() } }
 
         ModeTabs(
             modeFilter,
@@ -416,7 +441,7 @@ private fun BoxScope.SheetBody(
                     .padding(bottom = safeBottom + 12.dp),
             ) {
                 FeedContent(
-                    feed, selection, arrivalsEnabled, isLoading, visibleStopCount, polledStopCount,
+                    content,
                     onSelect = { item ->
                         if (suppressNextClick.consume()) return@FeedContent
                         onSelectItem(item)
@@ -487,7 +512,10 @@ private fun ModeTabs(modeFilter: List<String>, onToggleMode: (String) -> Unit, m
             onCross = { haptics.frequentTick() },
             backdrop = backdrop,
             accent = c.accentPrimary,
-            container = if (frosted) c.glassBg.copy(alpha = (c.glassBg.alpha * 1.8f).coerceAtMost(1f)) else c.surfacePrimary.copy(alpha = 0.54f),
+            // The navbar's own look: its dock material, and iOS's neutral grey selection pill
+            // (only the label takes the accent).
+            selection = if (c.isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f),
+            container = dockMaterial(),
             modifier = Modifier.fillMaxWidth(),
             height = 48.dp,
             frosted = frosted,
@@ -496,7 +524,7 @@ private fun ModeTabs(modeFilter: List<String>, onToggleMode: (String) -> Unit, m
                 ModeChips[index].label,
                 Modifier.semantics { contentDescription = ModeChips[index].label },
                 style = vtext(12.sp to 16.sp, Weight.Semibold),
-                color = if (tinted) c.accentPrimary else c.textSecondary,
+                color = if (tinted) c.accentPrimary else c.textPrimary,
                 maxLines = 1,
             )
         }
@@ -504,16 +532,25 @@ private fun ModeTabs(modeFilter: List<String>, onToggleMode: (String) -> Unit, m
 }
 
 @Composable
-private fun FeedContent(
-    feed: List<RadarDepartureItem>,
-    selection: NearbySelectionKey?,
-    arrivalsEnabled: Boolean,
-    isLoading: Boolean,
-    visibleStopCount: Int,
-    polledStopCount: Int,
-    onSelect: (RadarDepartureItem) -> Unit,
-) {
+private fun SheetTitle(heading: SheetHeading) {
     val c = Vectra.colors
+    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
+        VText(heading.title, Modifier.weight(1f), vtext(18.sp to 24.sp, Weight.Extrabold, Tracking.Tight), c.textPrimary, maxLines = 1)
+        if (heading.subtitle != null) {
+            VText(heading.subtitle, Modifier.padding(start = 8.dp, bottom = 2.dp), vtext(TypeScale.Caption, Weight.Semibold), c.textMuted, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun FeedContent(content: SheetFeed, onSelect: (RadarDepartureItem) -> Unit) {
+    val c = Vectra.colors
+    val feed = content.feed
+    val selection = content.selection
+    val arrivalsEnabled = content.arrivalsEnabled
+    val isLoading = content.isLoading
+    val visibleStopCount = content.visibleStopCount
+    val polledStopCount = content.polledStopCount
     when {
         !arrivalsEnabled -> FeedNote("Zoom in to see departures")
         feed.isEmpty() -> FeedNote(if (isLoading) "Scanning nearby stops…" else "No upcoming departures near this area — pan or zoom in.")
@@ -524,13 +561,14 @@ private fun FeedContent(
                 for (item in feed) groups.getOrPut("${item.routeId}|${item.stopId}|${item.headsign}") { mutableListOf() } += item
                 groups.map { (key, items) -> key to items.toList() }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((key, items) in groupedFeed) {
+            Column {
+                groupedFeed.forEachIndexed { i, (key, items) ->
                     key(key) {
                         val isSelected = selection != null && items.any {
                             selection.stopId == it.stopId && selection.routeId == it.routeId && selection.headsign == it.headsign
                         }
-                        DepartureCard(items, isSelected) { onSelect(items[0]) }
+                        if (i > 0) Box(Modifier.padding(start = 60.dp, end = 8.dp).fillMaxWidth().height(1.dp).background(c.borderSubtle))
+                        DepartureRow(items, isSelected) { onSelect(items[0]) }
                     }
                 }
                 if (visibleStopCount > polledStopCount) {
@@ -558,46 +596,45 @@ private fun FeedNote(text: String) {
     )
 }
 
-/** The departure card shared by the sheet feed and the explorer's selection header. */
+/**
+ * One line, stop and direction: the badge, where it goes and from which stop, and
+ * the next departure with the two after it.
+ */
 @Composable
-private fun DepartureCard(items: List<RadarDepartureItem>, isSelected: Boolean, onClick: () -> Unit) {
+private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, onClick: () -> Unit) {
     val c = Vectra.colors
     val item = items[0]
-    val shape = Radius.Panel
+    val shape = RoundedCornerShape(16.dp)
     val press = remember { MutableInteractionSource() }
-    val border = when {
-        isSelected -> nearbyHexAlpha(item.color, 0x80)
-        c.isDark -> Color.White.copy(alpha = 0.06f)
-        else -> Color.Black.copy(alpha = 0.08f)
-    }
-    val bg = if (isSelected) nearbyHexAlpha(item.color, 0x18) else c.surfaceSecondary
-    val shadow = if (isSelected) listOf(BoxShadow(y = 5f, blur = 18f, color = nearbyHexAlpha(item.color, 0x18))) else NearbyShadows.sm()
     Row(
         Modifier
             .pressScale(press, 0.985f)
             .fillMaxWidth()
-            .height(96.dp)
-            .boxShadow(shape, shadow)
-            .background(bg, shape)
-            .border(1.dp, border, shape)
-            .tappable(role = null, highlight = false, interactionSource = press, onClick = onClick),
+            .heightIn(min = 64.dp)
+            .background(if (isSelected) nearbyHexAlpha(item.color, 0x1C) else Color.Transparent, shape)
+            .tappable(shape, role = null, highlight = false, interactionSource = press, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NearbyDepartureCardBody(
-            color = item.color,
-            textColor = item.textColor,
-            shortName = item.shortName,
-            headsign = item.headsign,
-            stopName = item.stopName,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (index in 0 until 3) {
-                    val departure = items.getOrNull(index)
-                    if (departure != null) {
-                        NearbyEtaRow(departure.isPredicted, formatNearbyCountdown(departure.countdownMinutes))
-                    } else {
-                        Box(Modifier.alpha(0f)) { NearbyEtaRow(false, "0'") }
-                    }
+        // At least the badge's square, but wide names (28/28A, 240E) widen it instead of clipping.
+        Box(Modifier.widthIn(min = 40.dp), contentAlignment = Alignment.Center) {
+            RouteBadge(item.shortName, item.color, item.textColor, size = RouteBadgeSize.Md)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textSecondary)
+                VText(item.headsign.ifEmpty { "Any direction" }, style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, maxLines = 1)
+            }
+            VText(item.stopName, style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 1)
+        }
+        // The next three, one under another; each with its own live or timetable mark.
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            items.take(3).forEachIndexed { i, d ->
+                if (i == 0) {
+                    NearbyEtaRow(d.isPredicted, formatNearbyCountdown(d.countdownMinutes))
+                } else {
+                    LaterEta(d)
                 }
             }
         }
@@ -642,6 +679,19 @@ internal fun RowScope.NearbyDepartureCardBody(
     Spacer(Modifier.width(12.dp))
     eta()
     Spacer(Modifier.width(12.dp))
+}
+
+/** A later departure under the first: the same mark and time, a size down and quieter. */
+@Composable
+private fun LaterEta(d: RadarDepartureItem) {
+    val c = Vectra.colors
+    val tone = if (d.isPredicted) c.tints.emerald.text.copy(alpha = 0.8f) else c.textMuted
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
+            if (d.isPredicted) LiveSignalIcon(size = 11.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 11.dp, tint = tone)
+        }
+        VText(formatNearbyCountdown(d.countdownMinutes), style = vtext(12.sp to 15.sp, Weight.Bold, mono = true), color = tone, maxLines = 1, softWrap = false)
+    }
 }
 
 /** The live/scheduled icon and the countdown as one unit. */

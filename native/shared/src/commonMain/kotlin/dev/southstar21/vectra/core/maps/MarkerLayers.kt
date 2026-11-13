@@ -40,13 +40,13 @@ private fun pointJson(lat: Double, lon: Double): String = GeoJson.collection(lis
 /** The blue "you are here" dot: a soft halo and a white-ringed core. */
 @Composable
 @MaplibreComposable
-fun UserLocationLayers(idPrefix: String, location: LatLon) {
+fun UserLocationLayers(idPrefix: String, location: LatLon, scale: Float = 1f) {
     val source = rememberGeoJsonSource(GeoJsonData.JsonString(pointJson(location.lat, location.lon)))
-    CircleLayer(id = "$idPrefix-user-halo", source = source, radius = const(10.dp), color = const(Palette.Blue400), opacity = const(0.3f))
+    CircleLayer(id = "$idPrefix-user-halo", source = source, radius = const(10.dp * scale), color = const(Palette.Blue400), opacity = const(0.3f))
     CircleLayer(
         id = "$idPrefix-user-dot", source = source,
-        radius = const(7.dp), color = const(MapColors.Location),
-        strokeColor = const(Color.White), strokeWidth = const(2.dp),
+        radius = const(7.dp * scale), color = const(MapColors.Location),
+        strokeColor = const(Color.White), strokeWidth = const(2.dp * scale),
     )
 }
 

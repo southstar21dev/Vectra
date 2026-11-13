@@ -26,23 +26,34 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 enum class StampTilt(val degrees: Float) { Left(-3f), Right(2f) }
 
 /**
- * One glass panel of rows separated by hairlines, titled
- * with a postage stamp stuck over its top edge.
+ * One glass panel of rows separated by hairlines, titled with a postage stamp stuck over its top
+ * edge. [danger]: the stamp is red (the Danger zone, where every destructive action lives).
  */
 @Composable
-fun SettingsSection(title: String, modifier: Modifier = Modifier, tilt: StampTilt = StampTilt.Left, rows: List<@Composable () -> Unit>) {
+fun SettingsSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    tilt: StampTilt = StampTilt.Left,
+    danger: Boolean = false,
+    rows: List<@Composable () -> Unit>,
+    /** A quiet link under the last row ("Send a test reminder"), with no hairline above it. */
+    footer: (@Composable () -> Unit)? = null,
+) {
+    val c = Vectra.colors
     Box(modifier.fillMaxWidth().padding(top = 20.dp)) {
         Column(Modifier.fillMaxWidth().glass(Radius.Card).clip(Radius.Card).padding(top = 16.dp)) {
             rows.forEachIndexed { i, row ->
                 if (i > 0) HairlineDivider()
                 row()
             }
+            footer?.invoke()
         }
         PostageStamp(
             Modifier.padding(start = 16.dp).offset(y = (-20).dp).rotate(tilt.degrees).zIndex(1f),
             innerModifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            ink = if (danger) c.tints.red.text else c.accentPrimary,
         ) {
-            VText(title, style = vtext(TypeScale.Body, Weight.Extrabold, Tracking.Tight, lineHeight = 14.sp), color = Vectra.colors.textPrimary)
+            VText(title, style = vtext(TypeScale.Body, Weight.Extrabold, Tracking.Tight, lineHeight = 14.sp), color = if (danger) c.tints.red.text else c.textPrimary)
         }
     }
 }

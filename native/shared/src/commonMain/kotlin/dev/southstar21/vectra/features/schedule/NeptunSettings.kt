@@ -1,7 +1,5 @@
 package dev.southstar21.vectra.features.schedule
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,24 +22,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
-import dev.southstar21.vectra.core.designsystem.theme.pillGlass
-import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -49,7 +44,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
-import dev.southstar21.vectra.core.designsystem.components.ConfirmDialog
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.VButton
@@ -57,15 +51,12 @@ import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VInput
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.glass
-import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
@@ -73,7 +64,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
-import kotlinx.serialization.json.JsonNull
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
@@ -146,8 +136,6 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
 
     var urlInput by remember { mutableStateOf("") }
     var savedUrl by remember { mutableStateOf("") }
-    var confirmClear by remember { mutableStateOf(false) }
-    var clearing by remember { mutableStateOf(false) }
     var rateLimited by remember { mutableStateOf(false) }
     var syncing by remember { mutableStateOf(false) }
 
@@ -165,16 +153,6 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     LaunchedEffect(profile?.neptunIcsUrl) {
         savedUrl = runSuspendCatching { repo.savedNeptunUrl() }.getOrDefault("")
         urlInput = "" // Cleared for security.
-    }
-
-    suspend fun clearUrl() {
-        runSuspendCatching { repo.saveNeptunUrl("") }
-            .onSuccess {
-                savedUrl = ""
-                urlInput = ""
-                toaster.success("Neptun link removed")
-            }
-            .onFailure { toaster.error("Could not remove the Neptun link", it.message) }
     }
 
     val shake = remember { Animatable(0f) }
@@ -209,65 +187,24 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
 
     val busy = syncing || status == NeptunSyncStatus.Syncing
     SettingsSectionBox("Neptun") {
-        SettingsRow(RemixIcons.TimeLine, c.tints.blue.bg, c.tints.blue.text, "Last sync", counter, titleStyle = RowTitle) {
+        SettingsRow(RemixIcons.TimeLine, c.tints.blue.text, "Last sync", counter, titleStyle = RowTitle) {
             if (savedUrl.isNotEmpty() && lastSyncMs != null) {
-                val success = status == NeptunSyncStatus.Success
-                val pill = CircleShape
-                Box(
-                    Modifier
-                        .offset(x = shake.value.dp)
-                        .then(
-                            when {
-                                rateLimited -> Modifier.boxShadow(pill, listOf(BoxShadow(blur = 12f, color = rgba(239, 68, 68, 0.25f))))
-                                success -> Modifier.boxShadow(pill, listOf(BoxShadow(blur = 12f, color = rgba(16, 185, 129, 0.25f))))
-                                else -> Modifier
-                            },
-                        ),
-                ) {
-                    PillOutlineButton(
-                        onClick = { manualSync() },
-                        modifier = Modifier
-                            .width(104.dp)
-                            .then(
-                                when {
-                                    rateLimited -> Modifier.background(Palette.Red500.copy(alpha = 0.1f), pill).border(1.dp, Palette.Red500.copy(alpha = 0.5f), pill)
-                                    success -> Modifier.background(Palette.Emerald500.copy(alpha = 0.1f), pill).border(1.dp, Palette.Emerald500.copy(alpha = 0.5f), pill)
-                                    else -> Modifier
-                                },
-                            ),
-                        enabled = !busy,
-                    ) {
-                        val ink = when {
-                            rateLimited -> c.tints.red.text
-                            success -> c.tints.emerald.text
-                            else -> c.textPrimary
-                        }
-                        when {
-                            rateLimited -> VIcon(RemixIcons.ErrorWarningLine, size = 14.dp, tint = ink)
-                            busy -> SpinningIcon(RemixIcons.RefreshLine, ink)
-                            success -> VIcon(RemixIcons.CheckboxCircleLine, size = 14.dp, tint = Palette.Emerald400)
-                            else -> VIcon(RemixIcons.RefreshLine, size = 14.dp, tint = ink)
-                        }
-                        VText(
-                            when {
-                                rateLimited -> "Rate limited"
-                                success -> "Synced"
-                                busy -> "Syncing…"
-                                else -> "Sync now"
-                            },
-                            style = vtext(TypeScale.Caption, Weight.Bold),
-                            color = ink,
-                            maxLines = 1,
-                        )
-                    }
-                }
+                SyncLink(
+                    state = when {
+                        rateLimited -> SyncLinkState.RateLimited
+                        busy -> SyncLinkState.Syncing
+                        status == NeptunSyncStatus.Success -> SyncLinkState.Synced
+                        else -> SyncLinkState.Idle
+                    },
+                    shake = shake.value,
+                    onClick = ::manualSync,
+                )
             }
         }
         RowDivider()
         if (savedUrl.isNotEmpty()) {
-            SettingsRow(RemixIcons.Link, c.tints.emerald.bg, c.tints.emerald.text, "Calendar link", "Connected · stored encrypted", titleStyle = RowTitle) {
-                DangerOutlineButton("Remove", RemixIcons.DeleteBinLine) { scope.launch { clearUrl() } }
-            }
+            // Removing it lives in the Danger zone, with clearing the classes.
+            SettingsRow(RemixIcons.Link, c.tints.emerald.text, "Calendar link", "Connected · stored encrypted", titleStyle = RowTitle)
         } else {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column {
@@ -316,10 +253,6 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                 }
             }
         }
-        RowDivider()
-        SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.bg, c.tints.red.text, "Clear all classes", "Synced and manual classes", danger = true, titleStyle = RowTitle) {
-            DangerOutlineButton("Clear", null, enabled = !clearing) { confirmClear = true }
-        }
         if (status == NeptunSyncStatus.Error && !syncError.isNullOrEmpty()) {
             RowDivider()
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -349,30 +282,6 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         }
     }
 
-    ConfirmDialog(
-        open = confirmClear,
-        onClose = { confirmClear = false },
-        onConfirm = {
-            clearing = true
-            try {
-                repo.clearAllEvents()
-                savedUrl = ""
-                urlInput = ""
-                auth.updateProfile(mapOf("neptun_ics_url" to JsonNull, "neptun_last_sync" to JsonNull))
-                toaster.success("All classes cleared")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                toaster.error("Could not clear your classes", e.message)
-            } finally {
-                clearing = false
-            }
-        },
-        title = "Clear all classes?",
-        description = "This deletes every class in your schedule, including the ones synced from Neptun, and disconnects the Neptun link. Work shifts and tasks stay. This can't be undone.",
-        confirmText = "Clear all",
-        cancelText = "Cancel",
-    )
 }
 
 @Composable
@@ -382,36 +291,42 @@ private fun SpinningIcon(icon: ImageVector, tint: Color) {
     VIcon(icon, Modifier.graphicsLayer { rotationZ = angle }, size = 14.dp, tint = tint)
 }
 
-/** A small fully rounded outline pill in the red tint, for destructive actions. */
-@Composable
-private fun DangerOutlineButton(text: String, icon: ImageVector?, enabled: Boolean = true, onClick: () -> Unit) {
-    val c = Vectra.colors
-    PillOutlineButton(onClick, Modifier.border(1.dp, c.tints.red.border, CircleShape), enabled) {
-        if (icon != null) VIcon(icon, size = 14.dp, tint = c.tints.red.text)
-        VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = c.tints.red.text)
-    }
-}
+internal enum class SyncLinkState { Idle, Syncing, Synced, RateLimited }
 
-/** A small outline button: the glass pill, fully rounded. */
+/** "Sync now" as a text link in the accent; it turns green once synced and red (and shakes) when rate limited. */
 @Composable
-private fun PillOutlineButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable RowScope.() -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
+private fun SyncLink(state: SyncLinkState, shake: Float, onClick: () -> Unit) {
+    val c = Vectra.colors
+    val ink = when (state) {
+        SyncLinkState.RateLimited -> c.tints.red.text
+        SyncLinkState.Synced -> c.tints.emerald.text
+        else -> c.accentPrimary
+    }
     Row(
         Modifier
-            .height(32.dp)
-            .then(if (enabled) Modifier.pressScale(interaction) else Modifier)
-            .alpha(if (enabled) 1f else 0.5f)
-            .pillGlass(CircleShape)
-            .then(modifier)
-            .tappable(enabled = enabled, role = null, highlight = false, interactionSource = interaction, onClick = onClick)
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            .offset(x = shake.dp)
+            .defaultMinSize(minHeight = 36.dp)
+            .tappable(enabled = state == SyncLinkState.Idle || state == SyncLinkState.Synced, role = Role.Button, highlight = false, pressedScale = 0.95f, onClick = onClick)
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
+    ) {
+        when (state) {
+            SyncLinkState.RateLimited -> VIcon(RemixIcons.ErrorWarningLine, size = 14.dp, tint = ink)
+            SyncLinkState.Syncing -> SpinningIcon(RemixIcons.RefreshLine, ink)
+            SyncLinkState.Synced -> VIcon(RemixIcons.CheckboxCircleLine, size = 14.dp, tint = ink)
+            SyncLinkState.Idle -> VIcon(RemixIcons.RefreshLine, size = 14.dp, tint = ink)
+        }
+        VText(
+            when (state) {
+                SyncLinkState.RateLimited -> "Rate limited"
+                SyncLinkState.Synced -> "Synced"
+                SyncLinkState.Syncing -> "Syncing…"
+                SyncLinkState.Idle -> "Sync now"
+            },
+            style = vtext(TypeScale.Body, Weight.Bold),
+            color = ink,
+            maxLines = 1,
+        )
+    }
 }

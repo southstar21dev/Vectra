@@ -1,5 +1,8 @@
 package dev.southstar21.vectra.features.settings
 
+import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.SettingsRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -97,27 +100,24 @@ fun CurrentPasswordDialog(
  * anyway when some of it could not be sent, since signing out deletes it from the device.
  */
 @Composable
-fun SignOutButton(auth: AuthRepository, modifier: Modifier = Modifier) {
+fun SignOutRow(auth: AuthRepository) {
+    val c = Vectra.colors
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var unsynced by remember { mutableStateOf(false) }
-    VButton(
-        onClick = {
-            busy = true
-            scope.launch {
-                try {
-                    if (auth.flushPendingWrites()) auth.signOut() else unsynced = true
-                } finally {
-                    busy = false
-                }
+    val signOut = {
+        busy = true
+        scope.launch {
+            try {
+                if (auth.flushPendingWrites()) auth.signOut() else unsynced = true
+            } finally {
+                busy = false
             }
-        },
-        modifier = modifier,
-        variant = ButtonVariant.Outline,
-        size = ButtonSize.Sm,
-        enabled = !busy,
-    ) {
-        if (busy) InlineLoader(size = 14.dp) else VText("Sign out", style = vtext(TypeScale.Caption, Weight.Bold))
+        }
+        Unit
+    }
+    SettingsRow(RemixIcons.LogoutBoxRLine, c.textSecondary, "Sign out", "End your session on this device", enabled = !busy, onClick = signOut) {
+        if (busy) InlineLoader(size = 14.dp) else VIcon(RemixIcons.ArrowRightSLine, size = 18.dp, tint = c.textMuted)
     }
     ConfirmDialog(
         open = unsynced,

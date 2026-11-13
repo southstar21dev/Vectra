@@ -1,5 +1,10 @@
 package dev.southstar21.vectra.core.maps
 
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
+import dev.southstar21.vectra.core.designsystem.theme.tappable
+import dev.southstar21.vectra.core.designsystem.theme.Weight
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -205,7 +210,8 @@ fun TransitMap(
         withFrameNanos { }
         mounted = true
     }
-    Box(modifier.background(c.mapSurface)) {
+    // Clipped: markers drawn over the map (vehicle tokens, their countdowns) never spill past it while panning.
+    Box(modifier.clipToBounds().background(c.mapSurface)) {
         if (styleJson != null && mounted) {
             // The map's input layer focuses and reports a press on the first touch, and the app's
             // press highlight would draw that as a wash over the whole map. Markers on top get the
@@ -228,7 +234,7 @@ fun TransitMap(
                 )
             }
         }
-        if (attribution) MapAttribution(Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 4.dp))
+        if (attribution) MapAttribution(Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 8.dp, bottom = 4.dp), align = TextAlign.Center)
         if (failed && styleJson == null) {
             Box(Modifier.matchParentSize().padding(16.dp), contentAlignment = Alignment.Center) {
                 VText("Map unavailable. It will load when you're back online.", style = vtext(TypeScale.Body), color = c.textMuted, align = TextAlign.Center)
@@ -240,14 +246,20 @@ fun TransitMap(
 
 /** Tiny mono credit on a translucent chip. */
 @Composable
-fun MapAttribution(modifier: Modifier = Modifier) {
+fun MapAttribution(modifier: Modifier = Modifier, text: String = OpenFreeMapAttribution, align: TextAlign = TextAlign.Start) {
     val c = Vectra.colors
+    val uri = LocalUriHandler.current
     VText(
-        OpenFreeMapAttribution,
-        modifier.background(c.mapAttributionBg, Radius.Hairline).padding(horizontal = 4.dp, vertical = 1.dp),
-        vtext(9.sp to 11.sp, mono = true),
+        text,
+        modifier
+            .background(c.mapAttributionBg, Radius.Hairline)
+            .tappable(Radius.Hairline, role = Role.Button, onClickLabel = "Open map data copyright") {
+                runCatching { uri.openUri(OpenStreetMapCopyrightUrl) }
+            }
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+        vtext(9.sp to 11.sp, Weight.Medium),
         c.textMuted,
-        maxLines = 1,
+        align = align,
     )
 }
 

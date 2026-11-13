@@ -5,20 +5,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.data.LiveQuery
 import dev.southstar21.vectra.core.data.QueryState
 import dev.southstar21.vectra.core.designsystem.components.DecorativeLoopFps
-import dev.southstar21.vectra.core.designsystem.components.Spinner
 import dev.southstar21.vectra.core.designsystem.components.rememberLoop
 import dev.southstar21.vectra.core.designsystem.components.rememberOnScreen
 import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
 import dev.southstar21.vectra.core.designsystem.components.trackOnScreen
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
@@ -27,11 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -61,7 +51,6 @@ import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.time.nowMs
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -162,7 +151,8 @@ private val SpacedSlash = Regex("""\s*/\s*""")
 
 // ---- route badge -------------------------------------------------------------
 
-enum class RouteBadgeSize { Xs2, Xs, Sm, Md, Lg }
+/** [Xs2] and [Xs] are round (the strips' vehicle-sized marks); [Tag] and [TagMd] are the same heights as rounded rectangles. */
+enum class RouteBadgeSize { Xs2, Xs, Tag, TagMd, Sm, Md, Lg }
 
 /**
  * Route chip with adaptive sizing — long names shrink their
@@ -182,6 +172,8 @@ fun RouteBadge(
     val (minW, h, padX, radius) = when (size) {
         RouteBadgeSize.Xs2 -> Quad(24.dp, 24.dp, 6.dp, 999.dp)
         RouteBadgeSize.Xs -> Quad(28.dp, 28.dp, 4.dp, 999.dp)
+        RouteBadgeSize.Tag -> Quad(24.dp, 22.dp, 5.dp, 6.dp)
+        RouteBadgeSize.TagMd -> Quad(28.dp, 26.dp, 5.dp, 7.dp)
         RouteBadgeSize.Sm -> Quad(32.dp, 32.dp, 6.dp, 8.dp)
         RouteBadgeSize.Lg -> Quad(48.dp, 48.dp, 8.dp, 12.dp)
         RouteBadgeSize.Md -> Quad(36.dp, 36.dp, 6.dp, 8.dp)
@@ -189,14 +181,17 @@ fun RouteBadge(
     val font: TextUnit = when {
         n <= 3 -> when (size) {
             RouteBadgeSize.Xs2 -> 8.sp; RouteBadgeSize.Xs -> 10.sp; RouteBadgeSize.Sm -> 12.sp
+            RouteBadgeSize.Tag -> 10.sp; RouteBadgeSize.TagMd -> 11.sp
             RouteBadgeSize.Lg -> 18.sp; RouteBadgeSize.Md -> 14.sp
         }
         n <= 5 -> when (size) {
             RouteBadgeSize.Xs2 -> 7.5.sp; RouteBadgeSize.Xs -> 9.sp; RouteBadgeSize.Sm -> 10.sp
+            RouteBadgeSize.Tag -> 9.sp; RouteBadgeSize.TagMd -> 10.sp
             RouteBadgeSize.Lg -> 14.sp; RouteBadgeSize.Md -> 11.sp
         }
         else -> when (size) {
             RouteBadgeSize.Xs2, RouteBadgeSize.Xs -> 7.sp; RouteBadgeSize.Sm -> 9.sp
+            RouteBadgeSize.Tag, RouteBadgeSize.TagMd -> 8.sp
             RouteBadgeSize.Lg -> 12.sp; RouteBadgeSize.Md -> 10.sp
         }
     }
@@ -285,45 +280,6 @@ fun FormattedRouteTitle(
         parts.forEachIndexed { i, part ->
             if (i > 0) VIcon(RemixIcons.ArrowLeftRightLine, Modifier.padding(horizontal = 6.dp), size = iconSize, tint = iconTint)
             VText(part, Modifier.weight(1f, fill = false), style, color, maxLines = 1)
-        }
-    }
-}
-
-/**
- * A full-container cover that fades out over the loaded
- * content. [maxDurationMs] caps how long it can stay up.
- */
-@Composable
-fun BoxScope.LoadingOverlay(
-    show: Boolean,
-    modifier: Modifier = Modifier,
-    label: String = "Loading…",
-    maxDurationMs: Long = 3000,
-    contentAlignment: Alignment = Alignment.Center,
-    contentModifier: Modifier = Modifier,
-    contentSpacing: Dp = 12.dp,
-    indicator: @Composable () -> Unit = { Spinner() },
-) {
-    var expired by remember(show) { mutableStateOf(false) }
-    LaunchedEffect(show, maxDurationMs) {
-        if (show) {
-            delay(maxDurationMs)
-            expired = true
-        }
-    }
-    val visible = show && !expired
-    val alpha by animateFloatAsState(if (visible) 1f else 0f, tween(300), label = "cover")
-    if (alpha <= 0.001f && !visible) return
-    Box(
-        modifier
-            .matchParentSize()
-            .graphicsLayer { this.alpha = alpha }
-            .background(Vectra.colors.surfaceSecondary),
-        contentAlignment = contentAlignment,
-    ) {
-        Column(contentModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(contentSpacing)) {
-            indicator()
-            VText(label, style = vtext(TypeScale.Caption, Weight.Medium), color = Vectra.colors.textSecondary)
         }
     }
 }

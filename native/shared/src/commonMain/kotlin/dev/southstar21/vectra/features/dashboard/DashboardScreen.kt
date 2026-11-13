@@ -156,7 +156,7 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
             tracker = graph.courseTrackerHooks,
             dateStr = todayStr,
             items = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) },
-            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.push(Screen.CourseHub(resolveCourseKey(e))) },
+            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.openCourseHub(resolveCourseKey(e)) },
             onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
             onToggleTaskComplete = { item ->
                 scope.launch {

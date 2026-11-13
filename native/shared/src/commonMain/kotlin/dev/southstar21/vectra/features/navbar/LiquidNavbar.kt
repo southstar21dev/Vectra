@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.navbar
 
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -89,6 +90,8 @@ fun LiquidNavbar(
     onNavigate: (Route) -> Unit,
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
+    /** A tab held down, with where it is in the window (Transit: the nearby map grows out of it). */
+    onLongPress: ((Route, Rect?) -> Unit)? = null,
 ) {
     val c = Vectra.colors
     val items = PrimaryNavItems
@@ -143,6 +146,7 @@ fun LiquidNavbar(
                     modifier = Modifier.weight(1f),
                     height = DockHeight,
                     frosted = frosted,
+                    onLongPress = onLongPress?.let { hold -> { index, bounds -> hold(items[index].route, bounds) } },
                 ) { index, tinted ->
                     val item = items[index]
                     val ink = if (tinted) c.accentPrimary else c.textPrimary
@@ -234,7 +238,7 @@ private fun AddButton(open: Boolean, icon: ImageVector, backdrop: Backdrop, onCl
 
 /** The fill of the bar, the + and the menu: iOS's tab bar material, a translucent grey. */
 @Composable
-private fun dockMaterial(): Color {
+internal fun dockMaterial(): Color {
     val c = Vectra.colors
     return when {
         !isRenderEffectSupported() -> c.glassBg.copy(alpha = (c.glassBg.alpha * 1.8f).coerceAtMost(1f))

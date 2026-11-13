@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.shell
 
+import dev.southstar21.vectra.core.designsystem.components.CardLaunch
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
@@ -247,7 +248,14 @@ private fun TabShell(
                 // navbar so its open actions menu takes back first.
                 VBackHandler(enabled = !covered && navigator.backStack.size > 1) { navigator.back() }
                 if (systemNavbar == null) {
-                    LiquidNavbar(navigator.current, { navigator.navigate(it) }, backdrop)
+                    LiquidNavbar(navigator.current, { navigator.navigate(it) }, backdrop) { route, bounds ->
+                        // Holding Transit lands the drop on it and grows the nearby map out of the tab
+                        // (after the switch: navigating closes overlays).
+                        if (route == Route.Transit) {
+                            if (navigator.current != Route.Transit) navigator.navigate(Route.Transit)
+                            navigator.nearbyMap = CardLaunch(bounds)
+                        }
+                    }
                 } else {
                     SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction)
                 }

@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.features.reminders
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
@@ -53,7 +51,7 @@ private fun DeparturesRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.RouteLine, c.tints.emerald.bg, c.tints.emerald.text, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
+    SettingsRow(RemixIcons.RouteLine, c.tints.emerald.text, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
         VToggle(prefs.departures, { on ->
             if (on) enable { scheduler.update { it.copy(departures = true) } } else scheduler.update { it.copy(departures = false) }
         }, label = "Departure times")
@@ -137,8 +135,8 @@ private fun CommuteRow(current: List<CommuteLeg>, home: Boolean, title: String, 
                 }
             }
         } else {
-            Box(Modifier.size(28.dp).background(c.surfaceOverlay, Radius.Chip), contentAlignment = Alignment.Center) {
-                VIcon(if (home) RemixIcons.Home5Line else RemixIcons.WalkLine, size = 14.dp, tint = c.textSecondary)
+            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                VIcon(if (home) RemixIcons.Home5Line else RemixIcons.WalkLine, size = 18.dp, tint = c.textSecondary)
             }
         }
         Column(Modifier.weight(1f)) {

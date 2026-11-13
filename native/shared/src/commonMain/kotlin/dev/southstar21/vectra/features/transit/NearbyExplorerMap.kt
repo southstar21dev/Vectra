@@ -1,7 +1,12 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.glass
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.offset
@@ -106,25 +111,34 @@ private fun collection(features: List<JsonObject>) = buildJsonObject {
     put("features", JsonArray(features))
 }.toString()
 
+/** The tracker strips' stop rings, for the explorer's dots: the card's fill, a neutral ring, and the picked stop's thick ring. */
+internal class StopRingInk(val card: Color, val ring: Color, val picked: Color)
+
 /**
- * Stop dots for the viewport. A latched route selection dims them rather than
- * hiding them, so another stop stays one tap away.
+ * Stop dots for the viewport, as the tracker strips draw stops: hollow rings, the picked one a
+ * thick ring. A latched route selection dims them rather than hiding them, so another stop stays
+ * one tap away.
  */
-private fun explorerStopsGeoJson(stops: List<ExplorerMapStop>, selectedStopId: String?, focusedStopId: String?, stopFill: Color, stopStroke: Color): String {
+private fun explorerStopsGeoJson(stops: List<ExplorerMapStop>, selectedStopId: String?, focusedStopId: String?, ink: StopRingInk): String {
     val dimmed = selectedStopId != null
     return collection(
         stops.filter { selectedStopId == null || it.id != selectedStopId }.map { s ->
             val focused = s.id == focusedStopId
-            val baseRadius = if (focused) 5.5 else if (s.isPlatform == true) 3.0 else 4.0
+            val platform = s.isPlatform == true
+            val baseRadius = when {
+                focused -> 7.0
+                platform -> 3.5
+                else -> 4.5
+            }
             pointFeature(s.lon, s.lat, buildJsonObject {
                 put("id", s.id)
                 put("stationId", s.stationId)
                 put("name", s.name)
                 put("radius", if (dimmed) max(2.5, baseRadius - 1.5) else baseRadius)
                 put("opacity", if (dimmed) 0.45 else 1.0)
-                put("fillColor", if (focused) "#2563eb" else if (s.isPlatform == true) "#3f3f46" else hex(stopFill))
-                put("strokeColor", if (focused) "#60a5fa" else hex(stopStroke))
-                put("strokeWidth", if (focused) 2 else 1)
+                put("fillColor", hex(ink.card))
+                put("strokeColor", hex(if (focused) ink.picked else ink.ring))
+                put("strokeWidth", if (focused) 3.5 else if (platform) 1.5 else 2.0)
             })
         },
     )
@@ -161,7 +175,7 @@ private fun routeGeoJson(polylines: List<List<LatLon>>, color: String): String =
  * [attributionBottom] is read per frame so the attribution rides on the sheet.
  */
 @Composable
-fun NearbyExplorerMap(
+internal fun NearbyExplorerMap(
     initialCenter: LatLon,
     stops: List<ExplorerMapStop>,
     focusedStopId: String?,
@@ -178,7 +192,18 @@ fun NearbyExplorerMap(
     modifier: Modifier = Modifier,
     attributionBottom: () -> Dp = { 0.dp },
     onReady: () -> Unit = {},
+    routeTextColor: String = "FFFFFF",
+    /** Departure chips (C1); drawn where Compose overlays track the map (not on iOS yet). */
+    chips: List<NearbyChip> = emptyList(),
+    focusedChipId: String? = null,
+    dimChips: Boolean = false,
+    chipChrome: ChipChrome = ChipChrome(0.dp, 0.dp, 0.dp),
+    onChipTap: (NearbyChip) -> Unit = {},
+    board: (@Composable (stopId: String) -> Unit)? = null,
+    /** Hands out the map once it exists (its projection, for the loading orb's melt). */
+    onMapState: (MapState) -> Unit = {},
 ) {
+    val latestOnMapState by rememberUpdatedState(onMapState)
     val c = Vectra.colors
     var map by remember { mutableStateOf<MapState?>(null) }
     var loaded by remember { mutableStateOf(false) }
@@ -258,6 +283,8 @@ fun NearbyExplorerMap(
         )
     }
 
+    PanToBoard(map, loaded, chips, focusedChipId, chipChrome.top, bottomInset)
+    val shownChips = rememberThinnedChips(map, loaded, chips, ChipChrome(chipChrome.top, chipChrome.controlsBottom, bottomInset))
     val routeHex = withHash(routeColor)
     val animatedVehicles = remember(vehicles, polylines) {
         vehicles.map { v ->
@@ -270,9 +297,13 @@ fun NearbyExplorerMap(
         val f = user?.takeIf { it.accuracy > 0 }?.let { accuracyCircleFeature(LatLon(it.lat, it.lon), it.accuracy) }
         collection(listOfNotNull(f))
     }
-    val stopsJson = remember(stops, selectedStopId, focusedStopId, colors) {
-        explorerStopsGeoJson(stops, selectedStopId, focusedStopId, colors.stopFill, colors.stopStroke)
+    val ringInk = StopRingInk(c.surfaceSecondary, if (c.isDark) Palette.Slate400 else Palette.Slate500, c.accentPrimary)
+    val stopsJson = remember(stops, selectedStopId, focusedStopId, ringInk.card, ringInk.ring, ringInk.picked) {
+        explorerStopsGeoJson(stops, selectedStopId, focusedStopId, ringInk)
     }
+    // The followed line's vehicles and stop, as the tracker strips and the tracker map draw them.
+    val strip = stripColors(routeColor, routeTextColor, c.surfaceSecondary)
+    val tokenStyle = remember(strip.marker, strip.markerInk) { TokenStyle(strip.marker, strip.markerInk) }
     val routeStopsJson = remember(routeStops, routeHex, selectedStopId, selectedPlatformStopId) {
         routeStopsGeoJson(routeStops, selectedStopId, selectedPlatformStopId, routeHex)
     }
@@ -284,7 +315,7 @@ fun NearbyExplorerMap(
         maxZoom = 19.0,
         dragRotate = false,
         attribution = false,
-        onReady = { map = it },
+        onReady = { map = it; latestOnMapState(it) },
         onLoaded = { loaded = true },
         onUserMove = { userMoved = true },
         layers = {
@@ -322,13 +353,13 @@ fun NearbyExplorerMap(
                 id = "explorer-route-stops-layer",
                 source = routeStopsSource,
                 radius = const(4.5.dp),
-                color = const(Color.White),
-                strokeColor = feature["color"].convertToColor(),
-                strokeWidth = const(3.dp),
+                color = const(c.surfaceSecondary),
+                strokeColor = const(strip.line),
+                strokeWidth = const(2.5.dp),
             )
             if (!composeOverlaysTrackMap) {
                 // iOS: markers live in the map so they stay pinned while it pans.
-                VehicleLayers("explorer", rememberVehicleAnimations(animatedVehicles))
+                RoundVehicleLayers("explorer", rememberVehicleAnimations(animatedVehicles), tokenStyle, emptyMap())
                 if (user != null) UserLocationLayers("explorer", LatLon(user.lat, user.lon))
                 if (selectedStop != null) {
                     SelectedStopLayers("explorer", LatLon(selectedStop.lat, selectedStop.lon), selectedStop.name, colors.isLight)
@@ -340,49 +371,49 @@ fun NearbyExplorerMap(
             if (user != null) {
                 Box(Modifier.placedAt(LatLon(user.lat, user.lon).position)) { NearbyUserDot(hidePingOnReducedMotion = false) }
             }
+            NearbyChipOverlay(chips, shownChips, focusedChipId, dimChips, onChipTap, board)
             // Read here so a glide recomposes the markers, not the map and its layers.
             val frames = rememberVehicleAnimations(animatedVehicles)
-            AnimatedVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 })
             if (selectedStop != null) {
                 Box(Modifier.placedAt(LatLon(selectedStop.lat, selectedStop.lon).position, Alignment.BottomCenter)) {
-                    SelectedStopBeacon(selectedStop.name, colors.isLight)
+                    SelectedStopBeacon(selectedStop.name, strip)
                 }
             }
+            RoundVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 }, style = tokenStyle, callouts = emptyMap())
         },
     ) {
         // The attribution rides 8dp above the departures sheet.
         MapAttribution(
             Modifier
-                .align(Alignment.BottomStart)
-                .offset { IntOffset((8.dp).roundToPx(), -((attributionBottom() + 8.dp).roundToPx())) },
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 8.dp)
+                .offset { IntOffset(0, -((attributionBottom() + 8.dp).roundToPx())) },
+            align = TextAlign.Center,
         )
     }
 }
 
-/** The selected stop's label + blue beacon (anchor: bottom). */
+/**
+ * The followed departure's stop, as a tracker strip draws your stop: a thick ring in the line's
+ * colour on the card's halo, its name in a glass tag above (anchor: bottom).
+ */
 @Composable
-private fun SelectedStopBeacon(name: String, isLight: Boolean) {
+private fun SelectedStopBeacon(name: String, strip: StripColors) {
     val c = Vectra.colors
-    val blue = MapColors.Location
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        // Bare text with a legibility halo.
-        val halo = if (isLight) Color.White.copy(alpha = 0.95f) else Color.Black.copy(alpha = 0.95f)
-        val base = vtext(10.sp to 15.sp, Weight.Semibold, 0.02.em, mono = true)
-        val d = LocalDensity.current.density
-        Box(Modifier.padding(horizontal = 2.dp)) {
-            VText(name, style = base.copy(shadow = Shadow(halo, Offset.Zero, 6f * d)), color = c.textSecondary, maxLines = 1, softWrap = false)
-            VText(name, style = base.copy(shadow = Shadow(halo, Offset(0f, 1f * d), 2f * d)), color = c.textSecondary, maxLines = 1, softWrap = false)
-        }
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            NearbyPing(blue.copy(alpha = 0xB3 / 255f), 24.dp, hideOnReducedMotion = false)
-            val (white, ring, drop) = if (isLight) Triple(2f, 3.5f, BoxShadow(y = 2f, blur = 8f, color = Color.Black.copy(alpha = 0.4f)))
-            else Triple(2.5f, 4.5f, BoxShadow(y = 2f, blur = 10f, color = Color.Black.copy(alpha = 0.55f)))
-            Box(
-                Modifier
-                    .size(16.dp)
-                    .boxShadow(CircleShape, listOf(drop, BoxShadow(spread = ring, color = blue), BoxShadow(spread = white, color = Color.White)))
-                    .background(blue, CircleShape),
-            )
+        VText(
+            name,
+            Modifier.glass(RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+            vtext(11.sp to 14.sp, Weight.Bold),
+            c.textPrimary,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Canvas(Modifier.size(28.dp)) {
+            val r = 10.dp.toPx()
+            drawCircle(strip.card, r + 4.dp.toPx(), center)
+            drawCircle(strip.line, r, center)
+            drawCircle(strip.you, r - 5.dp.toPx(), center)
         }
     }
 }

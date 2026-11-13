@@ -13,6 +13,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -79,21 +80,29 @@ fun ThinkingOrb(
             .semantics { contentDescription = state.label },
     ) {
         engine.compute(t)
-        val k = this.size.minDimension / sizeValue // dp-units → px
-        val n = engine.count
-        val order = engine.order
-        for (o in 0 until n) {
-            val i = order[o]
-            val alpha = engine.a[i]
-            if (alpha < 0.02) continue
-            val w = engine.w[i].coerceIn(0.0, 1.0)
-            val g = ((if (dark) 1 - w else w) * 255).roundToInt() / 255f
-            drawCircle(
-                color = Color(g, g, g, alpha.toFloat()),
-                radius = (max(engine.rMin, engine.r[i]) * k).toFloat(),
-                center = Offset((engine.x[i] * k).toFloat(), (engine.y[i] * k).toFloat()),
-            )
-        }
+        drawOrb(engine, center, this.size.minDimension / sizeValue, dark)
+    }
+}
+
+/** Grey of dot [i]'s ink (0..1): monochrome, mirrored on dark substrates. */
+internal fun OrbEngine.grey(i: Int, dark: Boolean): Float {
+    val w = w[i].coerceIn(0.0, 1.0)
+    return ((if (dark) 1 - w else w) * 255).roundToInt() / 255f
+}
+
+/** Draws the computed orb centred on [center], [k] px per orb dp. */
+internal fun DrawScope.drawOrb(engine: OrbEngine, center: Offset, k: Float, dark: Boolean, alpha: Float = 1f) {
+    val half = engine.size / 2
+    for (o in 0 until engine.count) {
+        val i = engine.order[o]
+        val a = engine.a[i] * alpha
+        if (a < 0.02) continue
+        val g = engine.grey(i, dark)
+        drawCircle(
+            color = Color(g, g, g, a.toFloat()),
+            radius = (max(engine.rMin, engine.r[i]) * k).toFloat(),
+            center = Offset(center.x + ((engine.x[i] - half) * k).toFloat(), center.y + ((engine.y[i] - half) * k).toFloat()),
+        )
     }
 }
 
@@ -167,7 +176,8 @@ private fun resolveProfile(state: ThinkingOrbState, size: Double): OrbProfile {
     }
 }
 
-private class OrbEngine(private val state: ThinkingOrbState, private val size: Double) {
+/** The orb's dots for a frame: positions in the orb's own [size] box (dp), radius, ink and alpha, drawn in [order]. */
+internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) {
     private val p = resolveProfile(state, size)
     val speed: Double get() = p.speed
     val rMin: Double get() = p.rMin

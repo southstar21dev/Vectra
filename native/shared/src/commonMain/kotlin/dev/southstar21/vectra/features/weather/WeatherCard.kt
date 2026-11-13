@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.weather
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.navigation.LocalNavigator
-import dev.southstar21.vectra.navigation.Screen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import dev.southstar21.vectra.core.designsystem.components.CardLaunch
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -92,7 +95,7 @@ private fun skyStops(sky: WeatherSky, c: VectraColors): Pair<Color, Color> = whe
     WeatherSky.Storm -> c.tints.violet.bg to c.tints.blue.bg
 }
 
-private fun skyArt(sky: WeatherSky) = when (sky) {
+internal fun skyArt(sky: WeatherSky) = when (sky) {
     WeatherSky.Clear -> RemixIcons.SunFill
     WeatherSky.Partly -> RemixIcons.SunCloudyFill
     WeatherSky.Cloudy -> RemixIcons.CloudyFill
@@ -103,7 +106,7 @@ private fun skyArt(sky: WeatherSky) = when (sky) {
 }
 
 /** SKY_TONE: ink and opacity of the corner artwork. */
-private fun skyTone(sky: WeatherSky, c: VectraColors): Pair<Color, Float> = when (sky) {
+internal fun skyTone(sky: WeatherSky, c: VectraColors): Pair<Color, Float> = when (sky) {
     WeatherSky.Clear, WeatherSky.Partly -> Palette.Amber400 to 1f
     WeatherSky.Cloudy, WeatherSky.Fog -> c.textMuted to 0.6f
     WeatherSky.Rain -> c.tints.sky.text to 1f
@@ -161,6 +164,8 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
     val (skyFrom, skyTo) = skyStops(meta.sky, c)
     val (artTint, artAlpha) = skyTone(meta.sky, c)
     val interaction = remember { MutableInteractionSource() }
+    // Where the card is, for the radar to grow out of.
+    var bounds by remember { mutableStateOf<Rect?>(null) }
 
     Box(modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Box(
@@ -170,7 +175,8 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                 .glass(shape)
                 .angledLinearGradient(160f, skyFrom, skyTo, shape)
                 .clip(shape)
-                .tappable(role = Role.Button, highlight = false, interactionSource = interaction) { navigator.push(Screen.WeatherRadar) }
+                .onGloballyPositioned { bounds = it.boundsInWindow() }
+                .tappable(role = Role.Button, highlight = false, interactionSource = interaction) { navigator.radar = CardLaunch(bounds) }
                 .semantics {
                     contentDescription = "Weather for $title: ${roundHalfUpToInt(data.temperature)} degrees, ${meta.label}. Tap to open live weather radar."
                 },
@@ -178,7 +184,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
             // Condition artwork spilling off the top-right corner.
             VIcon(
                 skyArt(meta.sky),
-                Modifier.align(Alignment.TopEnd).offset(x = 20.dp, y = (-24).dp).alpha(artAlpha),
+                Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-12).dp).alpha(artAlpha),
                 size = 104.dp,
                 tint = artTint,
             )

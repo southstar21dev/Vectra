@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.core.maps
 
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
@@ -36,3 +38,16 @@ actual fun encodePng(image: ArgbImage): ByteArray? = runCatching {
     val info = ImageInfo(image.width, image.height, ColorType.BGRA_8888, ColorAlphaType.UNPREMUL)
     Image.makeRaster(info, raw, image.width * 4).encodeToData(EncodedImageFormat.PNG)?.bytes
 }.getOrNull()
+
+actual fun ArgbImage.toImageBitmap(): ImageBitmap {
+    val raw = ByteArray(pixels.size * 4)
+    pixels.forEachIndexed { i, p ->
+        val o = i * 4
+        raw[o] = (p and 0xFF).toByte()
+        raw[o + 1] = ((p shr 8) and 0xFF).toByte()
+        raw[o + 2] = ((p shr 16) and 0xFF).toByte()
+        raw[o + 3] = ((p ushr 24) and 0xFF).toByte()
+    }
+    val info = ImageInfo(width, height, ColorType.BGRA_8888, ColorAlphaType.UNPREMUL)
+    return Image.makeRaster(info, raw, width * 4).toComposeImageBitmap()
+}

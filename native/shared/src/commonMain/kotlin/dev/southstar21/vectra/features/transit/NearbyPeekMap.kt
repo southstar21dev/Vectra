@@ -47,6 +47,7 @@ import org.maplibre.compose.camera.CameraUpdate
 import org.maplibre.compose.map.MapState
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.maps.MapColors
+import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 data class PeekStop(val id: String, val lat: Double, val lon: Double)
@@ -180,6 +181,8 @@ fun NearbyPeekMap(
     modifier: Modifier = Modifier,
     pins: List<PeekPin> = emptyList(),
     onReady: () -> Unit = {},
+    /** The nearest stops' next departures (C1), thinned so none touch or hide the expand button. */
+    chips: List<NearbyChip> = emptyList(),
 ) {
     var map by remember { mutableStateOf<MapState?>(null) }
     var centered by remember { mutableStateOf(false) }
@@ -208,6 +211,7 @@ fun NearbyPeekMap(
     }
 
     val pulse = highlightStopId?.let { id -> stops.firstOrNull { it.id == id } }
+    val shownChips = rememberThinnedChips(map, loaded, chips, ChipChrome(top = 0.dp, controlsBottom = 52.dp, bottom = 24.dp))
 
     TransitMap(
         initialCenter = center,
@@ -234,6 +238,8 @@ fun NearbyPeekMap(
             if (pulse != null) {
                 Box(Modifier.placedAt(LatLon(pulse.lat, pulse.lon).position)) { PulseDot() }
             }
+            // The card is the button: the chips are just labels here.
+            if (composeOverlaysTrackMap) NearbyChipOverlay(chips, shownChips, focusedId = null, dimmed = false, onTap = {}, board = null)
         },
     )
 }

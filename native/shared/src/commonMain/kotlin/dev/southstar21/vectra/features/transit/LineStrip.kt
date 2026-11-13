@@ -1,5 +1,10 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,47 +35,67 @@ private val DotStroke = 2.5.dp
 private val YouRadius = 10.dp
 private val YouRing = 5.dp
 /** The round vehicle token's diameter (its heading point reaches a little further). */
-private val MarkerW = 26.dp
+internal val MarkerW = 26.dp
 private val Halo = 3.dp
 private val LineW = 4.dp
-private val EdgeInset = 6.dp
+internal val EdgeInset = 6.dp
 
 /**
  * The line through your stop: three stops each side, vehicles approaching from both ends
- * with their times beside them (above for right-heading, below for left-heading).
+ * with their times on one row above the line, nudged apart where two would touch.
  * [labels] false draws the slim version: just the line and the markers.
  */
 @Composable
-internal fun LineStrip(model: StripModel, colors: StripColors, modifier: Modifier = Modifier, labels: Boolean = true) {
+internal fun LineStrip(
+    model: StripModel,
+    colors: StripColors,
+    modifier: Modifier = Modifier,
+    labels: Boolean = true,
+    /** The card's entrance (see [rememberStripEntrance]); [skeletonColors] are its grey start. */
+    entrance: StripEntrance? = null,
+    skeletonColors: StripColors? = null,
+) {
     val density = LocalDensity.current
-    val top = with(density) { stripRoom(model, labels, above = true) }
-    val bottom = with(density) { stripRoom(model, labels, above = false) }
+    // The skeleton keeps room for times both sides, so the strip doesn't jump when they land.
+    val skeleton = entrance?.skeleton == true
+    val top = with(density) { stripRoom(model, labels, above = true, assumeLabels = skeleton) }
+    val bottom = with(density) { stripRoom(model, labels, above = false, assumeLabels = skeleton) }
     val mid = top + YouRadius
-    val total = top + YouRadius * 2 + bottom
+    val rawTotal = top + YouRadius * 2 + bottom
+    val total = if (entrance != null) animateDpAsState(rawTotal, VectraSprings.settle(Dp.VisibilityThreshold), label = "stripHeight").value else rawTotal
+    val from = skeletonColors ?: colors
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal = EdgeInset).height(total).clearAndSetSemantics { }) {
         val w = maxWidth
         val n = StripStopCount
         fun xOf(u: Float): Dp = w * (u / (n - 1))
-        Canvas(Modifier.fillMaxWidth().height(total)) { drawStrip(model, colors, mid.toPx()) }
-        if (labels) {
-            for (v in model.vehicles) {
-                if (v.label != null || v.sub != null) PlacedLabel(v, xOf(v.position), v.position / (n - 1), mid)
+        Canvas(Modifier.fillMaxWidth().height(total)) {
+            val e = entrance?.takeIf { it.playing }
+            if (e == null) drawStrip(model, colors, mid.toPx()) else drawEntrance(model, colors, from, e, mid.toPx(), labels)
+        }
+        if (labels && !skeleton) {
+            val placed = spreadLabels(model.vehicles.map { it.position }, n - 1, w)
+            model.vehicles.forEachIndexed { i, v ->
+                if (v.label != null || v.sub != null) {
+                    val fade = entrance?.let { e -> Modifier.graphicsLayer { alpha = if (e.playing) entranceLabelAlpha(e.seconds, i) else 1f } } ?: Modifier
+                    val u = placed[i]
+                    Box(fade) { PlacedLabel(v, xOf(u), u / (n - 1), mid) }
+                }
             }
         }
     }
 }
 
 /**
- * Room above or below the line: a label's height (with its second line) where vehicles have
- * labels, a little otherwise, and at least the fork's spread when the line forks.
+ * Room above or below the line: above, a label's height (with its second line) where vehicles
+ * have labels; a little otherwise; at least the fork's spread when the line forks.
  */
-private fun Density.stripRoom(model: StripModel, labels: Boolean, above: Boolean): Dp {
+private fun Density.stripRoom(model: StripModel, labels: Boolean, above: Boolean, assumeLabels: Boolean = false): Dp {
     if (!labels) return 10.dp
-    val hasLabels = if (above) model.hasLabelsAbove else model.hasLabelsBelow
-    val hasSubs = if (above) model.hasSubsAbove else model.hasSubsBelow
-    val room = if (hasLabels) 20.sp.toDp() + (if (hasSubs) 15.sp.toDp() else 0.dp) + 12.dp else 12.dp
+    val hasLabels = above && (assumeLabels || model.hasLabels)
+    val room = if (hasLabels) 20.sp.toDp() + (if (model.hasSubs) 15.sp.toDp() else 0.dp) + 12.dp else 12.dp
     return if (model.fork != null) maxOf(room, 30.dp) else room
 }
+
 
 /**
  * Track, stops, markers, then your stop. A stop a marker partly covers would peek out beside it
@@ -81,21 +106,40 @@ private fun DrawScope.drawStrip(model: StripModel, colors: StripColors, mid: Flo
     // Each marker's centre, held within the strip's inset at the ends instead of hanging off it.
     val half = MarkerW.toPx() / 2
     val inset = EdgeInset.toPx()
-    val markers = model.vehicles.filter { it.showMarker }.map { it to stripX(it.position).coerceIn(half - inset, size.width - half + inset) }
-    val xs = markers.map { it.second }
+    val markers = model.vehicles.filter { it.showMarker }.map { Mark(it, stripX(it.position).coerceIn(half - inset, size.width - half + inset)) }
+    drawStripParts(model, colors, mid, markers)
+}
+
+/** A marker to draw: its vehicle, where, and (mid-entrance) its size and opacity. */
+internal class Mark(val v: StripVehicle, val x: Float, val scale: Float = 1f, val alpha: Float = 1f)
+
+/** Track, stops, (placeholders), markers, then your stop; see [drawStrip]. */
+internal fun DrawScope.drawStripParts(
+    model: StripModel,
+    colors: StripColors,
+    mid: Float,
+    markers: List<Mark>,
+    /** Placeholders that, like markers, leave no stop peeking out from under them. */
+    hideAt: List<Float> = emptyList(),
+    under: DrawScope.() -> Unit = {},
+) {
+    val half = MarkerW.toPx() / 2
+    val xs = markers.map { it.x }
     drawTrack(model, colors, mid)
-    drawStops(model, colors, mid, xs)
-    drawMarkers(markers, colors, mid)
+    drawStops(model, colors, mid, xs + hideAt)
+    under()
+    // Your stop under the markers: a vehicle at or passing it is always in front, never behind.
     val yc = Offset(stripX(StripSideStops.toFloat()), mid)
-    if (xs.none { abs(it - yc.x) < half + Halo.toPx() }) {
+    if (xs.none { abs(it - yc.x) < half / 2 }) {
         val yr = YouRadius.toPx()
         drawCircle(colors.card, yr + 4.dp.toPx(), yc)
         drawCircle(colors.line, yr, yc)
         drawCircle(colors.you, yr - YouRing.toPx(), yc)
     }
+    drawMarkers(markers, colors, mid)
 }
 
-private fun DrawScope.stripX(u: Float) = size.width * (u / (StripStopCount - 1))
+internal fun DrawScope.stripX(u: Float) = size.width * (u / (StripStopCount - 1))
 
 private fun DrawScope.drawTrack(model: StripModel, colors: StripColors, mid: Float) {
     val n = StripStopCount
@@ -162,21 +206,22 @@ private fun DrawScope.drawStops(model: StripModel, colors: StripColors, mid: Flo
     }
 }
 
-private fun DrawScope.drawMarkers(markers: List<Pair<StripVehicle, Float>>, colors: StripColors, mid: Float) {
+private fun DrawScope.drawMarkers(markers: List<Mark>, colors: StripColors, mid: Float) {
     val r = MarkerW.toPx() / 2
     val halo = Halo.toPx()
-    for ((v, cx) in markers) {
+    for (m in markers) {
+        val v = m.v
         val (fill, ink) = if (v.replacement) colors.bus to colors.busInk else colors.marker to colors.markerInk
         drawVehicleToken(
-            center = Offset(cx, mid),
-            radius = r,
+            center = Offset(m.x, mid),
+            radius = r * m.scale,
             fill = fill,
             ink = ink,
             headingDeg = if (v.heading > 0) 90f else 270f,
             ring = colors.ring,
             gap = colors.card,
-            gapWidth = halo,
-            alpha = if (v.faded) 0.35f else 1f,
+            gapWidth = halo * m.scale,
+            alpha = (if (v.faded) 0.35f else 1f) * m.alpha,
         )
     }
 }

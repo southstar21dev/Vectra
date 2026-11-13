@@ -210,7 +210,7 @@ fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBack: () -> 
                             else routeStops.firstOrNull { it.id == stopId }?.let(handleAddStop)
                         },
                     )
-                    LoadingOverlay(show = loadingRoute || !routeMapReady, label = "Loading route map…")
+                    MapLoadingOrb(show = loadingRoute || !routeMapReady, label = "Loading route map…")
                     MapBottomFade()
                 }
 

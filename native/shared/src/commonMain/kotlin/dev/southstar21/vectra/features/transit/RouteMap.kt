@@ -1,5 +1,9 @@
 package dev.southstar21.vectra.features.transit
 
+import org.maplibre.compose.map.MapEvent
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -35,6 +39,7 @@ import dev.southstar21.vectra.core.maps.VehicleVariant
 import dev.southstar21.vectra.core.maps.boundsContain
 import dev.southstar21.vectra.core.maps.boundsOf
 import dev.southstar21.vectra.core.maps.fitBounds
+import dev.southstar21.vectra.core.maps.easeTo
 import dev.southstar21.vectra.core.maps.jumpTo
 import dev.southstar21.vectra.core.maps.labelPriority
 import dev.southstar21.vectra.core.maps.lineFeatureCollection
@@ -76,6 +81,8 @@ private class FitRefs {
     var tripKey: List<LatLon>? = null
     var selectedStopKey: String? = null
     var fitted = false
+    /** The next fit was asked for (re-centre, the map shrinking back): glide there, don't jump. */
+    var animateNext = false
 }
 
 /**
@@ -95,7 +102,17 @@ fun RouteMap(
     modifier: Modifier = Modifier,
     height: Dp = 240.dp,
     secondaryLines: List<RouteMapSecondaryLine> = emptyList(),
-    onFullscreen: (() -> Unit)? = null,
+    /** Grows the map to fill its sheet or shrinks it back (see [expanded]); null shows no button for it. */
+    onToggleExpand: (() -> Unit)? = null,
+    /** The map fills its sheet: the toggle shrinks it. */
+    expanded: Boolean = false,
+    /**
+     * How much of the map's bottom is out of sight (a map laid out taller than the box showing it,
+     * so growing that box never resizes the map): fits keep your stop and the vehicles above it.
+     */
+    viewportBottomInset: Dp = 0.dp,
+    /** False: the caller shows the basemap credit (where it stays in sight). */
+    attribution: Boolean = true,
     fillHeight: Boolean = false,
     /** Fired once when the map has loaded and painted. */
     onReady: (() -> Unit)? = null,
@@ -107,6 +124,15 @@ fun RouteMap(
     userLocation: LatLon? = null,
     /** Room around the control column (clear of whatever is laid over the map's top). */
     controlsPadding: PaddingValues = PaddingValues(top = 8.dp, end = 8.dp),
+    /** The map, once created: for projecting the route onto the screen (the loading orb's melt). */
+    onMapState: ((MapState) -> Unit)? = null,
+    /** Plays the map's entrance in step with its loading orb's melt; null shows everything at once. */
+    reveal: MapReveal? = null,
+    /**
+     * False: a still view that takes no touches (inside a sheet, where swipes move the sheet), with
+     * only the expand button; the caller decides which touches expand it.
+     */
+    interactive: Boolean = true,
 ) {
     val c = Vectra.colors
     val isLight = !c.isDark
@@ -116,6 +142,7 @@ fun RouteMap(
     var fitNonce by remember { mutableIntStateOf(0) }
     val guard = rememberProgrammaticGuard(onUserMove = { followActive = false })
     val refs = remember { FitRefs() }
+    val inset by rememberUpdatedState(viewportBottomInset)
 
     val labelColor = c.textSecondary
     val labelHalo = if (isLight) Color.White.copy(alpha = 0.95f) else Color.Black.copy(alpha = 0.95f)
@@ -129,7 +156,7 @@ fun RouteMap(
         secondaryLines.filter { it.polyline.size >= 2 && !samePoints(polyline, it.polyline) }
     }
     val secondaryJson = remember(visibleSecondary) { lineFeatureCollection(visibleSecondary.map { it.polyline }).toString() }
-    val stopsJson = remember(stops, visibleSecondary) {
+    val mapStops = remember(stops, visibleSecondary) {
         val primary = stops.mapIndexed { i, s ->
             MapStop(name = s.name, lat = s.lat, lon = s.lon, kind = stopKind(s, i == 0 || i == stops.size - 1))
         }
@@ -141,7 +168,13 @@ fun RouteMap(
                 )
             }
         }
-        stopFeatureCollection(primary + secondary).toString()
+        primary + secondary
+    }
+    val stopsJson = remember(mapStops) { stopFeatureCollection(mapStops).toString() }
+    val revealOrder = remember(stops, mapStops) { stopRevealOrder(stops, mapStops.size) }
+    val revealLines = remember(polyline, visibleSecondary, colors, routeInk) {
+        listOf(RevealLine(polyline, colors.casing, 7.dp, 0.9f, routeInk, 4.dp, 1f)) +
+            visibleSecondary.map { RevealLine(it.polyline, colors.casingSecondary, 5.dp, 0.85f, routeInk, 3.dp, 0.7f) }
     }
 
     val animVehicles = remember(vehicles, polyline, secondaryLines) {
@@ -193,14 +226,20 @@ fun RouteMap(
             for (v in vehicles) if (v.location.lat != 0.0 || v.location.lon != 0.0) add(v.location)
             for (ln in secondaryLines) for (v in ln.vehicles) if (v.location.lat != 0.0 || v.location.lon != 0.0) add(v.location)
         }
+        val animate = refs.animateNext
+        refs.animateNext = false
         if (anchors.size == 1) {
-            if (!refs.fitted) guard.programmaticMove { m.jumpTo(anchors[0], CloseZoom) }
+            if (!refs.fitted) {
+                guard.programmaticMove {
+                    if (animate) m.easeTo(anchors[0], CloseZoom, inset) else m.jumpTo(anchors[0], CloseZoom, inset)
+                }
+            }
             refs.fitted = true
             return@LaunchedEffect
         }
         val bounds = boundsOf(anchors) ?: return@LaunchedEffect
         if (refs.fitted && anchors.all { m.boundsContain(it) }) return@LaunchedEffect
-        guard.programmaticMove { m.fitBounds(bounds, 50.dp, maxZoom = CloseZoom, animate = false) }
+        guard.programmaticMove { m.fitBounds(bounds, 50.dp, maxZoom = CloseZoom, animate = animate, bottomInset = inset) }
         refs.fitted = true
     }
 
@@ -210,16 +249,27 @@ fun RouteMap(
         if (m != null && bounds != null) {
             guard.userMoved = true
             followActive = false
-            guard.programmaticMove { m.fitBounds(bounds, 40.dp, animate = true) }
+            guard.programmaticMove { m.fitBounds(bounds, 40.dp, animate = true, bottomInset = inset) }
         }
     }
     val resetView: () -> Unit = {
         guard.resetUserMoved()
         followActive = true
         refs.fitted = false
+        refs.animateNext = true
         fitNonce++
     }
+    // Shrunk back into its sheet: the small map shows your stop and the vehicles again.
+    LaunchedEffect(expanded) { if (!expanded && guard.userMoved) resetView() }
+    val toggle = onToggleExpand?.let {
+        if (expanded) MapControlButton("expand", "Shrink the map", RemixIcons.FullscreenExitLine, it)
+        else MapControlButton("expand", "Expand the map", RemixIcons.FullscreenLine, it)
+    }
     val controls = buildList {
+        if (!interactive) {
+            toggle?.let(::add)
+            return@buildList
+        }
         add(
             MapControlButton(
                 id = "recenter",
@@ -230,10 +280,25 @@ fun RouteMap(
             ),
         )
         add(MapControlButton("whole-route", "Show the whole route", RemixIcons.RouteLine, showWholeRoute))
-        if (onFullscreen != null) add(MapControlButton("fullscreen", "Fullscreen map", RemixIcons.FullscreenLine, onFullscreen))
+        toggle?.let(::add)
     }
     val ready by rememberUpdatedState(onReady)
     val loadError by rememberUpdatedState(onLoadError)
+    // The look-alikes leave only once the map has drawn the real layers (it applies them a little late).
+    LaunchedEffect(reveal, reveal?.layersOn, map) {
+        val r = reveal ?: return@LaunchedEffect
+        if (!r.layersOn || r.done) return@LaunchedEffect
+        map?.let { m ->
+            var drew = false
+            withTimeoutOrNull(HandOverWaitMs) {
+                m.events.first { e ->
+                    if (e is MapEvent.FrameRendered) drew = true
+                    drew && e is MapEvent.Idle
+                }
+            }
+        }
+        r.done = true
+    }
 
     val isPriority = remember {
         (feature["kind"].asString() eq const("tracked")) or (feature["kind"].asString() eq const("selected"))
@@ -245,22 +310,28 @@ fun RouteMap(
         modifier = if (fillHeight) modifier.fillMaxSize() else modifier.fillMaxWidth().height(height),
         minZoom = 6.0,
         dragRotate = false,
-        onReady = { map = it },
+        interactive = interactive,
+        attribution = attribution,
+        onReady = { map = it; onMapState?.invoke(it) },
         onLoaded = { ready?.invoke() },
         onLoadError = { loadError?.invoke() },
         onUserMove = guard::handleUserMove,
         layers = {
+            // During the entrance look-alikes play over the map (RouteReveal) and these wait.
+            val lineA = if (reveal?.layersOn != false) 1f else 0f
+            val stopsA = lineA
+            val labelsA = if (reveal?.done != false) 1f else 0f
             val primary = rememberGeoJsonSource(GeoJsonData.JsonString(primaryJson))
             RouteLineLayers(
                 "live-line-casing", "live-line-base", primary,
-                casing = LineStroke(const(colors.casing), 7.dp, 0.9f),
-                line = LineStroke(const(routeInk), 4.dp, 1f),
+                casing = LineStroke(const(colors.casing), 7.dp, 0.9f * lineA),
+                line = LineStroke(const(routeInk), 4.dp, 1f * lineA),
             )
             val secondary = rememberGeoJsonSource(GeoJsonData.JsonString(secondaryJson))
             RouteLineLayers(
                 "live-secondary-casing", "live-secondary-base", secondary,
-                casing = LineStroke(const(colors.casingSecondary), 5.dp, 0.85f),
-                line = LineStroke(const(routeInk), 3.dp, 0.7f),
+                casing = LineStroke(const(colors.casingSecondary), 5.dp, 0.85f * lineA),
+                line = LineStroke(const(routeInk), 3.dp, 0.7f * lineA),
             )
             val stopsSrc = rememberGeoJsonSource(GeoJsonData.JsonString(stopsJson))
             val kind = feature["kind"].asString()
@@ -269,10 +340,10 @@ fun RouteMap(
                 filter = isPriority,
                 radius = switch(kind, case("selected", const(10.dp)), fallback = const(8.dp)),
                 color = const(Palette.Blue500),
-                opacity = switch(kind, case("selected", const(0.25f)), fallback = const(0.12f)),
+                opacity = switch(kind, case("selected", const(0.25f * stopsA)), fallback = const(0.12f * stopsA)),
                 strokeWidth = const(1.dp),
                 strokeColor = const(Palette.Blue500),
-                strokeOpacity = switch(kind, case("selected", const(0.35f)), fallback = const(0.2f)),
+                strokeOpacity = switch(kind, case("selected", const(0.35f * stopsA)), fallback = const(0.2f * stopsA)),
             )
             CircleLayer(
                 id = "live-stops-dots", source = stopsSrc,
@@ -299,6 +370,8 @@ fun RouteMap(
                     case("selected", const(2.5.dp)), case("tracked", const(2.dp)),
                     fallback = const(1.dp),
                 ),
+                opacity = const(stopsA),
+                strokeOpacity = const(stopsA),
             )
             SymbolLayer(
                 id = "live-stop-labels", source = stopsSrc,
@@ -313,6 +386,7 @@ fun RouteMap(
                 textColor = const(labelColor),
                 textHaloColor = const(labelHalo),
                 textHaloWidth = const(1.2.dp),
+                textOpacity = const(labelsA),
             )
             SymbolLayer(
                 id = "live-stop-labels-priority", source = stopsSrc,
@@ -327,18 +401,28 @@ fun RouteMap(
                 textColor = const(labelColor),
                 textHaloColor = const(labelHalo),
                 textHaloWidth = const(1.2.dp),
+                textOpacity = const(labelsA),
             )
-            userLocation?.let { UserLocationLayers("live", it) }
+            userLocation?.let { UserLocationLayers("live", it, scale = stopsA) }
             // iOS: vehicles live in the map so they stay pinned while it pans.
-            if (!composeOverlaysTrackMap) RoundVehicleLayers("live", rememberVehicleAnimations(animVehicles), tokenStyle, callouts)
+            if (!composeOverlaysTrackMap) {
+                RoundVehicleLayers("live", rememberVehicleAnimations(animVehicles), tokenStyle, callouts, scale = stopsA)
+            }
         },
         overlay = {
+            if (reveal != null) RouteReveal(reveal, revealLines, mapStops, revealOrder, userLocation) { map }
             if (!composeOverlaysTrackMap) return@TransitMap
             // Per-frame state is read only here, so gliding never recomposes the layers.
             val frames = rememberVehicleAnimations(animVehicles)
-            RoundVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 }, tokenStyle, callouts)
+            RoundVehicleMarkers(
+                frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 }, tokenStyle, callouts,
+                scale = { i -> revealVehicle(reveal?.progress ?: 1f, i) },
+            )
         },
     ) {
-        GlassMapControls(controls, Modifier.align(Alignment.TopEnd).padding(controlsPadding))
+        GlassMapControls(
+            controls,
+            Modifier.align(Alignment.TopEnd).padding(controlsPadding).graphicsLayer { alpha = revealControls(reveal?.progress ?: 1f) },
+        )
     }
 }

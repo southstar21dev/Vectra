@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.features.transit
 
-import kotlin.math.abs
 
 private const val MaxShortName = 12
 
@@ -41,8 +40,8 @@ fun extraDirections(directions: List<StripDirection>): List<StripDirection> {
 }
 
 /**
- * With a fork, the two directions sharing that side each name where they go beside their
- * marker ("Újbuda", "Móricz"); when their labels would overlap, the forked one keeps only its marker.
+ * With a fork two directions share one side, and a strip shows one vehicle each way: on that side
+ * the sooner of the two stays, named after where it goes ("Újbuda", "Móricz") so the branch reads.
  */
 internal fun forkVehicles(
     drawn: List<StripVehicle>,
@@ -52,12 +51,9 @@ internal fun forkVehicles(
 ): List<StripVehicle> {
     val (e, heading) = fork
     val sibling = dirs[if (heading > 0) 0 else 1]
-    val tagged = drawn.map { v ->
-        if (v.heading == heading && !v.second && v.sub == null) v.copy(sub = shortDestination(sibling.destination)) else v
+    val forkSooner = (e.arrival?.arrivalMs ?: Long.MAX_VALUE) < (sibling.arrival?.arrivalMs ?: Long.MAX_VALUE)
+    if (forkedVehicle != null && forkSooner) {
+        return drawn.filter { it.heading != heading } + forkedVehicle.copy(sub = forkedVehicle.sub ?: shortDestination(e.destination))
     }
-    val own = forkedVehicle ?: return tagged
-    val siblingPos = tagged.firstOrNull { it.heading == heading && !it.second }?.position
-    val crowded = siblingPos != null && abs(own.position - siblingPos) < LabelGapStops
-    val forked = if (crowded) own.copy(label = null, sub = null) else own.copy(sub = own.sub ?: shortDestination(e.destination))
-    return tagged + forked
+    return drawn.map { v -> if (v.heading == heading && v.sub == null) v.copy(sub = shortDestination(sibling.destination)) else v }
 }

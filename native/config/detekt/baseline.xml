@@ -83,8 +83,7 @@
     <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun ReorderList</ID>
     <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun TrackerRow</ID>
     <ID>CyclomaticComplexMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
-    <ID>CyclomaticComplexMethod:NearbyExplorerMap.kt:@Composable fun NearbyExplorerMap</ID>
-    <ID>CyclomaticComplexMethod:NearbyExplorerScreen.kt:@Composable private fun ExplorerShell</ID>
+    <ID>CyclomaticComplexMethod:NearbyExplorerMap.kt:@Composable internal fun NearbyExplorerMap</ID>
     <ID>CyclomaticComplexMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildExplorerMapStops: List&lt;ExplorerMapStop&gt;</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
@@ -132,7 +131,7 @@
     <ID>CyclomaticComplexMethod:WeatherRadarScreen.kt:@Composable private fun ColumnScope.RadarContent</ID>
     <ID>CyclomaticComplexMethod:WeatherRepository.kt:WeatherRepository$fun refreshWeather</ID>
     <ID>DestructuringDeclarationWithTooManyEntries:NearbyStops.kt:val (north, south, east, west) = bounds</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:TransitCommon.kt:val (minW, h, padX, radius) = when (size) { RouteBadgeSize.Xs2 -&gt; Quad(24.dp, 24.dp, 6.dp, 999.dp) RouteBadgeSize.Xs -&gt; Quad(28.dp, 28.dp, 4.dp, 999.dp) RouteBadgeSize.Sm -&gt; Quad(32.dp, 32.dp, 6.dp, 8.dp) RouteBadgeSize.Lg -&gt; Quad(48.dp, 48.dp, 8.dp, 12.dp) RouteBadgeSize.Md -&gt; Quad(36.dp, 36.dp, 6.dp, 8.dp) }</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:TransitCommon.kt:val (minW, h, padX, radius) = when (size) { RouteBadgeSize.Xs2 -&gt; Quad(24.dp, 24.dp, 6.dp, 999.dp) RouteBadgeSize.Xs -&gt; Quad(28.dp, 28.dp, 4.dp, 999.dp) RouteBadgeSize.Tag -&gt; Quad(24.dp, 22.dp, 5.dp, 6.dp) RouteBadgeSize.TagMd -&gt; Quad(28.dp, 26.dp, 5.dp, 7.dp) RouteBadgeSize.Sm -&gt; Quad(32.dp, 32.dp, 6.dp, 8.dp) RouteBadgeSize.Lg -&gt; Quad(48.dp, 48.dp, 8.dp, 12.dp) RouteBadgeSize.Md -&gt; Quad(36.dp, 36.dp, 6.dp, 8.dp) }</ID>
     <ID>EmptyElseBlock:LiveQueryTest.kt:LiveQueryTest$if (++calls == 1) gate.await()</ID>
     <ID>EmptyElseBlock:RunSuspendCatchingTest.kt:RunSuspendCatchingTest$if (i == 2) this@launch.cancel()</ID>
     <ID>LambdaParameterEventTrailing:ManageTrackersScreen.kt:onEdit: ((TransitTracker) -&gt; Unit)?</ID>
@@ -172,8 +171,7 @@
     <ID>LongMethod:Misc.kt:@Composable fun EmptyState</ID>
     <ID>LongMethod:NearbyDeparturesList.kt:@Composable fun NearbyDeparturesList</ID>
     <ID>LongMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
-    <ID>LongMethod:NearbyExplorerMap.kt:@Composable fun NearbyExplorerMap</ID>
-    <ID>LongMethod:NearbyExplorerScreen.kt:@Composable private fun ExplorerShell</ID>
+    <ID>LongMethod:NearbyExplorerMap.kt:@Composable internal fun NearbyExplorerMap</ID>
     <ID>LongMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
     <ID>LongMethod:NearbyMapStrip.kt:@Composable fun NearbyMapStrip</ID>
     <ID>LongMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
@@ -250,7 +248,7 @@
     <ID>ModifierMissing:WeatherRadarScreen.kt:@Composable fun WeatherRadarScreen</ID>
     <ID>ModifierNaming:LiquidTabs.kt:rowModifier: Modifier</ID>
     <ID>ModifierNotUsedAtRoot:Dialog.kt:Modifier .graphicsLayer { alpha = panelAlpha.value.coerceIn(0f, 1f) scaleX = panelScale.value; scaleY = panelScale.value } .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = this@BoxWithConstraints.maxHeight * 0.9f) .boxShadow(shape, cardDepthShadows(c.isDark)) .background(c.surfaceSecondary, shape) .insetShadow(shape, cardDepthShadows(c.isDark)) .then(if (c.isDark) Modifier.border(1.dp, c.borderSubtle, shape) else Modifier) .consumeTouches() .then(modifier)</ID>
-    <ID>ModifierNotUsedAtRoot:Sheet.kt:modifier .align(Alignment.BottomCenter) .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = maxPanelHeight) .then(if (size != SheetSize.Fit) Modifier.heightIn(min = maxPanelHeight) else Modifier) .onSizeChanged { s -&gt; panelHeight = s.height.toFloat() val hidden = s.height + with(density) { 24.dp.toPx() } val half = (s.height - windowHeight * halfFraction).coerceAtLeast(0f) state.anchors = if (size == SheetSize.Expandable &amp;&amp; half &gt; 0f) listOf(0f, half, hidden) else listOf(0f, hidden) } .offset { IntOffset(0, state.current.takeIf { panelHeight &gt; 0f }?.roundToInt() ?: constraints.maxHeight) } .graphicsLayer { // Predictive back: the sheet shrinks a little and drops with the gesture. val p = back() val s = 1f - 0.06f * p scaleX = s; scaleY = s translationY = p * 32.dp.toPx() transformOrigin = TransformOrigin(0.5f, 1f) } .then( if (floating) Modifier.floatingSheetSurface(state, c.glassBgElevated, c.glassBorder, c.glassBorderSpecular) else Modifier.boxShadow(shape, cardDepthShadows(c.isDark)).background(c.surfaceSecondary, shape), ) .consumeTouches() .draggable( rememberDraggableState { delta -&gt; scope.launch { state.dragBy(delta) } }, Orientation.Vertical, enabled = open, onDragStarted = { state.dragging = true }, onDragStopped = { velocity -&gt; release(velocity) }, ) .then(if (open) Modifier.nestedScroll(nested) else Modifier) .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom))</ID>
+    <ID>ModifierNotUsedAtRoot:Sheet.kt:modifier .align(Alignment.BottomCenter) .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = maxPanelHeight) .then(if (size != SheetSize.Fit) Modifier.heightIn(min = maxPanelHeight) else Modifier) .onSizeChanged { s -&gt; panelHeight = s.height.toFloat() val hidden = s.height + with(density) { 24.dp.toPx() } val half = (s.height - windowHeight * halfFraction).coerceAtLeast(0f) state.anchors = if (size == SheetSize.Expandable &amp;&amp; half &gt; 0f) listOf(0f, half, hidden) else listOf(0f, hidden) } .offset { IntOffset(0, state.current.takeIf { panelHeight &gt; 0f }?.roundToInt() ?: constraints.maxHeight) } .graphicsLayer { // Predictive back: the sheet shrinks a little and drops with the gesture. val p = back() val s = 1f - 0.06f * p scaleX = s; scaleY = s translationY = p * 32.dp.toPx() transformOrigin = TransformOrigin(0.5f, 1f) } .then( if (floating) Modifier.floatingSheetSurface(state, c.glassBgElevated, c.glassBorder, c.glassBorderSpecular) else Modifier.boxShadow(shape, cardDepthShadows(c.isDark)).background(c.surfaceSecondary, shape), ) .consumeTouches() .draggable( rememberDraggableState { delta -&gt; scope.launch { state.dragBy(delta) } }, Orientation.Vertical, enabled = open &amp;&amp; !pinnedOpen, onDragStarted = { state.dragging = true }, onDragStopped = { velocity -&gt; release(velocity) }, ) .then(if (open &amp;&amp; !pinnedOpen) Modifier.nestedScroll(nested) else Modifier) .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom))</ID>
     <ID>ModifierWithoutDefault:AddSessionDialog.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:AppShell.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:HolidayCard.kt:modifier: Modifier</ID>
@@ -258,7 +256,6 @@
     <ID>ModifierWithoutDefault:ManageTrackersScreen.kt:gripModifier: Modifier</ID>
     <ID>ModifierWithoutDefault:ManageTrackersScreen.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:NearbyDeparturesSheet.kt:modifier: Modifier</ID>
-    <ID>ModifierWithoutDefault:NearbyExplorerScreen.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:StopsProgressVisualizer.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:TransitScreen.kt:modifier: Modifier</ID>
     <ID>ModifierWithoutDefault:WeatherCard.kt:modifier: Modifier</ID>
@@ -449,13 +446,10 @@
     <ID>TooManyFunctions:WeatherRepository.kt:WeatherRepository</ID>
     <ID>TooManyFunctions:WeekNavigation.kt:dev.southstar21.vectra.features.schedule.WeekNavigation.kt</ID>
     <ID>TopLevelPropertyNaming:AppSplash.kt:private const val REDUCED_EXIT_MS = 200L</ID>
-    <ID>TopLevelPropertyNaming:AppSplash.kt:private const val SPLASH_MIN_VISIBLE_MS = 1000L</ID>
     <ID>TopLevelPropertyNaming:IcsParser.kt:/** The Google Apps Script proxy: the university blocks datacenter IPs, Google is not blocked. */ const val NEPTUN_ICS_PROXY_URL = "https://script.google.com/macros/s/AKfycbxp_HKH85vTNjtVC5L2d8Ojhwt7BJQzxFVvvOi00UQK1w1G89RrMX11OaAMRHnD-5kj/exec"</ID>
     <ID>TopLevelPropertyNaming:IcsParser.kt:const val NEPTUN_FETCH_FAILED = "We couldn't download your Neptun calendar — the university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."</ID>
     <ID>TopLevelPropertyNaming:ScheduleItemsStore.kt:const val SCHEDULE_ITEMS_CACHE_BASE_KEY = "vectra_schedule_items"</ID>
-    <ID>TopLevelPropertyNaming:SplashScene.kt:/** * A faint dotted orb rising over a * dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue, the Rock * Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the * Danube. Shapes live in fixed scene units (260 wide, waterline at B), are * rasterised once and sampled into dots; frames only draw dots, batched. */ const val SCENE_W = 260f</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:/** A frame with the city fully lit and the tram mid-bridge, for reduced motion. */ const val STILL_FRAME_ELAPSED = LIGHTS_START_MS + 500 + TRAM_LOOP_MS / 2</ID>
-    <ID>TopLevelPropertyNaming:SplashScene.kt:const val SUNRISE_EXIT_MS = 700f</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val LIGHTS_START_MS = 100f</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val ORB_CY = B - 81</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val ORB_R = 230f</ID>
@@ -464,7 +458,6 @@
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_W = 30f</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val TRAM_Y = B - 16 - TRAM_H</ID>
     <ID>UnusedParameter:DeviceLocation.kt:current: WatchLocationState</ID>
-    <ID>VariableNaming:AppSplash.kt:val version_ = remember { Animatable(0f) }</ID>
     <ID>VariableNaming:CourseRulesTest.kt:CourseRulesTest$private val Schedule = Variant(ScheduleCourses, frequencyFromString = false)</ID>
     <ID>VariableNaming:CourseRulesTest.kt:CourseRulesTest$private val Tracker = Variant(TrackerCourses, frequencyFromString = true)</ID>
     <ID>VariableNaming:IcsParserTest.kt:IcsParserTest$private val CLASS = "SUMMARY:Calculus I ( - MATH101-E01) - Dr. Example - Tanóra"</ID>

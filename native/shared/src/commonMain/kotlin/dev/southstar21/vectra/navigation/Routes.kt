@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.navigation
 
+import dev.southstar21.vectra.core.designsystem.components.CardLaunch
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,9 +38,8 @@ sealed interface Screen : NavKey {
     @Serializable data object AddTracker : Screen
     @Serializable data object ManageTrackers : Screen
     @Serializable data class EditTracker(val trackerId: String) : Screen
-    @Serializable data class TrackerMap(val trackerId: String, val stopId: String? = null) : Screen
     @Serializable data object NearbyExplorer : Screen
-    // Schedule & course hub
+    // Schedule
     /** Add a manual class ([eventId] null) or edit one. */
     @Serializable data class ClassEditor(val eventId: String? = null) : Screen
     /**
@@ -48,14 +48,12 @@ sealed interface Screen : NavKey {
      */
     @Serializable data class ItemEditor(val itemId: String? = null, val kind: String, val reopen: Boolean = false) : Screen
     @Serializable data object NeptunImport : Screen
-    /** The Course Hub of the course stored under [courseKey]. */
-    @Serializable data class CourseHub(val courseKey: String) : Screen
 }
 
 /** On a wide window this screen opens as a centred card over the tabs; maps keep the whole window. */
 val Screen.opensAsCard: Boolean
     get() = when (this) {
-        Screen.Tabs, Screen.WeatherRadar, Screen.NearbyExplorer, is Screen.TrackerMap -> false
+        Screen.Tabs, Screen.WeatherRadar, Screen.NearbyExplorer -> false
         else -> true
     }
 
@@ -103,6 +101,7 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
 
     fun openLiveTracker(trackerId: String, stopId: String? = null) {
         popToTabs()
+        courseHub = null
         liveTracker = LiveTrackerSheet(trackerId, stopId)
     }
 
@@ -115,6 +114,28 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
         liveTracker = null
     }
 
+    /** The weather radar, open over everything (grown out of the dashboard's weather card); null when closed. */
+    var radar by mutableStateOf<CardLaunch?>(null)
+
+    /** The nearby map, open over everything (grown out of the Transit tab's map card); null when closed. */
+    var nearbyMap by mutableStateOf<CardLaunch?>(null)
+
+    /**
+     * The course (by course key) whose Course Hub sheet is open. It floats over whatever is
+     * showing, a pushed screen (the class editor) included, and closing it returns there.
+     */
+    var courseHub by mutableStateOf<String?>(null)
+        private set
+
+    fun openCourseHub(courseKey: String) {
+        liveTracker = null
+        courseHub = courseKey
+    }
+
+    fun closeCourseHub() {
+        courseHub = null
+    }
+
     /** Bumped when the current tab is selected again: its page scrolls back to the top. */
     var reselections by mutableIntStateOf(0)
         private set
@@ -122,6 +143,9 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
     fun navigate(to: Route) {
         popToTabs()
         liveTracker = null
+        courseHub = null
+        radar = null
+        nearbyMap = null
         if (to == current) {
             reselections++
             return
@@ -165,12 +189,19 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
         private val json = Json { ignoreUnknownKeys = true }
         private val screensSerializer = ListSerializer(Screen.serializer())
 
-        /** Survives process death: the tab and the pushed screens come back as they were. */
+        /** Survives process death: the tab, the pushed screens and an open Course Hub come back as they were. */
         val Saver: Saver<AppNavigator, List<String>> = Saver(
-            save = { listOf(json.encodeToString(Route.serializer(), it.current), json.encodeToString(screensSerializer, it.screens.toList())) },
+            save = {
+                listOfNotNull(
+                    json.encodeToString(Route.serializer(), it.current),
+                    json.encodeToString(screensSerializer, it.screens.toList()),
+                    it.courseHub,
+                )
+            },
             restore = { saved ->
                 runCatching {
                     AppNavigator(json.decodeFromString(Route.serializer(), saved[0]), json.decodeFromString(screensSerializer, saved[1]))
+                        .apply { saved.getOrNull(2)?.let(::openCourseHub) }
                 }.getOrElse { AppNavigator() }
             },
         )

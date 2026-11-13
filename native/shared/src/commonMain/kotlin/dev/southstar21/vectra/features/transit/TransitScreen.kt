@@ -1,8 +1,12 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.components.CardLaunch
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
@@ -182,6 +186,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     var menuTracker by remember { mutableStateOf<TransitTracker?>(null) }
     val nearbyStops = rememberNearbyStops(repo, deviceLocation)
     val peekStops = remember(nearbyStops.stops) { nearbyStops.stops.take(8).map { PeekStop(it.id, it.lat, it.lon) } }
+    val peekChips = rememberPeekChips(repo, nearbyStops)
 
     // Departures verdicts separate active trackers from those with no upcoming departures.
     val hasDepartures = remember { mutableStateMapOf<String, Boolean>() }
@@ -204,7 +209,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
                 if (trackers.isNotEmpty()) add(NavbarAction("reorder", "Manage Trackers", RemixIcons.Equalizer2Line, NavbarActionVariant.Gray) {
                     navigator.push(Screen.ManageTrackers)
                 })
-                add(NavbarAction("nearby", "Show Nearby", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.push(Screen.NearbyExplorer) })
+                add(NavbarAction("nearby", "Show Nearby", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.nearbyMap = CardLaunch(null) })
                 add(NavbarAction("add-tracker", "Add Tracker", RemixIcons.AddLine, NavbarActionVariant.Primary) { navigator.push(Screen.AddTracker) })
             },
         ),
@@ -215,17 +220,18 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
         LineStripCard(
             repo = repo,
             tracker = tracker,
-            position = nearbyStops.position,
             onOpen = { navigator.openLiveTracker(it.id, it.stopId) },
             onLongPress = { menuTracker = it },
             onHasDeparturesChange = { id, has -> if (hasDepartures[id] != has) hasDepartures[id] = has },
-            // Without location, the first card asks once for walking times.
-            onAskLocation = if (tracker.id == (activeTrackers.firstOrNull() ?: trackers.firstOrNull())?.id) nearbyStops.refreshLocation else null,
+            revealIndex = activeTrackers.indexOfFirst { it.id == tracker.id }.coerceAtLeast(0),
         )
     }
 
     val wide = LocalWideLayout.current
     val shape = Radius.Card
+
+    // Where the map card is, for the nearby map to grow out of.
+    var stripBounds by remember { mutableStateOf<Rect?>(null) }
 
     @Composable
     fun MapStrip(height: Dp, modifier: Modifier = Modifier) {
@@ -233,10 +239,11 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
             status = nearbyStops.status,
             position = nearbyStops.position,
             stops = peekStops,
-            onOpen = { navigator.push(Screen.NearbyExplorer) },
+            onOpen = { navigator.nearbyMap = CardLaunch(stripBounds) },
             onLocate = nearbyStops.refreshLocation,
-            modifier = modifier,
+            modifier = modifier.onGloballyPositioned { stripBounds = it.boundsInWindow() },
             height = height,
+            chips = peekChips,
         )
     }
 

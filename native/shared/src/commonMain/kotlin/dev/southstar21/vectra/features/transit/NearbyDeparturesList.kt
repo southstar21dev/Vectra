@@ -75,10 +75,6 @@ fun NearbyDeparturesList(
                 c.textMuted,
                 maxLines = 1,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                VIcon(RemixIcons.WalkLine, size = 14.dp, tint = c.textMuted)
-                VText("${lead.walkMinutes} MIN", style = heading, color = c.textMuted, maxLines = 1)
-            }
         }
         groups.forEachIndexed { index, group ->
             if (index > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(c.borderSubtle))

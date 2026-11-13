@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.settings
 
+import dev.southstar21.vectra.core.designsystem.components.SettingsLink
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +30,6 @@ import dev.southstar21.vectra.core.designsystem.components.DialogDescription
 import dev.southstar21.vectra.core.designsystem.components.DialogFooter
 import dev.southstar21.vectra.core.designsystem.components.DialogHeader
 import dev.southstar21.vectra.core.designsystem.components.DialogTitle
-import dev.southstar21.vectra.core.designsystem.components.IconChip
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
@@ -71,8 +71,7 @@ internal fun FieldError(message: String?) {
 internal fun FormLabel(text: String) = VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = Vectra.colors.textSecondary)
 
 @Composable
-private fun EditButton(label: String, onClick: () -> Unit) =
-    VButton(label, onClick, variant = ButtonVariant.Outline, size = ButtonSize.Sm, modifier = Modifier)
+private fun EditButton(label: String, onClick: () -> Unit) = SettingsLink(label, onClick)
 
 @Composable
 private fun EditActions(saving: Boolean, onCancel: () -> Unit, onSave: () -> Unit) {
@@ -116,7 +115,7 @@ private fun NameRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.UserLine, c.tints.blue.bg, c.tints.blue.text, profile?.fullName ?: "Not set", "Full name") {
+        SettingsRow(RemixIcons.UserLine, c.tints.blue.text, profile?.fullName ?: "Not set", "Full name") {
             EditButton("Edit") { value = profile?.fullName.orEmpty(); error = null; editing = true }
         }
     }
@@ -157,7 +156,7 @@ private fun EmailRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.MailLine, c.tints.purple.bg, c.tints.purple.text, profile?.email ?: "N/A", "Email address") {
+        SettingsRow(RemixIcons.MailLine, c.tints.purple.text, profile?.email ?: "N/A", "Email address") {
             EditButton("Change") { email = profile?.email.orEmpty(); current = ""; error = null; editing = true }
         }
     }
@@ -201,15 +200,15 @@ private fun PasswordRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.LockLine, c.tints.sky.bg, c.tints.sky.text, "Password", "Change your password") {
+        SettingsRow(RemixIcons.LockLine, c.tints.sky.text, "Password", "Change your password") {
             EditButton("Change") { current = ""; next = ""; confirm = ""; error = null; editing = true }
         }
     }
 }
 
-/** Destructive delete-account control with a type-to-confirm dialog. */
+/** The Danger zone's delete-account row: opens a type-to-confirm dialog. */
 @Composable
-fun DeleteAccountButton(auth: AuthRepository) {
+internal fun DeleteAccountRow(auth: AuthRepository) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -218,15 +217,12 @@ fun DeleteAccountButton(auth: AuthRepository) {
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf(false) }
-    VButton(onClick = { text = ""; password = ""; error = null; open = true }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
-        VIcon(RemixIcons.DeleteBinLine, size = 14.dp, tint = c.tints.red.text)
-        VText("Delete", style = vtext(TypeScale.Caption, Weight.Bold), color = c.tints.red.text)
-    }
+    SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.text, "Delete account", "Permanently delete your account and data", danger = true, onClick = { text = ""; password = ""; error = null; open = true })
     val close = { if (!deleting) { open = false; text = ""; password = ""; error = null } }
     VDialog(open, close, showClose = false, title = "Delete account?") {
         DialogHeader(Modifier.padding(top = 4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconChip(RemixIcons.DeleteBinLine, c.tints.red, size = 32, iconSize = 16)
+                VIcon(RemixIcons.DeleteBinLine, size = 20.dp, tint = c.tints.red.text)
                 DialogTitle("Delete account?")
             }
             DialogDescription("This permanently deletes your account and all of your data — profile, schedule, transit and more. This cannot be undone.", Modifier.padding(top = 2.dp))

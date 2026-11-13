@@ -35,6 +35,7 @@ import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.OptionSheet
 import dev.southstar21.vectra.core.designsystem.components.SelectOption
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
+import dev.southstar21.vectra.core.designsystem.components.SettingsFooterLink
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VTabs
@@ -85,7 +86,6 @@ fun classReminderRows(scheduler: ReminderScheduler, notifier: Notifier): List<@C
     { NextClassRow(scheduler, notifier) },
     { TypeFilter(scheduler) },
     { PersonalItemsRow(scheduler) },
-    { TestReminderRow(scheduler, notifier) },
 )
 
 @Composable
@@ -95,7 +95,7 @@ private fun BeforeClassRows(scheduler: ReminderScheduler, notifier: Notifier) {
     val enable = rememberEnabler(notifier)
     Column {
         PermissionLostRow(prefs, notifier)
-        SettingsRow(RemixIcons.TimeLine, c.tints.sky.bg, c.tints.sky.text, "Before class", "Which class and room, ahead of time") {
+        SettingsRow(RemixIcons.TimeLine, c.tints.sky.text, "Before class", "Which class and room, ahead of time") {
             VToggle(prefs.beforeClass, { on ->
                 if (on) enable { scheduler.update { it.copy(beforeClass = true) } } else scheduler.update { it.copy(beforeClass = false) }
             }, label = "Before class")
@@ -131,7 +131,7 @@ private fun PermissionLostRow(prefs: ReminderPrefs, notifier: Notifier) {
     }
     val enable = rememberEnabler(notifier)
     if (granted || !prefs.anyOn) return
-    SettingsRow(RemixIcons.NotificationOffLine, c.tints.red.bg, c.tints.red.text, "Notifications are off", "Your reminders are set but can't appear") {
+    SettingsRow(RemixIcons.NotificationOffLine, c.tints.red.text, "Notifications are off", "Your reminders are set but can't appear") {
         VButton(onClick = { enable { granted = true } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
             VText("Allow", style = vtext(TypeScale.Caption, Weight.Bold))
         }
@@ -144,7 +144,7 @@ private fun NextClassRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.ArrowRightLine, c.tints.purple.bg, c.tints.purple.text, "Next class", "Five minutes before a class ends: what's next and where") {
+    SettingsRow(RemixIcons.ArrowRightLine, c.tints.purple.text, "Next class", "Five minutes before a class ends: what's next and where") {
         VToggle(prefs.nextClass, { on ->
             if (on) enable { scheduler.update { it.copy(nextClass = true) } } else scheduler.update { it.copy(nextClass = false) }
         }, label = "Next class")
@@ -176,31 +176,27 @@ private fun TypeFilter(scheduler: ReminderScheduler) {
 private fun PersonalItemsRow(scheduler: ReminderScheduler) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
-    SettingsRow(RemixIcons.Calendar2Line, c.tints.amber.bg, c.tints.amber.text, "Personal items too", "Shifts and tasks from your schedule") {
+    SettingsRow(RemixIcons.Calendar2Line, c.tints.amber.text, "Personal items too", "Shifts and tasks from your schedule") {
         VToggle(prefs.personalItems, { on -> scheduler.update { it.copy(personalItems = on) } }, label = "Personal items too")
     }
 }
 
+/** The Class reminders footer: a test reminder a few seconds out. */
 @Composable
-private fun TestReminderRow(scheduler: ReminderScheduler, notifier: Notifier) {
-    val c = Vectra.colors
+fun TestReminderLink(scheduler: ReminderScheduler, notifier: Notifier) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val enable = rememberEnabler(notifier)
     var sending by remember { mutableStateOf(false) }
-    SettingsRow(RemixIcons.SendPlaneLine, c.surfaceOverlay, c.textSecondary, "Test reminder", "Arrives in 5 seconds, even if you close Vectra") {
-        VButton(onClick = {
-            enable {
-                sending = true
-                scope.launch {
-                    runSuspendCatching { scheduler.sendTest() }.onFailure { toaster.error("Couldn't schedule the test reminder") }
-                    sending = false
-                }
+    SettingsFooterLink(RemixIcons.SendPlaneLine, "Send a test reminder", "Arrives in 5 seconds, even if you close Vectra", busy = sending, onClick = {
+        enable {
+            sending = true
+            scope.launch {
+                runSuspendCatching { scheduler.sendTest() }.onFailure { toaster.error("Couldn't schedule the test reminder") }
+                sending = false
             }
-        }, variant = ButtonVariant.Outline, size = ButtonSize.Sm, enabled = !sending) {
-            if (sending) InlineLoader(size = 14.dp) else VText("Send", style = vtext(TypeScale.Caption, Weight.Bold))
         }
-    }
+    })
 }
 
 /** One class type in the 2×2 filter: tinted and ticked when its reminders are on. */

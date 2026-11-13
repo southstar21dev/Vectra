@@ -1,5 +1,39 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import dev.southstar21.vectra.core.maps.MapAttribution
+import dev.southstar21.vectra.core.util.runSuspendCatching
+import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import kotlin.math.abs
+import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
+import dev.southstar21.vectra.core.designsystem.components.VBackHandler
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.platform.LocalDensity
+import org.maplibre.compose.map.MapState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -60,22 +94,27 @@ import kotlinx.coroutines.CancellationException
 /** The share of the window the sheet covers at its half-height rest. */
 private const val HalfFraction = 0.56f
 
-/** The map's share of the sheet; the stops' heading peeks out under it at half height. */
-private const val MapShare = 0.56f
-private val StopsPeek = 60.dp
 
 /**
  * The live tracker as a floating sheet over the tabs ([AppNavigator.liveTracker]): the route map
- * with the vehicles and their countdowns first, the stops when pulled up. It steps aside while a
- * screen (the full-screen map) is pushed and comes back when that closes.
+ * with the vehicles and their countdowns first, the stops when pulled up. Touching the map to look
+ * at it (a tap, a pinch, a sideways pan) grows it to fill the sheet; back or its button shrinks it.
+ * The sheet steps aside while a screen is pushed and comes back when that closes.
  */
 @Composable
-fun LiveTrackerSheetHost(repo: TransitRepository, stopPicks: TrackerStopPicks, deviceLocation: DeviceLocation, navigator: AppNavigator) {
+fun LiveTrackerSheetHost(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore, navigator: AppNavigator) {
     val subject = navigator.liveTracker
     // The last subject stays while the sheet animates away.
     var shown by remember { mutableStateOf(subject) }
     if (subject != null && subject != shown) shown = subject
     val s = shown ?: return
+    var mapExpanded by remember(s.trackerId) { mutableStateOf(false) }
+    LaunchedEffect(subject == null) { if (subject == null) mapExpanded = false }
+    val hint = rememberMapHint(kv, subject?.trackerId)
+    val setExpanded: (Boolean) -> Unit = { grow ->
+        if (grow) hint.learned()
+        mapExpanded = grow
+    }
     VSheet(
         open = subject != null && navigator.screens.size <= 1,
         onDismiss = navigator::closeLiveTracker,
@@ -85,34 +124,33 @@ fun LiveTrackerSheetHost(repo: TransitRepository, stopPicks: TrackerStopPicks, d
         floating = true,
         halfFraction = HalfFraction,
         onExited = { if (navigator.liveTracker == null) shown = null },
+        pinnedOpen = mapExpanded,
     ) {
-        key(s.trackerId) { LiveTrackerSheetContent(repo, stopPicks, deviceLocation, navigator, s) }
+        key(s.trackerId) { LiveTrackerSheetContent(repo, deviceLocation, navigator, s, MapSheetState(mapExpanded, setExpanded, hint)) }
     }
 }
 
 @Composable
 private fun ColumnScope.LiveTrackerSheetContent(
     repo: TransitRepository,
-    stopPicks: TrackerStopPicks,
     deviceLocation: DeviceLocation,
     navigator: AppNavigator,
     subject: LiveTrackerSheet,
+    mapSheet: MapSheetState,
 ) {
+    val mapExpanded = mapSheet.expanded
     val trackerId = subject.trackerId
     val now = rememberNowMillis(1000)
     val tracker = rememberTracker(repo, trackerId, onMissing = navigator::closeLiveTracker)
     val trackerStops = remember(tracker) { tracker?.let(::getTrackerStops) ?: emptyList() }
-    // A stop picked on the full-screen map counts once the sheet is back.
-    val mapPick = stopPicks.peek(trackerId)
-    LaunchedEffect(mapPick) {
-        if (mapPick != null) stopPicks.take(trackerId)?.let(navigator::showLiveTrackerStop)
-    }
+    // Back shrinks a grown map before it closes the sheet.
+    VBackHandler(enabled = mapExpanded) { mapSheet.onExpandedChange(false) }
     val t = tracker
     if (t == null) {
-        Box(Modifier.fillMaxWidth().height(240.dp)) { LoadingOverlay(show = true, label = "Loading…") }
+        Box(Modifier.fillMaxWidth().height(240.dp)) { MapLoadingOrb(show = true, label = "Loading route…") }
         return
     }
-    val activeStopId = liveStopIdFor(t, mapPick ?: subject.stopId)
+    val activeStopId = liveStopIdFor(t, subject.stopId)
     val activeStop = remember(t, trackerStops, activeStopId) { liveStopFor(t, trackerStops, activeStopId) }
     val live = rememberLiveRoute(repo, t, trackerStops, activeStop, now)
     val alerts = rememberStopAlerts(repo, t, activeStop, live, now)
@@ -133,27 +171,24 @@ private fun ColumnScope.LiveTrackerSheetContent(
 
     val stopName = activeStop.stopName.takeIf { it.isNotEmpty() } ?: t.stopName
 
-    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-        val mapHeight = (maxHeight * MapShare - StopsPeek).coerceAtLeast(240.dp)
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            LiveMap(
-                tracker = t,
-                stopName = stopName,
-                live = live,
-                leadVehicles = labelled.firstOrNull() ?: live.leadVehicles,
-                secondary = secondary,
-                here = here,
-                isLive = !freshness.arrivalsStale && !offline,
-                notice = notice,
-                height = mapHeight,
-                onFullscreen = { navigator.push(Screen.TrackerMap(trackerId, activeStop.stopId)) },
-            )
-            AlertsSection(alerts, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
-            if (trackerStops.size > 1) {
-                TrackedStopTabs(trackerStops, activeStop.stopId, navigator::showLiveTrackerStop, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
-            }
-            StopsSection(t, activeStop.stopId, live.enriched, loading = !live.feedError && live.directions.isEmpty())
+    GrowingMapLayout(mapExpanded) { sizes ->
+        LiveMap(
+            tracker = t,
+            stopName = stopName,
+            live = live,
+            leadVehicles = labelled.firstOrNull() ?: live.leadVehicles,
+            secondary = secondary,
+            here = here,
+            isLive = !freshness.arrivalsStale && !offline,
+            notice = notice,
+            sizes = sizes,
+            mapSheet = mapSheet,
+        )
+        AlertsSection(alerts, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
+        if (trackerStops.size > 1) {
+            TrackedStopTabs(trackerStops, activeStop.stopId, navigator::showLiveTrackerStop, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
         }
+        StopsSection(t, live.routeColor, activeStop.stopId, live.enriched, loading = !live.feedError && live.directions.isEmpty())
     }
 }
 
@@ -200,36 +235,67 @@ private fun LiveMap(
     here: LatLon?,
     isLive: Boolean,
     notice: String?,
-    height: Dp,
-    onFullscreen: () -> Unit,
+    sizes: MapSizes,
+    mapSheet: MapSheetState,
 ) {
     val c = Vectra.colors
+    val expanded = mapSheet.expanded
+    val onExpandedChange = mapSheet.onExpandedChange
     var mapReady by remember { mutableStateOf(false) }
+    var mapState by remember { mutableStateOf<MapState?>(null) }
+    val reveal = remember { MapReveal() }
     val loading = !live.feedError && live.directions.isEmpty()
-    Box(Modifier.fillMaxWidth().height(height).background(c.mapSurface)) {
+    val density = LocalDensity.current.density
+    val line = live.enriched.firstOrNull()?.polyline.orEmpty()
+    // The orb's dots spread over every line in view: this direction and the others.
+    val allLines = remember(line, secondary) { listOf(line) + secondary.map { it.polyline }.filter { it.size >= 2 } }
+    // The box grows; the map in it is always laid out at the sheet's full height (resizing a map
+    // every frame stutters), its bottom hidden while small.
+    Box(Modifier.fillMaxWidth().layoutHeight(sizes.shown).clipToBounds().background(c.mapSurface)) {
         if (live.feedError) {
             FeedUnavailable(Modifier.fillMaxSize())
         } else {
+            // Small, a still view as maps inside iOS sheets are (up-and-down swipes move the sheet);
+            // grown to fill the sheet, a map to pan and zoom.
             RouteMap(
+                modifier = Modifier.wrapContentHeight(Alignment.Top, unbounded = true),
+                interactive = expanded,
+                expanded = expanded,
+                onToggleExpand = { onExpandedChange(!expanded) },
                 stops = live.enriched.firstOrNull()?.stops.orEmpty(),
-                polyline = live.enriched.firstOrNull()?.polyline.orEmpty(),
+                polyline = line,
                 vehicles = leadVehicles,
                 secondaryLines = secondary,
                 routeColor = live.routeColor,
                 routeTextColor = tracker.routeTextColor,
-                height = height,
-                fillHeight = true,
+                height = sizes.full,
+                viewportBottomInset = if (expanded) 0.dp else sizes.full - sizes.rest,
+                attribution = false,
                 userLocation = here,
                 controlsPadding = PaddingValues(top = 16.dp, end = 10.dp),
-                onFullscreen = onFullscreen,
                 onReady = { mapReady = true },
                 onLoadError = { mapReady = true },
+                onMapState = { mapState = it },
+                reveal = reveal,
             )
+            // Laid over the small map, which keeps a touch handler even when still: reaching for the
+            // map grows it, up-and-down swipes pass through to the sheet.
+            if (!expanded) Box(Modifier.matchParentSize().mapExpandGestures { onExpandedChange(true) })
+            MapAttribution(Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 8.dp, bottom = 4.dp), align = TextAlign.Center)
         }
-        LoadingOverlay(show = !live.feedError && (loading || !mapReady), label = "Loading route…")
+        MapLoadingOrb(
+            show = !live.feedError && (loading || !mapReady),
+            label = "Loading route…",
+            routeColor = parseHexColor(live.routeColor),
+            routePath = { allLines.map { routeScreenPath(mapState, it, density) } },
+            reveal = reveal,
+        )
         TitlePlacard(tracker, stopName, isLive, Modifier.align(Alignment.TopStart).padding(start = 10.dp, top = 16.dp))
         if (!live.feedError && notice != null) NoticePill(notice, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 16.dp, end = 16.dp))
-        SheetGrabber(Modifier.align(Alignment.TopCenter))
+        // Once the map is in (and nothing else sits there), say that it opens up.
+        MapHintSlot(mapSheet, ready = mapReady && reveal.done && notice == null && !live.feedError, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+        // Pinned open while grown: nothing to drag.
+        if (!expanded) SheetGrabber(Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -295,7 +361,7 @@ private fun FeedUnavailable(modifier: Modifier = Modifier) {
 
 /** "Stops", a switch between the tracked directions, and the chosen one's timeline. */
 @Composable
-private fun StopsSection(tracker: TransitTracker, stopId: String, directions: List<DirectionView>, loading: Boolean) {
+private fun StopsSection(tracker: TransitTracker, routeColor: String, stopId: String, directions: List<DirectionView>, loading: Boolean) {
     val c = Vectra.colors
     var picked by rememberSaveable(tracker.id, stopId) { mutableIntStateOf(0) }
     var showAll by rememberSaveable(tracker.id) { mutableStateOf(false) }
@@ -317,7 +383,7 @@ private fun StopsSection(tracker: TransitTracker, stopId: String, directions: Li
         when {
             d != null -> LiveStopTimeline(
                 direction = d,
-                colors = stripColors(tracker.routeColor, tracker.routeTextColor, c.glassBgElevated),
+                colors = timelineColors(routeColor, tracker.routeTextColor, c.glassBgElevated),
                 showAll = showAll,
                 onToggleShowAll = { showAll = !showAll },
                 modifier = Modifier.padding(top = 8.dp),
@@ -327,3 +393,4 @@ private fun StopsSection(tracker: TransitTracker, stopId: String, directions: Li
         }
     }
 }
+
