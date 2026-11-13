@@ -3,6 +3,7 @@ package dev.southstar21.vectra.features.transit
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -225,6 +226,23 @@ fun MapOverlayScope.PlacedVehicleMarker(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
 ) {
+    val rotation = rememberMarkerRotation(bearing, mapBearing)
+    VehicleMarker(
+        color = color,
+        bearing = 0f,
+        modifier = modifier
+            .placedAt(position.position, Alignment.Center)
+            .graphicsLayer { rotationZ = rotation.value },
+        size = size,
+    )
+}
+
+/**
+ * A marker's on-screen heading: [bearing] less the map's own, easing over 300ms along the
+ * shortest turn when either changes.
+ */
+@Composable
+internal fun rememberMarkerRotation(bearing: Double, mapBearing: () -> Double): Animatable<Float, AnimationVector1D> {
     val rotation = remember { Animatable((bearing - mapBearing()).toFloat()) }
     val bearingNow by rememberUpdatedState(bearing)
     val mapBearingNow by rememberUpdatedState(mapBearing)
@@ -236,14 +254,7 @@ fun MapOverlayScope.PlacedVehicleMarker(
             rotation.animateTo(current + delta, tween(300, easing = VectraEasing.Fade))
         }
     }
-    VehicleMarker(
-        color = color,
-        bearing = 0f,
-        modifier = modifier
-            .placedAt(position.position, Alignment.Center)
-            .graphicsLayer { rotationZ = rotation.value },
-        size = size,
-    )
+    return rotation
 }
 
 /** All animated vehicles as markers, coloured by their meaning variant (or [colorFor]). */

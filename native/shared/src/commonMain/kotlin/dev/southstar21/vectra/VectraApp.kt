@@ -1,5 +1,6 @@
 package dev.southstar21.vectra
 
+import dev.southstar21.vectra.features.transit.LiveTrackerSheetHost
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -106,6 +107,7 @@ fun VectraApp(graph: AppGraph) {
                             page = { TabPage(graph, it) },
                             screen = { PushedScreen(graph, navigator, it) },
                         )
+                        LiveTrackerSheetHost(graph.transitRepository, graph.trackerStopPicks, graph.deviceLocation, navigator)
                     }
                 }
             }

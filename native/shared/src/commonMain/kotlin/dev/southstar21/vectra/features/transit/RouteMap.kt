@@ -1,6 +1,8 @@
 package dev.southstar21.vectra.features.transit
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -22,9 +24,9 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
-import dev.southstar21.vectra.core.maps.MapControls
+import dev.southstar21.vectra.core.maps.GlassMapControls
+import dev.southstar21.vectra.core.maps.UserLocationLayers
 import dev.southstar21.vectra.core.maps.MapFontStack
-import dev.southstar21.vectra.core.maps.VehicleLayers
 import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 import dev.southstar21.vectra.core.maps.MapStop
 import dev.southstar21.vectra.core.maps.MapStopKind
@@ -79,7 +81,7 @@ private class FitRefs {
 /**
  * The tracked route with its live vehicles: primary line + secondary
  * directions, stop dots and labels (tracked/selected labels always win
- * collisions), and teardrop vehicles gliding along the line. Auto-fits on the
+ * collisions), and round vehicle tokens gliding along the line with their countdowns. Auto-fits on the
  * tracked stop plus the vehicles until the user moves the camera.
  *
  * [routeColor] is hex with or without the leading #.
@@ -99,6 +101,12 @@ fun RouteMap(
     onReady: (() -> Unit)? = null,
     /** Basemap style failed to load; the map shows its own unavailable notice. */
     onLoadError: (() -> Unit)? = null,
+    /** The line's text colour: the vehicle drawn on each token. */
+    routeTextColor: String? = null,
+    /** Where you are, as a blue dot (null: not shown). */
+    userLocation: LatLon? = null,
+    /** Room around the control column (clear of whatever is laid over the map's top). */
+    controlsPadding: PaddingValues = PaddingValues(top = 8.dp, end = 8.dp),
 ) {
     val c = Vectra.colors
     val isLight = !c.isDark
@@ -112,6 +120,9 @@ fun RouteMap(
     val labelColor = c.textSecondary
     val labelHalo = if (isLight) Color.White.copy(alpha = 0.95f) else Color.Black.copy(alpha = 0.95f)
     val routeInk = parseHexColor(withHash(routeColor)) ?: MapColors.RouteFallback
+    val strip = stripColors(routeColor, routeTextColor, c.surfaceSecondary)
+    val tokenStyle = remember(strip.marker, strip.markerInk) { TokenStyle(strip.marker, strip.markerInk) }
+    val callouts = remember(vehicles, secondaryLines) { calloutsFor(vehicles + secondaryLines.flatMap { it.vehicles }) }
 
     val primaryJson = remember(polyline) { lineFeatureCollection(listOf(polyline)).toString() }
     val visibleSecondary = remember(secondaryLines, polyline) {
@@ -317,16 +328,17 @@ fun RouteMap(
                 textHaloColor = const(labelHalo),
                 textHaloWidth = const(1.2.dp),
             )
+            userLocation?.let { UserLocationLayers("live", it) }
             // iOS: vehicles live in the map so they stay pinned while it pans.
-            if (!composeOverlaysTrackMap) VehicleLayers("live", rememberVehicleAnimations(animVehicles))
+            if (!composeOverlaysTrackMap) RoundVehicleLayers("live", rememberVehicleAnimations(animVehicles), tokenStyle, callouts)
         },
         overlay = {
             if (!composeOverlaysTrackMap) return@TransitMap
             // Per-frame state is read only here, so gliding never recomposes the layers.
             val frames = rememberVehicleAnimations(animVehicles)
-            AnimatedVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 })
+            RoundVehicleMarkers(frames, mapBearing = { map?.cameraPosition?.bearing ?: 0.0 }, tokenStyle, callouts)
         },
     ) {
-        MapControls(controls, Modifier.align(Alignment.TopEnd))
+        GlassMapControls(controls, Modifier.align(Alignment.TopEnd).padding(controlsPadding))
     }
 }

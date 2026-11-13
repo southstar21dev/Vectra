@@ -216,7 +216,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
             repo = repo,
             tracker = tracker,
             position = nearbyStops.position,
-            onOpen = { navigator.push(Screen.LiveTracker(it.id, it.stopId)) },
+            onOpen = { navigator.openLiveTracker(it.id, it.stopId) },
             onLongPress = { menuTracker = it },
             onHasDeparturesChange = { id, has -> if (hasDepartures[id] != has) hasDepartures[id] = has },
             // Without location, the first card asks once for walking times.
@@ -303,7 +303,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
         onDismiss = { menuTracker = null },
         title = menu?.let { "${it.routeShortName} · ${it.stopName}" },
         actions = if (menu == null) emptyList() else listOf(
-            SheetAction("Live departures", RemixIcons.TimeLine) { navigator.push(Screen.LiveTracker(menu.id, menu.stopId)) },
+            SheetAction("Live departures", RemixIcons.TimeLine) { navigator.openLiveTracker(menu.id, menu.stopId) },
             SheetAction("Edit tracker", RemixIcons.PencilLine) { navigator.push(Screen.EditTracker(menu.id)) },
             SheetAction(if (menu.isFavorite) "Remove from favourites" else "Add to favourites", if (menu.isFavorite) RemixIcons.StarFill else RemixIcons.StarLine) {
                 scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update favourites", it.message) } }

@@ -8,7 +8,6 @@ import dev.southstar21.vectra.features.schedule.ScheduleScreen
 import dev.southstar21.vectra.features.settings.SettingsScreen
 import dev.southstar21.vectra.features.transit.AddTrackerScreen
 import dev.southstar21.vectra.features.transit.EditTrackerScreen
-import dev.southstar21.vectra.features.transit.LiveTrackerScreen
 import dev.southstar21.vectra.features.transit.ManageTrackersScreen
 import dev.southstar21.vectra.features.transit.NearbyExplorerScreen
 import dev.southstar21.vectra.features.transit.TrackerMapScreen
@@ -52,7 +51,6 @@ fun PushedScreen(graph: AppGraph, navigator: AppNavigator, screen: Screen) {
         Screen.AddTracker -> AddTrackerScreen(graph.transitRepository, onBack = back)
         Screen.ManageTrackers -> ManageTrackersScreen(graph.transitRepository, onBack = back)
         is Screen.EditTracker -> EditTrackerScreen(graph.transitRepository, screen.trackerId, onBack = { popIfTop(navigator, screen) })
-        is Screen.LiveTracker -> LiveTrackerScreen(graph.transitRepository, graph.trackerStopPicks, screen.trackerId, screen.stopId, onBack = { popIfTop(navigator, screen) })
         is Screen.TrackerMap -> TrackerMapScreen(graph.transitRepository, graph.trackerStopPicks, screen.trackerId, screen.stopId, onBack = { popIfTop(navigator, screen) })
         Screen.NearbyExplorer -> NearbyExplorerScreen(graph.transitRepository, graph.deviceLocation, graph.auth, onBack = back)
         // Schedule & course hub
