@@ -82,6 +82,18 @@ class DampedDragAnimation(
             launch { pressAnimation.animateTo(0f, pressSpec) }
             launch { scaleXAnimation.animateTo(initialScale, scaleXSpec) }
             launch { scaleYAnimation.animateTo(initialScale, scaleYSpec) }
+            // Let go, the drop never keeps a stretch from its last movement.
+            if (velocity != 0f) launch { velocityAnimation.animateTo(0f, velocitySpec) }
+        }
+    }
+
+    /** Slides to [value] without stretching (a press on another item, not a drag). */
+    fun glideTo(value: Float) {
+        animationScope.launch {
+            mutex.mutate {
+                launch { valueAnimation.animateTo(value.coerceIn(valueRange), valueSpec) }
+                if (velocity != 0f) launch { velocityAnimation.animateTo(0f, velocitySpec) }
+            }
         }
     }
 

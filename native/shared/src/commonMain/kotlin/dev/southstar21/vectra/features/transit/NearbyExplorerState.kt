@@ -190,7 +190,15 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
     }
 
     val arrivalsEnabled = viewport?.let { it.zoom >= ExplorerMinArrivalsZoom } ?: false
-    val arrivalStops = remember(arrivalsEnabled, stopsInView) { if (arrivalsEnabled) stopsInView.take(MaxArrivalStops) else emptyList() }
+    // The nearest few to the view's centre, plus the picked stop and the followed one: panning to
+    // a picked stop's board moves the centre, and that stop must keep its times.
+    val pinnedStopIds = listOfNotNull(focusedStopIdState, selectionState?.stopId)
+    val arrivalStops = remember(arrivalsEnabled, stopsInView, pinnedStopIds) {
+        if (!arrivalsEnabled) return@remember emptyList()
+        val nearest = stopsInView.take(MaxArrivalStops)
+        val pinned = pinnedStopIds.mapNotNull { id -> stopsInView.firstOrNull { it.id == id } }.filter { it !in nearest }
+        nearest + pinned
+    }
     val arrivalStopIds = remember(arrivalStops) { arrivalStops.map { it.id } }
     val stopArrivalsResults = rememberBatchStopArrivals(repo, arrivalStopIds)
 

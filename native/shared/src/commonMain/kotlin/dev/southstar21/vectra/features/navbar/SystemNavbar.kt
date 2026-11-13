@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.navbar
 
+import androidx.compose.ui.geometry.Rect
+
 /** One + action as the platform bar shows it (labels only; the platform picks its own icons by [id]). */
 data class SystemNavbarAction(val id: String, val label: String, val disabled: Boolean)
 
@@ -30,6 +32,9 @@ interface SystemNavbar {
 
     var onSelect: ((Int) -> Unit)?
     var onAction: ((String) -> Unit)?
+
+    /** A tab held down, with where it is in the window (px). */
+    var onHold: ((index: Int, bounds: Rect?) -> Unit)?
 }
 
 /** The platform tab bar, or null where the Compose [LiquidNavbar] draws (Android). */

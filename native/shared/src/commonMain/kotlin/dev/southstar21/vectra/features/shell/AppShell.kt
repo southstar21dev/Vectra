@@ -45,10 +45,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import dev.southstar21.vectra.features.navbar.NavbarCompact
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -219,6 +222,8 @@ private fun TabShell(
     // A platform bar (iOS's system tab bar) draws its own glass: no page backdrop to record.
     val systemNavbar = platformNavbar
     val backdrop = rememberLayerBackdrop()
+    val navbarCompact = remember { NavbarCompact() }
+    LaunchedEffect(navigator.current) { navbarCompact.reset() }
 
     Box(modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalShellState provides shell, LocalNavbarActions provides navbarActions) {
@@ -227,7 +232,9 @@ private fun TabShell(
                 Box(Modifier.fillMaxSize().then(if (systemNavbar == null) Modifier.layerBackdrop(backdrop) else Modifier)) {
                     AppBackground()
                     CompositionLocalProvider(LocalPageActive provides !covered) {
-                        KeptAliveTabs(navigator.current, PrimaryRoutes, fullyCovered, page)
+                        Box(Modifier.fillMaxSize().nestedScroll(navbarCompact.connection)) {
+                            KeptAliveTabs(navigator.current, PrimaryRoutes, fullyCovered, page)
+                        }
                     }
 
                     // Top fade behind the status bar while scrolled.
@@ -248,18 +255,24 @@ private fun TabShell(
                 // navbar so its open actions menu takes back first.
                 VBackHandler(enabled = !covered && navigator.backStack.size > 1) { navigator.back() }
                 if (systemNavbar == null) {
-                    LiquidNavbar(navigator.current, { navigator.navigate(it) }, backdrop) { route, bounds ->
-                        // Holding Transit lands the drop on it and grows the nearby map out of the tab
-                        // (after the switch: navigating closes overlays).
-                        if (route == Route.Transit) {
-                            if (navigator.current != Route.Transit) navigator.navigate(Route.Transit)
-                            navigator.nearbyMap = CardLaunch(bounds)
-                        }
-                    }
+                    LiquidNavbar(
+                        navigator.current, { navigator.navigate(it) }, backdrop,
+                        compact = navbarCompact.compact, holdable = { it == Route.Transit },
+                    ) { route, bounds -> holdTab(navigator, route, bounds) }
                 } else {
-                    SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction)
+                    SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction) { route, bounds -> holdTab(navigator, route, bounds) }
                 }
             }
         }
     }
+}
+
+/**
+ * A tab held down: holding Transit switches to it and grows the nearby map out of the tab
+ * (after the switch, since navigating closes overlays). Other tabs ignore a hold.
+ */
+private fun holdTab(navigator: AppNavigator, route: Route, bounds: Rect?) {
+    if (route != Route.Transit) return
+    if (navigator.current != Route.Transit) navigator.navigate(Route.Transit)
+    navigator.nearbyMap = CardLaunch(bounds)
 }

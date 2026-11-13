@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.platform
 
+import androidx.compose.ui.geometry.Rect
 import dev.southstar21.vectra.features.navbar.SystemNavbar
 import dev.southstar21.vectra.features.navbar.SystemNavbarState
 
@@ -21,6 +22,7 @@ object IosTabBar : SystemNavbar {
 
     override var onSelect: ((Int) -> Unit)? = null
     override var onAction: ((String) -> Unit)? = null
+    override var onHold: ((Int, Rect?) -> Unit)? = null
 
     fun attach(host: IosTabBarHost) {
         this.host = host
@@ -47,6 +49,12 @@ object IosTabBar : SystemNavbar {
     /** A tab was tapped in the system bar. */
     fun select(index: Int) {
         onSelect?.invoke(index)
+    }
+
+    /** A tab was held down; its frame in the window, in pixels (all zero when unknown). */
+    fun hold(index: Int, left: Float, top: Float, right: Float, bottom: Float) {
+        val bounds = if (right > left && bottom > top) Rect(left, top, right, bottom) else null
+        onHold?.invoke(index, bounds)
     }
 
     /** A + menu entry was chosen. */

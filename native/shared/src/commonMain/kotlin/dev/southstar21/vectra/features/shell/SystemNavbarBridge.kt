@@ -7,6 +7,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toArgb
 import dev.southstar21.vectra.core.designsystem.components.LocalAppPresented
 import dev.southstar21.vectra.core.designsystem.components.LocalOverlayHost
@@ -18,6 +19,7 @@ import dev.southstar21.vectra.features.navbar.SystemNavbarState
 import dev.southstar21.vectra.navigation.ActionRoutes
 import dev.southstar21.vectra.navigation.AppNavigator
 import dev.southstar21.vectra.navigation.PrimaryNavItems
+import dev.southstar21.vectra.navigation.Route
 
 /**
  * Drives a platform tab bar from the shell: the selected tab, the + actions of the page on
@@ -25,7 +27,14 @@ import dev.southstar21.vectra.navigation.PrimaryNavItems
  * whole Compose canvas, so overlays can't cover it themselves).
  */
 @Composable
-internal fun SystemNavbarBridge(bar: SystemNavbar, navigator: AppNavigator, actions: NavbarActions, coverFraction: () -> Float) {
+internal fun SystemNavbarBridge(
+    bar: SystemNavbar,
+    navigator: AppNavigator,
+    actions: NavbarActions,
+    coverFraction: () -> Float,
+    onHold: (Route, Rect?) -> Unit,
+) {
+    val latestHold by rememberUpdatedState(onHold)
     val c = Vectra.colors
     val overlays = LocalOverlayHost.current
     val presented = LocalAppPresented.current
@@ -38,7 +47,8 @@ internal fun SystemNavbarBridge(bar: SystemNavbar, navigator: AppNavigator, acti
         } else {
             emptyList()
         },
-        hidden = !presented || overlays.entries.isNotEmpty(),
+        // The radar and the nearby map grow over the whole app (they aren't sheets): the bar goes too.
+        hidden = !presented || overlays.entries.isNotEmpty() || navigator.radar != null || navigator.nearbyMap != null,
         dark = c.isDark,
         accentArgb = c.accentPrimary.toArgb(),
     )
@@ -50,9 +60,11 @@ internal fun SystemNavbarBridge(bar: SystemNavbar, navigator: AppNavigator, acti
     DisposableEffect(bar, navigator, actions) {
         bar.onSelect = { index -> PrimaryNavItems.getOrNull(index)?.let { navigator.navigate(it.route) } }
         bar.onAction = { id -> actions.execute(id) }
+        bar.onHold = { index, bounds -> PrimaryNavItems.getOrNull(index)?.let { latestHold(it.route, bounds) } }
         onDispose {
             bar.onSelect = null
             bar.onAction = null
+            bar.onHold = null
             bar.detach()
         }
     }

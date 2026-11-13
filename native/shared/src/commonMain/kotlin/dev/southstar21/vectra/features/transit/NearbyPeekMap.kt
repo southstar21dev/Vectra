@@ -239,7 +239,7 @@ fun NearbyPeekMap(
                 Box(Modifier.placedAt(LatLon(pulse.lat, pulse.lon).position)) { PulseDot() }
             }
             // The card is the button: the chips are just labels here.
-            if (composeOverlaysTrackMap) NearbyChipOverlay(chips, shownChips, focusedId = null, dimmed = false, onTap = {}, board = null)
+            if (composeOverlaysTrackMap) NearbyChipOverlay(chips, shownChips, focusedId = null, dimmed = false, onTap = {})
         },
     )
 }

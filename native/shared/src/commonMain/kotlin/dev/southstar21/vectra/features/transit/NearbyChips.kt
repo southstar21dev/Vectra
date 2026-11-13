@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -142,7 +143,7 @@ internal fun StopBoard(stopName: String, groups: List<List<RadarDepartureItem>>,
     val c = Vectra.colors
     val shape = RoundedCornerShape(18.dp)
     Column(
-        modifier.widthIn(max = 280.dp).glass(shape).consumeTouches().padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 10.dp),
+        modifier.widthIn(max = 300.dp).glass(shape).consumeTouches().padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -170,19 +171,32 @@ private fun BoardRow(items: List<RadarDepartureItem>) {
             RouteBadge(first.shortName, first.color, first.textColor, size = RouteBadgeSize.TagMd)
         }
         VText(first.headsign.ifEmpty { "Any direction" }, Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textPrimary, maxLines = 1)
-        VText(
-            formatNearbyCountdown(first.countdownMinutes),
-            style = vtext(13.sp to 16.sp, Weight.Extrabold, mono = true),
-            color = if (first.isPredicted) c.tints.emerald.text else c.textPrimary,
-            maxLines = 1,
-        )
-        val later = items.drop(1).take(2).joinToString("  ") { formatNearbyCountdown(it.countdownMinutes) }
-        VText(later, Modifier.width(LaterWidth), vtext(11.sp to 14.sp, Weight.Medium, mono = true), c.textMuted, maxLines = 1)
+        // The next three, one line, each in its own column so every row's times line up.
+        for (i in 0 until BoardTimes) {
+            val d = items.getOrNull(i)
+            VText(
+                d?.let { formatNearbyCountdown(it.countdownMinutes) }.orEmpty(),
+                Modifier.width(BoardTimeWidth),
+                vtext(13.sp to 16.sp, if (i == 0) Weight.Extrabold else Weight.Semibold, mono = true),
+                when {
+                    d == null -> c.textMuted
+                    i == 0 && d.isPredicted -> c.tints.emerald.text
+                    i == 0 -> c.textPrimary
+                    else -> c.textMuted
+                },
+                maxLines = 1,
+                softWrap = false,
+                align = TextAlign.End,
+            )
+        }
     }
 }
 
-/** Room for "11'  17'" so the rows' times line up. */
-private val LaterWidth: Dp = 52.dp
+/** Departures a board row shows. */
+private const val BoardTimes = 3
+
+/** One time's column: room for "59'" or "NOW", so the columns line up row to row. */
+private val BoardTimeWidth: Dp = 34.dp
 
 /** Groups [feed] by line, stop and direction, keeping the feed's order; each group's departures soonest first. */
 internal fun groupDepartures(feed: List<RadarDepartureItem>): List<List<RadarDepartureItem>> {

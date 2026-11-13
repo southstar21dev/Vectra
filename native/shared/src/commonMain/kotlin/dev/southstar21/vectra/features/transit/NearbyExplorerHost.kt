@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.designsystem.components.CardGrowOverlay
+import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 import dev.southstar21.vectra.navigation.AppNavigator
 
 /**
@@ -14,6 +15,8 @@ import dev.southstar21.vectra.navigation.AppNavigator
 fun NearbyExplorerHost(repo: TransitRepository, deviceLocation: DeviceLocation, auth: AuthRepository, navigator: AppNavigator, modifier: Modifier = Modifier) {
     val close = { navigator.nearbyMap = null }
     CardGrowOverlay(navigator.nearbyMap, close, modifier) { g ->
-        NearbyExplorerScreen(repo, deviceLocation, auth, onBack = close, opened = g.opened)
+        // A native map (iOS) can't be clipped to the shrinking card: it leaves as the shrink starts,
+        // or its own view would flash over the card's map on the way down.
+        NearbyExplorerScreen(repo, deviceLocation, auth, onBack = close, opened = g.opened, showMap = !(g.closing && !composeOverlaysTrackMap))
     }
 }

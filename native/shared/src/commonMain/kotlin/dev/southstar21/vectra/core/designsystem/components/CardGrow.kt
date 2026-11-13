@@ -41,8 +41,11 @@ import kotlinx.coroutines.launch
 /** A full-screen view opened from a card at [origin] (window px), which it grows out of; null fades it in. */
 class CardLaunch(val origin: Rect?)
 
-/** How far a [CardGrowOverlay] has got: [grow] 0 (the card) to 1 (the window); [opened] once it has all but filled it. */
-class CardGrowState(val grow: () -> Float, val opened: Boolean, val origin: Rect?)
+/**
+ * How far a [CardGrowOverlay] has got: [grow] 0 (the card) to 1 (the window); [opened] once it has
+ * all but filled it; [closing] while it shrinks back into the card.
+ */
+class CardGrowState(val grow: () -> Float, val opened: Boolean, val origin: Rect?, val closing: Boolean = false)
 
 /**
  * A full-screen view that grows out of the card it was opened from ([launch]) and shrinks back into
@@ -102,7 +105,7 @@ fun CardGrowOverlay(
                 }
             },
         ) {
-            content(CardGrowState({ grow.value.coerceIn(0f, 1f) }, opened, origin))
+            content(CardGrowState({ grow.value.coerceIn(0f, 1f) }, opened, origin, closing = launch == null))
         }
     }
 }

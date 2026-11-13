@@ -199,7 +199,6 @@ internal fun NearbyExplorerMap(
     dimChips: Boolean = false,
     chipChrome: ChipChrome = ChipChrome(0.dp, 0.dp, 0.dp),
     onChipTap: (NearbyChip) -> Unit = {},
-    board: (@Composable (stopId: String) -> Unit)? = null,
     /** Hands out the map once it exists (its projection, for the loading orb's melt). */
     onMapState: (MapState) -> Unit = {},
 ) {
@@ -371,7 +370,7 @@ internal fun NearbyExplorerMap(
             if (user != null) {
                 Box(Modifier.placedAt(LatLon(user.lat, user.lon).position)) { NearbyUserDot(hidePingOnReducedMotion = false) }
             }
-            NearbyChipOverlay(chips, shownChips, focusedChipId, dimChips, onChipTap, board)
+            NearbyChipOverlay(chips, shownChips, focusedChipId, dimChips, onChipTap)
             // Read here so a glide recomposes the markers, not the map and its layers.
             val frames = rememberVehicleAnimations(animatedVehicles)
             if (selectedStop != null) {
