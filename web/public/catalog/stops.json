@@ -3894,7 +3894,7 @@
     "lon": 19.152584
   },
   {
-    "id": "BKK_CS009587",
+    "id": "BKK_CSMERGED_009587",
     "name": "Gogol utca",
     "lat": 47.520289,
     "lon": 19.057285
@@ -4640,8 +4640,8 @@
   {
     "id": "BKK_CS009041",
     "name": "Haller utca / Soroksári út",
-    "lat": 47.475171,
-    "lon": 19.070351
+    "lat": 47.475206,
+    "lon": 19.070344
   },
   {
     "id": "BKK_CSF01729",
@@ -6016,12 +6016,6 @@
     "name": "Kelemen utca",
     "lat": 47.477092,
     "lon": 19.132108
-  },
-  {
-    "id": "BKK_CS009639",
-    "name": "Kelenföld kocsiszín (Csóka kapu)",
-    "lat": 47.470139,
-    "lon": 19.027137
   },
   {
     "id": "BKK_CS007896",
@@ -12672,10 +12666,10 @@
     "lon": 19.113563
   },
   {
-    "id": "BKK_CSF01781",
+    "id": "BKK_CSF01783",
     "name": "Terebesi utca",
-    "lat": 47.493936,
-    "lon": 19.140919
+    "lat": 47.494116,
+    "lon": 19.140689
   },
   {
     "id": "BKK_CS008895",
