@@ -23,6 +23,11 @@ final class RootViewController: UIViewController {
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.tabs = tabs
         view.addSubview(overlay)
+        // A regular-width iPad (and a Mac running the iPad app) would put the bar at the top, over the
+        // page titles; the Compose pages leave room for it at the bottom, so keep it there as on iPhone.
+        if traitCollection.userInterfaceIdiom == .pad {
+            tabs.traitOverrides.horizontalSizeClass = .compact
+        }
         addChild(tabs)
         tabs.view.frame = overlay.bounds
         tabs.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -30,6 +35,21 @@ final class RootViewController: UIViewController {
         tabs.didMove(toParent: self)
 
         IosTabBar.shared.attach(host: tabs)
+    }
+
+    /// Widest the bottom bar's area grows on iPad and Mac (about a large iPhone's width).
+    private static let wideBarMaxWidth: CGFloat = 440
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // In a wide window UIKit puts the tabs' pill at the left and the + at the far right of the bar's
+        // area; a centred, phone-wide area keeps the pill and the + together in the middle.
+        guard traitCollection.userInterfaceIdiom == .pad else { return }
+        let bounds = overlay.bounds
+        let width = min(bounds.width, Self.wideBarMaxWidth)
+        tabs.view.autoresizingMask = []
+        tabs.view.bounds = CGRect(x: 0, y: 0, width: width, height: bounds.height)
+        tabs.view.center = CGPoint(x: bounds.midX, y: bounds.midY)
     }
 
     // Compose owns the status bar and the system gestures.
@@ -48,7 +68,7 @@ private final class PassthroughView: UIView {
         // iOS 26 lets the tap that dismisses a popover through to what's underneath; swallow it.
         if tabs.menuOpen {
             // Gone already (an action ran, or it dismissed without telling us): stop shielding.
-            if tabs.presentedViewController == nil { tabs.menuOpen = false } else { return self }
+            if tabs.actionsShowing { return self } else { tabs.menuOpen = false }
         }
         guard tabs.isInteractive else { return nil }
         let bar = tabs.tabBar
@@ -70,7 +90,7 @@ private final class ClearPage: UIViewController {
     }
 }
 
-final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, IosTabBarHost {
+final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, IosTabBarHost {
     // Same order as the shared PrimaryNavItems.
     private static let items: [(title: String, symbol: String)] = [
         ("Dashboard", "square.grid.2x2"),
@@ -119,6 +139,11 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
 
     /// The + menu is showing (the overlay then shields the Compose app from the dismissing tap).
     var menuOpen = false
+
+    /// The + menu, while it is up.
+    private weak var actionsSheet: UIAlertController?
+
+    var actionsShowing: Bool { actionsSheet?.presentingViewController != nil }
 
     var isInteractive: Bool { !hidden && covered < 0.01 && state != nil }
 
@@ -223,7 +248,8 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             view.alpha = shownAlpha
         } else {
             // A pushed screen slides in from the right; the bar leaves just ahead of its edge.
-            view.transform = CGAffineTransform(translationX: -view.bounds.width * covered, y: 0)
+            // By the view's right edge: on iPad the bar's area is a centred strip, not the whole window.
+            view.transform = CGAffineTransform(translationX: -(view.center.x + view.bounds.width / 2) * covered, y: 0)
         }
     }
 
@@ -314,7 +340,19 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
     }
 
     private func presentActions() {
-        guard let actions = state?.actions, !actions.isEmpty, presentedViewController == nil else { return }
+        // On a Mac an action sheet is always a dialog in the middle of the window: use a Mac menu at the + instead.
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            guard let actions = state?.actions, !actions.isEmpty else { return }
+            let anchor = actionTabView().map { $0.convert(CGPoint(x: $0.bounds.midX, y: $0.bounds.minY), to: view) }
+                ?? CGPoint(x: tabBar.frame.maxX - 34, y: tabBar.frame.minY)
+            macActionsMenu.presentEditMenu(with: UIEditMenuConfiguration(identifier: nil, sourcePoint: anchor))
+            return
+        }
+        // On iPad this controller is held to a compact width (see RootViewController), where an
+        // action sheet turns into a dialog in the middle of the window. The root keeps the window's regular
+        // width, so presented from there it stays a popover pointing at the +.
+        let presenter = traitCollection.userInterfaceIdiom == .pad ? (parent ?? self) : self
+        guard let actions = state?.actions, !actions.isEmpty, !actionsShowing, presenter.presentedViewController == nil else { return }
         let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         for action in actions {
             let item = UIAlertAction(title: action.label, style: .default) { [weak self] _ in
@@ -330,13 +368,47 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
                 popover.sourceView = sideActionButton
                 popover.sourceRect = sideActionButton.bounds
             } else {
-                popover.sourceView = tabBar
-                popover.sourceRect = CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height)
+                if let plus = actionTabView() {
+                    popover.sourceView = plus
+                    popover.sourceRect = plus.bounds
+                } else {
+                    popover.sourceView = tabBar
+                    popover.sourceRect = CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height)
+                }
+                popover.permittedArrowDirections = .down
             }
             popover.delegate = self
         }
         menuOpen = true
-        present(sheet, animated: true)
+        actionsSheet = sheet
+        presenter.present(sheet, animated: true)
+    }
+
+    /// The + menu on a Mac, a native menu (see presentActions).
+    private lazy var macActionsMenu: UIEditMenuInteraction = {
+        let interaction = UIEditMenuInteraction(delegate: self)
+        view.addInteraction(interaction)
+        return interaction
+    }()
+
+    func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
+        guard let actions = state?.actions, !actions.isEmpty else { return nil }
+        return UIMenu(children: actions.map { action in
+            UIAction(title: action.label, attributes: action.disabled ? .disabled : []) { _ in
+                IosTabBar.shared.runAction(id: action.id)
+            }
+        })
+    }
+
+    /// The + in the bar. Like the tabs, a private view of the bar's, found by its title.
+    private func actionTabView() -> UIView? {
+        func search(_ node: UIView) -> UIView? {
+            if node.isHidden || node === sideActionButton { return nil }
+            if node.accessibilityLabel == actionTab.title, node.bounds.width < view.bounds.width / 2 { return node }
+            for sub in node.subviews { if let hit = search(sub) { return hit } }
+            return nil
+        }
+        return search(view)
     }
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {

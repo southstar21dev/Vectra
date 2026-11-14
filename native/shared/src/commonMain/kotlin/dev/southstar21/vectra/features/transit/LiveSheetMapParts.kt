@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -91,7 +92,7 @@ internal fun ColumnScope.GrowingMapLayout(mapExpanded: Boolean, content: @Compos
         val sizes = remember(full, rest) { MapSizes(full, rest) { shown.value } }
         val scroll = rememberScrollState()
         LaunchedEffect(mapExpanded) { if (mapExpanded) scroll.animateScrollTo(0) }
-        Column(Modifier.fillMaxSize().verticalScroll(scroll, enabled = !mapExpanded)) { content(sizes) }
+        Column(Modifier.fillMaxSize().trackpadMomentum(scroll).verticalScroll(scroll, enabled = !mapExpanded)) { content(sizes) }
     }
 }
 

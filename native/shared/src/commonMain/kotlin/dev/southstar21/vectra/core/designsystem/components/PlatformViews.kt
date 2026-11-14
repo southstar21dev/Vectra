@@ -7,3 +7,9 @@ package dev.southstar21.vectra.core.designsystem.components
  * vanishes: there, effects avoid `CompositingStrategy.Offscreen` around content that may hold one.
  */
 expect val nativeViewsUnderCanvas: Boolean
+
+/**
+ * A trackpad scroll stops dead when the fingers lift: no momentum reaches Compose, so
+ * [trackpadMomentum] adds it (iOS: an iPad trackpad, or the iPad app on a Mac).
+ */
+expect val trackpadScrollStopsDead: Boolean

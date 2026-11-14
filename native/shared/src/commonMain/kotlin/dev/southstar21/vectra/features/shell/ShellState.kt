@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.shell
 
+import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
 import androidx.compose.foundation.ScrollState
 import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -129,6 +130,7 @@ fun VectraPage(
             Column(
                 modifier
                     .fillMaxSize()
+                    .trackpadMomentum(scroll)
                     .verticalScroll(scroll)
                     .padding(start = start, end = end, top = top, bottom = bottom),
                 // On wide screens the column stops growing and sits centred.
@@ -137,7 +139,7 @@ fun VectraPage(
             )
         } else {
             PanedPage(pane, PaddingValues(start = start, end = end, top = top, bottom = bottom), maxWidth, { scroll.value > 10 }, modifier) { inner ->
-                Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(inner), content = column)
+                Column(Modifier.fillMaxSize().trackpadMomentum(scroll).verticalScroll(scroll).padding(inner), content = column)
             }
         }
     }

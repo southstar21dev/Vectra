@@ -48,6 +48,12 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # iPad (and a Mac window) supports every orientation, so it gets multitasking and a resizable window.
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     entitlements:
       path: iosApp/iosApp.entitlements
       properties:
@@ -65,7 +71,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra
         VECTRA_APP_GROUP: group.dev.southstar21.vectra
         VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # The version comes from gradle.properties' vectra.versionName, like androidApp's.
         INFOPLIST_PREPROCESS: YES
@@ -155,7 +161,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgets
         VECTRA_APP_GROUP: group.dev.southstar21.vectra
         VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
         INFOPLIST_PREPROCESS: YES
         INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
         DEVELOPMENT_TEAM: 3HNYQ2F575

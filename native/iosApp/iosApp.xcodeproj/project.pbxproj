@@ -528,7 +528,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.debug;
 				PRODUCT_NAME = Vectra;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VECTRA_APP_GROUP = group.dev.southstar21.vectra.debug;
 				VECTRA_DISPLAY_NAME = "Vectra Dev";
 			};
@@ -562,7 +562,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra;
 				PRODUCT_NAME = Vectra;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VECTRA_APP_GROUP = group.dev.southstar21.vectra;
 				VECTRA_DISPLAY_NAME = Vectra;
 			};
@@ -588,7 +588,7 @@
 				PRODUCT_NAME = VectraWidgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VECTRA_APP_GROUP = group.dev.southstar21.vectra;
 				VECTRA_DISPLAY_NAME = Vectra;
 			};
@@ -614,7 +614,7 @@
 				PRODUCT_NAME = VectraWidgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VECTRA_APP_GROUP = group.dev.southstar21.vectra.debug;
 				VECTRA_DISPLAY_NAME = "Vectra Dev";
 			};
