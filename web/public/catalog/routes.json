@@ -32,14 +32,6 @@
     "textColor": "000000"
   },
   {
-    "id": "BKK_F3020",
-    "shortName": "2❆",
-    "description": "Közvágóhíd H | Jászai Mari tér",
-    "type": "TRAM",
-    "color": "FFD800",
-    "textColor": "000000"
-  },
-  {
     "id": "volan_2A",
     "shortName": "2A",
     "description": "Gödöllő, Klapka utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
@@ -250,7 +242,7 @@
   {
     "id": "BKK_0150",
     "shortName": "15",
-    "description": "Gyöngyösi utca M | Kálvin tér M",
+    "description": "Kálvin tér M | Gyöngyösi utca M",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -346,7 +338,7 @@
   {
     "id": "BKK_3240",
     "shortName": "24",
-    "description": "Keleti pályaudvar M | Közvágóhíd H",
+    "description": "Közvágóhíd H | Keleti pályaudvar M",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -530,7 +522,7 @@
   {
     "id": "BKK_0390",
     "shortName": "39",
-    "description": "Batthyány tér M H | Kissvábhegy",
+    "description": "Kissvábhegy | Batthyány tér M H",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -718,14 +710,6 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
-  },
-  {
-    "id": "BKK_OP56",
-    "shortName": "56",
-    "description": "Városház tér | Hűvösvölgy",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
   },
   {
     "id": "BKK_3561",
@@ -1338,7 +1322,7 @@
   {
     "id": "BKK_1140",
     "shortName": "114",
-    "description": "Baross Gábor-telep | Móricz Zs. körtér M",
+    "description": "Baross G.-telep, Ispiláng u. | Móricz Zs. körtér M",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -1507,6 +1491,14 @@
     "id": "BKK_1350",
     "shortName": "135",
     "description": "Soroksár, IKEA áruház | Millenniumtelep H",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_1351",
+    "shortName": "135A",
+    "description": "Szentlőrinci úti lakótelep | Erzsébeti temető",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -1858,7 +1850,7 @@
   {
     "id": "BKK_1765",
     "shortName": "176E",
-    "description": "Rákoscsaba-Újtelep | Örs vezér tere M H",
+    "description": "Üres kijelző | Örs vezér tere M H",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
