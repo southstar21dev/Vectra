@@ -245,6 +245,7 @@ fun ColumnScope.ScrollBody(
             .weight(1f, fill = true)
             .fillMaxWidth()
             .then(fades)
+            .trackpadMomentum(scrollState)
             .verticalScroll(scrollState)
             .padding(edgeSides())
             .padding(contentPadding),
@@ -272,7 +273,7 @@ fun ColumnScope.LazyScrollBody(
     val sides = edgeSides()
     val dir = LocalLayoutDirection.current
     LazyColumn(
-        modifier.weight(1f, fill = true).fillMaxWidth().then(fades),
+        modifier.weight(1f, fill = true).fillMaxWidth().then(fades).trackpadMomentum(state),
         state = state,
         contentPadding = PaddingValues(
             start = contentPadding.calculateStartPadding(dir) + sides.calculateStartPadding(dir),

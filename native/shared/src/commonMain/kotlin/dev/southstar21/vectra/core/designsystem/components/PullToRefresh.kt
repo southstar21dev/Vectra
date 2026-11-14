@@ -28,6 +28,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -37,6 +40,8 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val IndicatorSize = 40.dp
@@ -44,6 +49,8 @@ private val IndicatorSize = 40.dp
 private val Threshold = 80.dp
 /** Where the indicator rests while the refresh runs. */
 private val RestingOffset = 64.dp
+/** A trackpad or wheel pull has no release: it lets go once the scroll has been still this long. */
+private const val ScrollReleaseMs = 100L
 
 @Stable
 private class PullState(
@@ -58,6 +65,13 @@ private class PullState(
     private var armed = false
     /** The finger's pull, tracked synchronously; [offset] follows it (and animates on release). */
     private var pulled = 0f
+
+    /**
+     * The pull comes from scroll events (a trackpad or a mouse wheel), not a finger. Those never
+     * fling, which is how a touch pull lets go, so the pull lets go once they stop instead.
+     */
+    var scrollInput = false
+    private var scrollRelease: Job? = null
 
     val progress: Float get() = (offset.value / thresholdPx).coerceIn(0f, 1.5f)
 
@@ -77,6 +91,7 @@ private class PullState(
     }
 
     override suspend fun onPreFling(available: Velocity): Velocity {
+        scrollRelease?.cancel()
         if (refreshing || pulled <= 0f) return Velocity.Zero
         release()
         return available
@@ -89,6 +104,13 @@ private class PullState(
         val nowArmed = next >= thresholdPx
         if (nowArmed && !armed) haptics.threshold()
         armed = nowArmed
+        if (scrollInput) {
+            scrollRelease?.cancel()
+            scrollRelease = scope.launch {
+                delay(ScrollReleaseMs)
+                if (!refreshing && pulled > 0f) release()
+            }
+        }
     }
 
     private suspend fun release() {
@@ -129,7 +151,22 @@ fun PullToRefresh(onRefresh: suspend () -> Unit, modifier: Modifier = Modifier, 
         with(density) { PullState(scope, haptics, Threshold.toPx(), RestingOffset.toPx()) { latest } }
     }
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    Box(modifier.fillMaxSize().nestedScroll(state)) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .pointerInput(state) {
+                // Which kind of input is pulling: scroll events (trackpad, wheel) or a press (finger, click).
+                awaitPointerEventScope {
+                    while (true) {
+                        when (awaitPointerEvent(PointerEventPass.Initial).type) {
+                            PointerEventType.Scroll -> state.scrollInput = true
+                            PointerEventType.Press -> state.scrollInput = false
+                        }
+                    }
+                }
+            }
+            .nestedScroll(state),
+    ) {
         Box(Modifier.fillMaxSize().graphicsLayer { translationY = state.offset.value * 0.6f }) { content() }
         Box(
             Modifier

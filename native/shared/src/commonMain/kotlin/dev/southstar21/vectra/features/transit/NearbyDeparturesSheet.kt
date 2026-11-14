@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
 import dev.southstar21.vectra.features.navbar.dockMaterial
 
 import androidx.compose.animation.core.animate
@@ -436,6 +437,7 @@ private fun BoxScope.SheetBody(
             Column(
                 Modifier
                     .fillMaxSize()
+                    .trackpadMomentum(feedScroll)
                     .verticalScroll(feedScroll)
                     .padding(horizontal = 12.dp)
                     .padding(bottom = safeBottom + 12.dp),

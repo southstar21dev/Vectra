@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animate
@@ -424,7 +425,7 @@ private fun ReorderList(
 
     val shape = Radius.Panel
     LazyColumn(
-        modifier,
+        modifier.trackpadMomentum(listState),
         state = listState,
         contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(RowGap),
