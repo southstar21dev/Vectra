@@ -2898,7 +2898,7 @@
   {
     "id": "volan_415",
     "shortName": "415",
-    "description": "Hort, Hősök tere 1. | Budapest, Stadion autóbusz-pályaudvar",
+    "description": "Gyöngyös, autóbusz-állomás | Budapest, Stadion autóbusz-pályaudvar",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -3994,7 +3994,7 @@
   {
     "id": "volan_774",
     "shortName": "774",
-    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vá. (Őrmező)",
+    "description": "Perbál, autóbusz-forduló | Budapest, Kelenföld vasútállomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -4946,7 +4946,7 @@
   {
     "id": "volan_1251",
     "shortName": "1251",
-    "description": "Pápa, autóbusz-állomás | Budapest, Népliget autóbusz-pályaudvar",
+    "description": "Bakonybél, üdülő bejárati út | Budapest, Népliget autóbusz-pályaudvar",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
