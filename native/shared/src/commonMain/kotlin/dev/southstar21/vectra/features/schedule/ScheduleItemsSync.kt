@@ -363,7 +363,8 @@ internal class ScheduleItemsSync(
             throw e
         } catch (e: Throwable) {
             _itemSyncError.value = e.message ?: "Schedule changes are waiting to sync."
-            syncRetryCount++
+            // A refused app version won't pass sooner for retrying: wait the longest, queue kept.
+            syncRetryCount = if (e is PocketBaseException && e.isUpdateRequired) MaxRetryShift else syncRetryCount + 1
             scheduleRetry()
             return false
         }
@@ -461,7 +462,7 @@ internal class ScheduleItemsSync(
     /** Exponential backoff while the queue is non-empty and the last pass failed. */
     private fun scheduleRetry() {
         retryJob?.cancel()
-        val delayMs = minOf(60_000L, 2_000L * (1L shl minOf(syncRetryCount, 5)))
+        val delayMs = minOf(60_000L, 2_000L * (1L shl minOf(syncRetryCount, MaxRetryShift)))
         retryJob = scope.launch {
             delay(delayMs)
             if (online && currentLocal().queue.isNotEmpty() && _itemSyncError.value != null) executeSync()
@@ -578,6 +579,8 @@ internal class ScheduleItemsSync(
         const val VALIDATED_CLOUD_REUSE_MS = 5_000L
         /** Reads that raced a sync commit are retried this many times in all. */
         const val STALE_READ_ATTEMPTS = 3
+        /** Retry backoff doubles up to 2 s << this (64 s, capped at a minute). */
+        const val MaxRetryShift = 5
         const val SAVE_FAILED = "Unable to save this change on this device. Check available storage and try again."
         const val ACCOUNT_CHANGED = "You switched accounts while this was saving. Nothing was saved."
     }

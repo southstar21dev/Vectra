@@ -24,15 +24,25 @@ import androidx.glance.background
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.NextUp
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetKind
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetSession
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.clockLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.countdownLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.nextUp
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.progress
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.remainingLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.weekdayLabel
 
 /** Small: the class you're in, or the next one, with a countdown. */
@@ -52,7 +62,7 @@ class NextClassWidget : GlanceAppWidget() {
 @Composable
 private fun NextClassContent(context: Context, frame: WidgetFrame) {
     when (val up = frame.snapshot.nextUp(frame.nowMs, frame.today)) {
-        NextUp.NoData -> EmptyState(context, "Open Vectra and sign in to see your classes here.")
+        NextUp.NoData -> EmptyState(context, frame.snapshot.emptyMessage("Open Vectra and sign in to see your classes here."))
         is NextUp.InClass -> InClass(context, up.session, frame.nowMs)
         is NextUp.Upcoming -> Upcoming(context, up.session, frame.nowMs)
         is NextUp.ExamSoon -> ExamSoon(context, up.exam, frame.today)

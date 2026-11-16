@@ -90,6 +90,8 @@ private class FakeBackend {
     /** Every item write, e.g. "create $ItemA", "update row-1", "delete row-1". */
     val writes = mutableListOf<String>()
     var itemsDown = false
+    /** Answers schedule_items with 426, as the version gate does for an outdated build. */
+    var outdated = false
     var classesDown = false
     /** The next create lands, but its reply is lost on the way back (audit 04 #19). */
     var loseCreateReply = false
@@ -180,7 +182,13 @@ private class FakeBackend {
     }
 
     private suspend fun MockRequestHandleScope.items(req: HttpRequestData, rowId: String): HttpResponseData {
-        if (itemsDown) return json("{}", HttpStatusCode.InternalServerError)
+        if (itemsDown || outdated) {
+            return if (itemsDown) {
+                json("{}", HttpStatusCode.InternalServerError)
+            } else {
+                json("""{"status":426,"message":"out of date","data":{"minVersion":"9.0.0"}}""", HttpStatusCode.UpgradeRequired)
+            }
+        }
         return when (req.method) {
             HttpMethod.Get -> {
                 val clientId = Regex("client_id = '([^']+)'").find(req.url.parameters["filter"].orEmpty())?.groupValues?.get(1)
@@ -662,6 +670,19 @@ class ScheduleSyncTest {
         repo.executeSync()
         drained()
         assertNull(repo.itemSyncError.value)
+        assertEquals(1, b.writes.size)
+    }
+
+    @Test fun aRefusedAppVersionKeepsTheQueueForAfterTheUpdate() = scenario { b ->
+        b.outdated = true
+        start(queuedCreate(item()))
+        repo.executeSync()
+        until { repo.itemSyncError.value != null }
+        assertEquals(1, queue.size)
+        assertEquals(0, b.writes.size)
+        b.outdated = false
+        repo.executeSync()
+        drained()
         assertEquals(1, b.writes.size)
     }
 

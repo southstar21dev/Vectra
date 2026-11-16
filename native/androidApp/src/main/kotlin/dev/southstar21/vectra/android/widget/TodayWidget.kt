@@ -28,6 +28,7 @@ import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.countdownLabel
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.featured
 import dev.southstar21.vectra.features.widgets.laterOn
 import dev.southstar21.vectra.features.widgets.nextUp
@@ -56,7 +57,7 @@ class TodayWidget : GlanceAppWidget() {
 private fun TodayContent(context: Context, frame: WidgetFrame) {
     val up = frame.snapshot.nextUp(frame.nowMs, frame.today)
     if (up == NextUp.NoData) {
-        EmptyState(context, "Open Vectra and sign in to see your day here.")
+        EmptyState(context, frame.snapshot.emptyMessage("Open Vectra and sign in to see your day here."))
         return
     }
     val featured = up.featured

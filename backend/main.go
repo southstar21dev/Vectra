@@ -20,6 +20,7 @@ import (
 	"vectra/pb/internal/push"
 	"vectra/pb/internal/routes"
 	"vectra/pb/internal/schema"
+	"vectra/pb/internal/versiongate"
 	_ "vectra/pb/migrations"
 )
 
@@ -48,6 +49,8 @@ func main() {
 	registerMigrateSupabaseCommand(app)
 
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		// Refuses app builds older than the minimum in app_config (426), before any route runs.
+		versiongate.Register(se)
 		routes.Register(se)
 		return se.Next()
 	})

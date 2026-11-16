@@ -30,6 +30,7 @@ import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.WeekDay
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.classCount
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.examThisWeek
 import dev.southstar21.vectra.features.widgets.showsNextWeek
@@ -56,7 +57,7 @@ private const val MaxBars = 4
 private fun WeekContent(context: Context, frame: WidgetFrame) {
     val snapshot = frame.snapshot
     if (snapshot == null || !snapshot.signedIn) {
-        EmptyState(context, "Open Vectra and sign in to see your week here.")
+        EmptyState(context, snapshot.emptyMessage("Open Vectra and sign in to see your week here."))
         return
     }
     val days = snapshot.week(frame.today)

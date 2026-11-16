@@ -10,6 +10,7 @@ import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.reminders.budapestMs
 import dev.southstar21.vectra.features.reminders.expandSessions
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
+import dev.southstar21.vectra.features.update.UpdateGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -30,7 +31,8 @@ private const val AheadDays = 14
 
 /**
  * Keeps the home-screen widgets' snapshot current: rewrites it whenever the timetable, personal
- * items, "No class" marks or the signed-in account change.
+ * items, "No class" marks or the signed-in account change. While the app is locked for an update
+ * the widgets show only the update prompt.
  */
 class WidgetPublisher(
     private val schedule: ScheduleRepository,
@@ -38,6 +40,7 @@ class WidgetPublisher(
     private val auth: AuthRepository,
     private val host: WidgetHost,
     private val scope: CoroutineScope,
+    private val updateGate: UpdateGate,
 ) : SessionListener {
     private val lock = Mutex()
     private var started = false
@@ -48,13 +51,14 @@ class WidgetPublisher(
         if (started) return
         started = true
         scope.launch {
-            combine(
+            val inputs = combine(
                 schedule.events,
                 schedule.items,
                 courseTracker.data,
                 schedule.localReady,
                 auth.session.map { it?.userId },
             ) { _, _, _, _, _ -> }
+            combine(inputs, updateGate.state) { _, _ -> }
                 .debounce(1_000)
                 .collect { runSuspendCatching { publish() } }
         }
@@ -70,6 +74,12 @@ class WidgetPublisher(
     suspend fun publish() = lock.withLock {
         // Without a screen nothing has read the stored session yet: "no session" isn't "signed out".
         auth.restore()
+        // Without a screen nothing has read a stored lock either.
+        updateGate.loadStored()
+        if (updateGate.state.value != null) {
+            host.publish(encodeWidgetSnapshot(updateRequiredSnapshot(nowMs())))
+            return@withLock
+        }
         val today = nowInBudapest().date
         // From Monday, so the week view has the days already gone.
         val monday = mondayOf(today)

@@ -12,6 +12,7 @@ import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.update.UpdateGate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,7 @@ class ReminderScheduler(
     private val notifier: Notifier,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
+    private val updateGate: UpdateGate,
 ) : SessionListener {
     private val store = ReminderPrefsStore(kv, auth, scope)
     val prefs: StateFlow<ReminderPrefs> = store.prefs
@@ -72,7 +74,7 @@ class ReminderScheduler(
                 schedule.events,
                 schedule.items,
                 courseTracker.data,
-                combine(schedule.localReady, auth.session.map { it?.userId }) { ready, user -> ready to user },
+                combine(schedule.localReady, auth.session.map { it?.userId }, updateGate.state) { ready, user, locked -> Triple(ready, user, locked) },
             ) { _, _, _, _, _ -> }
             merge(inputs, replanRequests).debounce(1_500).collect { runSuspendCatching { reschedule() } }
         }
@@ -100,6 +102,14 @@ class ReminderScheduler(
     suspend fun reschedule() = lock.withLock {
         loaded.await()
         val prefs = prefs.value
+        // A cold start (boot, background refresh) hasn't read a stored lock yet.
+        updateGate.loadStored()
+        // Locked for an update: nothing fires until the new version replans. Forced, because alarms
+        // set by an earlier process are still pending while this one's plan starts empty.
+        if (updateGate.state.value != null) {
+            apply(emptyList(), force = true)
+            return@withLock
+        }
         if (auth.session.value == null || !prefs.anyOn) {
             apply(emptyList())
             return@withLock
@@ -170,7 +180,8 @@ class ReminderScheduler(
     /** Whether a reminder firing now still belongs to a signed-in account (a cold process restores first). */
     suspend fun hasSession(): Boolean {
         auth.restore()
-        return auth.session.value != null
+        updateGate.loadStored()
+        return auth.session.value != null && updateGate.state.value == null
     }
 
     override suspend fun beforeSignOut() = lock.withLock { apply(emptyList(), force = true) }

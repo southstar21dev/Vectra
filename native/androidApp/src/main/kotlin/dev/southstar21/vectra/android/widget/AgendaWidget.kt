@@ -25,14 +25,23 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetKind
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetSession
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.breakMinutes
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.clockLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayHeading
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.isClass
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.progress
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.sessionsOn
 
 /** Large: today as the Schedule tab shows it, glass cards with stacked times. */
@@ -67,7 +76,7 @@ private sealed interface AgendaRow {
 private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val snapshot = frame.snapshot
     if (snapshot == null || !snapshot.signedIn) {
-        EmptyState(context, "Open Vectra and sign in to see today here.")
+        EmptyState(context, snapshot.emptyMessage("Open Vectra and sign in to see today here."))
         return
     }
     // A day with nothing on (a weekend, a holiday) shows the next day that has something instead.

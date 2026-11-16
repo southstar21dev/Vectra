@@ -30,12 +30,14 @@ import dev.southstar21.vectra.core.platform.rememberSystemReduceMotion
 import dev.southstar21.vectra.features.auth.LoginScreen
 import dev.southstar21.vectra.features.shell.AppShell
 import dev.southstar21.vectra.features.splash.AppSplash
+import dev.southstar21.vectra.features.update.UpdateRequiredScreen
 import dev.southstar21.vectra.navigation.AppNavigator
 import dev.southstar21.vectra.navigation.DeepLinks
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.PushedScreen
 import dev.southstar21.vectra.navigation.TabPage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** How long the splash may wait for cached content once the session is known. */
 private const val CachedContentWaitMs = 1500L
@@ -60,11 +62,14 @@ fun VectraApp(graph: AppGraph) {
         onPauseOrDispose { graph.courseTrackerRepository.flushPendingUpload() }
     }
     LifecycleStartEffect(graph) {
+        // A signed-out app makes no other request, so this is how it learns it is outdated (or no longer is).
+        graph.scope.launch { graph.updateGate.check(graph.pb) }
         graph.watchdog.startBackstop()
         onStopOrDispose { graph.watchdog.stopBackstop() }
     }
 
     val session by graph.auth.session.collectAsStateWithLifecycle()
+    val updateRequired by graph.updateGate.state.collectAsStateWithLifecycle()
     val appearance by graph.appearanceRepository.prefs.collectAsStateWithLifecycle()
     val cachedContentReady = if (restored && session != null) {
         graph.scheduleRepository.localReady.collectAsStateWithLifecycle().value
@@ -91,8 +96,13 @@ fun VectraApp(graph: AppGraph) {
                     }
                 }
             }) {
+                val locked = updateRequired
                 if (!restored) {
                     AppBackground()
+                } else if (locked != null) {
+                    // Above everything: a refused build can't sign in or reach any screen.
+                    AppBackground()
+                    UpdateRequiredScreen(locked, graph.config.appVersion)
                 } else if (session == null) {
                     AppBackground()
                     LoginScreen(graph.auth, graph.passkeyRepository)
