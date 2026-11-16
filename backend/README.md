@@ -73,3 +73,31 @@ to `vectra` with `su-exec`. A volume created by an older image, which ran as roo
 on the first start; no manual `chown` is needed. In the container's terminal (which is root), run
 `pb` commands as the app user, `su-exec vectra /app/pb …`; a file a root command creates in
 `pb_data` is re-owned on the next restart anyway.
+
+## Forcing an update
+
+`internal/versiongate` answers API requests from outdated app builds with `426 Upgrade Required`;
+builds that know about it then lock behind a full-screen "update required" screen until they are
+updated. The lock is stored on the device, so it holds offline and across restarts; lowering the
+minimum unlocks it on the app's next foreground. The owner controls it from
+the one record in the `app_config` collection (superuser only):
+
+| Field | Meaning |
+|---|---|
+| `minIos` | Lowest iOS (and Mac) version still served, such as `1.9.0`. Empty: no minimum. |
+| `minAndroid` | The same for Android. |
+| `blockLegacy` | Refuse every build from before the app sent its version (iOS and Android together). |
+
+Changes apply to the next request, with no restart. Only the native apps send `X-App-Version` and
+`X-App-Platform`, so the web PWA, the dashboard, curl and the health check are never refused. Any
+error reading the record lets the request through.
+
+Builds from before this feature have no update screen and can't be locked: they keep opening and
+working offline, and only show the 426's message wherever they show a server error (their unsynced
+changes stay queued until they're updated). So:
+
+1. Deploy the backend (empty fields: the gate is off).
+2. Release the app build with the update screen and wait until it's on every channel (GitHub
+   release, AltStore/SideStore source, TestFlight).
+3. Tell testers, then tick `blockLegacy`.
+4. Later, raise `minIos` or `minAndroid` whenever a build should be retired.

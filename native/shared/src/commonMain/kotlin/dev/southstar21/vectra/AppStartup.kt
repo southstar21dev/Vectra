@@ -23,6 +23,8 @@ object AppStartup {
         // session to signed out.
         runSuspendCatching { graph.appearanceRepository.loadStored() }
         runSuspendCatching { graph.auth.restore() }
+        // A build the server has refused stays locked, offline too, until it is updated.
+        runSuspendCatching { graph.updateGate.loadStored() }
         startup.restored = true
         graph.watchdog.trigger()
         // Neptun auto-sync starts from the repository's init, so it can't wait for a screen to ask.

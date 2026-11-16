@@ -20,12 +20,19 @@ import androidx.glance.layout.height
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.unit.ColorProvider
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.NextUp
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetSession
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.clockLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.countdownLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.nextUp
+import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.progress
 
 /**
@@ -80,7 +87,7 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
             }
             NextUp.NoData -> {
                 Headline("Vectra")
-                Detail("Sign in to see your classes")
+                Detail(frame.snapshot.emptyMessage("Sign in to see your classes"))
             }
         }
     }

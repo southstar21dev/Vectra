@@ -23,6 +23,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.concurrent.Volatile
 
 val VectraJson = Json {
     ignoreUnknownKeys = true
@@ -52,7 +53,13 @@ class PocketBaseException(
 
     val isNetwork get() = status == 0
     val isAuthRejection get() = status == 401 || status == 403
+
+    /** The server refuses this app version (see backend/internal/versiongate). */
+    val isUpdateRequired get() = status == UpdateRequiredStatus
 }
+
+/** 426 Upgrade Required: the backend's only use of it is refusing an outdated app build. */
+const val UpdateRequiredStatus = 426
 
 /** One page of a list query. */
 data class ListResult(val page: Int, val perPage: Int, val totalItems: Int, val items: List<JsonObject>)
@@ -75,13 +82,22 @@ fun createHttpClient(engine: HttpClient = HttpClient()): HttpClient = engine.con
  * Minimal typed client for the PocketBase REST API — the subset the app uses (auth,
  * record CRUD, `send` for custom routes). Records stay JSON so repositories map
  * them explicitly.
+ *
+ * [clientVersion] and [clientPlatform] ("android" or "ios") go out on every PocketBase
+ * request, so the server can refuse an outdated build. They are set here, not on the shared
+ * [HttpClient], so map, transit and weather providers never see them.
  */
 class PocketBaseClient(
     private val http: HttpClient,
     val baseUrl: String,
     val auth: AuthStore,
+    private val clientVersion: String? = null,
+    private val clientPlatform: String? = null,
 ) {
     private val base = baseUrl.trimEnd('/')
+
+    /** Called with the server's minimum version (null when it sent none) whenever it answers 426. */
+    @Volatile var onUpdateRequired: ((minVersion: String?) -> Unit)? = null
 
     suspend fun send(
         path: String,
@@ -107,6 +123,7 @@ class PocketBaseClient(
             http.request("$base$path") {
                 this.method = method
                 applyAuth()
+                identify()
                 query.forEach { (k, v) -> if (v != null) parameter(k, v) }
                 if (body != null) setBody(TextContent(body.toString(), ContentType.Application.Json))
             }
@@ -119,6 +136,10 @@ class PocketBaseClient(
         if (!response.status.isSuccess()) {
             val obj = (if (text.isBlank()) null else parseLoosely(text)) as? JsonObject ?: JsonObject(emptyMap())
             val message = (obj["message"] as? JsonPrimitive)?.contentOrNull ?: "Something went wrong while processing your request."
+            if (response.status.value == UpdateRequiredStatus) {
+                val minVersion = ((obj["data"] as? JsonObject)?.get("minVersion") as? JsonPrimitive)?.contentOrNull
+                onUpdateRequired?.invoke(minVersion?.takeIf { it.isNotBlank() })
+            }
             throw PocketBaseException(response.status.value, message, obj)
         }
         return text
@@ -126,6 +147,16 @@ class PocketBaseClient(
 
     private fun HttpRequestBuilder.applyAuth() {
         auth.token?.let { header("Authorization", it) }
+    }
+
+    private fun HttpRequestBuilder.identify() {
+        clientVersion?.let { header(AppVersionHeader, it) }
+        clientPlatform?.let { header(AppPlatformHeader, it) }
+    }
+
+    companion object {
+        const val AppVersionHeader = "X-App-Version"
+        const val AppPlatformHeader = "X-App-Platform"
     }
 
     fun collection(name: String) = RecordService(this, name)

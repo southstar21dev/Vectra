@@ -18,6 +18,7 @@ import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.PasskeyAuthenticator
 import dev.southstar21.vectra.core.platform.PushRegistrar
+import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.SecretCipher
 import dev.southstar21.vectra.core.platform.WidgetHost
 import dev.southstar21.vectra.features.auth.PasskeyRepository
@@ -36,6 +37,7 @@ import dev.southstar21.vectra.features.settings.AppearanceRepository
 import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import dev.southstar21.vectra.features.transit.DeviceLocation
 import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.update.UpdateGate
 import dev.southstar21.vectra.features.weather.WeatherRepository
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
@@ -82,6 +84,7 @@ interface AppGraph {
     val weatherRepository: WeatherRepository
     val reminders: ReminderScheduler
     val widgets: WidgetPublisher
+    val updateGate: UpdateGate
 
     @SingleIn(AppScope::class)
     @Provides
@@ -104,8 +107,14 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun providePb(http: HttpClient, config: VectraConfig, store: AuthStore): PocketBaseClient =
-        PocketBaseClient(http, config.pocketbaseUrl, store)
+    fun providePb(http: HttpClient, config: VectraConfig, store: AuthStore, updateGate: UpdateGate): PocketBaseClient =
+        PocketBaseClient(http, config.pocketbaseUrl, store, clientVersion = config.appVersion, clientPlatform = platformName)
+            .apply { onUpdateRequired = updateGate::report }
+
+    @SingleIn(AppScope::class)
+    @Provides
+    fun provideUpdateGate(kv: KeyValueStore, scope: CoroutineScope, config: VectraConfig): UpdateGate =
+        UpdateGate(kv, scope, config.appVersion)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -189,7 +198,8 @@ interface AppGraph {
         notifier: Notifier,
         auth: AuthRepository,
         scope: CoroutineScope,
-    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope)
+        updateGate: UpdateGate,
+    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -199,7 +209,8 @@ interface AppGraph {
         auth: AuthRepository,
         host: WidgetHost,
         scope: CoroutineScope,
-    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope)
+        updateGate: UpdateGate,
+    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate)
 
     @SingleIn(AppScope::class)
     @Provides

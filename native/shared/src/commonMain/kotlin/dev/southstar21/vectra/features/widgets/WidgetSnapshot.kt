@@ -16,6 +16,8 @@ data class WidgetSnapshot(
     val generatedAtMs: Long,
     val signedIn: Boolean,
     val sessions: List<WidgetSession>,
+    /** The app is locked until it is updated (the server refused this build); no sessions then. */
+    val updateRequired: Boolean = false,
 )
 
 @Serializable
@@ -78,6 +80,16 @@ fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long): WidgetSna
     )
 
 fun signedOutSnapshot(nowMs: Long) = WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList())
+
+/** What the widgets hold while the app is locked: nothing from the timetable, only the update prompt. */
+fun updateRequiredSnapshot(nowMs: Long) =
+    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true)
+
+const val UpdateRequiredWidgetMessage = "Update Vectra to keep using it."
+
+/** A widget's empty-state line: the update prompt while locked, else [signedOut]. */
+fun WidgetSnapshot?.emptyMessage(signedOut: String): String =
+    if (this?.updateRequired == true) UpdateRequiredWidgetMessage else signedOut
 
 fun encodeWidgetSnapshot(snapshot: WidgetSnapshot): String =
     VectraJson.encodeToString(WidgetSnapshot.serializer(), snapshot)

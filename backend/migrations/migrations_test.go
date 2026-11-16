@@ -421,3 +421,27 @@ func TestPasswordResetRateLimits(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "*:confirmPasswordReset", confirm.Label)
 }
+
+func TestAppConfigCollection(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	col, err := app.FindCollectionByNameOrId("app_config")
+	require.NoError(t, err)
+	for _, name := range []string{"minIos", "minAndroid", "blockLegacy"} {
+		require.NotNil(t, col.Fields.GetByName(name), "app_config.%s", name)
+	}
+	require.Nil(t, col.ListRule)
+	require.Nil(t, col.ViewRule)
+	require.Nil(t, col.CreateRule)
+	require.Nil(t, col.UpdateRule)
+	require.Nil(t, col.DeleteRule)
+
+	rows, err := app.FindRecordsByFilter("app_config", "", "", 0, 0)
+	require.NoError(t, err)
+	require.Len(t, rows, 1, "the migration seeds exactly one record")
+	require.Empty(t, rows[0].GetString("minIos"))
+	require.Empty(t, rows[0].GetString("minAndroid"))
+	require.False(t, rows[0].GetBool("blockLegacy"))
+}

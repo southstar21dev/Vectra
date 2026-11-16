@@ -8,6 +8,8 @@ struct Snapshot: Decodable {
     let generatedAtMs: Double
     let signedIn: Bool
     let sessions: [Session]
+    /// The app is locked until it is updated; older snapshots don't carry the key.
+    let updateRequired: Bool?
 
     static func load() -> Snapshot? {
         guard let url = AppGroup.snapshotURL,
@@ -74,6 +76,14 @@ struct Session: Decodable, Hashable {
 
 /// What a widget says when its snapshot has run out (audit 04 #17).
 let StaleMessage = "Open Vectra to refresh your schedule."
+let UpdateRequiredMessage = "Update Vectra to keep using it."
+
+extension Optional where Wrapped == Snapshot {
+    /// A widget's empty-state line: the update prompt while the app is locked, else `signedOut`.
+    func emptyMessage(_ signedOut: String) -> String {
+        (self?.updateRequired ?? false) ? UpdateRequiredMessage : signedOut
+    }
+}
 
 enum NextUp {
     case noData

@@ -48,7 +48,7 @@ extension Snapshot {
             s("Microeconomics", "C.203", .lecture, 25, 115, "#38bdf8"),
             s("Corporate Finance", "S.304", .seminar, 145, 235, "#10b981"),
             s("Problem set 3", "", .task, 265, 266),
-        ])
+        ], updateRequired: nil)
     }
 }
 
@@ -83,13 +83,14 @@ struct NextClassView: View {
 
     var body: some View {
         let up = entry.snapshot.nextUp(now: entry.date)
+        let locked = entry.snapshot?.updateRequired ?? false
         switch family {
-        case .accessoryRectangular: Accessory { RectangularAccessory(up: up, now: entry.date) }
+        case .accessoryRectangular: Accessory { RectangularAccessory(up: up, now: entry.date, locked: locked) }
         case .accessoryCircular: Accessory { CircularAccessory(up: up, now: entry.date) }
-        case .accessoryInline: Accessory { InlineAccessory(up: up) }
+        case .accessoryInline: Accessory { InlineAccessory(up: up, locked: locked) }
         default:
             let glow: Color? = if case .inClass(let s) = up { Palette(dark: true).course(s) } else { nil }
-            Container(glow: glow) { SmallNextClass(up: up, now: entry.date) }
+            Container(glow: glow) { SmallNextClass(up: up, now: entry.date, locked: locked) }
         }
     }
 }
@@ -103,11 +104,12 @@ struct SmallNextClass: View {
     @Environment(\.palette) private var p
     let up: NextUp
     let now: Date
+    var locked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             switch up {
-            case .noData: EmptyMessage(text: "Open Vectra and sign in to see your classes here.")
+            case .noData: EmptyMessage(text: locked ? UpdateRequiredMessage : "Open Vectra and sign in to see your classes here.")
             case .stale: EmptyMessage(text: StaleMessage)
             case .upcoming(let s):
                 HStack {
@@ -200,6 +202,7 @@ struct EmptyMessage: View {
 struct RectangularAccessory: View {
     let up: NextUp
     let now: Date
+    var locked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -224,7 +227,7 @@ struct RectangularAccessory: View {
                 }
             case .noData:
                 Text("Vectra").font(VFont.inter(15, 800))
-                Text("Sign in to see your classes").font(VFont.inter(12, 500))
+                Text(locked ? UpdateRequiredMessage : "Sign in to see your classes").font(VFont.inter(12, 500))
             case .stale:
                 Text("Vectra").font(VFont.inter(15, 800))
                 Text("Open Vectra to refresh").font(VFont.inter(12, 500))
@@ -262,6 +265,7 @@ struct CircularAccessory: View {
 
 struct InlineAccessory: View {
     let up: NextUp
+    var locked = false
 
     var body: some View {
         switch up {
@@ -269,7 +273,7 @@ struct InlineAccessory: View {
         case .upcoming(let s): Text("\(Budapest.clock(s.start)) \(s.title)")
         case .examSoon(let s): Text("Exam \(Budapest.weekday(s.day)) \(Budapest.clock(s.start))")
         case .dayDone(_, let next): Text(next.map { "\(Budapest.weekday($0.day)) \(Budapest.clock($0.start)) \($0.title)" } ?? "No classes coming up")
-        case .noData: Text("Vectra")
+        case .noData: Text(locked ? "Update Vectra" : "Vectra")
         case .stale: Text("Open Vectra to refresh")
         }
     }
