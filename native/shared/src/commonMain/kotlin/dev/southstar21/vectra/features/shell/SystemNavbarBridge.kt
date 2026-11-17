@@ -58,7 +58,9 @@ internal fun SystemNavbarBridge(
     LaunchedEffect(bar) { snapshotFlow { latestCover() }.collect { bar.setCover(it) } }
 
     DisposableEffect(bar, navigator, actions) {
-        bar.onSelect = { index -> PrimaryNavItems.getOrNull(index)?.let { navigator.navigate(it.route) } }
+        // The bar is hidden while the nearby map is open, so a selection then is the lift of the finger
+        // that held Transit to open it: navigating would close the map again.
+        bar.onSelect = { index -> if (navigator.nearbyMap == null) PrimaryNavItems.getOrNull(index)?.let { navigator.navigate(it.route) } }
         bar.onAction = { id -> actions.execute(id) }
         bar.onHold = { index, bounds -> PrimaryNavItems.getOrNull(index)?.let { latestHold(it.route, bounds) } }
         onDispose {

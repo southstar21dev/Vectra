@@ -190,8 +190,9 @@ fun LiquidTabs(
             repeat(count) { index ->
                 Column(
                     Modifier
-                        .clip(Capsule())
-                        .then(if (tinted) Modifier else Modifier.onGloballyPositioned { itemBounds[index] = it.boundsInWindow() })
+                        // The tinted copy swells to 1.2x while the drop is held; a clip around it
+                        // would cut the labels' ends off ("Dashboard" -> "ashboar").
+                        .then(if (tinted) Modifier else Modifier.clip(Capsule()).onGloballyPositioned { itemBounds[index] = it.boundsInWindow() })
                         // Pressed, the drop slides over and swells there while held; let go without a
                         // tap or hold landing it, it goes back. (On both copies: the tinted one is on top.)
                         .pressPreview(
@@ -223,6 +224,9 @@ fun LiquidTabs(
             }
         }
 
+        // The drag listens on the whole bar, not just the drop: swiping from any tab carries the
+        // selection along (the press glides the drop under the finger first), as on iOS.
+        Box(Modifier.fillMaxWidth().then(drag.modifier), contentAlignment = Alignment.CenterStart) {
         // The pane: one piece of glass holding the items.
         items(
             tinted = false,
@@ -304,7 +308,6 @@ fun LiquidTabs(
                     haptics.longPress()
                     onLongPressNow?.invoke(selectedNow, itemBounds.getOrNull(selectedNow))
                 }
-                .then(drag.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, itemsBackdrop),
                     shape = { Capsule() },
@@ -333,6 +336,7 @@ fun LiquidTabs(
                 .liveHeight(pillHeight)
                 .fillMaxWidth(1f / count),
         )
+        }
     }
 }
 
