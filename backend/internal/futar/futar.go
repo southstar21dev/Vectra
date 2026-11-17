@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/sync/singleflight"
 
 	"vectra/pb/internal/ratelimit"

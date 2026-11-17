@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/tools/types"
 )
 
 // OwnerRules applies the RLS-equivalent rules: a user may only see and mutate

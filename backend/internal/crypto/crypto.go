@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
 
 	"vectra/pb/internal/ratelimit"

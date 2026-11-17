@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 )
 
 // Path is where reset emails point: {APP_URL}/reset-password#{TOKEN}.
