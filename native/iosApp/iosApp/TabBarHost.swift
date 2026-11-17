@@ -176,10 +176,21 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         true
     }
 
+    /// A hold has opened something (the nearby map): the tab's own selection, which UIKit delivers
+    /// when the finger lifts, would navigate and close it again, so it is swallowed.
+    private var holdSwallowsSelect = false
+
     @objc private func handleHold(_ recognizer: UILongPressGestureRecognizer) {
+        if recognizer.state == .ended || recognizer.state == .cancelled || recognizer.state == .failed {
+            // The selection can land just before or after this, so keep swallowing it briefly.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.holdSwallowsSelect = false }
+            return
+        }
         guard recognizer.state == .began, isInteractive, !isVertical else { return }
         let point = recognizer.location(in: view)
         guard let (index, frame) = tabItem(at: point) else { return }
+        // Only Transit's hold opens something that a following selection would close.
+        holdSwallowsSelect = Self.items[index].title == "Transit"
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         // The Compose app fills the window, in pixels.
         let scale = traitCollection.displayScale
@@ -275,6 +286,8 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             return false
         }
         if let index = mainTabs.firstIndex(where: { $0 === tab }) {
+            // Allowed (the bar shows the tab the hold already switched to), but not reported: it would close the map.
+            if holdSwallowsSelect { return true }
             // Reselecting the current tab still goes to Compose, which scrolls it to the top.
             IosTabBar.shared.select(index: Int32(index))
         }

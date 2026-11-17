@@ -45,6 +45,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import dev.southstar21.vectra.features.navbar.NavbarCompact
 import androidx.compose.runtime.setValue
@@ -223,6 +228,7 @@ private fun TabShell(
     val systemNavbar = platformNavbar
     val backdrop = rememberLayerBackdrop()
     val navbarCompact = remember { NavbarCompact() }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(navigator.current) { navbarCompact.reset() }
 
     Box(modifier.fillMaxSize()) {
@@ -258,9 +264,9 @@ private fun TabShell(
                     LiquidNavbar(
                         navigator.current, { navigator.navigate(it) }, backdrop,
                         compact = navbarCompact.compact, holdable = { it == Route.Transit },
-                    ) { route, bounds -> holdTab(navigator, route, bounds) }
+                    ) { route, bounds -> holdTab(scope, navigator, route, bounds) }
                 } else {
-                    SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction) { route, bounds -> holdTab(navigator, route, bounds) }
+                    SystemNavbarBridge(systemNavbar, navigator, navbarActions, coverFraction) { route, bounds -> holdTab(scope, navigator, route, bounds) }
                 }
             }
         }
@@ -270,9 +276,23 @@ private fun TabShell(
 /**
  * A tab held down: holding Transit switches to it and grows the nearby map out of the tab
  * (after the switch, since navigating closes overlays). Other tabs ignore a hold.
+ *
+ * From another tab the switch (a cross-fade, and a first visit builds the page) settles before the
+ * map starts growing, so the two don't fight for the same frames.
  */
-private fun holdTab(navigator: AppNavigator, route: Route, bounds: Rect?) {
+private fun holdTab(scope: CoroutineScope, navigator: AppNavigator, route: Route, bounds: Rect?) {
     if (route != Route.Transit) return
-    if (navigator.current != Route.Transit) navigator.navigate(Route.Transit)
-    navigator.nearbyMap = CardLaunch(bounds)
+    if (navigator.current == Route.Transit) {
+        navigator.nearbyMap = CardLaunch(bounds)
+        return
+    }
+    navigator.navigate(Route.Transit)
+    scope.launch {
+        delay(TabSwitchSettleMs)
+        withFrameNanos { }
+        if (navigator.current == Route.Transit) navigator.nearbyMap = CardLaunch(bounds)
+    }
 }
+
+/** About the tab cross-fade (see KeptAliveTabs). */
+private const val TabSwitchSettleMs = 170L
