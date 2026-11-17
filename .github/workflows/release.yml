@@ -126,12 +126,12 @@ jobs:
         with:
           node-version: 22
 
-      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
+      # From the committed lockfile (release-tools), with no lifecycle scripts: the job holds
       # a write token, so nothing resolved fresh or run at install time may reach it.
       - name: Install semantic-release
         run: |
           mkdir -p "$RUNNER_TEMP/semrel"
-          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
+          cp release-tools/package.json release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
           npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
 
       # An Android-only fix skips the iOS build: when every commit since the last release carries a
@@ -321,12 +321,12 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
+      # From the committed lockfile (release-tools), with no lifecycle scripts: the job holds
       # a write token, so nothing resolved fresh or run at install time may reach it.
       - name: Install semantic-release
         run: |
           mkdir -p "$RUNNER_TEMP/semrel"
-          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
+          cp release-tools/package.json release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
           npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
 
       - name: Tag and publish the GitHub release
