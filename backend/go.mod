@@ -7,7 +7,7 @@ require (
 	ganigeorgiev.com/pocketbase/pocketbase v0.42.3
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-webauthn/webauthn v0.18.2
-	github.com/jackc/pgx/v5 v5.12.0
+	github.com/jackc/pgx/v5 v5.13.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.59.0
