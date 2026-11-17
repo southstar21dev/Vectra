@@ -394,8 +394,8 @@ private fun LineSaveBar(state: AddTrackerState, route: FutarRoute, existing: Lis
                 state.isSaving,
                 when {
                     n == 0 -> "Tick a stop to track"
-                    tracked -> "Update line · ${stopCountLabel(n)}"
-                    else -> "Track line · ${stopCountLabel(n)}"
+                    tracked -> "Update line, ${stopCountLabel(n)}"
+                    else -> "Track line, ${stopCountLabel(n)}"
                 },
             )
         }

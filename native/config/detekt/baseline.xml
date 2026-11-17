@@ -447,7 +447,7 @@
     <ID>TooManyFunctions:WeekNavigation.kt:dev.southstar21.vectra.features.schedule.WeekNavigation.kt</ID>
     <ID>TopLevelPropertyNaming:AppSplash.kt:private const val REDUCED_EXIT_MS = 200L</ID>
     <ID>TopLevelPropertyNaming:IcsParser.kt:/** The Google Apps Script proxy: the university blocks datacenter IPs, Google is not blocked. */ const val NEPTUN_ICS_PROXY_URL = "https://script.google.com/macros/s/AKfycbxp_HKH85vTNjtVC5L2d8Ojhwt7BJQzxFVvvOi00UQK1w1G89RrMX11OaAMRHnD-5kj/exec"</ID>
-    <ID>TopLevelPropertyNaming:IcsParser.kt:const val NEPTUN_FETCH_FAILED = "We couldn't download your Neptun calendar — the university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."</ID>
+    <ID>TopLevelPropertyNaming:IcsParser.kt:const val NEPTUN_FETCH_FAILED = "We couldn't download your Neptun calendar. The university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."</ID>
     <ID>TopLevelPropertyNaming:ScheduleItemsStore.kt:const val SCHEDULE_ITEMS_CACHE_BASE_KEY = "vectra_schedule_items"</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:/** A frame with the city fully lit and the tram mid-bridge, for reduced motion. */ const val STILL_FRAME_ELAPSED = LIGHTS_START_MS + 500 + TRAM_LOOP_MS / 2</ID>
     <ID>TopLevelPropertyNaming:SplashScene.kt:private const val LIGHTS_START_MS = 100f</ID>

@@ -204,7 +204,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         RowDivider()
         if (savedUrl.isNotEmpty()) {
             // Removing it lives in the Danger zone, with clearing the classes.
-            SettingsRow(RemixIcons.Link, c.tints.emerald.text, "Calendar link", "Connected · stored encrypted", titleStyle = RowTitle)
+            SettingsRow(RemixIcons.Link, c.tints.emerald.text, "Calendar link", "Connected, stored encrypted", titleStyle = RowTitle)
         } else {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column {

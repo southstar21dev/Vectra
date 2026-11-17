@@ -69,7 +69,7 @@ fun NearbyDeparturesList(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             VText(
-                "${lead.stopName} · ${roundHalfUpToLong(lead.distanceMeters)} m".uppercase(),
+                "${lead.stopName}, ${roundHalfUpToLong(lead.distanceMeters)} m".uppercase(),
                 Modifier.weight(1f),
                 heading,
                 c.textMuted,

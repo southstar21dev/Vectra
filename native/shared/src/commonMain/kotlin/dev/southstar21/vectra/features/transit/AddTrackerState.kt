@@ -122,7 +122,7 @@ internal class AddTrackerState(
             emptyList()
         } else {
             val map = LinkedHashMap<String, MutableList<Arrival>>()
-            for (a in parseStopArrivals(data, route.id)) map.getOrPut(a.headSign.ifEmpty { "—" }) { mutableListOf() }.add(a)
+            for (a in parseStopArrivals(data, route.id)) map.getOrPut(a.headSign.ifEmpty { "-" }) { mutableListOf() }.add(a)
             map.entries.map { StopDirection(it.key, it.value) }.sortedBy { it.times[0].arrivalMs }
         }
     }

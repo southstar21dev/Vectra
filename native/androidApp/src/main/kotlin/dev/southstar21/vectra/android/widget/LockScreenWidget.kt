@@ -66,7 +66,7 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
         when (val up = frame.snapshot.nextUp(frame.nowMs, frame.today)) {
             is NextUp.InClass -> {
                 val s = up.session
-                Detail(listOf("Now", s.location).filter { it.isNotBlank() }.joinToString(" · "))
+                Detail(listOf("Now", s.location).filter { it.isNotBlank() }.joinToString(", "))
                 Headline(s.title)
                 Spacer(GlanceModifier.height(5.dp))
                 LinearProgressIndicator(
@@ -95,10 +95,10 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
 
 @Composable
 private fun Coming(s: WidgetSession, frame: WidgetFrame) {
-    Detail(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(" · "))
+    Detail(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "))
     Headline(s.title)
     Clock(
-        if (s.day == frame.today) "${clockLabel(s.startMs)} · ${countdownLabel(frame.nowMs, s.startMs)}"
+        if (s.day == frame.today) "${clockLabel(s.startMs)}, ${countdownLabel(frame.nowMs, s.startMs)}"
         else "${dayDistanceLabel(frame.today, s.day)} ${clockLabel(s.startMs)}",
     )
 }

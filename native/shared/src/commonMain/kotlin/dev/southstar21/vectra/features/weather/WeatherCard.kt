@@ -216,7 +216,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                         buildAnnotatedString {
                             append(meta.label)
                             withStyle(SpanStyle(fontWeight = Weight.Medium, color = c.textSecondary)) {
-                                append(" · H ${roundHalfUpToInt(data.high)}° L ${roundHalfUpToInt(data.low)}°")
+                                append(", H ${roundHalfUpToInt(data.high)}° L ${roundHalfUpToInt(data.low)}°")
                             }
                         },
                         Modifier.weight(1f),

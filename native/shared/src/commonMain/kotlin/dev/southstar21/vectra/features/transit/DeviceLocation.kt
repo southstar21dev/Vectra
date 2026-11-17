@@ -70,9 +70,9 @@ val InitialWatchLocationState = WatchLocationState(
 )
 
 val GeoErrorMessages: Map<Int, String> = mapOf(
-    1 to "Location permission denied — enable location to find nearby places",
-    2 to "Location unavailable right now — try again",
-    3 to "Location timed out — try again",
+    1 to "Location permission denied. Enable location to find nearby places",
+    2 to "Location unavailable right now. Try again",
+    3 to "Location timed out. Try again",
 )
 
 const val DeviceLocationStorageKey = "vectra.deviceLocation"

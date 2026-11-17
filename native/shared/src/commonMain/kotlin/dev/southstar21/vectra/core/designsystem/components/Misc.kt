@@ -222,7 +222,7 @@ fun EmptyState(
 @Composable
 fun OfflineBanner(
     modifier: Modifier = Modifier,
-    message: String = "No internet connection — operating in cached offline mode",
+    message: String = "No internet connection: operating in cached offline mode",
     badgeLabel: String = "Offline mode",
 ) {
     val c = Vectra.colors

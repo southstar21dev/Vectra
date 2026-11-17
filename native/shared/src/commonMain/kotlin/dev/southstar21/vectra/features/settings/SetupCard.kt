@@ -74,7 +74,7 @@ fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier 
                 VText("Finish setting up Vectra", style = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight), color = c.textPrimary)
                 val left = missing.size
                 VText(
-                    "${known.size - left} of ${known.size} set up · $left ${if (left == 1) "thing" else "things"} left",
+                    "${known.size - left} of ${known.size} set up, $left ${if (left == 1) "thing" else "things"} left",
                     Modifier.padding(top = 2.dp),
                     vtext(TypeScale.Caption),
                     c.textSecondary,

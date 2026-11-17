@@ -62,10 +62,10 @@ class LivePositionTest {
     // ---- stripLabels ----
     private val names = listOf("A", "B", "C", "D")
 
-    @Test fun trackedInMiddle() = assertEquals(StripLabels("A", "C · tracked", "D"), stripLabels(names, 2))
-    @Test fun trackedOwnsStart() = assertEquals(StripLabels("A · tracked", null, "D"), stripLabels(names, 0))
-    @Test fun trackedOwnsEnd() = assertEquals(StripLabels("A", null, "D · tracked"), stripLabels(names, 3))
-    @Test fun singleStopLine() = assertEquals(StripLabels("A · tracked", null, ""), stripLabels(listOf("A"), 0))
+    @Test fun trackedInMiddle() = assertEquals(StripLabels("A", "C, tracked", "D"), stripLabels(names, 2))
+    @Test fun trackedOwnsStart() = assertEquals(StripLabels("A, tracked", null, "D"), stripLabels(names, 0))
+    @Test fun trackedOwnsEnd() = assertEquals(StripLabels("A", null, "D, tracked"), stripLabels(names, 3))
+    @Test fun singleStopLine() = assertEquals(StripLabels("A, tracked", null, ""), stripLabels(listOf("A"), 0))
 
     // ---- clipRouteToTrackedStop ----
     private data class NamedStop(val lat: Double, val lon: Double, val name: String)

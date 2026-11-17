@@ -182,10 +182,10 @@ fun stripLabels(stopNames: List<String>, trackedIndex: Int): StripLabels {
     val last = stopNames.lastOrNull() ?: ""
     val tracked = stopNames.getOrNull(trackedIndex) ?: first
     if (trackedIndex < 0) return StripLabels(first, null, last)
-    if (stopNames.size <= 1) return StripLabels("$first · tracked", null, "")
-    if (trackedIndex == 0) return StripLabels("$tracked · tracked", null, last)
-    if (trackedIndex == stopNames.size - 1) return StripLabels(first, null, "$tracked · tracked")
-    return StripLabels(first, "$tracked · tracked", last)
+    if (stopNames.size <= 1) return StripLabels("$first, tracked", null, "")
+    if (trackedIndex == 0) return StripLabels("$tracked, tracked", null, last)
+    if (trackedIndex == stopNames.size - 1) return StripLabels(first, null, "$tracked, tracked")
+    return StripLabels(first, "$tracked, tracked", last)
 }
 
 data class ApproximateVehicleInput(

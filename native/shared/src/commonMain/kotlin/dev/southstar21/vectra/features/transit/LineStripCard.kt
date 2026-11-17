@@ -248,6 +248,6 @@ private fun StopRow(tracker: TransitTracker, s: StopStrip, divider: Boolean, rev
             VText(s.stop.stopName, style = vtext(14.sp to 18.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
             LineStrip(s.model, colors, labels = false, entrance = entrance, skeletonColors = skeleton)
         }
-        SlimTimes(s.model, if (s.error) "—" else null)
+        SlimTimes(s.model, if (s.error) "-" else null)
     }
 }

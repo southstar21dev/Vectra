@@ -59,7 +59,7 @@ const emailOpen = `<table role="presentation" width="100%" cellpadding="0" cells
 
 const emailClose = `</td></tr>
 <tr><td align="center" style="padding:20px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8A8698;">
-Vectra · your timetable and Budapest transit<br />
+Vectra, your timetable and Budapest transit<br />
 Questions? <a href="mailto:support@southstar21.dev" style="color:#7C3AED;text-decoration:none;">support@southstar21.dev</a>
 </td></tr>
 </table>

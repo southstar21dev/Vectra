@@ -28,7 +28,7 @@ class LiveTrackerFreshnessTest {
         assertEquals(at, offline.countdownNow)
         // Ten minutes later it still reads the snapshot's 5 minutes, not "NOW".
         assertEquals(5, etaMinutes(arrival.arrivalMs, offline.countdownNow))
-        assertEquals("Offline · departures as of 14:05", liveMapNotice(offline, at, arrivalsUnavailable = false, noDepartures = false))
+        assertEquals("Offline, departures as of 14:05", liveMapNotice(offline, at, arrivalsUnavailable = false, noDepartures = false))
     }
 
     @Test fun aSnapshotOlderThanAMinuteIsDelayed() {
@@ -36,7 +36,7 @@ class LiveTrackerFreshnessTest {
         assertTrue(late.arrivalsStale)
         assertTrue(late.vehiclesStale)
         assertEquals(at, late.countdownNow)
-        assertEquals("Departure times delayed · as of 14:05", liveMapNotice(late, at, arrivalsUnavailable = true, noDepartures = false))
+        assertEquals("Departure times delayed, as of 14:05", liveMapNotice(late, at, arrivalsUnavailable = true, noDepartures = false))
     }
 
     @Test fun nothingLoadedYetHasNothingToFreeze() {
@@ -49,7 +49,7 @@ class LiveTrackerFreshnessTest {
 
     @Test fun aFailedFetchWithFreshDataStillSaysUnavailable() {
         assertEquals(
-            "Departure times unavailable · showing route",
+            "Departure times unavailable, showing route",
             liveMapNotice(f(at + 1_000), at, arrivalsUnavailable = true, noDepartures = false),
         )
     }

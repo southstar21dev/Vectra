@@ -262,7 +262,7 @@ private fun ColumnScope.AssessmentForm(
         )
         toaster.success(
             if (editing) "Assessment updated" else "Assessment saved",
-            "$trimmed · ${formatNumber(earnedValue)} / ${formatNumber(maxClamped)} pts${if (online) "" else " · saved on this device, syncs when online"}",
+            "$trimmed, ${formatNumber(earnedValue)} / ${formatNumber(maxClamped)} pts${if (online) "" else ", saved on this device, syncs when online"}",
         )
         onClose()
     }
@@ -290,7 +290,7 @@ private fun ColumnScope.AssessmentForm(
     val subtitle = buildList {
         if (!courseName.isNullOrEmpty()) add(courseName)
         if (estimatedGrade != null) add("Projected Grade $estimatedGrade${projectedPercentage?.let { " (${roundHalfUpToInt(it)}%)" } ?: ""}")
-    }.joinToString(" · ").ifEmpty { null }
+    }.joinToString(", ").ifEmpty { null }
 
     val overMaxHint: @Composable () -> Unit = {
         VText("More than the maximum. Fine for bonus points, otherwise check for a typo.", style = vtext(TypeScale.Caption), color = c.tints.amber.text)
@@ -300,7 +300,7 @@ private fun ColumnScope.AssessmentForm(
             buildAnnotatedString {
                 if (prefix != null) append(prefix)
                 if (scaleHint != null) {
-                    if (prefix != null) append(" · ")
+                    if (prefix != null) append(", ")
                     withStyle(SpanStyle(fontWeight = Weight.Semibold, color = c.textPrimary)) { append(scaleHint) }
                     append(" on your scale")
                 }

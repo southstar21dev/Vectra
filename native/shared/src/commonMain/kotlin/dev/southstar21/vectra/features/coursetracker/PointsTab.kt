@@ -180,7 +180,7 @@ internal fun AssessmentCard(
         "${formatScore(item.maxPoints)} pts",
         if (weighted && item.weightPercent != null) "${formatNumber(item.weightPercent)}% of grade" else null,
         if (completed) null else "not graded yet",
-    ).joinToString(" · ")
+    ).joinToString(", ")
     val shape = Radius.Card
     Column(Modifier.fillMaxWidth().glassDepth(shape).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

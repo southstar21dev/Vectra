@@ -555,7 +555,7 @@ private fun FeedContent(content: SheetFeed, onSelect: (RadarDepartureItem) -> Un
     val polledStopCount = content.polledStopCount
     when {
         !arrivalsEnabled -> FeedNote("Zoom in to see departures")
-        feed.isEmpty() -> FeedNote(if (isLoading) "Scanning nearby stops…" else "No upcoming departures near this area — pan or zoom in.")
+        feed.isEmpty() -> FeedNote(if (isLoading) "Scanning nearby stops…" else "No upcoming departures near this area. Pan or zoom in.")
         else -> {
             // One card per route, stop and direction; its next departures share the ETA column.
             val groupedFeed = remember(feed) {

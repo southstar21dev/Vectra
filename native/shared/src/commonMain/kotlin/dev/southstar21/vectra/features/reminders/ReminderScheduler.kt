@@ -140,7 +140,7 @@ class ReminderScheduler(
             id = "rem:test",
             atMs = now + 5_000,
             title = next?.let { "${it.title} ${leadLabel(prefs.leadMinutes)}" } ?: "Class reminders are on",
-            body = next?.let { listOfNotNull(it.location.ifEmpty { null }, it.typeLabel).joinToString(" · ") }?.ifEmpty { null }
+            body = next?.let { listOfNotNull(it.location.ifEmpty { null }, it.typeLabel).joinToString(", ") }?.ifEmpty { null }
                 ?: "This is what a reminder looks like.",
             url = "/schedule",
             departures = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList(),

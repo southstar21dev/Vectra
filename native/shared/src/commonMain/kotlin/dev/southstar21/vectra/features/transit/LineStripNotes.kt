@@ -39,7 +39,7 @@ internal fun StripStatus(repo: TransitRepository, tracker: TransitTracker, s: St
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (s.error) FeedErrorRow(repo) else StripHeadline(s, noun)
         if (s.model.terminus && !s.noDepartures) {
-            StripNote(RemixIcons.MapPinLine, "Last stop · ${noun ?: "vehicles"} only arrive here", c.textSecondary)
+            StripNote(RemixIcons.MapPinLine, "Last stop, ${noun ?: "vehicles"} only arrive here", c.textSecondary)
         }
         for (d in s.extra) {
             val a = d.arrival ?: continue
@@ -61,7 +61,7 @@ private fun StripHeadline(s: StopStrip, noun: String?) {
     when {
         // Replaced by buses that stop elsewhere: the line isn't off, it just doesn't come here.
         s.noDepartures && s.replaced ->
-            StripNote(RemixIcons.BusLine, "No ${noun ?: "vehicles"} stop here for now · replacement buses instead", c.textSecondary)
+            StripNote(RemixIcons.BusLine, "No ${noun ?: "vehicles"} stop here for now, replacement buses instead", c.textSecondary)
         s.noDepartures -> StripNote(RemixIcons.MoonFill, noun?.let { "No $it coming right now" } ?: "Nothing coming right now", c.textSecondary)
         s.loading -> Unit
         else -> StripEnds(s.model)

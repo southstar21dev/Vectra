@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
@@ -34,15 +35,17 @@ private val SlimCardShape = RoundedCornerShape(18.dp)
 /** Room for the widest usual badge ("200E", "M3"), so every slim card lines up. */
 private val SlimBadgeSlot = 48.dp
 
-/** The right-hand times of a slim strip: → next right-heading, ← next left-heading. */
+/** The right-hand times of a slim strip: → next right-heading, ← next left-heading; [asleep] (nothing coming) shows the animated zzz. */
 @Composable
-internal fun SlimTimes(model: StripModel, fallback: String? = null) {
+internal fun SlimTimes(model: StripModel, fallback: String? = null, asleep: Boolean = false) {
     val c = Vectra.colors
     // At least 52 dp so the slim strips line up; a clock time ("13:42") may widen it.
     Column(Modifier.widthIn(min = 52.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         val right = model.vehicles.firstOrNull { it.heading > 0 }
         val left = model.vehicles.firstOrNull { it.heading < 0 }
-        if (right == null && left == null && fallback != null) {
+        if (right == null && left == null && asleep) {
+            SleepingIcon(size = 22.dp, tint = c.textMuted)
+        } else if (right == null && left == null && fallback != null) {
             VText(fallback, style = vtext(14.sp to 18.sp, Weight.Bold), color = c.textMuted)
         }
         for ((v, icon) in listOf(right to RemixIcons.ArrowRightLine, left to RemixIcons.ArrowLeftLine)) {
@@ -111,7 +114,7 @@ fun LineStripSlimCard(
             // Clipped: the line's fade past its ends stays out from under the badge and the times.
             LineStrip(s.model, colors, Modifier.clipToBounds(), labels = false, entrance = entrance, skeletonColors = skeleton)
         }
-        SlimTimes(s.model, if (s.noDepartures) "—" else null)
+        SlimTimes(s.model, asleep = s.noDepartures)
     }
 }
 

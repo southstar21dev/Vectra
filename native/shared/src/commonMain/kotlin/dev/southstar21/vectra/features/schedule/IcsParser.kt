@@ -459,4 +459,4 @@ const val NEPTUN_ICS_PROXY_URL =
     "https://script.google.com/macros/s/AKfycbxp_HKH85vTNjtVC5L2d8Ojhwt7BJQzxFVvvOi00UQK1w1G89RrMX11OaAMRHnD-5kj/exec"
 
 const val NEPTUN_FETCH_FAILED =
-    "We couldn't download your Neptun calendar — the university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."
+    "We couldn't download your Neptun calendar. The university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."

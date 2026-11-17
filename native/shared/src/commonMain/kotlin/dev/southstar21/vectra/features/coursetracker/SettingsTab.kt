@@ -110,7 +110,7 @@ internal fun SettingsTab(
     }
 
     fun flashSaved(where: SaveWhere = SaveWhere.Attendance) {
-        saveMessage = if (online) "Saved" else "Saved on this device — syncs when online"
+        saveMessage = if (online) "Saved" else "Saved on this device, syncs when online"
         saveWhere = where
         saveTick++
     }

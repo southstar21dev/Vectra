@@ -17,12 +17,12 @@ fun durationLabel(minutes: Long): String = when {
 /** "Tram 6 from Blaha Lujza tér: 09:08 · 09:13 · 09:18". */
 fun departuresLine(query: DepartureQuery, times: List<Long>): String =
     if (times.isEmpty()) "${query.lineLabel} from ${query.stopName}: no departures found"
-    else "${query.lineLabel} from ${query.stopName}: ${times.joinToString(" · ") { formatBudapestHm(it) }}"
+    else "${query.lineLabel} from ${query.stopName}: ${times.joinToString(", ") { formatBudapestHm(it) }}"
 
 /** The line without times, for when they can't be known in advance. */
-fun departuresFallbackLine(query: DepartureQuery): String = "${query.lineLabel} from ${query.stopName} · tap for departures"
+fun departuresFallbackLine(query: DepartureQuery): String = "${query.lineLabel} from ${query.stopName}, tap for departures"
 
-internal fun details(vararg parts: String?): String = parts.filterNot { it.isNullOrBlank() }.joinToString(" · ")
+internal fun details(vararg parts: String?): String = parts.filterNot { it.isNullOrBlank() }.joinToString(", ")
 
 /** A bare room code reads as "Room B-204"; a longer place name ("Q building, QBF08") stays as it is. */
 internal fun roomOf(s: ReminderSession): String? = s.location.ifEmpty { null }?.let { if (it.length <= 8 && ' ' !in it) "Room $it" else it }

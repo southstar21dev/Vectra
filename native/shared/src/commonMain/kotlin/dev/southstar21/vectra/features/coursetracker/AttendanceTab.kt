@@ -161,7 +161,7 @@ internal fun AttendanceTab(
     fun performDelete(s: AttendanceSession) {
         onRemoveSession(s)
         val title = displayTitle(s)
-        toast.show("Session deleted", "${formatSessionDate(s.date, todayIso)}${if (title.isNotEmpty()) " · $title" else ""}") { onRestoreSession(s) }
+        toast.show("Session deleted", "${formatSessionDate(s.date, todayIso)}${if (title.isNotEmpty()) ", $title" else ""}") { onRestoreSession(s) }
     }
 
     fun requestDelete(s: AttendanceSession) {

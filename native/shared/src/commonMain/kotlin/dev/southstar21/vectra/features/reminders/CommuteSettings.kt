@@ -103,7 +103,7 @@ private fun CommutePicker(scheduler: ReminderScheduler, transit: TransitReposito
     }
     CommuteRow(current, home, title, subtitle) { open = true }
 
-    val options = legs.map { SelectOption(it.key(), "${it.lineLabel} · ${it.describe()}") }
+    val options = legs.map { SelectOption(it.key(), "${it.lineLabel}, ${it.describe()}") }
     MultiOptionSheet(open, title, options, current.map { it.key() }.toSet(), onDismiss = { open = false }) { key ->
         val picked = current.any { it.key() == key }
         val leg = legs.firstOrNull { it.key() == key } ?: return@MultiOptionSheet

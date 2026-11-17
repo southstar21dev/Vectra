@@ -217,7 +217,7 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        if (sessionExpired) Banner("Your session expired — sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
+        if (sessionExpired) Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
         if (error != null) Banner(AccountLogic.loginErrorMessage(error), c.tints.red, Palette.Red500.copy(alpha = 0.1f))
         if (passkeys?.isSupported == true) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

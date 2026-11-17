@@ -249,7 +249,7 @@ private fun RadarOverlays(
             )
             MapAttribution(
                 Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp),
-                text = "$OpenFreeMapAttribution · $RainViewerAttribution",
+                text = "$OpenFreeMapAttribution, $RainViewerAttribution",
                 align = TextAlign.Center,
             )
         }
