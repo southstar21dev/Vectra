@@ -41,6 +41,7 @@ fun DirectionView.toStripDirection(): StripDirection {
         origin = origin,
         terminus = stops.size > 1 && trackedIndex == stops.lastIndex,
         replacement = arrival?.isReplacementBus == true,
+        later = upcoming,
     )
 }
 

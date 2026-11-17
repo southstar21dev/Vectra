@@ -179,7 +179,7 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
                 polyline = polyline,
                 vehicles = dirVehicles,
                 arrival = arrival,
-                upcoming = followingArrivals(arrivals, arrival, 3),
+                upcoming = followingArrivals(arrivals, arrival, 5),
                 trackedIndex = trackedIndex,
                 progress = routeProgress(stops.map { LatLon(it.lat, it.lon) }, polyline, dirVehicles.firstOrNull()?.location, trackedIndex),
                 stopTimes = stopTimes,
