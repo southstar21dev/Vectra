@@ -60,6 +60,9 @@ data class StripModel(
     /** That end's direction is run by replacement buses. */
     val leftBus: Boolean = false,
     val rightBus: Boolean = false,
+    /** The next departures each way (the one drawn on the line first), for the times under the ends. */
+    val leftTimes: List<StripTime> = emptyList(),
+    val rightTimes: List<StripTime> = emptyList(),
 ) {
     /** Every vehicle's time sits on one row above the line. */
     val hasLabels get() = vehicles.any { it.label != null || it.sub != null }
@@ -82,7 +85,16 @@ data class StripDirection(
     val terminus: Boolean = false,
     /** Its next trip is a replacement bus standing in for the line. */
     val replacement: Boolean = false,
+    /** The departures after [arrival], same direction. */
+    val later: List<Arrival> = emptyList(),
 )
+
+/** One departure in the row of times under a strip end. */
+@Immutable
+data class StripTime(val label: String, val kind: StripTimeKind, val soon: Boolean)
+
+/** Departures listed under each end: the one on the line and the next two. */
+private const val EndTimeCount = 3
 
 /** A line that splits past the end of the strip: [heading]'s end has a second destination. */
 @Immutable
@@ -126,7 +138,19 @@ fun buildStripModel(directions: List<StripDirection>, now: Long, metro: Boolean,
         fork = fork?.let { (e, heading) -> StripFork(heading, e.destination) },
         leftBus = left?.replacement == true,
         rightBus = right?.replacement == true,
+        leftTimes = endTimes(left, now, metro, frozen),
+        rightTimes = endTimes(right, now, metro, frozen),
     )
+}
+
+/** [d]'s next departures for the row under its end of the strip; none without a direction. */
+internal fun endTimes(d: StripDirection?, now: Long, metro: Boolean, frozen: Boolean): List<StripTime> {
+    if (d == null) return emptyList()
+    val timetableMetro = metro && !d.replacement
+    return (listOfNotNull(d.arrival) + d.later).take(EndTimeCount).map { a ->
+        val kind = timeKind(a, timetableMetro, frozen)
+        StripTime(stripTimeLabel(a.arrivalMs, now), kind, soon = kind == StripTimeKind.Live && etaMinutes(a.arrivalMs, now) <= 1)
+    }
 }
 
 /** A direction's one vehicle on the strip: its next departure (a strip shows one each way, no more). */

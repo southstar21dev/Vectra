@@ -137,10 +137,16 @@ internal fun StripEnds(model: StripModel, modifier: Modifier = Modifier) {
     val right = listOfNotNull(model.rightEnd, fork?.takeIf { it.heading > 0 }?.destination)
     Row(modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            left.forEachIndexed { i, name -> EndLabel(name, right = false, bus = i == 0 && model.leftBus) }
+            left.forEachIndexed { i, name ->
+                EndLabel(name, right = false, bus = i == 0 && model.leftBus)
+                if (i == 0) EndTimes(model.leftTimes)
+            }
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            right.forEachIndexed { i, name -> EndLabel(name, right = true, bus = i == 0 && model.rightBus) }
+            right.forEachIndexed { i, name ->
+                EndLabel(name, right = true, bus = i == 0 && model.rightBus)
+                if (i == 0) EndTimes(model.rightTimes)
+            }
         }
     }
 }

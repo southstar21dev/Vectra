@@ -15,6 +15,16 @@ class LineStripModelTest {
         StripDirection(dest, minutes?.let { arrival(it, predicted, dest) }, next?.let { arrival(it, predicted, dest) }, dist)
 
     @Test
+    fun endTimesListTheLineOneFirstThenTheNextTwo() {
+        val d = dir("A", 4, 1.0).copy(later = listOf(arrival(10, true, "A"), arrival(15, false, "A"), arrival(22, true, "A")))
+        val times = endTimes(d, now, metro = false, frozen = false)
+        assertEquals(listOf("4'", "10'", "15'"), times.map { it.label })
+        assertEquals(StripTimeKind.Live, times[0].kind)
+        assertEquals(StripTimeKind.Scheduled, times[2].kind)
+        assertTrue(endTimes(null, now, metro = false, frozen = false).isEmpty())
+    }
+
+    @Test
     fun timeLabels() {
         assertEquals("NOW", stripTimeLabel(now + 10_000, now + 20_000))
         assertEquals("4'", stripTimeLabel(now + 4 * 60_000, now))

@@ -188,6 +188,7 @@ private fun ColumnScope.LiveTrackerSheetContent(
         if (trackerStops.size > 1) {
             TrackedStopTabs(trackerStops, activeStop.stopId, navigator::showLiveTrackerStop, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
         }
+        DeparturesSection(live.enriched, now)
         StopsSection(t, live.routeColor, activeStop.stopId, live.enriched, loading = !live.feedError && live.directions.isEmpty())
     }
 }
