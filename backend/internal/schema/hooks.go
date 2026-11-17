@@ -3,7 +3,7 @@ package schema
 import (
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 )
 
 // RegisterTimestamps keeps the app's custom created_at/updated_at columns in

@@ -133,7 +133,7 @@ class AuthRepository(
             throw e
         } catch (_: Throwable) {
             clear(keepQueue = true)
-            error("Email updated, but your session ended — please sign in again with your new address")
+            error("Email updated, but your session ended. Please sign in again with your new address")
         }
     }
 
@@ -146,7 +146,7 @@ class AuthRepository(
             // Only a rejected login means a wrong password; offline or rate-limited is said as such.
             when {
                 e.status == 400 || e.status == 401 -> error("Current password is incorrect")
-                e.status == 429 -> error("Too many attempts — please wait a moment and try again")
+                e.status == 429 -> error("Too many attempts. Please wait a moment and try again")
                 else -> throw e
             }
         }
@@ -167,7 +167,7 @@ class AuthRepository(
             throw e
         } catch (_: Throwable) {
             clear(keepQueue = true)
-            error("Password updated, but your session ended — please sign in again")
+            error("Password updated, but your session ended. Please sign in again")
         }
     }
 

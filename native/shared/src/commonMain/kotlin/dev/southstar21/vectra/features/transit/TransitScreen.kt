@@ -292,7 +292,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
         onRefresh = { repo.refresh() },
     ) {
         if (isOffline) {
-            OfflineBanner(Modifier.widthIn(max = ContentMaxWidth), message = "No internet connection — live arrivals may be stale", badgeLabel = "Offline")
+            OfflineBanner(Modifier.widthIn(max = ContentMaxWidth), message = "No internet connection: live arrivals may be stale", badgeLabel = "Offline")
         }
         Reveal(0, Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth().widthIn(max = ContentMaxWidth), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -308,7 +308,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     ActionSheet(
         open = menu != null,
         onDismiss = { menuTracker = null },
-        title = menu?.let { "${it.routeShortName} · ${it.stopName}" },
+        title = menu?.let { "${it.routeShortName}, ${it.stopName}" },
         actions = if (menu == null) emptyList() else listOf(
             SheetAction("Live departures", RemixIcons.TimeLine) { navigator.openLiveTracker(menu.id, menu.stopId) },
             SheetAction("Edit tracker", RemixIcons.PencilLine) { navigator.push(Screen.EditTracker(menu.id)) },

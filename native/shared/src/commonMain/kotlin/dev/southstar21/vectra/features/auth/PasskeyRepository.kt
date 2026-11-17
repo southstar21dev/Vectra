@@ -102,7 +102,7 @@ class PasskeyRepository(
         if (e is PasskeyCancelledException) return null
         val server = e as? PocketBaseException
         val code = server?.let { it.data.string("code") ?: it.message } ?: e.message.orEmpty()
-        return if (server?.status == 429) "Too many attempts — please wait a while and try again." else passkeyErrorMessage(code)
+        return if (server?.status == 429) "Too many attempts. Please wait a while and try again." else passkeyErrorMessage(code)
     }
 }
 
@@ -111,9 +111,9 @@ private fun passkeyErrorMessage(code: String): String =
         code.contains("Current password is incorrect") -> "Current password is incorrect."
         code.contains("passkey_disabled") -> "Biometric sign-in is not available yet."
         code.contains("credential_not_found") -> "No passkey found for this account on this device."
-        code.contains("too_many_passkeys") -> "Too many passkeys — remove one in Settings first."
+        code.contains("too_many_passkeys") -> "Too many passkeys. Remove one in Settings first."
         code.contains("credential_exists") -> "This device already has a passkey for your account."
-        code.contains("challenge_expired") || code.contains("verification_failed") -> "Something went wrong — please try again."
+        code.contains("challenge_expired") || code.contains("verification_failed") -> "Something went wrong. Please try again."
         code.contains("not_supported") -> "Biometric sign-in is not supported on this device."
-        else -> "Biometric sign-in failed — please try again."
+        else -> "Biometric sign-in failed. Please try again."
     }

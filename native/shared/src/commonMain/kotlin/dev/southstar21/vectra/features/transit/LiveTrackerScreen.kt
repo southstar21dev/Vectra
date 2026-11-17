@@ -42,9 +42,9 @@ internal fun liveFreshness(arrivalsUpdatedAt: Long, vehiclesUpdatedAt: Long, now
 
 /** The note over the map's lower edge, or null for none. */
 internal fun liveMapNotice(f: LiveFreshness, arrivalsUpdatedAt: Long, arrivalsUnavailable: Boolean, noDepartures: Boolean): String? = when {
-    f.arrivalsStale && f.offline -> "Offline · departures as of ${formatBudapestHm(arrivalsUpdatedAt)}"
-    f.arrivalsStale -> "Departure times delayed · as of ${formatBudapestHm(arrivalsUpdatedAt)}"
-    arrivalsUnavailable -> "Departure times unavailable · showing route"
+    f.arrivalsStale && f.offline -> "Offline, departures as of ${formatBudapestHm(arrivalsUpdatedAt)}"
+    f.arrivalsStale -> "Departure times delayed, as of ${formatBudapestHm(arrivalsUpdatedAt)}"
+    arrivalsUnavailable -> "Departure times unavailable, showing route"
     noDepartures -> "No upcoming departures right now"
     else -> null
 }

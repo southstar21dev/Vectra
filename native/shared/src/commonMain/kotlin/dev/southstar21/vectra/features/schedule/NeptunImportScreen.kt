@@ -279,7 +279,7 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
                                     VText("Neptun link saved", style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
                                     Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                         VIcon(RemixIcons.LockLine, size = 12.dp, tint = c.textMuted)
-                                        VText("Encrypted · syncs across your devices", style = vtext(TypeScale.Caption), color = c.textMuted, maxLines = 1)
+                                        VText("Encrypted, syncs across your devices", style = vtext(TypeScale.Caption), color = c.textMuted, maxLines = 1)
                                     }
                                 }
                                 AccentTextButton("Change", enabled = !parsing) {
@@ -341,7 +341,7 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
                     if (saving) Spinner(size = 16.dp, color = LocalContentColor.current, thickness = 2.dp)
                     else {
                         VIcon(RemixIcons.CheckLine)
-                        VText("Sync ${plural(classes, "class", "classes")} · ${plural(exams, "exam")}", style = vtext(TypeScale.Body, Weight.Bold), maxLines = 1)
+                        VText("Sync ${plural(classes, "class", "classes")}, ${plural(exams, "exam")}", style = vtext(TypeScale.Body, Weight.Bold), maxLines = 1)
                     }
                 }
             } else {

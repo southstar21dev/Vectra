@@ -6,7 +6,7 @@ package reauth
 import (
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
 	"vectra/pb/internal/ratelimit"
 )

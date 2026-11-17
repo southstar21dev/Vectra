@@ -225,7 +225,7 @@ internal fun DeleteAccountRow(auth: AuthRepository) {
                 VIcon(RemixIcons.DeleteBinLine, size = 20.dp, tint = c.tints.red.text)
                 DialogTitle("Delete account?")
             }
-            DialogDescription("This permanently deletes your account and all of your data — profile, schedule, transit and more. This cannot be undone.", Modifier.padding(top = 2.dp))
+            DialogDescription("This permanently deletes your account and all of your data: profile, schedule, transit and more. This cannot be undone.", Modifier.padding(top = 2.dp))
         }
         Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             VText(

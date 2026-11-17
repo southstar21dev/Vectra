@@ -132,7 +132,7 @@ private fun LiveChip(frame: RadarFrameLabel?) {
         } else {
             Box(Modifier.size(8.dp).background(c.textMuted, CircleShape))
             VText(
-                "${frame.timeStr} · ${agoText(frame.relative)}",
+                "${frame.timeStr}, ${agoText(frame.relative)}",
                 style = vtext(TypeScale.Caption, Weight.Bold),
                 color = c.textSecondary,
             )

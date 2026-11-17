@@ -209,7 +209,7 @@ fun ScheduleScreen(
             }
         },
     ) {
-        if (isOffline) OfflineBanner(message = "No internet connection — Viewing cached offline schedule")
+        if (isOffline) OfflineBanner(message = "No internet connection: viewing cached offline schedule")
         eventsError?.takeIf { !isOffline }?.let { OfflineBanner(message = it, badgeLabel = "Not loaded") }
         if (itemsState.queue.isNotEmpty() && !isOffline) {
             OfflineBanner(message = itemSyncError ?: "Schedule item changes are waiting to sync.")

@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/apis"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
 	"vectra/pb/internal/account"
 	"vectra/pb/internal/crypto"

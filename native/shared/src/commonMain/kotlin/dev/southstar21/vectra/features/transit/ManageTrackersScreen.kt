@@ -245,7 +245,7 @@ fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 VText(
-                    if (isFavoritesTab) "The order they appear on your dashboard" else "Drag to reorder · star to pin",
+                    if (isFavoritesTab) "The order they appear on your dashboard" else "Drag to reorder, star to pin",
                     Modifier.weight(1f),
                     vtext(TypeScale.Caption),
                     c.textMuted,

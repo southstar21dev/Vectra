@@ -30,7 +30,7 @@ fun LocationSettingRow(repo: WeatherRepository) {
     val requester = rememberPermissionRequester(PermissionKind.Location)
     val s = state
     val status = s?.status ?: WeatherLocationStatus.Idle
-    val subtitle = if (status == WeatherLocationStatus.Located && s?.city != null) "${copy(status)} — ${s.city}" else copy(status)
+    val subtitle = if (status == WeatherLocationStatus.Located && s?.city != null) "${copy(status)}, ${s.city}" else copy(status)
     SettingsRow(RemixIcons.MapPinLine, c.tints.amber.text, "Location", subtitle) {
         VToggle(s?.mode == WeatherLocationMode.Auto, { checked ->
             if (checked) requester.request { repo.setMode(WeatherLocationMode.Auto) } else repo.setMode(WeatherLocationMode.Budapest)

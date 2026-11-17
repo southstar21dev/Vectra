@@ -95,7 +95,7 @@ fun DashboardScreen(graph: AppGraph) {
             }
         },
     ) {
-        if (!online) OfflineBanner(message = "No internet connection — Dashboard operating in cached offline mode")
+        if (!online) OfflineBanner(message = "No internet connection: Dashboard operating in cached offline mode")
         if (wide) {
             // Two columns: weather, holidays and transit on the left, today's classes on the right.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(WideColumnGap)) {

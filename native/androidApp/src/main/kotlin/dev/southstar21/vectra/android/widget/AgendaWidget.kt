@@ -183,10 +183,10 @@ private fun AgendaCard(s: WidgetSession, nowMs: Long) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Tinted(R.drawable.ic_widget_done, WColors.emerald, 14.dp)
                     Spacer(GlanceModifier.width(6.dp))
-                    Text(listOf("Done", s.location).filter { it.isNotBlank() }.joinToString(" · "), style = style(Caption, FontWeight.Medium, WColors.muted), maxLines = 1)
+                    Text(listOf("Done", s.location).filter { it.isNotBlank() }.joinToString(", "), style = style(Caption, FontWeight.Medium, WColors.muted), maxLines = 1)
                 }
             } else {
-                StatusLabel(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(" · "), s.kind)
+                StatusLabel(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "), s.kind)
             }
             if (live) {
                 Spacer(GlanceModifier.height(5.dp))
@@ -203,7 +203,7 @@ private fun BreakCapsule(minutes: Int) {
     Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(GlanceModifier.background(ImageProvider(R.drawable.widget_chip)).padding(horizontal = 12.dp, vertical = 3.dp)) {
             val label = if (minutes >= 60) "${minutes / 60} h ${minutes % 60} min".replace(" 0 min", "") else "$minutes min"
-            Text("Break · $label", style = style(Caption, FontWeight.Medium, WColors.muted))
+            Text("Break, $label", style = style(Caption, FontWeight.Medium, WColors.muted))
         }
     }
 }

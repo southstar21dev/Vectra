@@ -71,7 +71,7 @@ struct Session: Decodable, Hashable {
     }
 
     /// "Lecture · C.203".
-    var detail: String { [kind.label, location].filter { !$0.isEmpty }.joined(separator: " · ") }
+    var detail: String { [kind.label, location].filter { !$0.isEmpty }.joined(separator: ", ") }
 }
 
 /// What a widget says when its snapshot has run out (audit 04 #17).

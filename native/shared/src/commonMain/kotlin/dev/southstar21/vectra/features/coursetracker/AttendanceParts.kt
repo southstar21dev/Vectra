@@ -196,7 +196,7 @@ internal fun StatusToggle(
                     .tappable(role = Role.Button, highlight = false, interactionSource = interaction) {
                         onSetStatus(session.id.ifEmpty { session.date }, if (active) AttendanceStatus.Unmarked else btn.status)
                     }
-                    .semantics { contentDescription = if (active) "${btn.label} — tap to clear" else "Mark ${btn.label.lowercase()}" },
+                    .semantics { contentDescription = if (active) "${btn.label}, tap to clear" else "Mark ${btn.label.lowercase()}" },
                 contentAlignment = Alignment.Center,
             ) {
                 if (labels) {

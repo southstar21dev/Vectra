@@ -123,7 +123,7 @@ struct SmallNextClass: View {
                 Spacer()
                 Place(location: s.location)
             case .inClass(let s):
-                StatusLabel(text: "Now · \(s.kind.label)", kind: s.kind)
+                StatusLabel(text: "Now, \(s.kind.label)", kind: s.kind)
                 Spacer()
                 Title(text: s.title)
                 LiveProgress(session: s).padding(.top, 10)
@@ -143,7 +143,7 @@ struct SmallNextClass: View {
                 Title(text: exam.title)
                 Spacer()
                 Label {
-                    Text([Budapest.weekday(exam.day) + " " + Budapest.clock(exam.start), exam.location].filter { !$0.isEmpty }.joined(separator: " · "))
+                    Text([Budapest.weekday(exam.day) + " " + Budapest.clock(exam.start), exam.location].filter { !$0.isEmpty }.joined(separator: ", "))
                         .lineLimit(1)
                 } icon: { RemixIcon(name: "RiCalendar", size: 14) }
                     .labelStyle(TightLabel()).font(VFont.inter(12, 600)).foregroundStyle(p.secondary)
@@ -157,7 +157,7 @@ struct SmallNextClass: View {
                     Micro(text: Budapest.distance(from: Budapest.day(now), to: next.day))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(next.title).font(VFont.inter(12, 700)).foregroundStyle(p.text).lineLimit(1)
-                        Text([Budapest.clock(next.start), next.location].filter { !$0.isEmpty }.joined(separator: " · "))
+                        Text([Budapest.clock(next.start), next.location].filter { !$0.isEmpty }.joined(separator: ", "))
                             .font(VFont.inter(12, 600)).foregroundStyle(p.muted).lineLimit(1)
                     }
                     .padding(.horizontal, 10).padding(.vertical, 8)
@@ -208,14 +208,14 @@ struct RectangularAccessory: View {
         VStack(alignment: .leading, spacing: 1) {
             switch up {
             case .inClass(let s):
-                Text(["Now", s.location].filter { !$0.isEmpty }.joined(separator: " · ")).font(VFont.inter(12, 600)).foregroundStyle(.secondary)
+                Text(["Now", s.location].filter { !$0.isEmpty }.joined(separator: ", ")).font(VFont.inter(12, 600)).foregroundStyle(.secondary)
                 Text(s.title).font(VFont.inter(15, 800)).lineLimit(1).widgetAccentable()
                 LiveProgress(session: s, height: 4).padding(.top, 3)
             case .upcoming(let s), .examSoon(let s):
                 Text(s.detail).font(VFont.inter(12, 600)).foregroundStyle(.secondary).lineLimit(1)
                 Text(s.title).font(VFont.inter(15, 800)).lineLimit(1).widgetAccentable()
                 if s.day == Budapest.day(now) {
-                    (Text(Budapest.clock(s.start) + " · in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700))
+                    (Text(Budapest.clock(s.start) + ", in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700))
                 } else {
                     Text(Budapest.distance(from: Budapest.day(now), to: s.day) + " " + Budapest.clock(s.start)).font(VFont.mono(12, 700))
                 }
@@ -269,7 +269,7 @@ struct InlineAccessory: View {
 
     var body: some View {
         switch up {
-        case .inClass(let s): Text("Until \(Budapest.clock(s.end)) · \(s.location.isEmpty ? s.title : s.location)")
+        case .inClass(let s): Text("Until \(Budapest.clock(s.end)), \(s.location.isEmpty ? s.title : s.location)")
         case .upcoming(let s): Text("\(Budapest.clock(s.start)) \(s.title)")
         case .examSoon(let s): Text("Exam \(Budapest.weekday(s.day)) \(Budapest.clock(s.start))")
         case .dayDone(_, let next): Text(next.map { "\(Budapest.weekday($0.day)) \(Budapest.clock($0.start)) \($0.title)" } ?? "No classes coming up")

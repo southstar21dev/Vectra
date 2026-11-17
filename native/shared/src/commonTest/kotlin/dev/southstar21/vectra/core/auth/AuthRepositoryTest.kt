@@ -306,7 +306,7 @@ class AuthRepositoryTest {
         val r = repo { json("{}", HttpStatusCode.TooManyRequests) }
         signIn()
         val e = assertFailsWith<IllegalStateException> { r.changePassword("old", "new") }
-        assertEquals("Too many attempts — please wait a moment and try again", e.message)
+        assertEquals("Too many attempts. Please wait a moment and try again", e.message)
         assertEquals(1, requests.size)
     }
 
@@ -326,7 +326,7 @@ class AuthRepositoryTest {
         signIn()
         seedUserData()
         val e = assertFailsWith<IllegalStateException> { r.changePassword("old", "new") }
-        assertEquals("Password updated, but your session ended — please sign in again", e.message)
+        assertEquals("Password updated, but your session ended. Please sign in again", e.message)
         assertWipedKeepingQueue()
     }
 

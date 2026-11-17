@@ -33,7 +33,7 @@ internal class DepartureLookup(private val transit: TransitRepository) {
         if (n.departures.isEmpty()) return@map n
         val times = if (n.atMs - now <= BakeWindowMs) timesEach(n.departures, n.atMs) else n.departures.map { null }
         val lines = n.departures.zip(times) { q, t -> t?.let { departuresLine(q, it) } ?: departuresFallbackLine(q) }
-        val footer = if (times.any { it != null }) listOf("Timetable · tap for live times") else emptyList()
+        val footer = if (times.any { it != null }) listOf("Timetable, tap for live times") else emptyList()
         n.copy(body = (listOf(n.body) + lines + footer).joinToString("\n"), departures = emptyList())
     }
 

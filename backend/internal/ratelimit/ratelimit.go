@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 )
 
 // maxClients bounds each limiter's in-memory map. Once it is reached, expired

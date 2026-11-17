@@ -100,7 +100,7 @@ private fun FeaturedCard(s: WidgetSession?, live: Boolean, frame: WidgetFrame) {
         StatusLabel(
             when {
                 live -> "Now"
-                later -> "${dayDistanceLabel(frame.today, s.day)} · ${s.kind.label}"
+                later -> "${dayDistanceLabel(frame.today, s.day)}, ${s.kind.label}"
                 else -> s.kind.label
             },
             s.kind,
@@ -126,7 +126,7 @@ private fun LaterRow(s: WidgetSession) {
         Text(clockLabel(s.startMs), style = style(Caption, FontWeight.Bold, WColors.muted, mono = true), modifier = GlanceModifier.width(44.dp))
         Column(GlanceModifier.defaultWeight()) {
             Text(s.title, style = style(Caption, FontWeight.Bold), maxLines = 1)
-            StatusLabel(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(" · "), s.kind)
+            StatusLabel(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "), s.kind)
         }
     }
 }

@@ -379,7 +379,7 @@ private fun CourseHub(
 @Composable
 private fun HubSheetHeader(tracker: CourseTracker, onClose: () -> Unit, tabs: @Composable (Modifier) -> Unit) {
     val c = Vectra.colors
-    val details = listOfNotNull(tracker.courseCode.nonEmpty(), tracker.instructor.nonEmpty()).joinToString(" · ")
+    val details = listOfNotNull(tracker.courseCode.nonEmpty(), tracker.instructor.nonEmpty()).joinToString(", ")
     Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 14.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 2.dp, end = 12.dp)) {

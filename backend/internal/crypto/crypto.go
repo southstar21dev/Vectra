@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
+	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
 
 	"vectra/pb/internal/ratelimit"
@@ -403,6 +403,6 @@ func Handler(e *core.RequestEvent) error {
 		}
 		return e.JSON(200, map[string]any{"digests": digests})
 	default:
-		return e.BadRequestError("Unknown op — expected encrypt, decrypt or digest", nil)
+		return e.BadRequestError("Unknown op, expected encrypt, decrypt or digest", nil)
 	}
 }

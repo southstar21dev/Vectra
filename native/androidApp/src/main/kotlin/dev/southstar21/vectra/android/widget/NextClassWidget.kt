@@ -92,7 +92,7 @@ private fun Upcoming(context: Context, s: WidgetSession, nowMs: Long) {
 private fun InClass(context: Context, s: WidgetSession, nowMs: Long) {
     WidgetSurface(context, live = true) {
         Column(GlanceModifier.fillMaxSize()) {
-            StatusLabel("Now · ${s.kind.label}", s.kind)
+            StatusLabel("Now, ${s.kind.label}", s.kind)
             Spacer(GlanceModifier.defaultWeight())
             Text(s.title, style = style(TitleSize, FontWeight.Bold), maxLines = 2)
             Spacer(GlanceModifier.height(10.dp))
@@ -121,7 +121,7 @@ private fun ExamSoon(context: Context, exam: WidgetSession, today: String) {
                 Tinted(R.drawable.ic_widget_calendar, WColors.secondary, 14.dp)
                 Spacer(GlanceModifier.width(6.dp))
                 val where = listOf("${weekdayLabel(exam.day)} ${clockLabel(exam.startMs)}", exam.location).filter { it.isNotBlank() }
-                Text(where.joinToString(" · "), style = style(Caption, FontWeight.Medium, WColors.secondary), maxLines = 1)
+                Text(where.joinToString(", "), style = style(Caption, FontWeight.Medium, WColors.secondary), maxLines = 1)
             }
         }
     }
@@ -146,7 +146,7 @@ private fun DayDone(context: Context, up: NextUp.DayDone, today: String) {
                 ) {
                     Text(next.title, style = style(Caption, FontWeight.Bold), maxLines = 1)
                     val where = listOf(clockLabel(next.startMs), next.location).filter { it.isNotBlank() }
-                    Text(where.joinToString(" · "), style = style(Caption, FontWeight.Medium, WColors.muted), maxLines = 1)
+                    Text(where.joinToString(", "), style = style(Caption, FontWeight.Medium, WColors.muted), maxLines = 1)
                 }
             } else {
                 Text("Nothing coming up in the next two weeks.", style = style(Caption, FontWeight.Medium, WColors.secondary), maxLines = 3)

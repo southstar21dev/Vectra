@@ -74,7 +74,7 @@ struct FeaturedCard: View {
         VStack(alignment: .leading, spacing: 0) {
             if let s = session {
                 let today = Budapest.day(now)
-                StatusLabel(text: live ? "Now" : (s.day == today ? s.kind.label : "\(Budapest.distance(from: today, to: s.day)) · \(s.kind.label)"), kind: s.kind)
+                StatusLabel(text: live ? "Now" : (s.day == today ? s.kind.label : "\(Budapest.distance(from: today, to: s.day)), \(s.kind.label)"), kind: s.kind)
                 Spacer(minLength: 6)
                 Title(text: s.title)
                 Group {
@@ -241,7 +241,7 @@ struct AgendaView: View {
                     switch row {
                     case .card(let s): AgendaCard(session: s, now: now)
                     case .gap(let minutes):
-                        Text("Break · \(durationLabel(Double(minutes) * 60))")
+                        Text("Break, \(durationLabel(Double(minutes) * 60))")
                             .font(VFont.inter(12, 600)).foregroundStyle(p.muted)
                             .padding(.horizontal, 12).padding(.vertical, 3)
                             .background(Capsule().fill(p.overlay))
@@ -295,7 +295,7 @@ struct AgendaCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(session.title).font(VFont.inter(14, 800)).tracking(-0.2).foregroundStyle(done ? p.muted : p.text).lineLimit(1)
                 if done {
-                    Label { Text(["Done", session.location].filter { !$0.isEmpty }.joined(separator: " · ")) } icon: {
+                    Label { Text(["Done", session.location].filter { !$0.isEmpty }.joined(separator: ", ")) } icon: {
                         RemixIcon(name: "RiCheckboxCircle", size: 14).foregroundStyle(p.tone(.seminar))
                     }
                     .labelStyle(TightLabel()).font(VFont.inter(12, 600)).foregroundStyle(p.muted)

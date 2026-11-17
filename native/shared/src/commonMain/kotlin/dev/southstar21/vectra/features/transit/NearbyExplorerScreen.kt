@@ -264,7 +264,7 @@ private fun BoxScope.ExplorerChrome(explorer: NearbyExplorerState, safeTop: Dp, 
     ) {
         PinnedStopBoard(explorer)
         if (explorer.anchor?.outsideHungary == true) {
-            IslandNotice("Outside Hungary — showing Budapest center.", c.tints.amber.text)
+            IslandNotice("Outside Hungary, showing Budapest center.", c.tints.amber.text)
         }
         if (explorer.geoState.status == WatchLocationStatus.Error) {
             IslandNotice(explorer.geoState.errorMessage.orEmpty(), c.tints.red.text, action = "Retry" to explorer.refreshLocation)
