@@ -115,14 +115,14 @@ fun WidgetSnapshot?.examThisWeek(today: String): WidgetSession? {
 }
 
 /**
- * When the widgets should redraw next: the next session start or end, every five minutes while a
- * countdown or a progress bar is showing, and midnight at the latest.
+ * When the widgets should redraw next: the next session start or end, every minute while a ring
+ * counts down (a class under way, or one starting within twelve hours), and midnight at the latest.
  */
 fun WidgetSnapshot?.nextRefreshMs(nowMs: Long, midnightMs: Long): Long {
-    val sessions = this?.sessions.orEmpty()
+    val sessions = this?.sessions.orEmpty().filter { it.kind.isTimed }
     val boundary = sessions.flatMap { listOf(it.startMs, it.endMs) }.filter { it > nowMs }.minOrNull() ?: Long.MAX_VALUE
-    val counting = sessions.any { (it.startMs > nowMs && it.startMs - nowMs <= 2 * HourMs) || (it.startMs <= nowMs && nowMs < it.endMs) }
-    val tick = if (counting) nowMs + 5 * MinuteMs else Long.MAX_VALUE
+    val counting = sessions.any { (it.startMs > nowMs && it.startMs - nowMs <= 12 * HourMs) || (it.startMs <= nowMs && nowMs < it.endMs) }
+    val tick = if (counting) (nowMs / MinuteMs + 1) * MinuteMs else Long.MAX_VALUE
     return minOf(boundary, tick, midnightMs)
 }
 

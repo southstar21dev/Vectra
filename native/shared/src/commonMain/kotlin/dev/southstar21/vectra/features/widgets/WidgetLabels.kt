@@ -45,5 +45,15 @@ fun weekdayLabel(day: String): String = parseYmd(day)?.let { ShortDays[it.dayOfW
 fun dayHeading(day: String): String =
     parseYmd(day)?.let { "${ShortDays[it.dayOfWeek.daysSinceSunday]} ${it.day} ${ShortMonths[it.month.number - 1]}" } ?: ""
 
+/** "Wednesday" for a yyyy-mm-dd. */
+fun weekdayLongLabel(day: String): String = parseYmd(day)?.let { LongDays[it.dayOfWeek.daysSinceSunday] } ?: ""
+
+/** "18 Nov". */
+fun dayMonthLabel(day: String): String = parseYmd(day)?.let { "${it.day} ${ShortMonths[it.month.number - 1]}" } ?: ""
+
+/** "1 h 10 min", "45 min". */
+fun spanLabel(ms: Long): String = durationLabel(ms)
+
+private val LongDays = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 private val ShortDays = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 private val ShortMonths = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")

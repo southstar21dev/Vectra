@@ -97,12 +97,10 @@ class WidgetModelTest {
     @Test
     fun refreshesAtTheNextBoundaryOrMidnight() {
         val snap = snapshot(micro)
-        assertEquals(at(10.0), snap.nextRefreshMs(at(9.99), midnightMs = at(24.0)))
-        // Four hours out: nothing to count down yet, so the next redraw is the class itself.
-        assertEquals(at(10.0), snap.nextRefreshMs(at(6.0), midnightMs = at(24.0)))
+        assertEquals(at(10.0), snap.nextRefreshMs(at(9.999), midnightMs = at(24.0)))
         assertEquals(at(24.0), snap.nextRefreshMs(at(12.0), midnightMs = at(24.0)))
-        // Counting down: every five minutes.
-        assertEquals(at(9.0) + 5 * MinuteMs, snap.nextRefreshMs(at(9.0), midnightMs = at(24.0)))
+        // Counting down: on the next whole minute.
+        assertEquals(at(9.0) + MinuteMs, snap.nextRefreshMs(at(9.0) + 1_000, midnightMs = at(24.0)))
     }
 
     @Test

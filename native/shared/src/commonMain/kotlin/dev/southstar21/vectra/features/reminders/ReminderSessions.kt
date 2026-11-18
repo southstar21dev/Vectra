@@ -8,6 +8,7 @@ import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.ScheduleEventIndex
 import dev.southstar21.vectra.features.schedule.ScheduleItem
 import dev.southstar21.vectra.features.schedule.classOccursOnDate
+import dev.southstar21.vectra.features.schedule.extractGroupCode
 import dev.southstar21.vectra.features.schedule.getScheduleItemOccurrences
 import dev.southstar21.vectra.features.schedule.isExam
 import kotlinx.datetime.DatePeriod
@@ -29,6 +30,10 @@ data class ReminderSession(
     val endMs: Long,
     /** The course colour (#rrggbb) for a class; empty otherwise. */
     val color: String = "",
+    /** The class's teacher; empty for personal items and when the timetable has none. */
+    val teacher: String = "",
+    /** The class group from the course code ("G04"); empty when it has none. */
+    val group: String = "",
 ) {
     val day: String get() = key.substringAfterLast('@')
 }
@@ -104,7 +109,10 @@ fun expandSessions(
             .mapNotNull { e ->
                 val kind = sessionKind(e)
                 timeRange(date, e.startTime, e.endTime)?.let { (s, end) ->
-                    ReminderSession("${e.id}@$ymd", e.courseName.trim(), e.location.trim(), kind.label(), kind, s, end, e.color.trim())
+                    ReminderSession(
+                        "${e.id}@$ymd", e.courseName.trim(), e.location.trim(), kind.label(), kind, s, end, e.color.trim(),
+                        teacher = e.instructor.trim(), group = extractGroupCode(e.courseCode).orEmpty(),
+                    )
                 }
             }
     }
