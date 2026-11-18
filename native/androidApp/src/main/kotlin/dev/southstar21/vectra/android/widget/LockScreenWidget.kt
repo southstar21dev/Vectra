@@ -110,4 +110,4 @@ private fun Detail(text: String) = Text(text, style = style(13.sp, FontWeight.Me
 private fun Headline(text: String) = Text(text, style = style(17.sp, FontWeight.Bold, Primary), maxLines = 1)
 
 @Composable
-private fun Clock(text: String) = Text(text, style = style(13.sp, FontWeight.Bold, Primary, mono = true), maxLines = 1)
+private fun Clock(text: String) = Text(text, style = style(13.sp, FontWeight.Bold, Primary), maxLines = 1)

@@ -10,6 +10,8 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen"
+    android:configure="dev.southstar21.vectra.android.widget.WidgetStyleActivity"
+    android:widgetFeatures="reconfigurable"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:previewImage="@drawable/widget_preview_today"
     android:description="@string/widget_today_description" />

@@ -2,9 +2,10 @@ import CoreText
 import SwiftUI
 import WidgetKit
 
-// The app's tokens (shared/…/core/designsystem/theme/Color.kt) and the pieces of its design
-// language the widgets reuse: the aurora canvas, glass cards, StatusLabel, the stacked time block
-// and the raised accent pill.
+// The app's tokens (shared/…/core/designsystem/theme/Color.kt) and the time-spine pieces every
+// widget is built from. In the Home Screen's tinted and clear looks (accented rendering) the system
+// draws the glass and the tint itself: the content goes white, and the parts marked
+// widgetAccentable() (type words, rings, progress, today) take the tint.
 
 extension Color {
     init(hex: UInt32, alpha: Double = 1) {
@@ -39,41 +40,45 @@ enum VFont {
 }
 
 struct Palette {
-    let dark: Bool
+    enum Look { case dark, light, accented }
+    let look: Look
 
-    var surface: Color { dark ? Color(hex: 0x07080A) : Color(hex: 0xF8FAFC) }
-    var text: Color { dark ? Color(hex: 0xF8FAFC) : Color(hex: 0x0F172A) }
-    var secondary: Color { dark ? Color(hex: 0x94A3B8) : Color(hex: 0x334155) }
-    var muted: Color { dark ? Color(hex: 0x7C8AA0) : Color(hex: 0x64748B) }
-    var hairline: Color { dark ? .white.opacity(0.08) : Color(hex: 0x0F172A, alpha: 0.08) }
-    var overlay: Color { dark ? .white.opacity(0.035) : .black.opacity(0.03) }
-    var glass: Color { dark ? Color(hex: 0x0F1015, alpha: 0.88) : .white.opacity(0.95) }
-    var specular: Color { dark ? .white.opacity(0.22) : .white.opacity(0.8) }
-    var accent: Color { dark ? Color(hex: 0x38BDF8) : Color(hex: 0x0284C7) }
-    var onAccent: Color { dark ? Color(hex: 0x04121B) : .white }
-    var pill: Color { dark ? Color(hex: 0x38BDF8) : Color(hex: 0x0274B3) }
+    var dark: Bool { look != .light }
+    var accented: Bool { look == .accented }
 
-    /// ScheduleCard's session tones: lecture sky, seminar emerald, lab purple, exam violet.
+    var text: Color { switch look { case .dark: Color(hex: 0xF8FAFC); case .light: Color(hex: 0x0F172A); case .accented: .white } }
+    var secondary: Color { switch look { case .dark: Color(hex: 0x94A3B8); case .light: Color(hex: 0x334155); case .accented: .white.opacity(0.72) } }
+    var muted: Color { switch look { case .dark: Color(hex: 0x7C8AA0); case .light: Color(hex: 0x64748B); case .accented: .white.opacity(0.55) } }
+    var soft: Color { switch look { case .dark: Color(hex: 0xCBD5E1); case .light: Color(hex: 0x334155); case .accented: .white.opacity(0.86) } }
+    var hairline: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.08) : .white.opacity(accented ? 0.2 : 0.08) }
+    var line: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.14) : .white.opacity(accented ? 0.3 : 0.16) }
+    var track: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.08) : .white.opacity(accented ? 0.22 : 0.08) }
+    var accent: Color { switch look { case .dark: Color(hex: 0x38BDF8); case .light: Color(hex: 0x0284C7); case .accented: .white } }
+    var pill: Color { switch look { case .dark: Color(hex: 0x38BDF8); case .light: Color(hex: 0x0274B3); case .accented: .white } }
+    var onPill: Color { switch look { case .dark: Color(hex: 0x04121B); case .light: .white; case .accented: .black } }
+    var check: Color { switch look { case .dark: Color(hex: 0x34D399); case .light: Color(hex: 0x059669); case .accented: .white } }
+    var onCheck: Color { switch look { case .dark: Color(hex: 0x052E1F); case .light: .white; case .accented: .black } }
+
+    /// The app's session tones: lecture sky, seminar emerald, lab purple, exam violet, task amber.
     func tone(_ kind: Kind) -> Color {
+        if accented { return .white }
         switch kind {
-        case .lecture, .other: accent
-        case .seminar: dark ? Color(hex: 0x34D399) : Color(hex: 0x059669)
-        case .lab, .shift: dark ? Color(hex: 0xC084FC) : Color(hex: 0x7C3AED)
-        case .exam: dark ? Color(hex: 0xC4B5FD) : Color(hex: 0x6D28D9)
-        case .task: dark ? Color(hex: 0xFBBF24) : Color(hex: 0xB45309)
+        case .lecture, .other: return accent
+        case .seminar: return dark ? Color(hex: 0x34D399) : Color(hex: 0x059669)
+        case .lab, .shift: return dark ? Color(hex: 0xC084FC) : Color(hex: 0x7C3AED)
+        case .exam: return dark ? Color(hex: 0xC4B5FD) : Color(hex: 0x6D28D9)
+        case .task: return dark ? Color(hex: 0xFBBF24) : Color(hex: 0xB45309)
         }
-    }
-
-    /// A class's own colour for its glow, the accent when it has none.
-    func course(_ session: Session) -> Color {
-        let hex = session.color.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        guard hex.count == 6, let value = UInt32(hex, radix: 16) else { return Color(hex: 0x38BDF8) }
-        return Color(hex: value)
     }
 }
 
 struct PaletteKey: EnvironmentKey {
-    static let defaultValue = Palette(dark: true)
+    static let defaultValue = Palette(look: .dark)
+}
+
+/// Previews only: draws a look the preview can't ask the system for (tinted, clear).
+struct LookOverrideKey: EnvironmentKey {
+    static let defaultValue: Palette.Look? = nil
 }
 
 extension EnvironmentValues {
@@ -81,160 +86,137 @@ extension EnvironmentValues {
         get { self[PaletteKey.self] }
         set { self[PaletteKey.self] = newValue }
     }
+
+    var lookOverride: Palette.Look? {
+        get { self[LookOverrideKey.self] }
+        set { self[LookOverrideKey.self] = newValue }
+    }
 }
 
-/// Sets the palette from the system appearance for everything inside.
+/// Sets the palette from the appearance and the rendering mode for everything inside.
 struct Themed<Content: View>: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.lookOverride) private var override
     @ViewBuilder let content: Content
 
-    var body: some View { content.environment(\.palette, Palette(dark: scheme == .dark)) }
+    var body: some View {
+        let look: Palette.Look = override ?? (mode == .fullColor ? (scheme == .dark ? .dark : .light) : .accented)
+        content.environment(\.palette, Palette(look: look))
+    }
 }
 
-/// The app canvas behind a widget: the surface with the aurora glows, lit in a course colour while
-/// that class runs.
-struct Canvas: View {
-    @Environment(\.palette) private var p
-    var glow: Color?
+/// The widget itself is the one glass card: a soft gradient with a brighter top edge. The tinted and
+/// clear looks drop it for the system's glass.
+struct Plate: View {
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        let dark = scheme == .dark
         ZStack {
-            p.surface
-            if let glow {
-                RadialGradient(colors: [glow.opacity(p.dark ? 0.24 : 0.2), .clear], center: UnitPoint(x: 0.3, y: 0.2), startRadius: 0, endRadius: 220)
-            } else {
-                RadialGradient(colors: [p.accent.opacity(p.dark ? 0.16 : 0.12), .clear], center: UnitPoint(x: 0.1, y: 0), startRadius: 0, endRadius: 260)
-                RadialGradient(colors: [Color(hex: 0xA855F7, alpha: p.dark ? 0.14 : 0.1), .clear], center: UnitPoint(x: 0.95, y: 1), startRadius: 0, endRadius: 240)
-            }
+            LinearGradient(colors: dark ? [Color(hex: 0x14151C), Color(hex: 0x0D0E13)] : [.white, Color(hex: 0xF4F6FA)],
+                           startPoint: .top, endPoint: .bottom)
+            ContainerRelativeShape()
+                .strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(dark ? 0.12 : 0.9), location: 0),
+                                                     .init(color: dark ? .white.opacity(0.06) : Color(hex: 0x0F172A, alpha: 0.05), location: 0.3)],
+                                             startPoint: .top, endPoint: .bottom), lineWidth: 1)
         }
     }
 }
 
-/// The glass card: translucent fill, a brighter top edge fading into the sides.
-struct GlassCard: ViewModifier {
-    @Environment(\.palette) private var p
-    var radius: CGFloat = 16
-    /// A course colour: the card is lit from inside and rimmed in it (the class in progress).
-    var live: Color?
+/// Where a tap on any Vectra widget lands: the Schedule tab.
+let scheduleURL = URL(string: "vectra://open/schedule")!
 
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        content
-            .background {
-                ZStack {
-                    shape.fill(p.glass)
-                    if let live {
-                        shape.fill(RadialGradient(colors: [live.opacity(0.2), .clear], center: .center, startRadius: 0, endRadius: 120))
-                    }
-                }
-            }
-            .overlay {
-                if let live {
-                    shape.strokeBorder(live.opacity(0.44), lineWidth: 1)
-                } else {
-                    shape.strokeBorder(LinearGradient(stops: [.init(color: p.specular, location: 0), .init(color: p.hairline, location: 0.35)],
-                                                      startPoint: .top, endPoint: .bottom), lineWidth: 1)
-                }
-            }
-            .shadow(color: live?.opacity(0.27) ?? .black.opacity(p.dark ? 0.35 : 0.08), radius: live == nil ? 10 : 14, y: live == nil ? 6 : 0)
+/// Every Home Screen widget: the plate behind, our own margins, the Schedule tab on tap.
+struct WidgetBox<Content: View>: View {
+    var padding = EdgeInsets(top: 12, leading: 13, bottom: 12, trailing: 13)
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Themed { content.padding(padding).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading) }
+            .containerBackground(for: .widget) { Plate() }
+            .widgetURL(scheduleURL)
     }
 }
 
-extension View {
-    func glassCard(radius: CGFloat = 16, live: Color? = nil) -> some View { modifier(GlassCard(radius: radius, live: live)) }
+// MARK: - Text
+
+/// The class type as the app writes it: an uppercase word in the type's colour.
+struct TypeWord: View {
+    @Environment(\.palette) private var p
+    let kind: Kind
+
+    var body: some View {
+        Text(kind.label.uppercased()).font(VFont.mono(10, 800)).tracking(1.6).foregroundStyle(p.tone(kind)).lineLimit(1).widgetAccentable()
+    }
 }
 
-/// StatusLabel: a tone dot (or a personal item's icon) beside a quiet grey label.
-struct StatusLabel: View {
+/// A name. Long ones shrink a little rather than get cut off.
+struct Name: View {
     @Environment(\.palette) private var p
     let text: String
-    let kind: Kind
+    var size: CGFloat = 15
+    var weight: CGFloat = 800
+    var dim = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            ToneMark(kind: kind)
-            Text(text).font(VFont.inter(12, 600)).foregroundStyle(p.secondary).lineLimit(1)
-        }
+        Text(text).font(VFont.inter(size, weight)).tracking(-0.2).foregroundStyle(dim ? p.muted : p.text)
+            .lineLimit(3).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
     }
 }
 
-struct ToneMark: View {
+/// A quiet grey line (the teacher, a count).
+struct Quiet: View {
     @Environment(\.palette) private var p
-    let kind: Kind
+    let text: String
+    var size: CGFloat = 11
 
     var body: some View {
-        switch kind {
-        case .task: RemixIcon(name: "RiTask", size: 14).foregroundStyle(p.tone(kind))
-        case .shift: RemixIcon(name: "RiBriefcase", size: 14).foregroundStyle(p.tone(kind))
-        default:
-            Circle().fill(p.tone(kind).opacity(0.2)).frame(width: 14, height: 14)
-                .overlay(Circle().fill(p.tone(kind)).frame(width: 8, height: 8))
-        }
+        Text(text).font(VFont.inter(size, 600)).foregroundStyle(p.secondary).lineLimit(1).minimumScaleFactor(0.75)
     }
 }
 
-/// The stacked start/end block on the right of the app's class cards.
-struct StackedTime: View {
+struct Mono: View {
     @Environment(\.palette) private var p
-    let start: Date
-    let end: Date?
+    let text: String
+    var size: CGFloat = 12
+    var weight: CGFloat = 700
+    var color: Color?
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(Budapest.clock(start)).foregroundStyle(p.text)
-            if let end {
-                Rectangle().fill(p.hairline).frame(width: 14, height: 1)
-                Text(Budapest.clock(end)).foregroundStyle(p.secondary)
+        Text(text).font(VFont.mono(size, weight)).foregroundStyle(color ?? p.text).monospacedDigit().lineLimit(1).fixedSize()
+    }
+}
+
+struct Micro: View {
+    @Environment(\.palette) private var p
+    let text: String
+
+    var body: some View {
+        Text(text.uppercased()).font(VFont.inter(10, 700)).tracking(1).foregroundStyle(p.muted).lineLimit(1)
+    }
+}
+
+/// Pin and room, people and group.
+struct RoomLine: View {
+    @Environment(\.palette) private var p
+    let room: String
+    var group = ""
+    var size: CGFloat = 11
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if !room.isEmpty {
+                RemixIcon(name: "RiMapPin", size: size + 1)
+                Text(room).lineLimit(1).minimumScaleFactor(0.75)
+            }
+            if !group.isEmpty {
+                RemixIcon(name: "RiGroup", size: size + 1).padding(.leading, room.isEmpty ? 0 : 4)
+                Text(group).lineLimit(1).fixedSize()
             }
         }
-        .font(VFont.mono(12, 700))
-        .padding(.horizontal, 12).padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(p.overlay))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(p.hairline, lineWidth: 1))
-    }
-}
-
-/// The raised accent pill (pillDepth Accent).
-struct AccentPill<Label: View>: View {
-    @Environment(\.palette) private var p
-    @ViewBuilder let label: Label
-
-    var body: some View {
-        label
-            .font(VFont.inter(12, 800))
-            .foregroundStyle(p.onAccent)
-            .padding(.horizontal, 10).padding(.vertical, 4)
-            .background(Capsule().fill(p.pill))
-            .overlay(Capsule().strokeBorder(.white.opacity(0.35), lineWidth: 1))
-            .shadow(color: p.accent.opacity(0.35), radius: 8, y: 3)
-    }
-}
-
-/// A progress bar that fills on its own between two dates, no timeline entries needed.
-struct LiveProgress: View {
-    @Environment(\.palette) private var p
-    let session: Session
-    var height: CGFloat = 6
-
-    var body: some View {
-        ProgressView(timerInterval: session.start...session.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-            .progressViewStyle(.linear)
-            .tint(p.accent)
-            .frame(height: height)
-    }
-}
-
-struct Place: View {
-    @Environment(\.palette) private var p
-    let location: String
-
-    var body: some View {
-        if !location.isEmpty {
-            Label { Text(location).lineLimit(1) } icon: { RemixIcon(name: "RiMapPin", size: 14) }
-                .font(VFont.inter(12, 600))
-                .foregroundStyle(p.secondary)
-                .labelStyle(TightLabel())
-        }
+        .font(VFont.inter(size, 600))
+        .foregroundStyle(p.secondary)
     }
 }
 
@@ -248,17 +230,110 @@ struct RemixIcon: View {
     }
 }
 
-struct TightLabel: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 5) { configuration.icon; configuration.title }
+// MARK: - Shapes
+
+struct Hair: View {
+    @Environment(\.palette) private var p
+    var body: some View { Rectangle().fill(p.hairline).frame(height: 1) }
+}
+
+/// A flat progress line: the track and the fill in the type's colour.
+struct Bar: View {
+    @Environment(\.palette) private var p
+    let fraction: Double
+    let kind: Kind
+    var height: CGFloat = 3
+
+    var body: some View {
+        Capsule().fill(p.track).frame(height: height)
+            .overlay(alignment: .leading) {
+                GeometryReader { g in
+                    Capsule().fill(p.tone(kind)).frame(width: max(g.size.width * fraction, height)).widgetAccentable()
+                }
+            }
     }
 }
 
-struct Micro: View {
+/// The countdown ring: a track and an arc in the type's colour, with the content inside.
+struct Ring<Inner: View>: View {
+    @Environment(\.palette) private var p
+    let fraction: Double
+    let kind: Kind
+    var size: CGFloat = 50
+    var width: CGFloat = 4.5
+    @ViewBuilder let inner: Inner
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(p.track, lineWidth: width)
+            Circle().trim(from: 0, to: max(min(fraction, 1), 0.001))
+                .stroke(p.tone(kind), style: StrokeStyle(lineWidth: width, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .widgetAccentable()
+            inner
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// A ring's number with its unit word under it.
+struct RingValue: View {
+    @Environment(\.palette) private var p
+    let value: String
+    let unit: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(value).font(VFont.mono(value.count > 3 ? 14 : 18, 800)).foregroundStyle(p.text).minimumScaleFactor(0.6).lineLimit(1)
+            Text(unit).font(VFont.inter(8, 700)).tracking(0.6).foregroundStyle(p.muted).lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .padding(.horizontal, 6)
+    }
+}
+
+/// The green check of a finished class.
+struct CheckDot: View {
+    @Environment(\.palette) private var p
+    var size: CGFloat = 12
+
+    var body: some View {
+        if p.accented {
+            // Tinted and clear draw in one ink, so a filled dot would swallow its check: a ring with the check inside.
+            Circle().strokeBorder(p.text, lineWidth: 1.2).frame(width: size, height: size)
+                .overlay(RemixIcon(name: "RiCheck", size: size * 0.7).foregroundStyle(p.text))
+        } else {
+            Circle().fill(p.check).frame(width: size, height: size)
+                .overlay(RemixIcon(name: "RiCheck", size: size * 0.75).foregroundStyle(p.onCheck))
+        }
+    }
+}
+
+/// "12:30  Microeconomics": the time in the type's colour, the name beside it.
+struct MiniRow: View {
+    @Environment(\.palette) private var p
+    let time: String
+    let title: String
+    let kind: Kind?
+    var strong = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(time).font(VFont.mono(11, 700)).monospacedDigit().foregroundStyle(kind.map(p.tone) ?? p.muted).fixedSize().widgetAccentable()
+            Text(title).font(VFont.inter(12, 700)).foregroundStyle(strong ? p.text : p.soft).lineLimit(3).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct EmptyMessage: View {
     @Environment(\.palette) private var p
     let text: String
 
     var body: some View {
-        Text(text.uppercased()).font(VFont.inter(10, 700)).tracking(1).foregroundStyle(p.muted).lineLimit(1)
+        VStack(alignment: .leading, spacing: 6) {
+            RemixIcon(name: "RiCalendar", size: 20).foregroundStyle(p.accent).widgetAccentable()
+            Name(text: "Vectra", size: 16)
+            Text(text).font(VFont.inter(12, 600)).foregroundStyle(p.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

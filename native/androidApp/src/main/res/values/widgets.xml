@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_next_class_label">Next class</string>
-    <string name="widget_next_class_description">The class you\'re in or the next one, with a countdown.</string>
+    <string name="widget_next_class_description">The class you\'re in or the next one on a ring, with what comes after.</string>
     <string name="widget_today_label">Now and later today</string>
-    <string name="widget_today_description">The current or next class and the rest of your day.</string>
+    <string name="widget_today_description">The class on now and what comes after it, on one time line.</string>
     <string name="widget_week_label">This week</string>
-    <string name="widget_week_description">Your week at a glance, with the next exam.</string>
+    <string name="widget_week_description">Your week as a small timetable, with the next exam.</string>
     <string name="widget_agenda_label">Today</string>
-    <string name="widget_agenda_description">Today\'s classes, tasks and shifts.</string>
+    <string name="widget_agenda_description">Your whole day on one time line, with breaks and what\'s due.</string>
     <string name="widget_lock_screen_label">Next class (lock screen)</string>
     <string name="widget_lock_screen_description">The next class in white type for the lock screen.</string>
 </resources>

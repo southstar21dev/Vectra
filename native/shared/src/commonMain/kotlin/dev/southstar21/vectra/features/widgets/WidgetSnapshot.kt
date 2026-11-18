@@ -31,6 +31,10 @@ data class WidgetSession(
     val day: String,
     /** The course colour (#rrggbb), empty for personal items and classes without one. */
     val color: String = "",
+    /** The teacher, empty when unknown. Added after version 1 shipped, so it is optional. */
+    val teacher: String = "",
+    /** The class group ("G04"), empty when unknown. Optional like [teacher]. */
+    val group: String = "",
 )
 
 @Serializable
@@ -75,7 +79,7 @@ fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long): WidgetSna
         generatedAtMs = nowMs,
         signedIn = true,
         sessions = sessions.map {
-            WidgetSession(it.title, it.location, it.widgetKind(), it.startMs, it.endMs, it.day, it.color)
+            WidgetSession(it.title, it.location, it.widgetKind(), it.startMs, it.endMs, it.day, it.color, it.teacher, it.group)
         },
     )
 

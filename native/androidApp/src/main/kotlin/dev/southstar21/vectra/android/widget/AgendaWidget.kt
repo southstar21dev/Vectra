@@ -6,10 +6,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.ImageProvider
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -22,188 +23,204 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
-import dev.southstar21.vectra.features.widgets.emptyMessage
+import dev.southstar21.vectra.features.widgets.AgendaCut
+import dev.southstar21.vectra.features.widgets.SpineRow
 import dev.southstar21.vectra.features.widgets.WidgetKind
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetSession
-import dev.southstar21.vectra.features.widgets.emptyMessage
-import dev.southstar21.vectra.features.widgets.breakMinutes
-import dev.southstar21.vectra.features.widgets.emptyMessage
+import dev.southstar21.vectra.features.widgets.agendaCuts
 import dev.southstar21.vectra.features.widgets.clockLabel
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.dayMonthLabel
+import dev.southstar21.vectra.features.widgets.dayShown
+import dev.southstar21.vectra.features.widgets.doneOf
 import dev.southstar21.vectra.features.widgets.emptyMessage
-import dev.southstar21.vectra.features.widgets.dayHeading
-import dev.southstar21.vectra.features.widgets.emptyMessage
-import dev.southstar21.vectra.features.widgets.isClass
-import dev.southstar21.vectra.features.widgets.emptyMessage
+import dev.southstar21.vectra.features.widgets.openTasks
+import dev.southstar21.vectra.features.widgets.place
 import dev.southstar21.vectra.features.widgets.progress
-import dev.southstar21.vectra.features.widgets.emptyMessage
+import dev.southstar21.vectra.features.widgets.remainingLabel
+import dev.southstar21.vectra.features.widgets.spanLabel
 import dev.southstar21.vectra.features.widgets.sessionsOn
+import dev.southstar21.vectra.features.widgets.agendaRows
+import dev.southstar21.vectra.features.widgets.dayHeading
+import dev.southstar21.vectra.features.widgets.weekdayLongLabel
 
-/** Large: today as the Schedule tab shows it, glass cards with stacked times. */
+/** Large: the whole day on one time line, with breaks and what's due. */
 class AgendaWidget : GlanceAppWidget() {
-    // Exact: the rows are fitted to the size the launcher actually gives (cells differ a lot).
     override val sizeMode = SizeMode.Exact
+    override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val frame = WidgetStore.frame(context)
-        provideContent { AgendaContent(context, frame) }
+        provideContent { WidgetTheme { AgendaContent(context, frame) } }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
-        provideContent { AgendaContent(context, sampleFrame()) }
+        provideContent { PreviewTheme(360.dp, 300.dp) { AgendaContent(context, sampleFrame()) } }
     }
 }
 
-/** At most this many cards; fewer when the widget is short. The rest is summed up in the footer. */
-private const val MaxCards = 4
-
-/** Rough heights, for fitting rows to the widget: header and footer, a card, a break capsule. */
-private val ChromeHeight = 118.dp
-private val CardHeight = 64.dp
-private val BreakHeight = 32.dp
-
-private sealed interface AgendaRow {
-    data class Card(val session: WidgetSession) : AgendaRow
-    data class Break(val minutes: Int) : AgendaRow
-}
+/** A footer line: an icon or a type dot, the text, the time. */
+internal class FootLine(val icon: Int?, val kind: WidgetKind?, val text: String, val time: String)
 
 @Composable
 private fun AgendaContent(context: Context, frame: WidgetFrame) {
-    val snapshot = frame.snapshot
-    if (snapshot == null || !snapshot.signedIn) {
-        EmptyState(context, snapshot.emptyMessage("Open Vectra and sign in to see today here."))
+    val snap = frame.snapshot
+    if (snap?.signedIn != true) {
+        EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see today here."))
         return
     }
-    // A day with nothing on (a weekend, a holiday) shows the next day that has something instead.
-    val shownDay = if (snapshot.sessionsOn(frame.today).isNotEmpty()) frame.today
-    else snapshot.sessions.firstOrNull { it.day > frame.today }?.day ?: frame.today
-    val today = snapshot.sessionsOn(shownDay)
-    // Keep the end of the day in view: drop finished sessions first when there are too many.
-    val finished = today.count { it.endMs <= frame.nowMs }
-    val room = LocalSize.current.height - ChromeHeight
-    val cards = (room.value / CardHeight.value).toInt().coerceIn(1, MaxCards)
-    val visible = today.drop((today.size - cards).coerceIn(0, finished)).take(cards)
-    val breaks = ((room.value - visible.size * CardHeight.value) / BreakHeight.value).toInt().coerceAtLeast(0)
-    val rest = today.drop(today.indexOf(visible.lastOrNull()) + 1)
-    val tomorrow = snapshot.sessions.firstOrNull { it.day > shownDay && it.kind.isTimed }
-    val footer = when {
-        rest.isNotEmpty() -> "Then: ${rest.first().title}" to clockLabel(rest.first().startMs)
-        tomorrow != null -> "${dayDistanceLabel(frame.today, tomorrow.day)}: ${tomorrow.title}" to clockLabel(tomorrow.startMs)
-        else -> null
+    val day = snap.dayShown(frame.today)
+    val rows = snap.agendaRows(day, frame.nowMs)
+    val (done, total) = snap.doneOf(day, frame.nowMs)
+    val tasks = snap.openTasks(day, frame.nowMs)
+    val taskLine = tasks.firstOrNull()?.let { t ->
+        FootLine(R.drawable.ic_widget_task, WidgetKind.Task, "${t.title}, due" + if (tasks.size > 1) " and ${tasks.size - 1} more" else "", clockLabel(t.endMs))
     }
-
+    // When no later day fits on the line itself, the footer names the next one.
+    val nextLine = snap.sessions.firstOrNull { it.day > day && it.kind.isTimed }?.let { n ->
+        val count = snap.sessionsOn(n.day).size
+        FootLine(R.drawable.ic_widget_calendar, null, "${dayDistanceLabel(frame.today, n.day)}, ${n.title}" + if (count > 1) " and ${count - 1} more" else "", clockLabel(n.startMs))
+    }
+    val size = LocalSize.current
+    val b = Budget(context)
+    val width = size.width.value - 34f
+    val space = size.height.value - 27f - (b.line(11f) + b.line(24f)) - 9f
+    val pick = pickCut(agendaCuts(rows), taskLine, nextLine, b, width, space)
     WidgetSurface(context, padding = 0.dp) {
-        Column(GlanceModifier.fillMaxSize()) {
-            Column(GlanceModifier.fillMaxWidth().defaultWeight().padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
-                AgendaHeader(frame.today, shownDay, today)
-                Spacer(GlanceModifier.height(8.dp))
-                if (today.isEmpty()) {
-                    Text("Nothing on today.", style = style(Caption, FontWeight.Medium, WColors.secondary), modifier = GlanceModifier.padding(horizontal = 4.dp))
-                }
-                // Glance drops a column's children past the tenth, so the rows get a column of their own
-                // and each row carries its gap.
-                Column(GlanceModifier.fillMaxWidth()) {
-                    agendaRows(visible, breaks).forEach { row ->
-                        Column(GlanceModifier.fillMaxWidth().padding(bottom = 6.dp)) {
-                            when (row) {
-                                is AgendaRow.Card -> AgendaCard(row.session, frame.nowMs)
-                                is AgendaRow.Break -> BreakCapsule(row.minutes)
-                            }
-                        }
+        Column(GlanceModifier.fillMaxSize().padding(start = 16.dp, top = 14.dp, end = 18.dp, bottom = 13.dp)) {
+            Header(day, frame.today, done, total)
+            Spacer(GlanceModifier.height(9.dp))
+            if (rows.isEmpty()) Quiet("Nothing on today.", 12f)
+            // The rows in one column: Glance draws at most ten children per column.
+            Column(GlanceModifier.fillMaxWidth()) {
+                pick.cut.shown.take(10).forEachIndexed { i, row ->
+                    val last = i == pick.cut.shown.lastIndex || pick.cut.shown[i + 1] is SpineRow.Day
+                    if (row is SpineRow.Day) {
+                        DayLabel("${dayDistanceLabel(frame.today, row.day)}, ${dayHeading(row.day)}", pick.heights[i])
+                    } else {
+                        AgendaRow(row, frame.nowMs, pick.heights[i], last, pick.compact, width)
                     }
                 }
             }
-            if (footer != null) AgendaFooter(footer.first, footer.second)
+            Spacer(GlanceModifier.defaultWeight())
+            val lines = footLines(pick.cut, taskLine, nextLine)
+            if (lines.isNotEmpty()) Footer(lines)
         }
     }
-}
-
-/** The cards with a break capsule wherever there's real time between two; past [maxBreaks] the shortest go. */
-private fun agendaRows(visible: List<WidgetSession>, maxBreaks: Int): List<AgendaRow> {
-    val rows = buildList {
-        visible.forEachIndexed { i, s ->
-            if (i > 0) breakMinutes(visible[i - 1], s)?.let { add(AgendaRow.Break(it)) }
-            add(AgendaRow.Card(s))
-        }
-    }.toMutableList()
-    while (rows.count { it is AgendaRow.Break } > maxBreaks) {
-        rows.remove(rows.filterIsInstance<AgendaRow.Break>().minByOrNull { it.minutes } ?: break)
-    }
-    return rows
 }
 
 @Composable
-private fun AgendaHeader(today: String, day: String, sessions: List<WidgetSession>) {
-    Row(GlanceModifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun DayLabel(text: String, height: Float) {
+    Row(GlanceModifier.fillMaxWidth().height(height.dp).padding(start = 72.dp, top = 4.dp)) { Micro(text) }
+}
+
+@Composable
+private fun Header(day: String, today: String, done: Int, total: Int) {
+    val p = LocalWPalette.current
+    Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
         Column(GlanceModifier.defaultWeight()) {
-            Text(dayDistanceLabel(today, day), style = style(18.sp, FontWeight.Bold))
-            Text(dayHeading(day), style = style(Caption, FontWeight.Medium, WColors.muted))
+            Text((if (day == today) weekdayLongLabel(day) else dayDistanceLabel(today, day)).uppercase(), style = style(11.sp, FontWeight.Bold, p.accent), maxLines = 1)
+            Text(dayMonthLabel(day), style = style(24.sp, FontWeight.Bold, p.text), maxLines = 1)
         }
-        val classes = sessions.count { it.kind.isClass || it.kind == WidgetKind.Exam }
-        if (classes > 0) StatusLabel(if (classes == 1) "1 class" else "$classes classes", WidgetKind.Lecture)
-    }
-}
-
-/** The card footer bar: a hairline over a faint tint. */
-@Composable
-private fun AgendaFooter(text: String, time: String) {
-    Column(GlanceModifier.fillMaxWidth()) {
-        Box(GlanceModifier.fillMaxWidth().height(1.dp).background(WColors.hairline)) {}
-        Row(
-            GlanceModifier.fillMaxWidth().background(WColors.overlay).padding(horizontal = 14.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text, style = style(Caption, FontWeight.Medium, WColors.secondary), maxLines = 1, modifier = GlanceModifier.defaultWeight())
-            Spacer(GlanceModifier.width(8.dp))
-            Text(time, style = style(Caption, FontWeight.Medium, WColors.muted, mono = true))
-        }
-    }
-}
-
-@Composable
-private fun AgendaCard(s: WidgetSession, nowMs: Long) {
-    val live = s.startMs <= nowMs && nowMs < s.endMs && s.kind.isTimed
-    val done = s.endMs <= nowMs
-    Row(
-        GlanceModifier
-            .fillMaxWidth()
-            .background(ImageProvider(if (live) R.drawable.widget_live else R.drawable.widget_card))
-            .padding(start = 12.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(GlanceModifier.defaultWeight()) {
-            Text(s.title, style = style(14.sp, FontWeight.Bold, if (done) WColors.muted else WColors.text), maxLines = 1)
-            Spacer(GlanceModifier.height(2.dp))
-            if (done) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Tinted(R.drawable.ic_widget_done, WColors.emerald, 14.dp)
-                    Spacer(GlanceModifier.width(6.dp))
-                    Text(listOf("Done", s.location).filter { it.isNotBlank() }.joinToString(", "), style = style(Caption, FontWeight.Medium, WColors.muted), maxLines = 1)
+        if (total > 0) {
+            Column(horizontalAlignment = Alignment.End) {
+                Quiet("$done of $total done", 12f)
+                Spacer(GlanceModifier.height(4.dp))
+                Row {
+                    repeat(minOf(total, 8)) { i ->
+                        if (i > 0) Spacer(GlanceModifier.width(3.dp))
+                        Box(GlanceModifier.width(12.dp).height(4.dp).cornerRadius(2.dp).background(if (i < done) p.check else p.track)) {}
+                    }
                 }
-            } else {
-                StatusLabel(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "), s.kind)
             }
+        }
+    }
+}
+
+@Composable
+private fun AgendaRow(row: SpineRow, nowMs: Long, height: Float, last: Boolean, compact: Boolean, width: Float) {
+    when (row) {
+        is SpineRow.Break -> BreakRow(row.minutes, height)
+        is SpineRow.Past -> SessionRow(row.session, nowMs, height, last, compact, width, done = true)
+        is SpineRow.Now -> SessionRow(row.session, nowMs, height, last, compact, width, live = true)
+        is SpineRow.Next -> SessionRow(row.session, nowMs, height, last, compact, width)
+        is SpineRow.Day -> Unit
+    }
+}
+
+@Composable
+private fun BreakRow(minutes: Int, height: Float) {
+    val p = LocalWPalette.current
+    Row(GlanceModifier.fillMaxWidth().height(height.dp), verticalAlignment = Alignment.Top) {
+        Spacer(GlanceModifier.width(50.dp))
+        Column(GlanceModifier.width(12.dp), horizontalAlignment = Alignment.CenterHorizontally) { SpineLine(height.dp, dashed = true) }
+        Spacer(GlanceModifier.width(10.dp))
+        Quiet("Break, ${spanOf(minutes)}", 11f, p.muted)
+    }
+}
+
+@Composable
+private fun SessionRow(s: WidgetSession, nowMs: Long, height: Float, last: Boolean, compact: Boolean, width: Float, done: Boolean = false, live: Boolean = false) {
+    val p = LocalWPalette.current
+    val nameLines = Budget(LocalContext.current).lines(s.title, 14f, width - 72f, max = 2)
+    // Compact cuts leave the rooms out, except the class on now's.
+    val showRoom = !done && (live || !compact) && s.place.isNotBlank()
+    Row(GlanceModifier.fillMaxWidth().height(height.dp)) {
+        Column(GlanceModifier.width(40.dp), horizontalAlignment = Alignment.End) {
+            Mono(clockLabel(s.startMs), color = if (done) p.muted else null)
+            if (!done) Mono(clockLabel(s.endMs), 11f, p.muted, FontWeight.Medium)
+        }
+        Spacer(GlanceModifier.width(10.dp))
+        Column(GlanceModifier.width(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(GlanceModifier.height(2.dp))
+            Node(s.kind, live, done)
+            if (!last) SpineLine((height - 14f).dp)
+        }
+        Spacer(GlanceModifier.width(10.dp))
+        Column(GlanceModifier.defaultWeight()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TypeWord(s.kind)
+                if (live) {
+                    Spacer(GlanceModifier.width(8.dp))
+                    Text(remainingLabel(nowMs, s.endMs), style = style(11.sp, FontWeight.Bold, p.tone(s.kind)), maxLines = 1)
+                }
+            }
+            Name(s.title, 14f, nameLines, dim = done)
+            if (showRoom) RoomLine(s.location, s.group)
             if (live) {
                 Spacer(GlanceModifier.height(5.dp))
-                Progress(progress(s, nowMs), height = 4.dp)
+                Bar(progress(s, nowMs), s.kind)
             }
         }
-        Spacer(GlanceModifier.width(8.dp))
-        StackedTime(clockLabel(s.startMs), if (s.kind.isTimed) clockLabel(s.endMs) else null)
     }
 }
 
+private fun spanOf(minutes: Int): String = spanLabel(minutes * 60_000L)
+
 @Composable
-private fun BreakCapsule(minutes: Int) {
-    Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(GlanceModifier.background(ImageProvider(R.drawable.widget_chip)).padding(horizontal = 12.dp, vertical = 3.dp)) {
-            val label = if (minutes >= 60) "${minutes / 60} h ${minutes % 60} min".replace(" 0 min", "") else "$minutes min"
-            Text("Break, $label", style = style(Caption, FontWeight.Medium, WColors.muted))
+private fun Footer(lines: List<FootLine>) {
+    val p = LocalWPalette.current
+    Column(GlanceModifier.fillMaxWidth()) {
+        Hair()
+        Spacer(GlanceModifier.height(7.dp))
+        lines.forEach { l ->
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                when {
+                    l.icon != null -> Tinted(l.icon, l.kind?.let(p::tone) ?: p.muted, 13.dp)
+                    l.kind != null -> Box(GlanceModifier.width(13.dp), contentAlignment = Alignment.Center) {
+                        Box(GlanceModifier.width(6.dp).height(6.dp).cornerRadius(3.dp).background(p.tone(l.kind))) {}
+                    }
+                }
+                Spacer(GlanceModifier.width(8.dp))
+                Text(l.text, GlanceModifier.defaultWeight(), style(12.sp, FontWeight.Medium, p.secondary), maxLines = 2)
+                Spacer(GlanceModifier.width(6.dp))
+                Mono(l.time, 11f, p.muted)
+            }
+            Spacer(GlanceModifier.height(5.dp))
         }
     }
 }

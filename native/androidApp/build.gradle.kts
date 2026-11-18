@@ -176,4 +176,5 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
 }

@@ -18,7 +18,9 @@
 		736AF7C8DA78976E2FCDFBE2 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
 		7871DB6DA5B777642626F950 /* TabBarHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA422B8A44BD67512E3715F2 /* TabBarHost.swift */; };
 		7A3E7A26A4B808BB39F0A259 /* inter_variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 64B7F111600D0D41D6230059 /* inter_variable.ttf */; };
+		874C9E1B46FD834B50323E4B /* Spine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB44364B443FAA94E860E9C /* Spine.swift */; };
 		87AF8551F9234A666DA6ED09 /* DayWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930F1BC906755445B7FE7AA /* DayWidgets.swift */; };
+		939028994CFCE9D4FC2E153D /* NextClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F4852FC8221AE0F7EE901B /* NextClass.swift */; };
 		AAC19793CF29621C09C7D6C5 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */; };
 		B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733197A7CAF9CB77355E077B /* VectraWidgets.swift */; };
 		FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA668872F5CEDF745B4E7AC3 /* Theme.swift */; };
@@ -49,6 +51,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		03F4852FC8221AE0F7EE901B /* NextClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextClass.swift; sourceTree = "<group>"; };
 		233554DAFCA9B8DFE951680A /* VectraWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VectraWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VectraWidgets.entitlements; sourceTree = "<group>"; };
 		40F27D365D73FEFE0E40ADA4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -58,6 +61,7 @@
 		668CECA83ACC03A83C85A623 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		733197A7CAF9CB77355E077B /* VectraWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectraWidgets.swift; sourceTree = "<group>"; };
 		86038AE1032E284E79B32AD6 /* iosApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FB44364B443FAA94E860E9C /* Spine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spine.swift; sourceTree = "<group>"; };
 		A930F1BC906755445B7FE7AA /* DayWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayWidgets.swift; sourceTree = "<group>"; };
 		AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BA422B8A44BD67512E3715F2 /* TabBarHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarHost.swift; sourceTree = "<group>"; };
@@ -153,6 +157,8 @@
 				A930F1BC906755445B7FE7AA /* DayWidgets.swift */,
 				40F27D365D73FEFE0E40ADA4 /* Info.plist */,
 				EFBEBBB1783F2F7051D6187E /* Model.swift */,
+				03F4852FC8221AE0F7EE901B /* NextClass.swift */,
+				9FB44364B443FAA94E860E9C /* Spine.swift */,
 				DA668872F5CEDF745B4E7AC3 /* Theme.swift */,
 				248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */,
 				733197A7CAF9CB77355E077B /* VectraWidgets.swift */,
@@ -363,6 +369,8 @@
 				736AF7C8DA78976E2FCDFBE2 /* AppGroup.swift in Sources */,
 				87AF8551F9234A666DA6ED09 /* DayWidgets.swift in Sources */,
 				4EEDC0B2CB8436DEAD01BCAF /* Model.swift in Sources */,
+				939028994CFCE9D4FC2E153D /* NextClass.swift in Sources */,
+				874C9E1B46FD834B50323E4B /* Spine.swift in Sources */,
 				FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */,
 				B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */,
 			);

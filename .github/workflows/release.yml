@@ -342,13 +342,19 @@ jobs:
 
   # Sends the released version to TestFlight: a signed App Store build of the same commit and
   # version as the GitHub release (the AltStore IPA above stays unsigned). Runs only after publish,
-  # so TestFlight never gets a build that wasn't released. Signing is cloud-managed: xcodebuild
-  # fetches the distribution certificate and profiles with the App Store Connect API key, so no
-  # certificate is stored here. Skipped (with a note in the summary) until these secrets exist:
-  #   ASC_KEY_ID      the key's ID
-  #   ASC_ISSUER_ID   the issuer ID shown above the keys list
-  #   ASC_KEY_P8      the contents of the downloaded AuthKey_<id>.p8
-  # The key needs the Admin role (cloud-managed distribution signing requires it).
+  # so TestFlight never gets a build that wasn't released. The export is signed with the
+  # cloud-managed distribution certificate, which xcodebuild fetches with the App Store Connect API
+  # key. The archive step signs with a development certificate first; without one on the runner,
+  # xcodebuild would create a new "Created via API" certificate on every run until the account hits
+  # Apple's limit, so a single fixed CI certificate is loaded from the secrets instead.
+  # Skipped (with a note in the summary) until these secrets exist:
+  #   ASC_KEY_ID             the key's ID
+  #   ASC_ISSUER_ID          the issuer ID shown above the keys list
+  #   ASC_KEY_P8             the contents of the downloaded AuthKey_<id>.p8
+  #   IOS_DEV_P12            base64 of the CI Apple Development certificate and its key (.p12)
+  #   IOS_DEV_P12_PASSWORD   that .p12's password
+  # The key needs the Admin role (cloud-managed distribution signing requires it). The CI
+  # certificate expires after a year: make a new one and replace both IOS_DEV_P12 secrets.
   testflight:
     name: TestFlight
     needs: [plan, publish]
@@ -359,15 +365,17 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+      IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
     steps:
       - id: key
-        name: Check for the App Store Connect key
+        name: Check for the App Store Connect key and CI certificate
         run: |
-          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ]; then
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$IOS_DEV_P12" ] && [ -n "$IOS_DEV_P12_PASSWORD" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "TestFlight upload skipped: set ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 to enable it." >> "$GITHUB_STEP_SUMMARY"
+            echo "TestFlight upload skipped: set ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, IOS_DEV_P12 and IOS_DEV_P12_PASSWORD to enable it." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - if: steps.key.outputs.ok == 'true'
@@ -396,6 +404,26 @@ jobs:
       - if: steps.key.outputs.ok == 'true'
         name: Set the version
         run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
+
+      # A throwaway keychain holding only the CI certificate, first in the search list so xcodebuild
+      # finds that identity and doesn't create a new one.
+      - if: steps.key.outputs.ok == 'true'
+        name: Load the CI development certificate
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          PASS=$(openssl rand -hex 24)
+          security create-keychain -p "$PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASS" "$KEYCHAIN"
+          printf '%s' "$IOS_DEV_P12" | base64 --decode > "$RUNNER_TEMP/dev.p12"
+          security import "$RUNNER_TEMP/dev.p12" -k "$KEYCHAIN" -P "$IOS_DEV_P12_PASSWORD" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dev.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PASS" "$KEYCHAIN" > /dev/null
+          # Splitting is intended: one argument per existing keychain path (none contain spaces).
+          # shellcheck disable=SC2046
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Development' \
+            || { echo "::error::IOS_DEV_P12 holds no Apple Development identity."; exit 1; }
 
       - if: steps.key.outputs.ok == 'true'
         name: Archive and upload to TestFlight
@@ -432,8 +460,10 @@ jobs:
           echo "Uploaded $VERSION to TestFlight; it appears there once App Store Connect finishes processing." >> "$GITHUB_STEP_SUMMARY"
 
       - if: always() && steps.key.outputs.ok == 'true'
-        name: Remove the key
-        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
+        name: Remove the key and the signing keychain
+        run: |
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/dev.p12"
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
 
   pages:
     name: AltStore/SideStore sources

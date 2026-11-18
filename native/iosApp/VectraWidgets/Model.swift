@@ -60,8 +60,23 @@ struct Session: Decodable, Hashable {
     let endMs: Double
     let day: String
     let color: String
+    /// Optional: snapshots written before the widgets showed them don't carry these.
+    var teacherName: String? = nil
+    var groupCode: String? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case title, location, kind, startMs, endMs, day, color
+        case teacherName = "teacher"
+        case groupCode = "group"
+    }
+
+    var teacher: String { teacherName ?? "" }
+    var group: String { groupCode ?? "" }
 
     var start: Date { Date(timeIntervalSince1970: startMs / 1000) }
+
+    /// The time a widget lists it at: a task's deadline, anything else's start.
+    var when: Date { kind == .task ? end : start }
     var end: Date { Date(timeIntervalSince1970: endMs / 1000) }
 
     func isLive(at now: Date) -> Bool { kind.isTimed && start <= now && now < end }
@@ -70,8 +85,11 @@ struct Session: Decodable, Hashable {
         min(max(now.timeIntervalSince(start) / max(end.timeIntervalSince(start), 1), 0), 1)
     }
 
-    /// "Lecture · C.203".
+    /// "Lecture, C.203".
     var detail: String { [kind.label, location].filter { !$0.isEmpty }.joined(separator: ", ") }
+
+    /// The room with the group after it: "E 201, G04".
+    var place: String { [location, group].filter { !$0.isEmpty }.joined(separator: ", ") }
 }
 
 /// What a widget says when its snapshot has run out (audit 04 #17).
@@ -214,10 +232,15 @@ extension Optional where Wrapped == Snapshot {
     }
 
     /// The moments a widget's text changes: each start and end ahead, and midnight.
+    /// Every minute for the next three hours while a class runs or one starts within a day (the
+    /// rings and minute counts are drawn per entry), then each start and end and midnight.
     func refreshDates(after now: Date) -> [Date] {
         let edges = live.flatMap { [$0.start, $0.end] }.filter { $0 > now }
         let horizon = now.addingTimeInterval(36 * 3600)
-        return Array(Set(edges.filter { $0 <= horizon } + [Budapest.midnight(after: now)])).sorted()
+        let counting = live.contains { $0.kind.isTimed && $0.end > now && $0.start.timeIntervalSince(now) < 86_400 }
+        let minute = Budapest.calendar.dateInterval(of: .minute, for: now)?.end ?? now.addingTimeInterval(60)
+        let ticks = counting ? (0..<180).map { minute.addingTimeInterval(Double($0) * 60) } : []
+        return Array(Set(edges.filter { $0 <= horizon } + ticks + [Budapest.midnight(after: now)])).sorted()
     }
 }
 

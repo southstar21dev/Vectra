@@ -49,6 +49,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- A widget's style screen: the launcher opens it when the widget is added and on "Reconfigure". -->
+        <activity
+            android:name=".widget.WidgetStyleActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Vectra">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".widget.NextClassReceiver"
             android:exported="false"
