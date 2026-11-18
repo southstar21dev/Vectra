@@ -5200,6 +5200,14 @@
     "textColor": "FFFFFF"
   },
   {
+    "id": "BKK_MOZG",
+    "shortName": "MOZG",
+    "description": "Különjárat | Különjárat",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
+  },
+  {
     "id": "BKK_rjx",
     "shortName": "rjx",
     "description": "München Hbf | Budapest-Keleti",
