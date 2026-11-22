@@ -744,12 +744,6 @@
     "lon": 19.023171
   },
   {
-    "id": "BKK_CS102593",
-    "name": "AVTB telephely",
-    "lat": 47.570488,
-    "lon": 19.135163
-  },
-  {
     "id": "BKK_CSF00152",
     "name": "Baba utca",
     "lat": 47.524232,
@@ -1020,10 +1014,10 @@
     "lon": 19.12668
   },
   {
-    "id": "BKK_CSF00940",
+    "id": "BKK_CS077871",
     "name": "Báthory utca / Bajcsy-Zsilinszky út",
-    "lat": 47.506715,
-    "lon": 19.055143
+    "lat": 47.506898,
+    "lon": 19.055137
   },
   {
     "id": "BKK_CSF00339",
@@ -1076,7 +1070,7 @@
   {
     "id": "BKK_CSF00680",
     "name": "Bécsi út / Vörösvári út",
-    "lat": 47.548364,
+    "lat": 47.548366,
     "lon": 19.029241
   },
   {
@@ -1692,10 +1686,10 @@
     "lon": 18.940664
   },
   {
-    "id": "BKK_CSF01913",
+    "id": "BKK_CS009350",
     "name": "Budaörsi repülőtér",
-    "lat": 47.447096,
-    "lon": 18.986252
+    "lat": 47.447112,
+    "lon": 18.986099
   },
   {
     "id": "BKK_CSF02172",
@@ -2588,8 +2582,8 @@
   {
     "id": "BKK_CSF00025",
     "name": "Déli pályaudvar",
-    "lat": 47.500271,
-    "lon": 19.024688
+    "lat": 47.500307,
+    "lon": 19.024553
   },
   {
     "id": "BKK_CS044076",
@@ -3494,8 +3488,8 @@
   {
     "id": "BKK_CSF00611",
     "name": "Flórián tér",
-    "lat": 47.541539,
-    "lon": 19.040755
+    "lat": 47.541543,
+    "lon": 19.040754
   },
   {
     "id": "BKK_CSF00128",
@@ -3578,7 +3572,7 @@
   {
     "id": "BKK_CSF00922",
     "name": "Fővám tér",
-    "lat": 47.486722,
+    "lat": 47.486725,
     "lon": 19.057337
   },
   {
@@ -3752,8 +3746,8 @@
   {
     "id": "BKK_CSF03795",
     "name": "Ganztelep, Mednyánszky utca",
-    "lat": 47.423519,
-    "lon": 19.234708
+    "lat": 47.423529,
+    "lon": 19.234713
   },
   {
     "id": "BKK_CSF00153",
@@ -4640,8 +4634,8 @@
   {
     "id": "BKK_CS009041",
     "name": "Haller utca / Soroksári út",
-    "lat": 47.475206,
-    "lon": 19.070344
+    "lat": 47.475171,
+    "lon": 19.070351
   },
   {
     "id": "BKK_CSF01729",
@@ -4730,8 +4724,8 @@
   {
     "id": "BKK_CSF01541",
     "name": "Határ út",
-    "lat": 47.464868,
-    "lon": 19.12666
+    "lat": 47.464845,
+    "lon": 19.126789
   },
   {
     "id": "BKK_CSF04363",
@@ -4802,8 +4796,8 @@
   {
     "id": "BKK_CS066458",
     "name": "Hengermalom út / Szerémi út",
-    "lat": 47.462071,
-    "lon": 19.04776
+    "lat": 47.462127,
+    "lon": 19.047834
   },
   {
     "id": "BKK_CS040526",
@@ -6016,6 +6010,12 @@
     "name": "Kelemen utca",
     "lat": 47.477092,
     "lon": 19.132108
+  },
+  {
+    "id": "BKK_CS009639",
+    "name": "Kelenföld kocsiszín (Csóka kapu)",
+    "lat": 47.470139,
+    "lon": 19.027137
   },
   {
     "id": "BKK_CS007896",
@@ -7986,6 +7986,12 @@
     "lon": 19.032129
   },
   {
+    "id": "BKK_CS083872",
+    "name": "Mezőkövesd út",
+    "lat": 47.440667,
+    "lon": 19.042541
+  },
+  {
     "id": "BKK_CSF03515",
     "name": "Mezőtárkány utca",
     "lat": 47.477114,
@@ -8450,8 +8456,8 @@
   {
     "id": "BKK_CSF04504",
     "name": "Nagytétény, Erdélyi utca",
-    "lat": 47.388207,
-    "lon": 18.973271
+    "lat": 47.388178,
+    "lon": 18.972569
   },
   {
     "id": "BKK_CSF04508",
@@ -9002,8 +9008,8 @@
   {
     "id": "BKK_CS102825",
     "name": "Örs vezér tere",
-    "lat": 47.503018,
-    "lon": 19.136406
+    "lat": 47.503071,
+    "lon": 19.136412
   },
   {
     "id": "BKK_CSF02233",
@@ -9458,8 +9464,8 @@
   {
     "id": "BKK_CSF02225",
     "name": "Petőfi híd, budai hídfő",
-    "lat": 47.476756,
-    "lon": 19.059185
+    "lat": 47.476688,
+    "lon": 19.059119
   },
   {
     "id": "BKK_CSF00924",
@@ -12668,8 +12674,8 @@
   {
     "id": "BKK_CSF01783",
     "name": "Terebesi utca",
-    "lat": 47.494116,
-    "lon": 19.140689
+    "lat": 47.494128,
+    "lon": 19.140773
   },
   {
     "id": "BKK_CS008895",
@@ -13734,6 +13740,12 @@
     "lon": 19.076552
   },
   {
+    "id": "BKK_CS084092",
+    "name": "Vegyész utca",
+    "lat": 47.443528,
+    "lon": 19.042689
+  },
+  {
     "id": "BKK_CSF01973",
     "name": "Vegyész utca",
     "lat": 47.442786,
@@ -14290,6 +14302,12 @@
     "name": "Zugliget, Libegő",
     "lat": 47.516545,
     "lon": 18.975825
+  },
+  {
+    "id": "BKK_CS009645",
+    "name": "Zugló kocsiszín (kapu)",
+    "lat": 47.518909,
+    "lon": 19.112583
   },
   {
     "id": "BKK_CS009426",
