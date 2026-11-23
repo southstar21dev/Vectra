@@ -125,41 +125,121 @@ private fun VehicleLabel(v: StripVehicle, align: Alignment.Horizontal) {
     }
 }
 
+private data class AlignedEndData(
+    val destination: String,
+    val arrowRight: Boolean,
+    val bus: Boolean,
+    val vehicle: StripVehicle?,
+    val alignEnd: Boolean,
+)
+
 /**
- * The destinations under the strip: where left-heading and right-heading vehicles go. A fork
- * puts its second destination under the first at that end.
+ * Aligned direction headers above the strip: left side matches the vehicle approaching from the
+ * left (heading right →), right side matches the vehicle approaching from the right (heading left ←).
+ * Shows each direction's destination and primary ETA once, with zero duplication.
  */
 @Composable
-internal fun StripEnds(model: StripModel, modifier: Modifier = Modifier) {
-    if (model.leftEnd == null && model.rightEnd == null) return
-    val fork = model.fork
-    val left = listOfNotNull(model.leftEnd, fork?.takeIf { it.heading < 0 }?.destination)
-    val right = listOfNotNull(model.rightEnd, fork?.takeIf { it.heading > 0 }?.destination)
-    Row(modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            left.forEachIndexed { i, name ->
-                EndLabel(name, right = false, bus = i == 0 && model.leftBus)
-                if (i == 0) EndTimes(model.leftTimes)
-            }
+internal fun AlignedStripHeader(model: StripModel, modifier: Modifier = Modifier) {
+    val leftSide = model.rightEnd?.let {
+        AlignedEndData(
+            destination = it,
+            arrowRight = true,
+            bus = model.rightBus,
+            vehicle = model.vehicles.firstOrNull { v -> v.heading > 0 },
+            alignEnd = false,
+        )
+    }
+    val rightSide = model.leftEnd?.let {
+        AlignedEndData(
+            destination = it,
+            arrowRight = false,
+            bus = model.leftBus,
+            vehicle = model.vehicles.firstOrNull { v -> v.heading < 0 },
+            alignEnd = true,
+        )
+    }
+    if (leftSide == null && rightSide == null) return
+    Row(
+        modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        if (leftSide != null) AlignedEndColumn(leftSide, Modifier.weight(1f))
+        if (rightSide != null) AlignedEndColumn(rightSide, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun AlignedEndColumn(data: AlignedEndData, modifier: Modifier = Modifier) {
+    val c = Vectra.colors
+    val align = if (data.alignEnd) Alignment.End else Alignment.Start
+    Column(modifier, horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!data.arrowRight) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
+            if (data.bus) VIcon(RemixIcons.BusLine, size = 13.dp, tint = BusBlue)
+            VText(
+                data.destination,
+                Modifier.weight(1f, fill = false),
+                style = vtext(12.5.sp to 16.sp, Weight.Semibold),
+                color = c.textPrimary,
+                maxLines = 2,
+                align = if (data.alignEnd) TextAlign.End else TextAlign.Start,
+            )
+            if (data.arrowRight) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
         }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            right.forEachIndexed { i, name ->
-                EndLabel(name, right = true, bus = i == 0 && model.rightBus)
-                if (i == 0) EndTimes(model.rightTimes)
+        val v = data.vehicle
+        if (v?.label != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (data.alignEnd && v.sub != null) {
+                    VText(v.sub, style = vtext(11.sp to 15.sp, Weight.Medium), color = c.textMuted, maxLines = 1)
+                }
+                if (!data.bus || !v.replacement) TimeIcon(v)
+                VText(
+                    v.label,
+                    style = vtext(16.sp to 20.sp, Weight.Extrabold, mono = true).tnum(),
+                    color = stripTimeColor(v),
+                    maxLines = 1,
+                )
+                if (!data.alignEnd && v.sub != null) {
+                    VText(v.sub, style = vtext(11.sp to 15.sp, Weight.Medium), color = c.textMuted, maxLines = 1)
+                }
             }
         }
     }
 }
 
+/**
+ * Quiet follow-up departure times under each side of the strip ("then 14', 19'"), aligned with
+ * the header and vehicle above. Also lists a forked branch's destination and ETA when present.
+ */
 @Composable
-private fun EndLabel(name: String, right: Boolean, bus: Boolean) {
+internal fun StripEnds(model: StripModel, modifier: Modifier = Modifier) {
+    val leftLater = model.rightTimes.drop(1)
+    val rightLater = model.leftTimes.drop(1)
+    val fork = model.fork
+    if (leftLater.isEmpty() && rightLater.isEmpty() && fork == null) return
+    Column(modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (leftLater.isNotEmpty() || rightLater.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { EndTimes(leftLater) }
+                if (model.leftEnd != null || rightLater.isNotEmpty()) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { EndTimes(rightLater) }
+                }
+            }
+        }
+        if (fork != null) ForkEndRow(fork, model.forkTimes)
+    }
+}
+
+@Composable
+internal fun ForkEndRow(fork: StripFork, times: List<StripTime>) {
     val c = Vectra.colors
-    val style = vtext(12.sp to 16.sp, Weight.Semibold)
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
-        // Replacement buses run this way: say so where they go.
-        if (bus) VIcon(RemixIcons.BusLine, size = 13.dp, tint = BusBlue)
-        VText(name, Modifier.weight(1f, fill = false), style = style, color = c.textSecondary, maxLines = 1, align = if (right) TextAlign.End else TextAlign.Start)
-        if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
+    val first = times.firstOrNull()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        VIcon(if (fork.heading > 0) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
+        VText(fork.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+        if (first != null) {
+            VText(first.label, style = vtext(12.sp to 16.sp, Weight.Bold, mono = true).tnum(), color = c.textSecondary, maxLines = 1)
+        }
     }
 }

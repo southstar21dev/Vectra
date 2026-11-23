@@ -225,6 +225,8 @@ data class FutarRouteVariant(
     /** Ordered stop ids along this direction. */
     val stopIds: List<String>? = null,
     val polyline: FutarPolyline? = null,
+    /** Futár direction id ("0" or "1") shared by co-directional branches (e.g. 37 and 37A outbound). */
+    val direction: String? = null,
 )
 
 @Serializable

@@ -90,7 +90,7 @@ internal fun LineStrip(
  * have labels; a little otherwise; at least the fork's spread when the line forks.
  */
 private fun Density.stripRoom(model: StripModel, labels: Boolean, above: Boolean, assumeLabels: Boolean = false): Dp {
-    if (!labels) return 10.dp
+    if (!labels) return if (model.fork != null) 18.dp else 5.dp
     val hasLabels = above && (assumeLabels || model.hasLabels)
     val room = if (hasLabels) 20.sp.toDp() + (if (model.hasSubs) 15.sp.toDp() else 0.dp) + 12.dp else 12.dp
     return if (model.fork != null) maxOf(room, 30.dp) else room

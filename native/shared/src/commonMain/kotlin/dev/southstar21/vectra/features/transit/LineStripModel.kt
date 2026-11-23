@@ -63,6 +63,8 @@ data class StripModel(
     /** The next departures each way (the one drawn on the line first), for the times under the ends. */
     val leftTimes: List<StripTime> = emptyList(),
     val rightTimes: List<StripTime> = emptyList(),
+    /** Next departures for a forked third direction, when present. */
+    val forkTimes: List<StripTime> = emptyList(),
 ) {
     /** Every vehicle's time sits on one row above the line. */
     val hasLabels get() = vehicles.any { it.label != null || it.sub != null }
@@ -140,6 +142,7 @@ fun buildStripModel(directions: List<StripDirection>, now: Long, metro: Boolean,
         rightBus = right?.replacement == true,
         leftTimes = endTimes(left, now, metro, frozen),
         rightTimes = endTimes(right, now, metro, frozen),
+        forkTimes = endTimes(fork?.first, now, metro, frozen),
     )
 }
 

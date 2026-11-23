@@ -41,6 +41,10 @@ internal fun StripStatus(repo: TransitRepository, tracker: TransitTracker, s: St
         if (s.model.terminus && !s.noDepartures) {
             StripNote(RemixIcons.MapPinLine, "Last stop, ${noun ?: "vehicles"} only arrive here", c.textSecondary)
         }
+        if (s.divertedTo != null) {
+            val amber = c.tints.amber
+            StripNote(RemixIcons.AlertLine, "Diverted, terminating at ${s.divertedTo}", amber.text, background = amber.bg)
+        }
         for (d in s.extra) {
             val a = d.arrival ?: continue
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -54,7 +58,7 @@ internal fun StripStatus(repo: TransitRepository, tracker: TransitTracker, s: St
     }
 }
 
-/** The strip's ends, or why there are none: nothing coming, or buses running in the line's place. */
+/** Notes under a stop's strip when replaced, or a forked branch's destination/ETA. */
 @Composable
 private fun StripHeadline(s: StopStrip, noun: String?) {
     val c = Vectra.colors
@@ -62,9 +66,8 @@ private fun StripHeadline(s: StopStrip, noun: String?) {
         // Replaced by buses that stop elsewhere: the line isn't off, it just doesn't come here.
         s.noDepartures && s.replaced ->
             StripNote(RemixIcons.BusLine, "No ${noun ?: "vehicles"} stop here for now, replacement buses instead", c.textSecondary)
-        s.noDepartures -> StripNote(RemixIcons.MoonFill, noun?.let { "No $it coming right now" } ?: "Nothing coming right now", c.textSecondary)
-        s.loading -> Unit
-        else -> StripEnds(s.model)
+        s.noDepartures || s.loading -> Unit
+        s.model.fork != null -> ForkEndRow(s.model.fork, s.model.forkTimes)
     }
 }
 
@@ -78,7 +81,8 @@ private fun AlertNote(alerts: List<TransitAlert>) {
         StripNote(RemixIcons.BusLine, alert.header.replaceFirstChar { it.uppercase() }, sky.text, background = sky.bg, chevron = true)
     } else {
         val amber = c.tints.amber
-        StripNote(RemixIcons.AlertLine, alert.header.ifEmpty { alert.description }, amber.text, background = amber.bg, chevron = true)
+        val text = alert.header.ifEmpty { alert.description }.replaceFirstChar { it.uppercase() }
+        StripNote(RemixIcons.AlertLine, text, amber.text, background = amber.bg, chevron = true)
     }
 }
 

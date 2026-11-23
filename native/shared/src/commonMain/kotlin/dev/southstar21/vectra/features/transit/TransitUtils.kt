@@ -131,30 +131,28 @@ private fun normalizeHeadsignForMatch(s: String): String =
  */
 fun isHeadsignMatch(targetHeadsign: String?, stopHeadsign: String?, tripHeadsign: String? = null): Boolean {
     if (targetHeadsign.isNullOrBlank()) return true
-    val targetRaw = targetHeadsign.trim().lowercase()
-    val stopRaw = stopHeadsign.orEmpty().trim().lowercase()
-    val tripRaw = tripHeadsign.orEmpty().trim().lowercase()
-
-    if (stopRaw.isNotEmpty() && stopRaw == targetRaw) return true
-    if (tripRaw.isNotEmpty() && tripRaw == targetRaw) return true
-
-    val targetDest = extractHeadsignDestination(targetHeadsign).lowercase()
-    val stopDest = extractHeadsignDestination(stopHeadsign).lowercase()
-    val tripDest = extractHeadsignDestination(tripHeadsign).lowercase()
-
-    if (targetDest.isNotEmpty() && stopDest.isNotEmpty() && stopDest == targetDest) return true
-    if (targetDest.isNotEmpty() && tripDest.isNotEmpty() && tripDest == targetDest) return true
-    if (targetRaw.isNotEmpty() && stopDest.isNotEmpty() && stopDest == targetRaw) return true
-    if (targetRaw.isNotEmpty() && tripDest.isNotEmpty() && tripDest == targetRaw) return true
-
-    val normTarget = normalizeHeadsignForMatch(targetDest.ifEmpty { targetHeadsign })
-    val normStop = normalizeHeadsignForMatch(stopDest.ifEmpty { stopHeadsign.orEmpty() })
-    val normTrip = normalizeHeadsignForMatch(tripDest.ifEmpty { tripHeadsign.orEmpty() })
-    if (normTarget.isNotEmpty()) {
-        if (normStop.isNotEmpty() && (normStop == normTarget || normStop.contains(normTarget) || normTarget.contains(normStop))) return true
-        if (normTrip.isNotEmpty() && (normTrip == normTarget || normTrip.contains(normTarget) || normTarget.contains(normTrip))) return true
+    val branches = splitDirectionHeadsigns(targetHeadsign)
+    if (branches.size > 1) {
+        return branches.any { isSingleHeadsignMatch(it, stopHeadsign, tripHeadsign) }
     }
-    return false
+    return isSingleHeadsignMatch(targetHeadsign, stopHeadsign, tripHeadsign)
+}
+
+private fun isSingleHeadsignMatch(targetHeadsign: String, stopHeadsign: String?, tripHeadsign: String?): Boolean {
+    val targetRaw = targetHeadsign.trim().lowercase()
+    val targetDest = extractHeadsignDestination(targetHeadsign).lowercase()
+    val normTarget = normalizeHeadsignForMatch(targetDest.ifEmpty { targetHeadsign })
+    val candidates = listOf(stopHeadsign, tripHeadsign).filter { !it.isNullOrBlank() }
+    return candidates.any { raw -> matchesHeadsignCandidate(raw.orEmpty(), targetRaw, targetDest, normTarget) }
+}
+
+private fun matchesHeadsignCandidate(candidate: String, targetRaw: String, targetDest: String, normTarget: String): Boolean {
+    val raw = candidate.trim().lowercase()
+    val dest = extractHeadsignDestination(candidate).lowercase()
+    val norm = normalizeHeadsignForMatch(dest.ifEmpty { candidate })
+    val direct = raw == targetRaw || (dest.isNotEmpty() && (dest == targetDest || dest == targetRaw))
+    val normalized = normTarget.isNotEmpty() && norm.isNotEmpty() && (norm == normTarget || normTarget in norm || norm in normTarget)
+    return direct || normalized
 }
 
 private val FallbackShortNames = mapOf(
@@ -182,20 +180,38 @@ private fun lineKey(name: String) = name.uppercase().replace(" ", "")
  * [routeId] / [shortName]: a replacement route carrying that line's name, or a paired member's
  * (VP46 "4-6" stands in for the 4 and the 6).
  */
+private val ReplacementNameSplit = Regex("[-/]")
+
 fun isReplacementFor(tripRouteId: String?, tripShortName: String?, routeId: String, shortName: String?): Boolean {
     if (!isReplacementRouteId(tripRouteId) || tripShortName.isNullOrBlank() || isReplacementRouteId(routeId)) return false
     val names = buildSet {
         shortName?.takeIf { it.isNotBlank() }?.let { add(lineKey(it)) }
         findCombinedGroup(routeId, shortName)?.shortNames?.forEach { add(lineKey(it)) }
     }
-    return lineKey(tripShortName) in names
+    val key = lineKey(tripShortName)
+    return key in names || key.split(ReplacementNameSplit).any { part -> part.isNotEmpty() && part in names }
+}
+
+private fun narrowReplacementDirection(
+    matched: List<Pair<Arrival, String?>>,
+    headsign: String?,
+    targetDirectionId: String?,
+): List<Pair<Arrival, String?>> {
+    if (headsign.isNullOrBlank() || targetDirectionId.isNullOrBlank()) return matched
+    val repDirs = matched.mapNotNull { (a, dirId) -> if (a.isReplacementBus) dirId?.takeIf(String::isNotBlank) else null }.toSet()
+    return if (repDirs.size > 1 && targetDirectionId in repDirs) {
+        matched.filter { (a, dirId) -> !a.isReplacementBus || dirId == targetDirectionId }
+    } else {
+        matched
+    }
 }
 
 /**
  * Upcoming arrivals for one route from a stop's Futár response, narrowed to
  * [headsign] when set. Paired lines combine, and the line's replacement buses count as the line
  * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them.
- * [shortName]: the line's name, to recognise its replacement buses (else read from the response).
+ * When [targetDirectionId] is supplied, short-turned or diverted trips moving in the same physical
+ * direction still match automatically even if their terminus headsign changed.
  */
 fun parseStopArrivals(
     data: FutarArrivalsResponse?,
@@ -203,6 +219,7 @@ fun parseStopArrivals(
     headsign: String? = null,
     now: Long = nowMs(),
     shortName: String? = null,
+    targetDirectionId: String? = null,
 ): List<Arrival> {
     val stopTimes = data?.data?.entry?.stopTimes.orEmpty()
     val refs = data?.data?.references
@@ -211,12 +228,16 @@ fun parseStopArrivals(
     val lineName = shortName?.takeIf { it.isNotBlank() } ?: routes[routeId]?.shortName ?: FallbackShortNames[routeId]
     fun serves(tripRouteId: String?) =
         isRouteMatch(tripRouteId, routeId) || isReplacementFor(tripRouteId, tripRouteId?.let { routes[it]?.shortName }, routeId, lineName)
-    return stopTimes
+    val matched = stopTimes
         .filter { !it.canceled && serves(trips[it.tripId]?.routeId) }
-        .map { st -> st.toArrival(trips[st.tripId], routes) }
-        .filter { it.arrivalMs > 0 && it.arrivalMs >= now - 60_000 }
-        .filter { it.isReplacementBus || isHeadsignMatch(headsign, it.headSign, it.tripHeadsign) }
-        .sortedBy { it.arrivalMs }
+        .map { st -> st.toArrival(trips[st.tripId], routes) to trips[st.tripId]?.directionId }
+        .filter { (a, _) -> a.arrivalMs > 0 && a.arrivalMs >= now - 60_000 }
+        .filter { (a, dirId) ->
+            a.isReplacementBus ||
+                isHeadsignMatch(headsign, a.headSign, a.tripHeadsign) ||
+                (!headsign.isNullOrBlank() && !targetDirectionId.isNullOrBlank() && dirId == targetDirectionId)
+        }
+    return narrowReplacementDirection(matched, headsign, targetDirectionId).map { it.first }.sortedBy { it.arrivalMs }
 }
 
 /** One stop time as an arrival: the live estimate when there is one, else the timetable. */

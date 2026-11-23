@@ -33,29 +33,73 @@ import dev.southstar21.vectra.features.schedule.rememberDayColors
 private val SlimCardShape = RoundedCornerShape(18.dp)
 
 /** Room for the widest usual badge ("200E", "M3"), so every slim card lines up. */
-private val SlimBadgeSlot = 48.dp
+internal val SlimBadgeSlot = 48.dp
 
-/** The right-hand times of a slim strip: → next right-heading, ← next left-heading; [asleep] (nothing coming) shows the animated zzz. */
+private data class SlimDirectionEntry(
+    val arrowRight: Boolean,
+    val destination: String,
+    val vehicle: StripVehicle,
+    val nextTimes: List<StripTime>,
+)
+
+/**
+ * Compact full-width direction rows for multi-stop and slim cards: pairs each heading arrow with
+ * its terminus name and soonest departure time so users never have to guess which arrow goes where.
+ */
 @Composable
-internal fun SlimTimes(model: StripModel, fallback: String? = null, asleep: Boolean = false) {
+internal fun SlimDirectionRows(
+    model: StripModel,
+    modifier: Modifier = Modifier,
+    fallback: String? = null,
+    showNext: Boolean = false,
+) {
     val c = Vectra.colors
-    // At least 52 dp so the slim strips line up; a clock time ("13:42") may widen it.
-    Column(Modifier.widthIn(min = 52.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        val right = model.vehicles.firstOrNull { it.heading > 0 }
-        val left = model.vehicles.firstOrNull { it.heading < 0 }
-        if (right == null && left == null && asleep) {
-            SleepingIcon(size = 22.dp, tint = c.textMuted)
-        } else if (right == null && left == null && fallback != null) {
-            VText(fallback, style = vtext(14.sp to 18.sp, Weight.Bold), color = c.textMuted)
+    val right = model.vehicles.firstOrNull { it.heading > 0 }
+    val left = model.vehicles.firstOrNull { it.heading < 0 }
+    val entries = buildList {
+        if (right?.label != null && model.rightEnd != null) {
+            add(SlimDirectionEntry(true, model.rightEnd, right, if (showNext) model.rightTimes.drop(1).take(2) else emptyList()))
         }
-        for ((v, icon) in listOf(right to RemixIcons.ArrowRightLine, left to RemixIcons.ArrowLeftLine)) {
-            val label = v?.label ?: continue
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                VIcon(icon, size = 11.dp, tint = c.textMuted)
+        if (left?.label != null && model.leftEnd != null) {
+            add(SlimDirectionEntry(false, model.leftEnd, left, if (showNext) model.leftTimes.drop(1).take(2) else emptyList()))
+        }
+    }
+    if (entries.isEmpty() && fallback == null) return
+    Column(modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (entries.isEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                VText(fallback.orEmpty(), style = vtext(13.sp to 17.sp, Weight.Bold), color = c.textMuted)
+            }
+        } else {
+            for (entry in entries) SlimDirectionRow(entry)
+        }
+    }
+}
+
+@Composable
+private fun SlimDirectionRow(entry: SlimDirectionEntry) {
+    val c = Vectra.colors
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
+        if (entry.vehicle.replacement) VIcon(RemixIcons.BusLine, size = 12.dp, tint = BusBlue)
+        VText(entry.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+            VText(
+                entry.vehicle.label.orEmpty(),
+                style = vtext(13.sp to 17.sp, Weight.Extrabold, mono = true).tnum(),
+                color = stripTimeColor(entry.vehicle),
+                maxLines = 1,
+                align = TextAlign.End,
+            )
+            if (entry.nextTimes.isNotEmpty()) {
                 VText(
-                    label,
-                    style = vtext(14.sp to 18.sp, Weight.Extrabold, mono = true).tnum(),
-                    color = stripTimeColor(v),
+                    entry.nextTimes.joinToString(" ") { it.label },
+                    style = vtext(11.sp to 15.sp, Weight.Medium, mono = true).tnum(),
+                    color = c.textMuted,
                     maxLines = 1,
                     align = TextAlign.End,
                 )
@@ -66,7 +110,7 @@ internal fun SlimTimes(model: StripModel, fallback: String? = null, asleep: Bool
 
 /**
  * The slim card the dashboard switches to with four or five pinned trackers: badge, stop,
- * a short strip and both times at the right.
+ * a short strip and labelled direction times underneath.
  */
 @Composable
 fun LineStripSlimCard(
@@ -110,11 +154,24 @@ fun LineStripSlimCard(
             RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), if (grey) null else tracker.routeColor, if (grey) null else tracker.routeTextColor, size = RouteBadgeSize.Sm)
         }
         Column(Modifier.weight(1f)) {
-            VText(stop.stopName, Modifier.padding(start = EdgeInset), vtext(13.sp to 17.sp, Weight.Bold), c.textPrimary, maxLines = 1)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 1.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                VText(
+                    stop.stopName,
+                    Modifier.weight(1f),
+                    vtext(13.sp to 17.sp, Weight.Bold),
+                    if (s.noDepartures) c.textSecondary else c.textPrimary,
+                    maxLines = 1,
+                )
+                if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
+            }
             // Clipped: the line's fade past its ends stays out from under the badge and the times.
             LineStrip(s.model, colors, Modifier.clipToBounds(), labels = false, entrance = entrance, skeletonColors = skeleton)
+            SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), showNext = true)
         }
-        SlimTimes(s.model, asleep = s.noDepartures)
     }
 }
 
