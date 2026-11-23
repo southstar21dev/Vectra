@@ -25,30 +25,20 @@ import org.maplibre.compose.resource.MapResourceRequest
  * left every basemap blank; the platform TLS stack accepts them.
  */
 private class KtorMapResources(private val http: HttpClient) : MapResourceProvider {
+    private val radar = radarTileRenderer(http)
+
     override fun accepts(request: MapResourceRequest): Boolean =
         request.url.startsWith("https://") || request.url.startsWith("http://") || request.url.startsWith(DopplerScheme)
 
     override suspend fun load(request: MapResourceLoadRequest): MapResourceLoad =
         if (request.url.startsWith(DopplerScheme)) loadDoppler(request.url) else loadHttp(request)
 
-    /** Radar tiles: fetch the real RainViewer PNG, recolour it, hand back a PNG. */
+    /** Radar tiles: RainViewer's, recoloured (and past zoom 7 enlarged) by [RadarTileRenderer], as a PNG. */
     private suspend fun loadDoppler(url: String): MapResourceLoad = try {
-        val res = http.get(dopplerToHttps(url))
-        when {
-            res.status == HttpStatusCode.NotFound || res.status == HttpStatusCode.NoContent -> MapResourceLoad.NoContent()
-            !res.status.isSuccess() -> MapResourceLoad.Failed(MapResourceError.Server, "Tile HTTP ${res.status.value}")
-            else -> {
-                val bytes = res.bodyAsBytes()
-                val png = withContext(Dispatchers.Default) {
-                    decodeImage(bytes, RadarTileSize)?.let { img ->
-                        recolorRadarPixels(img.pixels)
-                        encodePng(img)
-                    }
-                }
-                // Undecodable tile: pass the original through rather than a hole in the radar.
-                MapResourceLoad.Bytes(bytes = png ?: bytes)
-            }
-        }
+        val ref = RadarTileRef.parse(dopplerToHttps(url))
+        val px = ref?.let { radar.render(it) }
+        val png = px?.let { withContext(Dispatchers.Default) { encodePng(ArgbImage(RadarTilePixels, RadarTilePixels, it)) } }
+        if (png == null) MapResourceLoad.NoContent() else MapResourceLoad.Bytes(bytes = png)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {
@@ -72,9 +62,6 @@ private class KtorMapResources(private val http: HttpClient) : MapResourceProvid
         MapResourceLoad.Failed(MapResourceError.Connection, e.message ?: "Network error")
     }
 }
-
-/** HD_TILE_SIZE: RainViewer serves 512px tiles for 2× quality. */
-private const val RadarTileSize = 512
 
 private val configured = MutableStateFlow(false)
 
