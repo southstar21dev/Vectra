@@ -107,7 +107,10 @@ fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBack: () -> 
         routeStops.filter { s -> s.id !in trackedStopIds && (q.isEmpty() || normalizeSearchText(s.name).contains(q)) }
     }
 
+    val stopIds = remember(stops) { stops.map { it.stopId } }
+    val stopArrivals = rememberMultiStopArrivals(repo, stopIds)
     val previewVehicles = rememberPreviewVehicles(repo, routeId?.takeIf { it.isNotEmpty() }, stops)
+    val now = rememberNowMillis(30_000)
 
     val c = Vectra.colors
     val scroll = rememberScrollState()
@@ -223,9 +226,34 @@ fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBack: () -> 
                         val rows = buildList<@Composable () -> Unit> {
                             stops.forEach { stop ->
                                 add {
+                                    val directionOptions = remember(
+                                        stop.stopId,
+                                        tracker.routeId,
+                                        tracker.routeShortName,
+                                        tracker.routeType,
+                                        draft.routeVariants,
+                                        draft.routeStopRefs,
+                                        draft.routeHeadsigns,
+                                        stopArrivals[stop.stopId]?.data,
+                                        now,
+                                    ) {
+                                        buildStopDirectionOptions(
+                                            StopDirectionContext(
+                                                stopId = stop.stopId,
+                                                routeId = tracker.routeId,
+                                                routeShortName = tracker.routeShortName,
+                                                routeType = tracker.routeType,
+                                                variants = draft.routeVariants,
+                                                stopRefs = draft.routeStopRefs,
+                                                fallbackHeadsigns = draft.routeHeadsigns,
+                                                arrivalsData = stopArrivals[stop.stopId]?.data,
+                                                now = now,
+                                            ),
+                                        )
+                                    }
                                     TrackedStopRow(
                                         stop = stop,
-                                        routeHeadsigns = draft.routeHeadsigns,
+                                        directionOptions = directionOptions,
                                         onDirectionChange = { h -> handleDirectionChange(stop.stopId, h) },
                                         onRemove = { handleRemoveStop(stop.stopId) },
                                     )
@@ -319,7 +347,7 @@ private fun Modifier.negativeVertical(amount: Dp): Modifier =
 @Composable
 private fun TrackedStopRow(
     stop: TrackerStop,
-    routeHeadsigns: List<String>,
+    directionOptions: StopDirectionOptions,
     onDirectionChange: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -332,8 +360,14 @@ private fun TrackedStopRow(
         VIcon(RemixIcons.MapPinLine, Modifier.padding(top = 8.dp), tint = c.tints.blue.text)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             VText(stop.stopName, Modifier.padding(top = 6.dp), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
-            if (routeHeadsigns.isNotEmpty()) {
-                DirectionSelect(stop.headsign.orEmpty(), routeHeadsigns, onDirectionChange, Modifier.fillMaxWidth())
+            if (directionOptions.options.size > 1) {
+                DirectionSelect(
+                    value = stop.headsign.orEmpty(),
+                    directionOptions = directionOptions,
+                    onChange = onDirectionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    stopName = stop.stopName,
+                )
             }
         }
         val interaction = remember { MutableInteractionSource() }

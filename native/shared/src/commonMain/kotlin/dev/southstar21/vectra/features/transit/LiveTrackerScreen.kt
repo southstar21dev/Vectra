@@ -91,11 +91,23 @@ internal class LiveRoute(
 internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?, trackerStops: List<TrackerStop>, activeStop: TrackerStop?, now: Long): LiveRoute {
     val arrivalsQuery = repo.arrivals.collect(activeStop?.stopId?.takeIf { it.isNotEmpty() })
     val vehiclesQuery = repo.vehicles.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
+    val routeQuery = repo.routeDetails.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
+    val stopRefs = routeQuery.data?.data?.references?.stops.orEmpty()
+    val routeVariants = routeQuery.data?.data?.entry?.variants.orEmpty()
+    val targetDirectionId = remember(activeStop?.headsign, activeStop?.stopId, routeVariants, stopRefs) {
+        targetDirectionIdFor(activeStop?.headsign, routeVariants, activeStop?.stopId, stopRefs)
+    }
 
     // Next arrival per tracked direction → the trips we're following.
-    val arrivals = remember(arrivalsQuery.data, tracker, activeStop) {
+    val arrivals = remember(arrivalsQuery.data, tracker, activeStop, targetDirectionId) {
         if (tracker == null || activeStop == null) emptyList()
-        else parseStopArrivals(arrivalsQuery.data, tracker.routeId, activeStop.headsign?.takeIf { it.isNotEmpty() }, shortName = tracker.routeShortName)
+        else parseStopArrivals(
+            arrivalsQuery.data,
+            tracker.routeId,
+            activeStop.headsign?.takeIf { it.isNotEmpty() },
+            shortName = tracker.routeShortName,
+            targetDirectionId = targetDirectionId,
+        )
     }
     // While replacement buses stand in for the line, their positions come from their own route.
     val replacementQuery = repo.vehicles.collect(remember(arrivals) { arrivals.firstOrNull { it.isReplacementBus }?.routeId })
@@ -121,8 +133,6 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
     val tripQueryA = repo.tripDetails.collect(tripKey(leadTripId))
     val tripQueryB = repo.tripDetails.collect(tripKey(otherTripId))
     val tripQueryC = repo.tripDetails.collect(tripKey(thirdTripId))
-    val routeQuery = repo.routeDetails.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
-    val stopRefs = routeQuery.data?.data?.references?.stops.orEmpty()
 
     // Direction-aware fallback geometry for an arrival's headsign.
     fun variantEntryForArrival(arr: Arrival?, fallbackIdx: Int = 0): GeoEntry? {

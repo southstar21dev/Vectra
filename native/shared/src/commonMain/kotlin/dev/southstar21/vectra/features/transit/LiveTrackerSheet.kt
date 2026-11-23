@@ -304,7 +304,8 @@ private fun LiveMap(
 @Composable
 private fun TitlePlacard(tracker: TransitTracker, stopName: String, isLive: Boolean, modifier: Modifier = Modifier) {
     val c = Vectra.colors
-    val shape = RoundedCornerShape(20.dp)
+    // Concentric with RouteBadgeSize.Md (9.dp radius + 7.dp inset = 16.dp).
+    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier
             .widthIn(max = 260.dp)
@@ -317,7 +318,7 @@ private fun TitlePlacard(tracker: TransitTracker, stopName: String, isLive: Bool
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Sm)
+        RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Md)
         Column(Modifier.weight(1f, fill = false)) {
             VText(stopName, style = vtext(15.sp to 19.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {

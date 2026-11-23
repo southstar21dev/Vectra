@@ -254,7 +254,7 @@ fun ColumnScope.LineStopPicker(
     routeStopsError: String?,
     onRetry: () -> Unit,
     filteredRouteStops: List<FutarStop>,
-    routeHeadsigns: List<String>,
+    directionOptionsByStop: Map<String, StopDirectionOptions>,
     onDirectionChange: (stopId: String, headsign: String) -> Unit,
     onScrolledChange: (Boolean) -> Unit,
 ) {
@@ -329,7 +329,7 @@ fun ColumnScope.LineStopPicker(
                         stop = stop,
                         selectedEntry = selectedEntry,
                         blocked = selectedEntry == null && atLimit,
-                        routeHeadsigns = routeHeadsigns,
+                        directionOptions = directionOptionsByStop[stop.id],
                         onToggle = { onToggleStop(stop) },
                         onDirectionChange = { h -> onDirectionChange(stop.id, h) },
                     )
@@ -351,7 +351,7 @@ private fun LineStopRow(
     stop: FutarStop,
     selectedEntry: TrackerStop?,
     blocked: Boolean,
-    routeHeadsigns: List<String>,
+    directionOptions: StopDirectionOptions?,
     onToggle: () -> Unit,
     onDirectionChange: (String) -> Unit,
 ) {
@@ -383,9 +383,15 @@ private fun LineStopRow(
             VText(stop.name, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
             if (note != null) StatusLabel(note, tone = StatusTone.Amber)
         }
-        if (selectedEntry != null && routeHeadsigns.isNotEmpty()) {
+        if (selectedEntry != null && directionOptions != null && directionOptions.options.size > 1) {
             Box(Modifier.padding(start = 48.dp, end = 16.dp, bottom = 12.dp)) {
-                DirectionSelect(selectedEntry.headsign.orEmpty(), routeHeadsigns, onDirectionChange, Modifier.fillMaxWidth())
+                DirectionSelect(
+                    value = selectedEntry.headsign.orEmpty(),
+                    directionOptions = directionOptions,
+                    onChange = onDirectionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    stopName = stop.name,
+                )
             }
         }
     }

@@ -2,6 +2,7 @@ package dev.southstar21.vectra.core.designsystem.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -45,7 +47,16 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
-data class SelectOption<T>(val value: T, val label: String)
+data class SelectOption<T>(
+    val value: T,
+    val label: String,
+    val subtitle: String? = null,
+    val badge: String? = null,
+    val badgeTone: StatusTone? = null,
+    val trailingText: String? = null,
+    val muted: Boolean = false,
+    val enabled: Boolean = true,
+)
 
 /** Glass pill showing the current choice; tapping it opens the options in a sheet. */
 @Composable
@@ -58,6 +69,8 @@ fun <T> VSelect(
     enabled: Boolean = true,
     /** Heading of the options sheet. */
     title: String? = null,
+    /** Subtle note shown under the options list inside the sheet. */
+    footnote: String? = null,
 ) {
     val c = Vectra.colors
     // Saveable, so the sheet stays open when Android recreates the activity (dark mode, font scale).
@@ -99,7 +112,7 @@ fun <T> VSelect(
         )
     }
 
-    OptionSheet(open, title, options, value, onDismiss = { open = false }) {
+    OptionSheet(open, title, options, value, onDismiss = { open = false }, footnote = footnote) {
         open = false
         if (it != value) onChange(it)
     }
@@ -113,8 +126,9 @@ fun <T> OptionSheet(
     options: List<SelectOption<T>>,
     value: T,
     onDismiss: () -> Unit,
+    footnote: String? = null,
     onPick: (T) -> Unit,
-) = OptionList(open, title, options, { it == value }, Role.RadioButton, onDismiss, onPick)
+) = OptionList(open, title, options, { it == value }, Role.RadioButton, onDismiss, footnote, onPick)
 
 /** A sheet listing [options] with a check against each one in [values]; tapping one toggles it and leaves the sheet open. */
 @Composable
@@ -125,7 +139,7 @@ fun <T> MultiOptionSheet(
     values: Set<T>,
     onDismiss: () -> Unit,
     onToggle: (T) -> Unit,
-) = OptionList(open, title, options, { it in values }, Role.Checkbox, onDismiss, onToggle)
+) = OptionList(open, title, options, { it in values }, Role.Checkbox, onDismiss, null, onToggle)
 
 @Composable
 private fun <T> OptionList(
@@ -135,6 +149,7 @@ private fun <T> OptionList(
     selected: (T) -> Boolean,
     role: Role,
     onDismiss: () -> Unit,
+    footnote: String?,
     onPick: (T) -> Unit,
 ) {
     val haptics = Vectra.haptics
@@ -145,33 +160,84 @@ private fun <T> OptionList(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             for (opt in options) {
-                val isSelected = selected(opt.value)
-                val c = Vectra.colors
-                val rowShape = Radius.Row
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 52.dp)
-                        .semantics { this.selected = isSelected }
-                        .tappable(rowShape, role = role) {
-                            haptics.tick()
-                            onPick(opt.value)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    VText(
-                        opt.label,
-                        Modifier.weight(1f),
-                        vtext(TypeScale.Body, if (isSelected) Weight.Bold else Weight.Medium),
-                        if (isSelected) c.accentPrimary else c.textPrimary,
-                    )
-                    if (isSelected) VIcon(RemixIcons.CheckFill, size = 18.dp, tint = c.accentPrimary)
+                OptionRow(opt, selected(opt.value), role) {
+                    haptics.tick()
+                    onPick(opt.value)
                 }
             }
+            if (footnote != null) {
+                VText(
+                    footnote,
+                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    vtext(TypeScale.Caption),
+                    Vectra.colors.textMuted,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun <T> OptionRow(opt: SelectOption<T>, isSelected: Boolean, role: Role, onPick: () -> Unit) {
+    val c = Vectra.colors
+    val rowShape = Radius.Row
+    val rowAlpha = when {
+        !opt.enabled -> 0.42f
+        opt.muted && !isSelected -> 0.58f
+        else -> 1f
+    }
+    val highlight = if (isSelected) {
+        Modifier.background(c.accentPrimary.copy(alpha = 0.12f), rowShape).border(1.dp, c.accentPrimary.copy(alpha = 0.35f), rowShape)
+    } else Modifier
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .alpha(rowAlpha)
+            .then(highlight)
+            .semantics { this.selected = isSelected }
+            .tappable(rowShape, enabled = opt.enabled, role = role, onClick = onPick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                VText(
+                    opt.label,
+                    Modifier.weight(1f, fill = false),
+                    vtext(TypeScale.Body, if (isSelected) Weight.Bold else Weight.Medium),
+                    if (isSelected) c.accentPrimary else c.textPrimary,
+                )
+                if (opt.badge != null) OptionBadge(opt.badge, opt.badgeTone ?: StatusTone.Neutral)
+            }
+            if (opt.subtitle != null) VText(opt.subtitle, style = vtext(TypeScale.Caption), color = c.textSecondary, maxLines = 2)
+        }
+        if (opt.trailingText != null) OptionTrailingEta(opt.trailingText)
+        if (isSelected) VIcon(RemixIcons.CheckFill, size = 18.dp, tint = c.accentPrimary)
+    }
+}
+
+@Composable
+private fun OptionBadge(text: String, tone: StatusTone) {
+    val toneColor = tone.color()
+    VText(
+        text,
+        Modifier.background(toneColor.copy(alpha = 0.16f), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp),
+        vtext(TypeScale.Micro, Weight.Bold),
+        toneColor,
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun OptionTrailingEta(text: String) {
+    val emerald = Vectra.colors.tints.emerald.text
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(6.dp).background(emerald, CircleShape))
+        VText(text, style = vtext(TypeScale.Caption, Weight.Bold, mono = true), color = emerald, maxLines = 1)
     }
 }
