@@ -48,6 +48,7 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.time.nowMs
@@ -192,51 +193,57 @@ fun RouteBadge(
     val c = Vectra.colors
     val formatted = name.replace(SpacedSlash, "/")
     val n = formatted.length
-    val (minW, h, padX, radius) = when (size) {
-        RouteBadgeSize.Xs2 -> Quad(24.dp, 24.dp, 6.dp, 999.dp)
-        RouteBadgeSize.Xs -> Quad(28.dp, 28.dp, 4.dp, 999.dp)
-        RouteBadgeSize.Tag -> Quad(24.dp, 22.dp, 5.dp, 6.dp)
-        RouteBadgeSize.TagMd -> Quad(28.dp, 26.dp, 5.dp, 7.dp)
-        RouteBadgeSize.Sm -> Quad(32.dp, 32.dp, 6.dp, 8.dp)
-        RouteBadgeSize.Lg -> Quad(48.dp, 48.dp, 8.dp, 12.dp)
-        RouteBadgeSize.Md -> Quad(36.dp, 36.dp, 6.dp, 8.dp)
-    }
-    val font: TextUnit = when {
-        n <= 3 -> when (size) {
-            RouteBadgeSize.Xs2 -> 8.sp; RouteBadgeSize.Xs -> 10.sp; RouteBadgeSize.Sm -> 12.sp
-            RouteBadgeSize.Tag -> 10.sp; RouteBadgeSize.TagMd -> 11.sp
-            RouteBadgeSize.Lg -> 18.sp; RouteBadgeSize.Md -> 14.sp
-        }
-        n <= 5 -> when (size) {
-            RouteBadgeSize.Xs2 -> 7.5.sp; RouteBadgeSize.Xs -> 9.sp; RouteBadgeSize.Sm -> 10.sp
-            RouteBadgeSize.Tag -> 9.sp; RouteBadgeSize.TagMd -> 10.sp
-            RouteBadgeSize.Lg -> 14.sp; RouteBadgeSize.Md -> 11.sp
-        }
-        else -> when (size) {
-            RouteBadgeSize.Xs2, RouteBadgeSize.Xs -> 7.sp; RouteBadgeSize.Sm -> 9.sp
-            RouteBadgeSize.Tag, RouteBadgeSize.TagMd -> 8.sp
-            RouteBadgeSize.Lg -> 12.sp; RouteBadgeSize.Md -> 10.sp
-        }
-    }
+    val spec = routeBadgeSpec(size)
+    val font = spec.fontFor(n)
     val display = if (n > 12) formatted.take(10) + "…" else formatted
     val bg = parseHexColor(color?.takeIf { it.isNotEmpty() })
     val ink = if (bg != null) parseHexColor(textColor?.takeIf { it.isNotEmpty() } ?: "000000") ?: Color.Black else c.textPrimary
-    val shape = RoundedCornerShape(radius)
+    val shape = RoundedCornerShape(spec.radius)
     Box(
         modifier
             .boxShadow(shape, listOf(BoxShadow(y = 1f, blur = 2f, color = Color.Black.copy(alpha = 0.05f))))
             .background(bg ?: c.surfaceOverlay, shape)
             .border(1.dp, if (c.isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.15f), shape)
-            .defaultMinSize(minWidth = minW)
-            .height(h)
-            .padding(horizontal = padX),
+            .defaultMinSize(minWidth = spec.minW)
+            .height(spec.h)
+            .padding(horizontal = spec.padX),
         contentAlignment = Alignment.Center,
     ) {
-        VText(display, style = vtext(font to font * 1.25f, Weight.Black, mono = true), color = ink, maxLines = 1, softWrap = false)
+        VText(
+            display,
+            style = vtext(font to font * 1.15f, Weight.Extrabold).tnum().copy(letterSpacing = (-0.2).sp),
+            color = ink,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
-private data class Quad(val a: Dp, val b: Dp, val c: Dp, val d: Dp)
+private data class BadgeSpec(
+    val minW: Dp,
+    val h: Dp,
+    val padX: Dp,
+    val radius: Dp,
+    val fontShort: TextUnit,
+    val fontMid: TextUnit,
+    val fontLong: TextUnit,
+) {
+    fun fontFor(length: Int): TextUnit = when {
+        length <= 4 -> fontShort
+        length <= 6 -> fontMid
+        else -> fontLong
+    }
+}
+
+private fun routeBadgeSpec(size: RouteBadgeSize): BadgeSpec = when (size) {
+    RouteBadgeSize.Xs2 -> BadgeSpec(24.dp, 24.dp, 5.dp, 999.dp, 8.5.sp, 7.5.sp, 7.sp)
+    RouteBadgeSize.Xs -> BadgeSpec(28.dp, 28.dp, 5.dp, 999.dp, 10.sp, 8.5.sp, 8.sp)
+    RouteBadgeSize.Tag -> BadgeSpec(26.dp, 20.dp, 6.dp, 6.dp, 10.5.sp, 9.5.sp, 9.sp)
+    RouteBadgeSize.TagMd -> BadgeSpec(32.dp, 24.dp, 7.dp, 7.dp, 11.5.sp, 10.5.sp, 9.5.sp)
+    RouteBadgeSize.Sm -> BadgeSpec(40.dp, 28.dp, 8.dp, 8.dp, 13.sp, 12.sp, 11.sp)
+    RouteBadgeSize.Md -> BadgeSpec(44.dp, 32.dp, 9.dp, 9.dp, 15.sp, 13.5.sp, 12.sp)
+    RouteBadgeSize.Lg -> BadgeSpec(56.dp, 40.dp, 11.dp, 11.dp, 18.sp, 16.sp, 14.sp)
+}
 
 // ---- small pieces --------------------------------------------------------------
 

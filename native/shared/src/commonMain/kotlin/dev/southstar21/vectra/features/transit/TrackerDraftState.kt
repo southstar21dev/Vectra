@@ -26,10 +26,14 @@ internal class TrackerDraftState(private val base: State<List<TrackerStop>>) {
     var routeStops by mutableStateOf<List<FutarStop>?>(null)
     var routeHeadsigns by mutableStateOf<List<String>>(emptyList())
     var routePolylines by mutableStateOf<List<List<LatLon>>>(emptyList())
+    var routeVariants by mutableStateOf<List<FutarRouteVariant>>(emptyList())
+    var routeStopRefs by mutableStateOf<Map<String, FutarStop>>(emptyMap())
 
     fun showRoute(details: RouteDetailsParsed) {
         routeHeadsigns = details.headsigns
         routePolylines = details.polylines
+        routeVariants = details.variants
+        routeStopRefs = details.stopRefs
         routeStops = details.stops
     }
 
@@ -37,6 +41,8 @@ internal class TrackerDraftState(private val base: State<List<TrackerStop>>) {
         routeStops = null
         routeHeadsigns = emptyList()
         routePolylines = emptyList()
+        routeVariants = emptyList()
+        routeStopRefs = emptyMap()
     }
 
     fun has(stopId: String): Boolean = stops.any { it.stopId == stopId }

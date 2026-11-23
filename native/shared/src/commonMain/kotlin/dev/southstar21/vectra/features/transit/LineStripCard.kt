@@ -2,11 +2,13 @@ package dev.southstar21.vectra.features.transit
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -18,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shape
@@ -25,6 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
@@ -69,6 +73,8 @@ internal class StopStrip(
     /** Waiting for times it can stand behind (not while offline). */
     val pending: Boolean,
     val now: Long,
+    /** When a direction-locked tracker auto-switched to a short-turned / diverted trip. */
+    val divertedTo: String? = null,
 ) {
     /** Replacement buses stand in for the line (an alert says so). */
     val replaced: Boolean get() = alerts.any(::isReplacementAlert)
@@ -91,6 +97,13 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
         parseAlerts(q.data, AlertContext(tracker.routeId, tracker.routeShortName, tracker.routeType, stop.stopId), now)
     }
     val loaded = q.data != null
+    val savedHeadsign = stop.headsign?.takeIf { it.isNotBlank() }
+    val divertedTo = remember(savedHeadsign, live.arrivals) {
+        if (savedHeadsign == null) null
+        else live.arrivals.firstOrNull { !it.isReplacementBus && !isHeadsignMatch(savedHeadsign, it.headSign, it.tripHeadsign) }
+            ?.let { extractHeadsignDestination(it.headSign.ifEmpty { it.tripHeadsign }) }
+            ?.takeIf { it.isNotEmpty() }
+    }
     return StopStrip(
         stop = stop,
         model = model,
@@ -101,6 +114,7 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
         extra = remember(dirs) { extraDirections(dirs) },
         pending = !offline && !q.isError && (!loaded || isArrivalsStale(updatedAt, now, false)),
         now = now,
+        divertedTo = divertedTo,
     )
 }
 
@@ -156,34 +170,56 @@ fun LineStripCard(
             .stripCardSurface(shape)
             .clip(shape)
             .tappable(shape, role = null, onClickLabel = "Open live departures", onLongClick = longPress) { open(first.stop) }
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (stops.size > 1) {
             MultiStopBody(tracker, strips, revealIndex, open)
         } else {
-            StripHeader(
-                tracker,
-                title = first.stop.stopName.ifEmpty { tracker.stopName },
-                grey = first.noDepartures,
-                alert = first.alerts.isNotEmpty(),
-                replaced = first.replaced,
-            )
-            StopStripBody(repo, tracker, first, revealIndex)
+            SingleStopBody(repo, tracker, first, revealIndex)
         }
     }
 }
 
 @Composable
-private fun StopStripBody(repo: TransitRepository, tracker: TransitTracker, s: StopStrip, revealIndex: Int) {
+private fun SingleStopBody(repo: TransitRepository, tracker: TransitTracker, s: StopStrip, revealIndex: Int) {
+    val c = Vectra.colors
     val card = rememberDayColors().card
     val grey = s.loading || s.error || s.noDepartures
     val colors = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey)
     val entrance = rememberStripEntrance(s.loading, revealIndex)
     val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey = true)
     val description = remember(s.model) { stripDescription(s.model) }
+    val title = s.stop.stopName.ifEmpty { tracker.stopName }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        LineStrip(s.model, colors, Modifier.semantics { contentDescription = description }, entrance = entrance, skeletonColors = skeleton)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.widthIn(min = SlimBadgeSlot), contentAlignment = Alignment.CenterStart) {
+                RouteBadge(
+                    formatRouteDisplayName(tracker.routeShortName, tracker.routeId),
+                    if (grey) null else tracker.routeColor,
+                    if (grey) null else tracker.routeTextColor,
+                    size = RouteBadgeSize.Sm,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    VText(title, Modifier.weight(1f), vtext(14.sp to 18.sp, Weight.Bold), if (s.noDepartures) c.textSecondary else c.textPrimary, maxLines = 1)
+                    if (s.replaced) VIcon(RemixIcons.BusLine, size = 16.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
+                    else if (s.alerts.isNotEmpty()) VIcon(RemixIcons.AlertLine, size = 16.dp, tint = c.tints.amber.text, contentDescription = "Service alert")
+                    else if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
+                }
+                LineStrip(s.model, colors, Modifier.clipToBounds().semantics { contentDescription = description }, labels = false, entrance = entrance, skeletonColors = skeleton)
+                SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), showNext = true)
+            }
+        }
         StripStatus(repo, tracker, s)
     }
 }
@@ -222,32 +258,39 @@ private fun MultiStopBody(tracker: TransitTracker, strips: List<StopStrip>, reve
     val subtitle = ends?.let { listOfNotNull(it.leftEnd, it.rightEnd).joinToString(" ↔ ") }
     Column(Modifier.fillMaxWidth()) {
         StripHeader(tracker, "${strips.size} stops", grey = strips.all { it.noDepartures }, alert = strips.any { it.alerts.isNotEmpty() }, subtitle = subtitle, replaced = strips.any { it.replaced })
-        strips.forEachIndexed { i, s -> StopRow(tracker, s, divider = i > 0, revealIndex = revealIndex + i) { open(s.stop) } }
+        strips.forEachIndexed { i, s ->
+            StopRow(tracker, s, divider = i > 0, last = i == strips.lastIndex, revealIndex = revealIndex + i) { open(s.stop) }
+        }
     }
 }
 
-/** One stop of a several-stop tracker: name, a short strip and both times. */
+/** One stop of a several-stop tracker: name, a short strip and labelled direction times below. */
 @Composable
-private fun StopRow(tracker: TransitTracker, s: StopStrip, divider: Boolean, revealIndex: Int, onOpen: () -> Unit) {
+private fun StopRow(tracker: TransitTracker, s: StopStrip, divider: Boolean, last: Boolean, revealIndex: Int, onOpen: () -> Unit) {
     val c = Vectra.colors
     val d = rememberDayColors()
     val rule = d.border
     val colors = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, s.loading || s.error || s.noDepartures)
     val entrance = rememberStripEntrance(s.loading, revealIndex)
     val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, grey = true)
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .then(if (divider) Modifier.drawBehind { drawLine(rule, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) } else Modifier)
             .tappable(role = null, highlight = false, onClickLabel = "Open ${s.stop.stopName}", onClick = onOpen)
-            .padding(top = 10.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(top = 12.dp, bottom = if (last) 4.dp else 14.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            VText(s.stop.stopName, style = vtext(14.sp to 18.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
-            LineStrip(s.model, colors, labels = false, entrance = entrance, skeletonColors = skeleton)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 1.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            VText(
+                s.stop.stopName,
+                Modifier.weight(1f),
+                style = vtext(14.sp to 18.sp, Weight.Bold),
+                color = if (s.noDepartures) c.textSecondary else c.textPrimary,
+                maxLines = 1,
+            )
+            if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
         }
-        SlimTimes(s.model, if (s.error) "-" else null)
+        LineStrip(s.model, colors, labels = false, entrance = entrance, skeletonColors = skeleton)
+        SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), fallback = if (s.error) "-" else null, showNext = true)
     }
 }

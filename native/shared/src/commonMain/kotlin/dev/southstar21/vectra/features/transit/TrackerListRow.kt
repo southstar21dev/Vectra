@@ -91,9 +91,25 @@ fun ListRow(
 
 /** Which direction a tracked stop watches; empty means every direction. */
 @Composable
-fun DirectionSelect(value: String, headsigns: List<String>, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    val options = remember(headsigns) { listOf(SelectOption("", "All directions")) + headsigns.map { SelectOption(it, it) } }
-    VSelect(value = value, options = options, onChange = onChange, modifier = modifier)
+fun DirectionSelect(
+    value: String,
+    directionOptions: StopDirectionOptions,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    stopName: String? = null,
+) {
+    val resolvedValue = remember(value, directionOptions) { resolveDirectionValue(value, directionOptions.options) }
+    val options = remember(directionOptions, resolvedValue) { directionOptions.toSelectOptions(resolvedValue) }
+    val title = stopName?.takeIf { it.isNotBlank() }?.let { "Direction from $it" }
+    val footnote = remember(directionOptions) { directionOptions.hiddenFootnote() }
+    VSelect(
+        value = resolvedValue,
+        options = options,
+        onChange = onChange,
+        modifier = modifier,
+        title = title,
+        footnote = footnote,
+    )
 }
 
 /** "2 / 4" count of tracked stops; its dot turns amber at the limit. */

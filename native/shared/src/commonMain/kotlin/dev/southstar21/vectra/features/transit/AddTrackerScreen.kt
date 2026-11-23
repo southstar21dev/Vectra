@@ -116,6 +116,9 @@ fun AddTrackerScreen(repo: TransitRepository, onBack: () -> Unit) {
     val lineRoute = (pane as? AddTrackerPane.Line)?.route
     // Polled while the line view is open.
     val previewVehicles = rememberPreviewVehicles(repo, lineRoute?.id, draft.stops)
+    val lineStopIds = remember(draft.stops, lineRoute) { if (lineRoute == null) emptyList() else draft.stops.map { it.stopId } }
+    val lineStopArrivals = rememberMultiStopArrivals(repo, lineStopIds)
+    val now = rememberNowMillis(30_000)
 
     // Deeper panes enter from the right, Back brings the previous one in from the left.
     val prevView = remember { arrayOf<Any>("", 0) }
@@ -132,7 +135,7 @@ fun AddTrackerScreen(repo: TransitRepository, onBack: () -> Unit) {
 
     val onScrolled: (Boolean) -> Unit = { scrolled = it }
     val paneContent = when (pane) {
-        is AddTrackerPane.Line -> linePane(state, pane.route, existing, previewVehicles, onScrolled)
+        is AddTrackerPane.Line -> linePane(state, pane.route, existing, previewVehicles, lineStopArrivals, now, onScrolled)
         is AddTrackerPane.Stop -> stopPane(state, pane.stop, existing, onScrolled)
         is AddTrackerPane.Metro -> metroPane(state, pane.group, onScrolled)
         AddTrackerPane.Browse -> browsePane(state, existing, onScrolled)
@@ -220,6 +223,8 @@ private fun linePane(
     route: FutarRoute,
     existing: List<TransitTracker>,
     vehicles: List<RoutePreviewVehicle>,
+    stopArrivals: Map<String, StopArrivalsEntry>,
+    now: Long,
     onScrolled: (Boolean) -> Unit,
 ): PaneContent {
     val draft = state.draft
@@ -231,6 +236,25 @@ private fun linePane(
     val error = state.routeStopsError
     val filtered = state.filteredRouteStops
     val headsigns = draft.routeHeadsigns
+    val variants = draft.routeVariants
+    val stopRefs = draft.routeStopRefs
+    val directionOptionsByStop = remember(lineStops, route, variants, stopRefs, headsigns, stopArrivals, now) {
+        lineStops.associate { stop ->
+            stop.stopId to buildStopDirectionOptions(
+                StopDirectionContext(
+                    stopId = stop.stopId,
+                    routeId = route.id,
+                    routeShortName = route.shortName,
+                    routeType = route.type,
+                    variants = variants,
+                    stopRefs = stopRefs,
+                    fallbackHeadsigns = headsigns,
+                    arrivalsData = stopArrivals[stop.stopId]?.data,
+                    now = now,
+                ),
+            )
+        }
+    }
     return {
         LineStopPicker(
             browseRoute = route,
@@ -245,7 +269,7 @@ private fun linePane(
             routeStopsError = error,
             onRetry = { state.selectRoute(route, existing) },
             filteredRouteStops = filtered,
-            routeHeadsigns = headsigns,
+            directionOptionsByStop = directionOptionsByStop,
             onDirectionChange = draft::setDirection,
             onScrolledChange = onScrolled,
         )
@@ -430,11 +454,13 @@ private fun WrappingRouteTitle(parts: List<String>) {
     )
 }
 
-/** Whole-route stops, headsigns and geometry from route-details (both editors share it). */
+/** Whole-route stops, headsigns, variants and geometry from route-details (both editors share it). */
 internal data class RouteDetailsParsed(
     val headsigns: List<String>,
     val polylines: List<List<LatLon>>,
     val stops: List<FutarStop>,
+    val variants: List<FutarRouteVariant> = emptyList(),
+    val stopRefs: Map<String, FutarStop> = emptyMap(),
 )
 
 /**
@@ -469,7 +495,7 @@ internal fun parseRouteDetails(res: FutarRouteDetailsResponse): RouteDetailsPars
             )
         }
     }
-    return RouteDetailsParsed(headsigns.toList(), polylines, stops)
+    return RouteDetailsParsed(headsigns.toList(), polylines, stops, variants, refs)
 }
 
 /** The earliest departure's trip at each chosen stop — the vehicles worth drawing. */
