@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.weather
 
 import androidx.compose.animation.core.RepeatMode
+import dev.southstar21.vectra.core.maps.RadarRenderMaxZoom
 import dev.southstar21.vectra.core.maps.dopplerTileUrl
 import dev.southstar21.vectra.core.maps.drawInPage
 import androidx.compose.animation.core.animateFloat
@@ -51,6 +52,9 @@ import kotlin.time.Duration.Companion.milliseconds
  * layer at [radarOpacity], centred on [center] with an amber pin there once [showPin]. [onState]
  * hands out the map for its events and camera; [interactive] false holds it still.
  */
+/** Street level: past [RadarRenderMaxZoom] the map stretches the radar's deepest tiles. */
+private const val RadarCameraMaxZoom = 14.0
+
 @Composable
 fun WeatherRadarMap(
     style: String,
@@ -68,7 +72,7 @@ fun WeatherRadarMap(
     val c = Vectra.colors
     Box(modifier.fillMaxSize().background(c.surfaceSecondary)) {
         val baseStyle = remember(style) { BaseStyle.Json(style) }
-        val constraints = remember { CameraConstraints { minZoom = 3.0; maxZoom = 9.0 } }
+        val constraints = remember { CameraConstraints { minZoom = 3.0; maxZoom = RadarCameraMaxZoom } }
         val surface = c.surfaceSecondary
         val ui = remember(surface) { MapUiOptions { loadColor = surface; drawInPage() } }
         val state = rememberMapState(
@@ -81,7 +85,7 @@ fun WeatherRadarMap(
                 key(url) {
                     val source = rememberRasterTileSource(tiles = listOf(url), tileSize = RadarTilePx) {
                         minZoom = 1
-                        maxZoom = 7
+                        maxZoom = RadarRenderMaxZoom
                     }
                     RasterLayer(
                         id = "radar-layer",
