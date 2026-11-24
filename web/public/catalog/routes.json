@@ -408,14 +408,6 @@
     "textColor": "000000"
   },
   {
-    "id": "BKK_OP24",
-    "shortName": "24",
-    "description": "Közvágóhíd H | Keleti pályaudvar M",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
     "id": "volan_24",
     "shortName": "24",
     "description": "Gödöllő, Klapka utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
@@ -664,17 +656,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3411",
+    "id": "BKK_3410",
     "shortName": "41",
-    "description": "Balatoni út | Kamaraerdei Ifjúsági Park",
+    "description": "Kőérberek | Bécsi út / Vörösvári út",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3410",
+    "id": "BKK_3411",
     "shortName": "41",
-    "description": "Kőérberek | Bécsi út / Vörösvári út",
+    "description": "Balatoni út | Kamaraerdei Ifjúsági Park",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -4050,7 +4042,7 @@
   {
     "id": "volan_697",
     "shortName": "697",
-    "description": "Makád, községháza | Tököl, HÉV-állomás",
+    "description": "Makád, községháza | Ráckeve, HÉV-állomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
