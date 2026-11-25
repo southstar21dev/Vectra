@@ -43,7 +43,7 @@ extension Snapshot {
             s("Statistics Lab", "QB 112", .lab, 250, 340, "Nagy Gábor", "L2"),
             s("Problem set 3", "", .task, 600, 601),
             s("Algorithms", "B 012", .lecture, 1300, 1390, "Dr. Varga Béla", day: tomorrow),
-        ], updateRequired: nil)
+        ], updateRequired: nil, aheadDays: nil)
     }
 }
 
