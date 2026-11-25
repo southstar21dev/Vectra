@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -78,7 +79,7 @@ private fun AlertCard(alert: TransitAlert) {
                     VText(alert.description, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = amber.copy(alpha = 0.7f))
                 }
                 val url = alert.url
-                if (!url.isNullOrEmpty()) {
+                if (url != null && isTrustedAlertUrl(url)) {
                     Row(
                         Modifier
                             .padding(top = 8.dp)
