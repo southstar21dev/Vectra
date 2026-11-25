@@ -18,6 +18,8 @@ data class WidgetSnapshot(
     val sessions: List<WidgetSession>,
     /** The app is locked until it is updated (the server refused this build); no sessions then. */
     val updateRequired: Boolean = false,
+    /** Days after [generatedAtMs]'s day the sessions cover; iOS asks for the app once past it. */
+    val aheadDays: Int = SnapshotAheadDays,
 )
 
 @Serializable

@@ -13,7 +13,7 @@ import kotlinx.datetime.plus
 // directly; iOS mirrors it in Swift (iosApp/VectraWidgets/Model.swift).
 
 internal const val MinuteMs = 60_000L
-private const val HourMs = 60 * MinuteMs
+const val HourMs = 60 * MinuteMs
 private const val DayMs = 24 * HourMs
 
 /** An exam this close gets the "next class" widgets once the day's classes are over. */

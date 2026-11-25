@@ -10,6 +10,9 @@ struct Snapshot: Decodable {
     let sessions: [Session]
     /// The app is locked until it is updated; older snapshots don't carry the key.
     let updateRequired: Bool?
+    /// Days after the generation day the sessions cover (`aheadDays`, from `SnapshotAheadDays` in
+    /// WidgetSnapshot.kt). Snapshots written before the key existed covered 14.
+    let aheadDays: Int?
 
     static func load() -> Snapshot? {
         guard let url = AppGroup.snapshotURL,
@@ -20,14 +23,15 @@ struct Snapshot: Decodable {
         return snapshot
     }
 
-    /// Days after its generation day the snapshot covers (`AheadDays` in WidgetPublisher.kt).
-    static let aheadDays = 14
+    /// An exam this close gets the "next class" widgets once the day's classes are over
+    /// (`ExamHeadsUpMs` in WidgetModel.kt).
+    static let examHeadsUp: TimeInterval = 7 * 86_400
 
     /// False once `now` is past the last day the snapshot covers. It can no longer tell an empty
     /// day from one it never saw, so the widgets ask for the app instead of saying "No classes".
     func covers(_ now: Date) -> Bool {
         let generated = Date(timeIntervalSince1970: generatedAtMs / 1000)
-        guard let last = Budapest.calendar.date(byAdding: .day, value: Snapshot.aheadDays, to: generated) else { return true }
+        guard let last = Budapest.calendar.date(byAdding: .day, value: aheadDays ?? 14, to: generated) else { return true }
         return Budapest.day(now) <= Budapest.day(last)
     }
 }
@@ -192,7 +196,7 @@ extension Optional where Wrapped == Snapshot {
         if let s = timed.first(where: { $0.day == today && $0.start <= now && now < $0.end }) { return .inClass(s) }
         if let s = timed.first(where: { $0.day == today && $0.start > now }) { return .upcoming(s) }
         let later = timed.filter { $0.day > today }
-        if let exam = later.first(where: { $0.kind == .exam && $0.start.timeIntervalSince(now) <= 7 * 86_400 }) { return .examSoon(exam) }
+        if let exam = later.first(where: { $0.kind == .exam && $0.start.timeIntervalSince(now) <= Snapshot.examHeadsUp }) { return .examSoon(exam) }
         return .dayDone(hadToday: timed.contains { $0.day == today }, next: later.first)
     }
 

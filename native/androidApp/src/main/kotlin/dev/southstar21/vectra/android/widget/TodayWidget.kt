@@ -22,16 +22,15 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.features.widgets.TodayEntry
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.clockLabel
-import dev.southstar21.vectra.features.widgets.dayDistanceLabel
-import dev.southstar21.vectra.features.widgets.dayHeading
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.listedMs
 import dev.southstar21.vectra.features.widgets.progress
 import dev.southstar21.vectra.features.widgets.remainingLabel
-import dev.southstar21.vectra.features.widgets.sessionsOn
+import dev.southstar21.vectra.features.widgets.todayEntries
 
 /** Medium: what's left today on a time line, then the next day under its name. */
 class TodayWidget : GlanceAppWidget() {
@@ -47,12 +46,6 @@ class TodayWidget : GlanceAppWidget() {
     }
 }
 
-private sealed interface Item {
-    class Session(val s: WidgetSession) : Item
-
-    class Day(val label: String) : Item
-}
-
 @Composable
 private fun TodayContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
@@ -60,40 +53,32 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see your day here."))
         return
     }
-    val items = buildList<Item> {
-        addAll(snap.sessionsOn(frame.today).filter { it.endMs > frame.nowMs }.map { Item.Session(it) })
-        // Then the days after, each under its name, until the widget is full.
-        snap.sessions.map { it.day }.filter { it > frame.today }.distinct().forEach { day ->
-            if (size >= 8) return@forEach
-            add(Item.Day("${dayDistanceLabel(frame.today, day)}, ${dayHeading(day)}"))
-            addAll(snap.sessionsOn(day).map { Item.Session(it) })
-        }
-    }
+    val items = snap.todayEntries(frame.today, frame.nowMs)
     val size = LocalSize.current
     val b = Budget(context)
     val nameWidth = size.width.value - 27f - 40f - 9f - 11f - 9f
     val heights = items.map { item ->
         when (item) {
-            is Item.Day -> b.line(10f) + 2f
-            is Item.Session -> rowHeight(b, item.s, frame.nowMs, nameWidth)
+            is TodayEntry.Day -> b.line(10f) + 2f
+            is TodayEntry.Session -> rowHeight(b, item.session, frame.nowMs, nameWidth)
         }
     }
     var shown = items.take(fitRows(heights.map { it + 5f }, size.height.value - 21f).coerceAtMost(9))
-    while (shown.lastOrNull() is Item.Day) shown = shown.dropLast(1)
+    while (shown.lastOrNull() is TodayEntry.Day) shown = shown.dropLast(1)
     WidgetSurface(context, padding = 0.dp) {
         Column(GlanceModifier.fillMaxSize().padding(start = 12.dp, top = 11.dp, end = 15.dp, bottom = 10.dp)) {
             if (shown.isEmpty()) Quiet("Nothing coming up in the next two weeks.", 12f)
             shown.forEachIndexed { i, item ->
                 when (item) {
                     // One child per item: Glance draws at most ten per column.
-                    is Item.Day -> Column {
+                    is TodayEntry.Day -> Column {
                         Row(GlanceModifier.padding(start = 60.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
                         Spacer(GlanceModifier.height(5.dp))
                     }
-                    is Item.Session -> {
-                        val last = i == shown.lastIndex || shown[i + 1] is Item.Day
+                    is TodayEntry.Session -> {
+                        val last = i == shown.lastIndex || shown[i + 1] is TodayEntry.Day
                         // The gap below belongs to the row, so the time line runs on through it.
-                        CompactRow(item.s, frame.nowMs, heights[i] + 5f, last, b.lines(item.s.title, 14f, nameWidth, max = 2))
+                        CompactRow(item.session, frame.nowMs, heights[i] + 5f, last, b.lines(item.session.title, 14f, nameWidth, max = 2))
                     }
                 }
             }

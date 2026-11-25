@@ -28,6 +28,11 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.AgendaCut
+import dev.southstar21.vectra.features.widgets.FootNote
+import dev.southstar21.vectra.features.widgets.FootNoteType
+import dev.southstar21.vectra.features.widgets.footNotes
+import dev.southstar21.vectra.features.widgets.nextDayNote
+import dev.southstar21.vectra.features.widgets.taskNote
 import dev.southstar21.vectra.features.widgets.SpineRow
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.WidgetSession
@@ -38,12 +43,10 @@ import dev.southstar21.vectra.features.widgets.dayMonthLabel
 import dev.southstar21.vectra.features.widgets.dayShown
 import dev.southstar21.vectra.features.widgets.doneOf
 import dev.southstar21.vectra.features.widgets.emptyMessage
-import dev.southstar21.vectra.features.widgets.openTasks
 import dev.southstar21.vectra.features.widgets.place
 import dev.southstar21.vectra.features.widgets.progress
 import dev.southstar21.vectra.features.widgets.remainingLabel
 import dev.southstar21.vectra.features.widgets.spanLabel
-import dev.southstar21.vectra.features.widgets.sessionsOn
 import dev.southstar21.vectra.features.widgets.agendaRows
 import dev.southstar21.vectra.features.widgets.dayHeading
 import dev.southstar21.vectra.features.widgets.weekdayLongLabel
@@ -62,9 +65,6 @@ class AgendaWidget : GlanceAppWidget() {
     }
 }
 
-/** A footer line: an icon or a type dot, the text, the time. */
-internal class FootLine(val icon: Int?, val kind: WidgetKind?, val text: String, val time: String)
-
 @Composable
 private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
@@ -75,15 +75,8 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val day = snap.dayShown(frame.today)
     val rows = snap.agendaRows(day, frame.nowMs)
     val (done, total) = snap.doneOf(day, frame.nowMs)
-    val tasks = snap.openTasks(day, frame.nowMs)
-    val taskLine = tasks.firstOrNull()?.let { t ->
-        FootLine(R.drawable.ic_widget_task, WidgetKind.Task, "${t.title}, due" + if (tasks.size > 1) " and ${tasks.size - 1} more" else "", clockLabel(t.endMs))
-    }
-    // When no later day fits on the line itself, the footer names the next one.
-    val nextLine = snap.sessions.firstOrNull { it.day > day && it.kind.isTimed }?.let { n ->
-        val count = snap.sessionsOn(n.day).size
-        FootLine(R.drawable.ic_widget_calendar, null, "${dayDistanceLabel(frame.today, n.day)}, ${n.title}" + if (count > 1) " and ${count - 1} more" else "", clockLabel(n.startMs))
-    }
+    val taskLine = snap.taskNote(day, frame.nowMs)
+    val nextLine = snap.nextDayNote(day, frame.today)
     val size = LocalSize.current
     val b = Budget(context)
     val width = size.width.value - 34f
@@ -106,7 +99,7 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
                 }
             }
             Spacer(GlanceModifier.defaultWeight())
-            val lines = footLines(pick.cut, taskLine, nextLine)
+            val lines = footNotes(pick.cut, taskLine, nextLine)
             if (lines.isNotEmpty()) Footer(lines)
         }
     }
@@ -201,17 +194,19 @@ private fun SessionRow(s: WidgetSession, nowMs: Long, height: Float, last: Boole
 private fun spanOf(minutes: Int): String = spanLabel(minutes * 60_000L)
 
 @Composable
-private fun Footer(lines: List<FootLine>) {
+private fun Footer(lines: List<FootNote>) {
     val p = LocalWPalette.current
     Column(GlanceModifier.fillMaxWidth()) {
         Hair()
         Spacer(GlanceModifier.height(7.dp))
         lines.forEach { l ->
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val icon = l.type.icon()
+                val kind = l.kind
                 when {
-                    l.icon != null -> Tinted(l.icon, l.kind?.let(p::tone) ?: p.muted, 13.dp)
-                    l.kind != null -> Box(GlanceModifier.width(13.dp), contentAlignment = Alignment.Center) {
-                        Box(GlanceModifier.width(6.dp).height(6.dp).cornerRadius(3.dp).background(p.tone(l.kind))) {}
+                    icon != null -> Tinted(icon, l.kind?.let(p::tone) ?: p.muted, 13.dp)
+                    kind != null -> Box(GlanceModifier.width(13.dp), contentAlignment = Alignment.Center) {
+                        Box(GlanceModifier.width(6.dp).height(6.dp).cornerRadius(3.dp).background(p.tone(kind))) {}
                     }
                 }
                 Spacer(GlanceModifier.width(8.dp))
@@ -222,4 +217,11 @@ private fun Footer(lines: List<FootLine>) {
             Spacer(GlanceModifier.height(5.dp))
         }
     }
+}
+
+/** The drawable a footer line leads with; "then" lines lead with a type dot instead. */
+private fun FootNoteType.icon(): Int? = when (this) {
+    FootNoteType.Then -> null
+    FootNoteType.Task -> R.drawable.ic_widget_task
+    FootNoteType.NextDay -> R.drawable.ic_widget_calendar
 }
