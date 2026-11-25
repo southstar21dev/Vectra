@@ -41,7 +41,7 @@ private fun overlapNote(o: Overlap, timeFormat: TimeFormat): CardNote =
 /** One class card: what the list knows about it for this day. */
 internal class ClassCardState(
     val entry: DayEntry.Class,
-    val status: AttendanceStatus,
+    val status: CardAttendance,
     val focus: Boolean,
     val live: Boolean,
     val overlap: Overlap?,
@@ -58,7 +58,7 @@ internal fun ClassCard(
     intensiveCourses: Set<String>?,
     onClick: ((ScheduleEvent) -> Unit)?,
     streak: () -> Int,
-    onSetStatus: (AttendanceStatus) -> Unit,
+    onSetStatus: (CardAttendance) -> Unit,
     selected: Boolean = false,
 ) {
     val event = state.entry.event
@@ -73,7 +73,7 @@ internal fun ClassCard(
     // No "cancelled" line: it would push the orb down between taps of the status cycle; the stamp says it.
     val notes = listOfNotNull(
         state.overlap?.let { overlapNote(it, timeFormat) },
-        CardNote("Checked in. Will sync when you are back online").takeIf { state.pendingSync && state.status != AttendanceStatus.Unmarked },
+        CardNote("Checked in. Will sync when you are back online").takeIf { state.pendingSync && state.status != CardAttendance.Unmarked },
     )
     val content = DayCardContent(
         typeWord = type.first,

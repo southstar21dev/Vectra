@@ -44,57 +44,57 @@ internal val GreenInk = Color(0xFF052E1F)
 internal val RimLight = Color.White.copy(alpha = 0.45f)
 
 /** Fill of a marked disc; the same in light and dark. */
-internal fun statusFill(status: AttendanceStatus): Color = when (status) {
-    AttendanceStatus.Present -> StatusGreen
-    AttendanceStatus.Absent -> Color(0xFFF87171)
-    AttendanceStatus.Excused -> Color(0xFFFBBF24)
-    AttendanceStatus.Cancelled -> Color(0xFF94A3B8)
-    AttendanceStatus.Unmarked -> Color.Transparent
+internal fun statusFill(status: CardAttendance): Color = when (status) {
+    CardAttendance.Present -> StatusGreen
+    CardAttendance.Absent -> Color(0xFFF87171)
+    CardAttendance.Excused -> Color(0xFFFBBF24)
+    CardAttendance.Cancelled -> Color(0xFF94A3B8)
+    CardAttendance.Unmarked -> Color.Transparent
 }
 
-private fun glyphInk(status: AttendanceStatus): Color = when (status) {
-    AttendanceStatus.Present -> GreenInk
-    AttendanceStatus.Absent -> Color(0xFF450A0A)
-    AttendanceStatus.Excused -> Color(0xFF451A03)
+private fun glyphInk(status: CardAttendance): Color = when (status) {
+    CardAttendance.Present -> GreenInk
+    CardAttendance.Absent -> Color(0xFF450A0A)
+    CardAttendance.Excused -> Color(0xFF451A03)
     else -> Color(0xFF0F172A)
 }
 
 /** Tap order on a marked orb; an unmarked one goes to Present. */
-internal fun nextStatus(status: AttendanceStatus): AttendanceStatus = when (status) {
-    AttendanceStatus.Unmarked -> AttendanceStatus.Present
-    AttendanceStatus.Present -> AttendanceStatus.Absent
-    AttendanceStatus.Absent -> AttendanceStatus.Excused
-    AttendanceStatus.Excused -> AttendanceStatus.Cancelled
-    AttendanceStatus.Cancelled -> AttendanceStatus.Unmarked
+internal fun nextStatus(status: CardAttendance): CardAttendance = when (status) {
+    CardAttendance.Unmarked -> CardAttendance.Present
+    CardAttendance.Present -> CardAttendance.Absent
+    CardAttendance.Absent -> CardAttendance.Excused
+    CardAttendance.Excused -> CardAttendance.Cancelled
+    CardAttendance.Cancelled -> CardAttendance.Unmarked
 }
 
-internal fun statusWord(status: AttendanceStatus): String = when (status) {
-    AttendanceStatus.Present -> "present"
-    AttendanceStatus.Absent -> "absent"
-    AttendanceStatus.Excused -> "excused"
-    AttendanceStatus.Cancelled -> "cancelled"
-    AttendanceStatus.Unmarked -> "not checked in"
+internal fun statusWord(status: CardAttendance): String = when (status) {
+    CardAttendance.Present -> "present"
+    CardAttendance.Absent -> "absent"
+    CardAttendance.Excused -> "excused"
+    CardAttendance.Cancelled -> "cancelled"
+    CardAttendance.Unmarked -> "not checked in"
 }
 
 /** The glyph strokes, in a 24-unit box (the mockup's SVG paths). */
-private fun glyphPath(status: AttendanceStatus): Path = Path().apply {
+private fun glyphPath(status: CardAttendance): Path = Path().apply {
     when (status) {
-        AttendanceStatus.Present -> { moveTo(5f, 12.5f); lineTo(9.5f, 17f); lineTo(19f, 7.5f) }
-        AttendanceStatus.Absent -> { moveTo(7f, 7f); lineTo(17f, 17f); moveTo(17f, 7f); lineTo(7f, 17f) }
-        AttendanceStatus.Excused -> { moveTo(12f, 6f); lineTo(12f, 14f); moveTo(12f, 18.5f); lineTo(12f, 18.51f) }
-        AttendanceStatus.Cancelled -> {
+        CardAttendance.Present -> { moveTo(5f, 12.5f); lineTo(9.5f, 17f); lineTo(19f, 7.5f) }
+        CardAttendance.Absent -> { moveTo(7f, 7f); lineTo(17f, 17f); moveTo(17f, 7f); lineTo(7f, 17f) }
+        CardAttendance.Excused -> { moveTo(12f, 6f); lineTo(12f, 14f); moveTo(12f, 18.5f); lineTo(12f, 18.51f) }
+        CardAttendance.Cancelled -> {
             moveTo(5f, 7f); lineTo(19f, 7f); lineTo(19f, 19f); lineTo(5f, 19f); close()
             moveTo(5f, 10.5f); lineTo(19f, 10.5f)
             moveTo(9f, 4f); lineTo(9f, 8f); moveTo(15f, 4f); lineTo(15f, 8f)
             moveTo(10f, 13.5f); lineTo(14f, 17.5f); moveTo(14f, 13.5f); lineTo(10f, 17.5f)
         }
-        AttendanceStatus.Unmarked -> Unit
+        CardAttendance.Unmarked -> Unit
     }
 }
 
 /** Draws [status]'s glyph centred, [glyph] wide; [progress] < 1 draws the stroke part way. */
-internal fun DrawScope.drawGlyph(status: AttendanceStatus, glyph: Dp, ink: Color = glyphInk(status), weight: Float = 3f, progress: Float = 1f) {
-    if (status == AttendanceStatus.Unmarked || progress <= 0f) return
+internal fun DrawScope.drawGlyph(status: CardAttendance, glyph: Dp, ink: Color = glyphInk(status), weight: Float = 3f, progress: Float = 1f) {
+    if (status == CardAttendance.Unmarked || progress <= 0f) return
     val full = glyphPath(status)
     val path = if (progress >= 1f) full else Path().also { seg ->
         val pm = PathMeasure()
@@ -102,7 +102,7 @@ internal fun DrawScope.drawGlyph(status: AttendanceStatus, glyph: Dp, ink: Color
         pm.getSegment(0f, pm.length * progress, seg, true)
     }
     val s = glyph.toPx() / 24f
-    val stroke = if (status == AttendanceStatus.Cancelled) 2.2f else weight
+    val stroke = if (status == CardAttendance.Cancelled) 2.2f else weight
     translate((size.width - glyph.toPx()) / 2f, (size.height - glyph.toPx()) / 2f) {
         scale(s, s, pivot = Offset.Zero) {
             drawPath(path, ink, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
@@ -113,7 +113,7 @@ internal fun DrawScope.drawGlyph(status: AttendanceStatus, glyph: Dp, ink: Color
 /** A settled marked disc: status fill and a light rim, no glow. */
 @Composable
 internal fun StatusDisc(
-    status: AttendanceStatus,
+    status: CardAttendance,
     size: Dp,
     glyph: Dp,
     modifier: Modifier = Modifier,
@@ -130,13 +130,13 @@ internal fun StatusDisc(
 
 /** The 24dp disc on a finished-class card; a dashed ring when it was never checked in. */
 @Composable
-internal fun SmallStatusDisc(status: AttendanceStatus?, dashed: Color, modifier: Modifier = Modifier, square: Boolean = false) {
+internal fun SmallStatusDisc(status: CardAttendance?, dashed: Color, modifier: Modifier = Modifier, square: Boolean = false) {
     val shape = if (square) RoundedCornerShape(7.dp) else CircleShape
     when (status) {
         null -> Canvas(modifier.size(24.dp).background(dashed.copy(alpha = 0.25f), shape)) {
-            drawGlyph(AttendanceStatus.Present, 13.dp, ink = dashed, weight = 3.2f)
+            drawGlyph(CardAttendance.Present, 13.dp, ink = dashed, weight = 3.2f)
         }
-        AttendanceStatus.Unmarked -> Canvas(modifier.size(24.dp)) {
+        CardAttendance.Unmarked -> Canvas(modifier.size(24.dp)) {
             val sw = 1.5.dp.toPx()
             drawCircle(
                 dashed,
@@ -156,7 +156,7 @@ internal fun DoneDisc() {
             .size(46.dp)
             .background(StatusGreen, CircleShape)
             .border(1.dp, RimLight, CircleShape),
-    ) { drawGlyph(AttendanceStatus.Present, 22.dp) }
+    ) { drawGlyph(CardAttendance.Present, 22.dp) }
 }
 
 /** A task's square check: open ring or green tick; tapping toggles with a nod. */
@@ -182,7 +182,7 @@ internal fun TaskCheck(done: Boolean, title: String, neutralRing: Color, onToggl
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(36.dp).graphicsLayer { scaleX = nod.value; scaleY = nod.value }, contentAlignment = Alignment.Center) {
-            if (done) StatusDisc(AttendanceStatus.Present, 36.dp, 17.dp, shape = square)
+            if (done) StatusDisc(CardAttendance.Present, 36.dp, 17.dp, shape = square)
             else Box(Modifier.fillMaxSize().border(1.5.dp, neutralRing, square))
         }
     }

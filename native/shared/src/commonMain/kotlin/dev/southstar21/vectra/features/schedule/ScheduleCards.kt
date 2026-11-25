@@ -5,8 +5,8 @@ import androidx.compose.ui.graphics.Color
 import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 
-/** course-tracker AttendanceStatus */
-enum class AttendanceStatus { Present, Absent, Excused, Cancelled, Unmarked }
+/** What a schedule card shows for a session; the course tracker maps its own status onto it. */
+enum class CardAttendance { Present, Absent, Excused, Cancelled, Unmarked }
 
 /**
  * The course tracker's touch points on the schedule: attendance on the cards and the
@@ -15,9 +15,9 @@ enum class AttendanceStatus { Present, Absent, Excused, Cancelled, Unmarked }
 interface ScheduleCourseTrackerHooks {
     /** Status of the session of [event] on [date] (the card's activeSession lookup). */
     @Composable
-    fun attendanceStatus(event: ScheduleEvent, date: String): AttendanceStatus
+    fun attendanceStatus(event: ScheduleEvent, date: String): CardAttendance
 
-    fun setAttendanceStatus(event: ScheduleEvent, date: String, status: AttendanceStatus)
+    fun setAttendanceStatus(event: ScheduleEvent, date: String, status: CardAttendance)
 
     /** The key the Course Hub for [event]'s course is pushed with. */
     fun courseKey(event: ScheduleEvent): String

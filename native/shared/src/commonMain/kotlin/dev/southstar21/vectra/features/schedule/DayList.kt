@@ -26,11 +26,11 @@ import kotlin.time.Instant
 private fun statusKey(e: ScheduleEvent) = "${e.id}:${e.startTime}"
 
 /** The day's classes and items as list entries; anything without a readable time is left out. */
-private fun dayEntries(events: List<ScheduleEvent>, items: List<ScheduleItemOccurrence>, statuses: Map<String, AttendanceStatus>): List<DayEntry> =
+private fun dayEntries(events: List<ScheduleEvent>, items: List<ScheduleItemOccurrence>, statuses: Map<String, CardAttendance>): List<DayEntry> =
     events.mapNotNull { e ->
         val s = minuteOf(e.startTime)
         val end = minuteOf(e.endTime)
-        if (s == null || end == null) null else DayEntry.Class(e, s, end, statuses[statusKey(e)] == AttendanceStatus.Cancelled)
+        if (s == null || end == null) null else DayEntry.Class(e, s, end, statuses[statusKey(e)] == CardAttendance.Cancelled)
     } + items.mapNotNull { o ->
         val s = minuteOf(o.startTime)
         val end = minuteOf(o.endTime)
@@ -39,8 +39,8 @@ private fun dayEntries(events: List<ScheduleEvent>, items: List<ScheduleItemOccu
 
 /** Each class's status for the date: a composable read, so the list follows the tracker. */
 @Composable
-private fun rememberDayStatuses(events: List<ScheduleEvent>, tracker: ScheduleCourseTrackerHooks, dateStr: String): Map<String, AttendanceStatus> {
-    val statuses = HashMap<String, AttendanceStatus>()
+private fun rememberDayStatuses(events: List<ScheduleEvent>, tracker: ScheduleCourseTrackerHooks, dateStr: String): Map<String, CardAttendance> {
+    val statuses = HashMap<String, CardAttendance>()
     for (e in events) key(e.id, e.startTime) { statuses[statusKey(e)] = tracker.attendanceStatus(e, dateStr) }
     return statuses
 }
@@ -65,18 +65,18 @@ private class DayListScope(
     val d: DayColors,
     val dateStr: String,
     val nowMinute: Int?,
-    val statuses: Map<String, AttendanceStatus>,
+    val statuses: Map<String, CardAttendance>,
     val plan: DayPlan,
     val tracker: ScheduleCourseTrackerHooks,
     val pendingSync: SnapshotStateMap<String, Boolean>,
     val offline: Boolean,
 ) {
-    fun statusOf(e: ScheduleEvent) = statuses[statusKey(e)] ?: AttendanceStatus.Unmarked
+    fun statusOf(e: ScheduleEvent) = statuses[statusKey(e)] ?: CardAttendance.Unmarked
 
     /** Check-ins are for today's classes, any time of the day; exams have none. */
     fun canCheckIn(e: DayEntry.Class) = nowMinute != null && !e.event.isExam()
 
-    fun setStatus(e: DayEntry.Class, s: AttendanceStatus) {
+    fun setStatus(e: DayEntry.Class, s: CardAttendance) {
         tracker.setAttendanceStatus(e.event, dateStr, s)
         if (offline) pendingSync[e.key] = true
     }
@@ -97,12 +97,12 @@ private class DayListScope(
     }
 
     /** A stacked card's disc: the class's status, a task's done state, nothing for a shift. */
-    private fun stackStatus(e: DayEntry): AttendanceStatus? = when (e) {
+    private fun stackStatus(e: DayEntry): CardAttendance? = when (e) {
         is DayEntry.Class -> if (e.event.isExam()) null else statusOf(e.event)
         is DayEntry.Item -> when {
             !e.occurrence.item.isTask -> null
-            e.occurrence.item.completed == true -> AttendanceStatus.Present
-            else -> AttendanceStatus.Unmarked
+            e.occurrence.item.completed == true -> CardAttendance.Present
+            else -> CardAttendance.Unmarked
         }
     }
 
@@ -136,7 +136,7 @@ private class DayListScope(
             classes = classes.size,
             shifts = items.count { !it.occurrence.item.isTask },
             tasks = items.count { it.occurrence.item.isTask },
-            checkedIn = trackable.count { statusOf(it.event) == AttendanceStatus.Present },
+            checkedIn = trackable.count { statusOf(it.event) == CardAttendance.Present },
             trackable = trackable.size,
         )
     }
