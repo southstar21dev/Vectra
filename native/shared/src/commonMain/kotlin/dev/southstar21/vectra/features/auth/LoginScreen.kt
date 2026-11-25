@@ -202,6 +202,7 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     var passkeyError by remember { mutableStateOf<String?>(null) }
     var resetting by remember { mutableStateOf(false) }
     val sessionExpired = remember { auth.sessionExpired.value.also { auth.consumeSessionExpired() } }
+    val notice = remember { auth.loginNotice.value.also { auth.consumeLoginNotice() } }
 
     if (resetting) {
         ResetPasswordForm(auth, email) { resetting = false }
@@ -217,7 +218,8 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        if (sessionExpired) Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
+        if (notice != null) Banner(notice, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
+        else if (sessionExpired) Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
         if (error != null) Banner(AccountLogic.loginErrorMessage(error), c.tints.red, Palette.Red500.copy(alpha = 0.1f))
         if (passkeys?.isSupported == true) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
