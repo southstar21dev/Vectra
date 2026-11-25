@@ -240,7 +240,10 @@ extension Optional where Wrapped == Snapshot {
         let counting = live.contains { $0.kind.isTimed && $0.end > now && $0.start.timeIntervalSince(now) < 86_400 }
         let minute = Budapest.calendar.dateInterval(of: .minute, for: now)?.end ?? now.addingTimeInterval(60)
         let ticks = counting ? (0..<180).map { minute.addingTimeInterval(Double($0) * 60) } : []
-        return Array(Set(edges.filter { $0 <= horizon } + ticks + [Budapest.midnight(after: now)])).sorted()
+        // While counting, the timeline ends at the last tick so `.after(dates.last)` makes WidgetKit
+        // ask for a fresh one; otherwise the static ring labels would freeze until a far-off edge.
+        let end = counting ? (ticks.last ?? horizon) : horizon
+        return Array(Set(edges.filter { $0 <= end } + ticks + [Budapest.midnight(after: now)].filter { $0 <= end || !counting })).sorted()
     }
 }
 
