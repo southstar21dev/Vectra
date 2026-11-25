@@ -164,13 +164,7 @@ class CourseTrackerRepository(
                 // No cloud record yet: seed it from local data if there is any.
                 gate.markReadable(uid)
                 gate.takeHeldBack(uid)
-                val cached = _data.value
-                if (cached.trackers.isNotEmpty()) {
-                    runSuspendCatching {
-                        val enc = cipher.encrypt(serializeTrackerData(cached))
-                        gate.enqueue { cloud.upsert(uid, enc) }
-                    }
-                }
+                seedCloud(uid, _data.value)
                 return@withLock
             }
             val decrypted = cipher.decrypt(encrypted)
@@ -186,20 +180,30 @@ class CourseTrackerRepository(
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
-            if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) {
-                try {
-                    val enc = cipher.encrypt(serializeTrackerData(reconciled))
-                    gate.enqueue { cloud.upsert(uid, enc) }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Throwable) {
-                    gate.noteHeldBack(uid)
-                }
-            }
+            if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) pushMerged(uid, reconciled)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
             // Keep the offline cache.
+        }
+    }
+
+    private suspend fun seedCloud(uid: String, cached: CourseTrackerData) {
+        if (cached.trackers.isEmpty()) return
+        runSuspendCatching {
+            val enc = cipher.encrypt(serializeTrackerData(cached))
+            gate.enqueue { cloud.upsert(uid, enc) }
+        }
+    }
+
+    private suspend fun pushMerged(uid: String, reconciled: CourseTrackerData) {
+        try {
+            val enc = cipher.encrypt(serializeTrackerData(reconciled))
+            gate.enqueue { cloud.upsert(uid, enc) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            gate.noteHeldBack(uid)
         }
     }
 
@@ -354,8 +358,6 @@ class CourseTrackerRepository(
         val uid = userId
         val before = _data.value
         val existing = readForScheduleSync(uid)
-        // Signed out (or switched) while the cloud was read: this account's data must not be written back.
-        if (userId != uid) return _data.value
         var base = existing
         var result = reconcileTrackersWithSchedule(existing, events)
         if (userId == uid) {
@@ -366,14 +368,16 @@ class CourseTrackerRepository(
                 if (result.data === base) live else result.data
             }
         }
-        if (result.data === base) return base
-        writeCache(result.data, uid)
-        if (uid != null && result.changed) {
-            try {
-                upload(uid, result.data, result.dropKeys)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
+        // Signed out (or switched) while the cloud was read: this account's data must not be written back.
+        if (result.data !== base && userId == uid) {
+            writeCache(result.data, uid)
+            if (uid != null && result.changed) {
+                try {
+                    upload(uid, result.data, result.dropKeys)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                }
             }
         }
         return result.data

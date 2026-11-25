@@ -47,9 +47,7 @@ fun mergeTrackerData(local: CourseTrackerData, cloud: CourseTrackerData): Course
  */
 private fun mergeAttendanceMarks(newer: CourseTracker, older: CourseTracker): CourseTracker {
     val removed = newer.attendance.removedSessionKeys.toSet()
-    fun isWork(s: AttendanceSession) = s.isCustom == true || s.status != AttendanceStatus.Unmarked
-    val olderWork = older.attendance.sessions.filter { isWork(it) && sessionSlotKey(it) !in removed }
-    if (olderWork.isEmpty()) return newer
+    val olderWork = older.attendance.sessions.filter { (it.isCustom == true || it.status != AttendanceStatus.Unmarked) && sessionSlotKey(it) !in removed }
     val olderById = older.attendance.sessions.associateBy { it.id }
     val olderBySlot = older.attendance.sessions.associateBy { sessionSlotKey(it) }
     val merged = newer.attendance.sessions.map { s ->
@@ -58,8 +56,8 @@ private fun mergeAttendanceMarks(newer: CourseTracker, older: CourseTracker): Co
     }
     val have = merged.map { it.id }.toSet() + merged.map { sessionSlotKey(it) }.toSet()
     val extra = olderWork.filter { it.id !in have && sessionSlotKey(it) !in have }
-    if (merged == newer.attendance.sessions && extra.isEmpty()) return newer
-    return newer.copy(attendance = newer.attendance.copy(sessions = deduplicateSessions(merged + extra)))
+    val unchanged = merged == newer.attendance.sessions && extra.isEmpty()
+    return if (unchanged) newer else newer.copy(attendance = newer.attendance.copy(sessions = deduplicateSessions(merged + extra)))
 }
 
 private fun splitCourseKey(key: String): Pair<String, String> {

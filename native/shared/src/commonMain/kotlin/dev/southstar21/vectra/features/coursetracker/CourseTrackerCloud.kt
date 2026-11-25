@@ -126,15 +126,15 @@ class CloudWriteGate {
     }
 
     private suspend fun runPending(pending: Pending) {
-        try {
-            pending.run()
-            pending.waiters.forEach { it.complete(Unit) }
-        } catch (e: CancellationException) {
-            // The runner was cancelled: the callers it carried must not wait forever or take the cancellation as their own.
-            pending.waiters.forEach { it.completeExceptionally(IllegalStateException("Upload cancelled", e)) }
-            throw e
-        } catch (e: Throwable) {
-            pending.waiters.forEach { it.completeExceptionally(e) }
+        val failure = runCatching { pending.run() }.exceptionOrNull()
+        when (failure) {
+            null -> pending.waiters.forEach { it.complete(Unit) }
+            is CancellationException -> {
+                // The runner was cancelled: the callers it carried must not wait forever or take the cancellation as their own.
+                pending.waiters.forEach { it.completeExceptionally(IllegalStateException("Upload cancelled", failure)) }
+                throw failure
+            }
+            else -> pending.waiters.forEach { it.completeExceptionally(failure) }
         }
     }
 }

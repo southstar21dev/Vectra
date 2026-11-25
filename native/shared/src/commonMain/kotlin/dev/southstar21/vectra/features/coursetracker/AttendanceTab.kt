@@ -122,9 +122,14 @@ internal fun AttendanceTab(
     // type word ("iOS Lecture", "Exam Consultation").
     fun displayTitle(s: AttendanceSession): String {
         val clean = s.title.replace(Regex("\\s+(lecture|seminar|lab|practice|exam|session|consultation)$", RegexOption.IGNORE_CASE), "")
-        if (!Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())) return s.title.trim()
-        val week = getAcademicWeekInfo(s.date, semesterStart) ?: return clean
-        return if (isIntensive && week.weekNumber == 0) "Intensive Week" else week.label
+        val week = getAcademicWeekInfo(s.date, semesterStart)
+        val generic = Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())
+        return when {
+            !generic -> s.title.trim()
+            week == null -> clean
+            isIntensive && week.weekNumber == 0 -> "Intensive Week"
+            else -> week.label
+        }
     }
 
     fun describe(s: AttendanceSession): String {
