@@ -6,6 +6,10 @@ import androidx.compose.runtime.Composable
 @Composable
 expect fun rememberSystemReduceMotion(): Boolean
 
-/** Tints the status and navigation bar icons for the app's resolved theme, not the system's. */
+/**
+ * Tints the status and navigation bar icons for the app's resolved theme, not the system's.
+ * [followSystem] is true when the user chose Mode = System, so a platform that pins the window to a
+ * style (iOS) must leave it unpinned and keep tracking the OS.
+ */
 @Composable
-expect fun SystemBarsAppearance(darkTheme: Boolean)
+expect fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean)
