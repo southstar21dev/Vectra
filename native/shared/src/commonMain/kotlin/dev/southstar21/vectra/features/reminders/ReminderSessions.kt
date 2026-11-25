@@ -7,6 +7,7 @@ import dev.southstar21.vectra.features.coursetracker.getEventSessionType
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.ScheduleEventIndex
 import dev.southstar21.vectra.features.schedule.ScheduleItem
+import dev.southstar21.vectra.features.schedule.ScheduleItemOccurrence
 import dev.southstar21.vectra.features.schedule.classOccursOnDate
 import dev.southstar21.vectra.features.schedule.extractGroupCode
 import dev.southstar21.vectra.features.schedule.getScheduleItemOccurrences
@@ -89,6 +90,19 @@ private fun timeRange(date: LocalDate, start: String, end: String): Pair<Long, L
 }
 
 /**
+ * A personal item's span. An overnight shift's first part ends at "24:00" (which [budapestMs]
+ * rejects), so its end is the item's own end time on the following day instead.
+ */
+private fun personalRange(o: ScheduleItemOccurrence): Pair<Long, Long>? {
+    val date = LocalDate.parse(o.date)
+    if (o.endTime != "24:00") return timeRange(date, o.startTime, o.endTime)
+    val start = budapestMs(date, o.startTime) ?: return null
+    val nextDay = date.plus(DatePeriod(days = 1))
+    val end = budapestMs(nextDay, o.item.endTime) ?: return null
+    return if (end > start) start to end else null
+}
+
+/**
  * The sessions that actually meet on each of [days] days from [from]: odd/even weeks, semester
  * ranges and public holidays as the schedule shows them, minus classes marked "No class".
  */
@@ -120,7 +134,7 @@ fun expandSessions(
         getScheduleItemOccurrences(items, from.ymd(), from.plus(DatePeriod(days = days - 1)).ymd())
             .filter { !it.continuation && it.item.completed != true }
             .mapNotNull { o ->
-                timeRange(LocalDate.parse(o.date), o.startTime, o.endTime)?.let { (s, end) ->
+                personalRange(o)?.let { (s, end) ->
                     val label = if (o.item.isShift) "Shift" else "Task"
                     ReminderSession("${o.item.id}@${o.date}", o.item.title.trim(), o.item.location.orEmpty().trim(), label, SessionKind.Personal, s, end)
                 }
