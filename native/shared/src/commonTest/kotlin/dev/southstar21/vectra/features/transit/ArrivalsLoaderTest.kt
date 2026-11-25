@@ -61,20 +61,20 @@ class ArrivalsLoaderTest {
         assertEquals("upstream down", b.await().exceptionOrNull()?.message)
     }
 
-    @Test fun singleStopUsesSingleEndpoint() = runTest {
+    @Test fun singleStopStillGoesThroughTheCachedBatchEndpoint() = runTest {
         val calls = Calls()
-        val l = loader(calls)
+        val l = loader(calls, batch = { _, _ -> StopArrivalsBatch(mapOf("BKK_CS1" to response("BKK_CS1")), emptyMap()) })
         val a = async { l.load("BKK_CS1") }
         runCurrent()
         advanceTimeBy(BatchWindowMs + 1)
         assertEquals(response("BKK_CS1"), a.await())
-        assertEquals(listOf(Triple("BKK_CS1", 90, null as Int?)), calls.single)
-        assertTrue(calls.batch.isEmpty())
+        assertEquals(listOf(listOf("BKK_CS1") to 90), calls.batch)
+        assertTrue(calls.single.isEmpty())
     }
 
     @Test fun shallowReusesFreshDeep() = runTest {
         val calls = Calls()
-        val l = loader(calls)
+        val l = loader(calls, batch = { ids, _ -> StopArrivalsBatch(ids.associateWith(::response), emptyMap()) })
         val deep = l.loadWithLimit("BKK_CS1", 200)
         runCurrent()
         assertEquals(listOf(Triple("BKK_CS1", 90, 200 as Int?)), calls.single)
@@ -86,13 +86,18 @@ class ArrivalsLoaderTest {
         runCurrent()
         advanceTimeBy(BatchWindowMs + 1)
         shallow.await()
-        assertEquals(2, calls.single.size)
+        assertEquals(1, calls.single.size)
+        assertEquals(1, calls.batch.size)
     }
 
     @Test fun neverReusesFailedDeep() = runTest {
         val calls = Calls()
         var first = true
-        val l = loader(calls, single = { id, _, _ -> if (first) { first = false; error("nope") } else response(id) })
+        val l = loader(
+            calls,
+            single = { id, _, _ -> if (first) { first = false; error("nope") } else response(id) },
+            batch = { ids, _ -> StopArrivalsBatch(ids.associateWith(::response), emptyMap()) },
+        )
         assertEquals("nope", runCatching { l.loadWithLimit("BKK_CS1", 200) }.exceptionOrNull()?.message)
         runCurrent()
         val shallow = async { l.load("BKK_CS1") }

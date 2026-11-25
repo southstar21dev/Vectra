@@ -10,6 +10,13 @@ data class LineGroup(
 
 private const val MaxLines = 2
 
+/**
+ * The departure that leads the nearby views: any item of the closest stop (the list is
+ * sorted by mode and line, not by distance, so its first item says nothing about proximity).
+ * Ties keep the earliest item in list order.
+ */
+fun nearestStopItem(items: List<RadarDepartureItem>): RadarDepartureItem? = items.minByOrNull { it.distanceMeters }
+
 /** The next departures at the nearest stop grouped by line (max two directions each). */
 fun groupByLine(items: List<RadarDepartureItem>, stopId: String, maxLines: Int = MaxLines): List<LineGroup> {
     class Acc(val first: RadarDepartureItem, val directions: MutableList<RadarDepartureItem> = mutableListOf())

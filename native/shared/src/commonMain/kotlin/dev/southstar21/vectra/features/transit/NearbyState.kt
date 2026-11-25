@@ -141,6 +141,12 @@ fun rememberNearbyStops(repo: TransitRepository, deviceLocation: DeviceLocation)
     return NearbyStopsState(stops, position, geoState, status, refreshLocation)
 }
 
+/**
+ * Cap on the dashboard feed. It is sorted by mode and line rather than distance, so a tight cap
+ * could cut the nearest stop's lines before the dashboard picks its lead stop.
+ */
+private const val DashboardRadarItems = 200
+
 @Immutable
 data class NearbyDataState(
     val stops: List<NearbyStop>,
@@ -169,7 +175,10 @@ fun rememberNearbyData(
     val now = rememberNowMillis(10_000)
     val catalogRoutes = rememberCatalogRoutes(repo)
 
-    val candidateStopIds = remember(stops, departures) { if (departures) stops.map { it.id } else emptyList() }
+    // Without a real fix the stops are the Budapest-centre fallback: showing or polling their
+    // departures would pass them off as the user's surroundings.
+    val located = nearby.status == NearbyLocationStatus.Tracking
+    val candidateStopIds = remember(stops, departures, located) { if (departures && located) stops.map { it.id } else emptyList() }
     val stopArrivalsResults = rememberBatchStopArrivals(repo, candidateStopIds)
 
     val boards = remember(stops, stopArrivalsResults, catalogRoutes.data) {
@@ -177,7 +186,7 @@ fun rememberNearbyData(
     }
     val stopDeparturesMap = remember(boards, now) { boards.mapValues { dropDepartedBoards(it.value, now) } }
     val radarItems = remember(stops, stopDeparturesMap, now, modeFilter) {
-        buildRadarDepartures(stops = stops, stopDeparturesMap = stopDeparturesMap, now = now, modeFilter = modeFilter, maxItems = 24)
+        buildRadarDepartures(stops = stops, stopDeparturesMap = stopDeparturesMap, now = now, modeFilter = modeFilter, maxItems = DashboardRadarItems)
     }
     return NearbyDataState(nearby.stops, nearby.position, nearby.geoState, nearby.status, nearby.refreshLocation, radarItems)
 }

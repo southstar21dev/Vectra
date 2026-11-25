@@ -41,6 +41,22 @@ const val DeepArrivalsLimit = 200
 /** Stops per batch request — mirrors the server-side cap (backend/internal/futar/). */
 const val MaxBatchArrivalStops = 20
 
+/** The `code` the proxy puts on its 502 when every stop of a batch failed upstream (see backend futar.go). */
+const val AllStopsFailedCode = "all_stops_failed"
+
+/**
+ * Whether another immediate try of a failed feed request can help. A 4xx (such as the proxy's
+ * 429) or a batch whose every stop failed upstream asks for fewer requests, not more; those
+ * settle at once and the poll's back-off takes over.
+ */
+fun isRetryableFeedError(t: Throwable): Boolean {
+    if (t !is PocketBaseException) return true
+    return t.status !in 400..499 && !t.isAllStopsFailed
+}
+
+private val PocketBaseException.isAllStopsFailed: Boolean
+    get() = (data["code"] as? JsonPrimitive)?.contentOrNull == AllStopsFailedCode
+
 /** Wire format of the `stop-arrivals` batch endpoint (shared dictionaries deduplicated). */
 @Serializable
 data class FutarStopArrivalsBatchResponse(
@@ -195,7 +211,7 @@ class FutarApi(
 
     /**
      * Arrivals for many stops in one request (chunked at [MaxBatchArrivalStops]). A batch the
-     * server failed on (5xx, or an unreadable answer) falls back to one request per stop so the
+     * server failed on (a 5xx other than "every stop failed upstream", or an unreadable answer) falls back to one request per stop so the
      * feed still loads. Not when the request never got an answer, nor on a 4xx such as 429:
      * N more requests could not fare better, and a rate limit asks for fewer, not more.
      */
@@ -225,7 +241,8 @@ class FutarApi(
         } catch (e: CancellationException) {
             throw e
         } catch (e: PocketBaseException) {
-            if (e.isNetwork || e.status in 400..499) throw e
+            // Nothing the per-stop path could fetch either: it asks the same upstream, uncached.
+            if (e.isNetwork || e.status in 400..499 || e.isAllStopsFailed) throw e
             fetchStopArrivalsIndividually(stationIds, minutesAfter)
         } catch (_: Throwable) {
             fetchStopArrivalsIndividually(stationIds, minutesAfter)

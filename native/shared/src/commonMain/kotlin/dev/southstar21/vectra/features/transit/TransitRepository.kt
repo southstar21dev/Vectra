@@ -277,20 +277,20 @@ class TransitRepository(
 
     /** One stop's arrivals: 20s poll, 10s stale, coalesced into batches. */
     val arrivals: LiveQuery<String, FutarArrivalsResponse> =
-        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops) {
+        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops, shouldRetry = ::isRetryableFeedError) {
             if (demo(it)) DemoFeed.arrivals(it, nowMs()) else arrivalsLoader.load(it)
         }
 
     /** Deep arrivals (trip planning): key = stopId to stop-times limit. */
     val deepArrivals: LiveQuery<Pair<String, Int>, FutarArrivalsResponse> =
-        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops) { (id, limit) -> arrivalsLoader.loadWithLimit(id, limit) }
+        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops, shouldRetry = ::isRetryableFeedError) { (id, limit) -> arrivalsLoader.loadWithLimit(id, limit) }
 
     /**
      * Batched arrivals keyed by the sorted, comma-joined
      * stop ids. The batch also seeds each stop's own entry.
      */
     val batchArrivals: LiveQuery<String, StopArrivalsBatch> =
-        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses) { key ->
+        LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleLargeResponses, shouldRetry = ::isRetryableFeedError) { key ->
             val ids = key.split(',').filter { it.isNotEmpty() && !demo(it) }
             api.fetchStopArrivalsBatch(ids, ArrivalsMinutesAfter).also { batch ->
                 batch.responses.forEach { (id, r) -> arrivals.setData(id, r) }

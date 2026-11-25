@@ -26,6 +26,14 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.roundHalfUpToLong
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 
+/** What the dashboard says under "Nearby" while there is nothing to list. */
+internal fun emptyNearbyMessage(status: NearbyLocationStatus, offline: Boolean): String = when {
+    offline -> "Offline, departures unavailable"
+    status == NearbyLocationStatus.Tracking -> "No departures near you right now"
+    status == NearbyLocationStatus.Failed -> "Allow location to see departures"
+    else -> "Departures appear once you are located"
+}
+
 /**
  * The lines at the stop nearest you, one row per line with both directions:
  * a heading with the stop, its distance and the walk, then hairline rows.
@@ -36,9 +44,10 @@ fun NearbyDeparturesList(
     status: NearbyLocationStatus,
     modifier: Modifier = Modifier,
     maxLines: Int = 3,
+    offline: Boolean = false,
 ) {
     val c = Vectra.colors
-    val lead = items.firstOrNull()
+    val lead = nearestStopItem(items)
     val groups = remember(items, lead, maxLines) { if (lead != null) groupByLine(items, lead.stopId, maxLines) else emptyList() }
 
     if (lead == null || groups.isEmpty()) {
@@ -49,11 +58,7 @@ fun NearbyDeparturesList(
         ) {
             SleepingIcon(size = 16.dp, tint = if (c.isDark) Palette.Indigo300 else Palette.Indigo400)
             VText(
-                when (status) {
-                    NearbyLocationStatus.Tracking -> "No departures near you right now"
-                    NearbyLocationStatus.Failed -> "Allow location to see departures"
-                    else -> "Departures appear once you are located"
-                },
+                emptyNearbyMessage(status, offline),
                 style = vtext(TypeScale.Body, Weight.Semibold),
                 color = c.textSecondary,
             )

@@ -141,7 +141,7 @@ fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): 
     val q = repo.batchArrivals.collect(key.ifEmpty { null })
     val last = remember { LastArrivals() }
     return remember(ids, q) {
-        val loading = q.isLoading || q.isFetching
+        val loading = isBatchLoading(q, ids.isNotEmpty())
         q.data?.responses?.forEach { (id, data) -> last.put(id, data, q.dataUpdatedAt) }
         ids.associateWith { id ->
             val fresh = q.data?.responses?.get(id)
@@ -155,6 +155,14 @@ fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): 
         }
     }
 }
+
+/**
+ * Whether a batch is still on its way. A key that was just asked for starts as an empty
+ * [QueryState] (not loading, not fetching) until its first fetch begins, and without this
+ * the lists read that gap as "nothing is running" and flash their empty state (audit A-20).
+ */
+internal fun isBatchLoading(q: QueryState<*>, hasStops: Boolean): Boolean =
+    q.isLoading || q.isFetching || (hasStops && !q.isFetched && q.data == null && !q.isError)
 
 /** The last arrivals seen per stop (with when they landed), the oldest dropped past [MaxKeptStops]. */
 private class LastArrivals {
