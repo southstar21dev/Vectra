@@ -14,6 +14,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
 	"github.com/stretchr/testify/require"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -74,7 +75,7 @@ func repeat(v string, n int) []string {
 // before any work is done; a request at the caps still succeeds.
 func TestBatchCaps(t *testing.T) {
 	app, alice, _ := limitsApp(t)
-	freshLimiter(t, ratelimit.New(UserBudget, UserWindow))
+	freshLimiter(t, ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window))
 
 	require.Equal(t, http.StatusOK, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": repeat("x", MaxValues)}))
 	require.Equal(t, http.StatusRequestEntityTooLarge, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": repeat("x", MaxValues+1)}))

@@ -19,6 +19,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/types"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -48,17 +49,12 @@ const (
 
 	// sendConcurrency bounds the in-flight Web Push requests per Handler call.
 	sendConcurrency = 8
-
-	// sendsPerWindow caps /push/send calls per (non-superuser) caller per
-	// sendWindow. Users only trigger their own test notifications; superuser
-	// service callers (cron fan-out) are exempt.
-	sendsPerWindow = 20
-	sendWindow     = time.Minute
 )
 
-// sendLimiter is the per-user limiter for Handler. It is a var so tests can
-// substitute a fresh one.
-var sendLimiter = ratelimit.New(sendsPerWindow, sendWindow)
+// sendLimiter is the per-user limiter for Handler (limits.PushSend: users only
+// trigger their own test notifications; superuser service callers such as a
+// cron fan-out are exempt). It is a var so tests can substitute a fresh one.
+var sendLimiter = ratelimit.New(limits.PushSend.Max, limits.PushSend.Window)
 
 // request mirrors the Deno PushPayload interface.
 type request struct {

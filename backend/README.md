@@ -65,6 +65,37 @@ The environment wins over the "Trusted proxy" setting in the dashboard (a saved 
 the next settings reload). Never publish the container port to the internet: reached directly, the
 header is client-controlled. The compose file binds it to `127.0.0.1` for that reason.
 
+## Rate limits
+
+Two layers, both keyed on the client IP (see above) unless a user or identity is named.
+
+**In-process limiters.** Every value is in one table, `internal/limits/limits.go`; each package builds
+its limiter from it. State is in memory, so it resets on every restart or deploy.
+
+| Limit | Applies to | Key |
+|---|---|---|
+| `ReauthUser` / `ReauthIP` | wrong current-password checks (account delete, email change, passkey enrolment, `users` password change) | user, IP |
+| `AuthIdentityFailures` / `AuthIPFailures` | failed password logins | identity, IP (v6 /64) |
+| `AuthSignups` / `AuthResets` | sign-ups, reset mails | IP (v6 /64) |
+| `CryptoValues` | `/crypto` values per window | user |
+| `NeptunReplace` | `/neptun/replace` | user |
+| `PasskeyLoginStart` | public passkey login start | IP |
+| `PushSend` | `/push/send` (superusers exempt) | user |
+| `FutarPerIP` / `FutarUpstream` | Futár proxy per IP / calls to the Futár API overall | IP, process |
+
+**PocketBase's own limiter** (dashboard, Settings > Application > Rate limiting). Migrations 9 and 12
+seed it once and never overwrite an operator's edit, so the dashboard is the source of truth. Expected
+state: enabled, with these rules:
+
+| Label | Max requests | Window (s) |
+|---|---|---|
+| `*:auth` | 2 | 3 |
+| `*:create` | 20 | 5 |
+| `/api/batch` | 3 | 1 |
+| `/api/` | 300 | 10 |
+| `*:requestPasswordReset` | 3 | 60 |
+| `*:confirmPasswordReset` | 10 | 60 |
+
 ## Container user
 
 The image (`Dockerfile`, Alpine 3.24) runs the server as the unprivileged `vectra` user (uid/gid

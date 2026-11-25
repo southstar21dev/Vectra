@@ -6,6 +6,7 @@ import (
 	"ganigeorgiev.com/pocketbase/dbx"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -26,16 +27,13 @@ const (
 	// unbounded number of records inside a single write transaction.
 	maxEvents = 500
 
-	// replacesPerWindow caps replace calls per user per replaceWindow. The
-	// client syncs on demand and on login, so a handful per minute is ample;
-	// each call rewrites the user's whole calendar.
-	replacesPerWindow = 10
-	replaceWindow     = time.Minute
 )
 
-// limiter is the per-user limiter for Handler. It is a var so tests can
-// substitute a fresh one.
-var limiter = ratelimit.New(replacesPerWindow, replaceWindow)
+// limiter is the per-user limiter for Handler (limits.NeptunReplace: the client
+// syncs on demand and on login, so a handful per minute is ample; each call
+// rewrites the user's whole calendar). It is a var so tests can substitute a
+// fresh one.
+var limiter = ratelimit.New(limits.NeptunReplace.Max, limits.NeptunReplace.Window)
 
 // verbatimFields are the client-supplied content fields copied as-is into a
 // row. Their values are ciphertext (or, for color, display metadata) and must

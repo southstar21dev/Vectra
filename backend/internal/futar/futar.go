@@ -19,6 +19,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/sync/singleflight"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -40,7 +41,7 @@ const (
 	stopArrivalsMax   = 300
 	defaultBatchAfter = 90
 
-	// requestsPerWindow caps proxy calls per client IP per requestWindow. The
+	// limits.FutarPerIP caps proxy calls per client IP. The
 	// route is public and every call fans out to the keyed upstream, so an
 	// unbounded caller could burn the shared Futár quota. Every request costs
 	// one unit, and a stop-arrivals batch additionally costs one unit per stop
@@ -48,8 +49,6 @@ const (
 	// to maxBatchStops upstream calls for the price of one. The cap is
 	// generous because campus/CGNAT networks put many students behind one
 	// address and the app polls every few seconds.
-	requestsPerWindow = 300
-	requestWindow     = time.Minute
 )
 
 // futarBase is a var (not a const) solely so tests can point it at an
@@ -70,17 +69,15 @@ var upstreamClient = &http.Client{
 
 // limiter is the per-IP limiter for Handler. It is a var so tests can
 // substitute a fresh one.
-var limiter = ratelimit.New(requestsPerWindow, requestWindow)
+var limiter = ratelimit.New(limits.FutarPerIP.Max, limits.FutarPerIP.Window)
 
-// upstreamPerMinute is the process-wide ceiling on calls to Futár, whoever
+// limits.FutarUpstream is the process-wide ceiling on calls to Futár, whoever
 // asks. The per-IP limiter cannot bound the shared key against many source
 // addresses (an IPv6 /48 is 65,536 buckets), so this budget sits below the
 // key's quota and turns excess load into a 503 instead of a throttled or
 // revoked key for every user.
-const upstreamPerMinute = 1500
-
 // upstreamBudget is a var so tests can substitute a fresh one.
-var upstreamBudget = ratelimit.New(upstreamPerMinute, time.Minute)
+var upstreamBudget = ratelimit.New(limits.FutarUpstream.Max, limits.FutarUpstream.Window)
 
 // errUpstreamBusy is the message returned when the budget is spent.
 const errUpstreamBusy = "Transit data is busy, try again shortly"

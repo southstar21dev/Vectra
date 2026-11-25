@@ -22,6 +22,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -295,13 +296,11 @@ const (
 	MaxPartLists    = 2_000
 	MaxPartsPerList = 16
 	MaxBatchBytes   = 16 << 20
-	UserBudget      = 200_000
-	UserWindow      = 10 * time.Minute
 )
 
-// UserLimiter holds each user's budget of values per UserWindow. It is a var
-// so tests can substitute a fresh one.
-var UserLimiter = ratelimit.New(UserBudget, UserWindow)
+// UserLimiter holds each user's budget of values per window
+// (limits.CryptoValues). It is a var so tests can substitute a fresh one.
+var UserLimiter = ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window)
 
 // batchCost checks body against the caps and returns its cost in budget
 // units, or a non-empty reason when it is too large.
