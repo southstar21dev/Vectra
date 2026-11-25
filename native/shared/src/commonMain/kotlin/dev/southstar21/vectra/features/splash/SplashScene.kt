@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -44,11 +45,6 @@ private const val TAU = (PI * 2).toFloat()
 
 internal fun ease(x: Float) = 1f - (1f - x.coerceIn(0f, 1f)).pow(3)
 internal fun easeIn(x: Float) = x.coerceIn(0f, 1f).pow(2)
-internal fun smoothstep(a: Float, b: Float, x: Float): Float {
-    val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
-    return u * u * (3 - 2 * u)
-}
-
 /** How far a dot (its [seed] 0..1) has drifted out (scene units) at disperse progress [u]. */
 internal fun disperseDrift(u: Float, seed: Float, far: Float, base: Float, near: Float) = easeIn(u) * (base + far * seed) + ease(u) * near
 

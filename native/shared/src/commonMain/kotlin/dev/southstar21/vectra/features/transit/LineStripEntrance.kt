@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.backOut
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlinx.coroutines.delay
 import kotlin.math.pow
 
@@ -80,7 +82,7 @@ internal fun rememberStripEntrance(loading: Boolean, index: Int): StripEntrance 
 }
 
 /** The route colour washing in over the grey. */
-internal fun entranceTint(d: Float): Float = smooth(d, 0f, 0.35f)
+internal fun entranceTint(d: Float): Float = smoothstep(0f, 0.35f, d)
 
 /** How far the [i]th vehicle has sprung from its placeholder (0..1). */
 private fun springOf(d: Float, i: Int): Float = ((d - 0.08f - i * 0.05f) / 0.5f).coerceIn(0f, 1f)
@@ -89,7 +91,7 @@ private fun springOf(d: Float, i: Int): Float = ((d - 0.08f - i * 0.05f) / 0.5f)
 internal fun entranceLabelAlpha(d: Float, i: Int): Float = ((d - 0.35f - i * 0.05f) / 0.25f).coerceIn(0f, 1f)
 
 /** The placeholder pills fading away. */
-internal fun pillAlpha(d: Float): Float = 1f - smooth(d, 0.3f, 0.5f)
+internal fun pillAlpha(d: Float): Float = 1f - smoothstep(0.3f, 0.5f, d)
 
 /** A vehicle mid-entrance: where it is, its size and opacity, and how much of its grey placeholder still shows. */
 internal class EntranceVehicle(val position: Float, val scale: Float, val alpha: Float, val ghost: Float)
@@ -101,14 +103,7 @@ internal fun entranceVehicle(d: Float, i: Int, heading: Int, position: Float): E
     return EntranceVehicle(
         position = from + (position - from) * backOut(m, 1.2f),
         scale = 0.6f + 0.4f * backOut(m, 1.70158f),
-        alpha = smooth(m, 0f, 0.3f),
-        ghost = 1f - smooth(m, 0f, 0.4f),
+        alpha = smoothstep(0f, 0.3f, m),
+        ghost = 1f - smoothstep(0f, 0.4f, m),
     )
-}
-
-/** Ease-out that overshoots by [s] before settling: a spring's feel in a fixed time. */
-private fun backOut(u: Float, s: Float): Float {
-    if (u <= 0f) return 0f
-    val v = u.coerceAtMost(1f) - 1
-    return 1 + (s + 1) * v.pow(3) + s * v.pow(2)
 }

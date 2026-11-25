@@ -66,11 +66,6 @@ internal fun DrawScope.drawOrb(engine: OrbEngine, center: Offset, k: Float, dark
 // Engine (globe), allocation-free per frame.
 // ---------------------------------------------------------------------------------------------
 
-private fun hashD(a: Double, b: Double): Double {
-    val h = sin(a * 12.9898 + b * 78.233) * 43758.5453
-    return h - floor(h)
-}
-
 private fun angleDelta(a: Double, b: Double): Double = atan2(sin(a - b), cos(a - b))
 
 /** Resolved preset: BASE_PROFILES[mode] scaled by PRESETS[mode][size] (scaleCounts/scaleRadii). */
