@@ -47,7 +47,7 @@ class ReminderReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_FIRE -> fire(intent, scheduler, notifier)
             ACTION_DISMISS -> intent.data?.lastPathSegment?.let(Uri::decode)?.let(notifier::cancelAlarm)
-            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,
+            ACTION_REPLAN, Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED",
             -> scheduler.rescheduleWhenReady(timeoutMs = 7_000)
         }
@@ -78,6 +78,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_FIRE = "dev.southstar21.vectra.REMINDER"
+        const val ACTION_REPLAN = "dev.southstar21.vectra.REMINDER_REPLAN"
         const val ACTION_DISMISS = "dev.southstar21.vectra.REMINDER_DISMISSED"
         internal const val EXTRA_REFRESH = "vectra.reminder.refresh"
         private const val MaxRefreshes = 10

@@ -74,6 +74,22 @@ class AndroidNotifier(private val context: Context, private val smallIcon: Int, 
         store.edit().putStringSet(KEY_IDS, notifications.map { it.id }.toSet()).apply()
     }
 
+    override fun scheduleReplan(atMs: Long?) {
+        val intent = Intent(context, ReminderReceiver::class.java)
+            .setAction(ReminderReceiver.ACTION_REPLAN)
+            .setData(Uri.parse("vectra-reminder://replan"))
+        if (atMs == null) {
+            PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let {
+                alarms.cancel(it)
+                it.cancel()
+            }
+            return
+        }
+        val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        // Inexact is plenty: it only has to start the process some time today.
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pending)
+    }
+
     /** [refresh] > 0 re-posts an already shown commute reminder with fresh departures, quietly. */
     internal fun setAlarm(n: ScheduledNotification, refresh: Int = 0, atMs: Long = n.atMs) {
         val intent = alarmIntent(n.id)
