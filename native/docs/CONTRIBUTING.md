@@ -87,6 +87,26 @@ Kotlin warnings are errors, in the Android and iOS compiles alike. Suppress one 
 narrowly and with a comment. detekt checks new code against `config/detekt/baseline.xml`;
 `./gradlew detektBaseline` regenerates it (do that to record a deliberate exception, not to clear a finding).
 `androidApp/lint-baseline.xml` works the same way for Android lint (`:androidApp:updateLintBaseline`).
+detekt also runs UnusedImport through the type-resolved module tasks (`config/detekt/type-resolved.yml`).
 CI runs tests, detekt, the debug build, lint and the iOS compile on every change under `native/`.
 The baseline profile is generated and checked in; the README has the commands.
 Check UI changes on a device or emulator as well; unit tests don't cover interaction.
+
+## Widgets
+Home and Lock Screen widgets exist on both platforms and are not shared UI: each platform draws its own, from
+one JSON snapshot.
+- **Shared (Kotlin)**: `shared/.../features/widgets/`. `WidgetSnapshot` is the JSON the app writes (sessions from
+  Monday of this week through the next two weeks); `WidgetModel`, `WidgetSpine`, `WidgetAgenda`, `WidgetWeek`
+  and `WidgetLabels` hold the rules and wording both platforms follow. `WidgetPublisher` writes the snapshot.
+- **Android (Glance)**: `androidApp/.../android/widget/`. Colours and sizes are in `WidgetStyle.kt`.
+- **iOS (SwiftUI)**: `iosApp/VectraWidgets/`, a pure-Swift extension that never links the Kotlin framework.
+  `Model.swift` decodes the same snapshot JSON and mirrors the shared rules and labels; `Theme.swift` mirrors the
+  colour tokens from `core/designsystem/theme/Color.kt` and loads the same Inter and JetBrains Mono files. The
+  snapshot's file name and App Group are in `iosApp/Shared/AppGroup.swift`.
+- **Keep in step**: a change to the snapshot fields, a rule in `WidgetModel`, `WidgetSpine`, `WidgetAgenda` or
+  `WidgetWeek`, or a label in `WidgetLabels` needs the matching edit in `Model.swift` (and `Spine.swift`);
+  a colour token change needs `Theme.swift`. Bump `SnapshotVersion` when the JSON shape changes.
+
+## Android developer verification
+`androidApp/src/main/assets/adi-registration.properties` is the Android developer verification token for the
+app's package. Do not delete it when cleaning assets; no code references it.

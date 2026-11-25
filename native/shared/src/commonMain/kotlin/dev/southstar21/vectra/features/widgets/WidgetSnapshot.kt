@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * What the widgets draw from: the sessions from Monday of this week through the next two weeks.
- * iOS decodes the same JSON in Swift (iosApp/VectraWidgets/Snapshot.swift), so keep the two in step.
+ * iOS decodes the same JSON in Swift (iosApp/VectraWidgets/Model.swift), so keep the two in step.
  */
 @Serializable
 data class WidgetSnapshot(
