@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.LatLon
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.roundHalfUpToLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +51,7 @@ internal suspend fun <T> loadCatalogUntilLoaded(online: StateFlow<Boolean>, load
             failures++
         }
         if (failures == 2) onGaveUp()
-        val wait = minOf(CatalogRetryMaxMs, 1000L shl minOf(failures - 1, 6))
+        val wait = exponentialBackoffMs(failures - 1, 1000L, CatalogRetryMaxMs)
         // A reconnect during the wait ends it early.
         withTimeoutOrNull(wait) {
             online.first { !it }

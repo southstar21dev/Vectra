@@ -6,6 +6,7 @@ import dev.southstar21.vectra.core.platform.GeoFix
 import dev.southstar21.vectra.core.platform.GeoPermission
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.LocationProvider
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
@@ -268,7 +269,7 @@ class WeatherRepository(
                     if (attempt++ >= 3) { fail(e); return@launch }
                 }
                 // Exponential backoff: 1s, 2s, 4s.
-                delay(1000L shl (attempt - 1))
+                delay(exponentialBackoffMs(attempt - 1, 1000L))
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.core.data
 
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.time.nowMs
 import kotlinx.coroutines.CancellationException
@@ -244,7 +245,7 @@ class LiveQuery<K, T>(
                     e.state.update { it.copy(isFetching = false, isLoading = false, isError = true, error = t, isFetched = true) }
                     throw t
                 }
-                delay(min(1000.0 * 2.0.pow(attempt), 30_000.0).toLong())
+                delay(exponentialBackoffMs(attempt, 1000L, 30_000L))
                 attempt++
             }
         }
