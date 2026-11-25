@@ -60,6 +60,7 @@ fun TransitDashboardWidget(
     val modeFilter = remember(profile?.preferences) { parseModeFilter(profile?.preferences) }
     val hasPinned = favorites.isNotEmpty()
     val nearby = rememberNearbyData(repo, deviceLocation, modeFilter, departures = !hasPinned)
+    val offline = !rememberOnline(repo.connectivity)
     val navigator = LocalNavigator.current
     val openNearby = { navigator.nearbyMap = CardLaunch(null) }
 
@@ -81,7 +82,7 @@ fun TransitDashboardWidget(
             TransitSectionHeader("Nearby", first?.stopName, onAction = openNearby)
             val lines = remember(nearby.radarItems, first?.stopId) { first?.let { nearbyTrackers(nearby.radarItems, it.stopId) }.orEmpty() }
             if (lines.isEmpty()) {
-                Box(Modifier.fillMaxWidth().stripCardSurface().padding(14.dp)) { NearbyDeparturesList(nearby.radarItems, nearby.status) }
+                Box(Modifier.fillMaxWidth().stripCardSurface().padding(14.dp)) { NearbyDeparturesList(nearby.radarItems, nearby.status, offline = offline) }
             } else {
                 lines.forEachIndexed { i, t -> key(t.id) { LineStripCard(repo, t, onOpen = { openNearby() }, revealIndex = i) } }
             }

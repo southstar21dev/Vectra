@@ -35,4 +35,11 @@ class NearbyLinesTest {
     fun noItemsNoLead() {
         assertNull(nearestStopItem(emptyList()))
     }
+
+    @Test
+    fun emptyMessageSaysOfflineFirst() {
+        assertEquals("Offline, departures unavailable", emptyNearbyMessage(NearbyLocationStatus.Tracking, offline = true))
+        assertEquals("No departures near you right now", emptyNearbyMessage(NearbyLocationStatus.Tracking, offline = false))
+        assertEquals("Allow location to see departures", emptyNearbyMessage(NearbyLocationStatus.Failed, offline = false))
+    }
 }
