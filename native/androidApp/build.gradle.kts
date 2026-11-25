@@ -20,6 +20,8 @@ val debugBaseVersion = rootProject.extra["debugBaseVersion"] as Provider<String>
 @Suppress("UNCHECKED_CAST")
 val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
 
+// The AltStore source script (.github/scripts/altstore-source.mjs, bundleVersions) repeats this
+// version-to-build-number rule for iOS; change them together.
 fun versionCodeOf(versionName: String): Int {
     val match = Regex("""(\d+)\.(\d{1,2})\.(\d{1,2})(?:-(dev|rc)\.(\d+))?""").matchEntire(versionName)
         ?: error("vectra.versionName must be major.minor.patch[-dev.N|-rc.N] with minor and patch below 100, got '$versionName'")
