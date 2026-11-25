@@ -96,9 +96,10 @@ internal object WidgetStore {
         if (isStale(read(context))) {
             val app = context.applicationContext as? VectraApplication
             if (app != null) {
-                // publish() writes the file and redraws through AndroidWidgetHost.
-                withTimeoutOrNull(8_000) { app.graph.widgets.publishWhenReady(timeoutMs = 7_000) }
-                return
+                // A publish writes the file and redraws through AndroidWidgetHost; without one (cache not
+                // ready, timeout) fall through so the next redraw is still booked.
+                val published = withTimeoutOrNull(8_000) { app.graph.widgets.publishWhenReady(timeoutMs = 7_000) }
+                if (published == true) return
             }
         }
         redraw(context)
