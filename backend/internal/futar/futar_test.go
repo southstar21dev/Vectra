@@ -437,6 +437,21 @@ func TestHandlerRateLimited(t *testing.T) {
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
 
+// TestHandlerUpstreamBudgetSpent: once the process-wide upstream budget is
+// used up, valid requests are refused with 503 before reaching Futar, however
+// many different client addresses ask.
+func TestHandlerUpstreamBudgetSpent(t *testing.T) {
+	t.Setenv("FUTAR_API_KEY", sentinelKey)
+	prev := upstreamBudget
+	upstreamBudget = ratelimit.New(1, time.Minute)
+	upstreamBudget.Allow("upstream", time.Now())
+	t.Cleanup(func() { upstreamBudget = prev })
+
+	rec := runHandler(t, `{"endpoint":"route-details","params":{"routeId":"BKK_3010"}}`)
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Equal(t, "10", rec.Header().Get("Retry-After"))
+}
+
 // TestMinutesSnapToBuckets: the values the app sends pass through unchanged,
 // anything else rounds up to a fixed bucket so cache keys cannot be varied.
 func TestMinutesSnapToBuckets(t *testing.T) {
