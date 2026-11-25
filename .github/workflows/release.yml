@@ -32,8 +32,8 @@
 #
 # Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (Android signing).
 # The IPA is unsigned; AltStore signs it with the installing user's Apple ID.
-# TestFlight gets a separately signed App Store build of the same release (the testflight job),
-# once the App Store Connect key secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 are set.
+# TestFlight gets a separately signed App Store build of the same release (the testflight job);
+# it needs the App Store Connect key secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 and fails without them.
 name: Release
 
 on:
@@ -400,7 +400,7 @@ jobs:
   # key. The archive step signs with a development certificate first; without one on the runner,
   # xcodebuild would create a new "Created via API" certificate on every run until the account hits
   # Apple's limit, so a single fixed CI certificate is loaded from the secrets instead.
-  # Skipped (with a note in the summary) until these secrets exist:
+  # Needs these secrets (the job fails when one is missing):
   #   ASC_KEY_ID             the key's ID
   #   ASC_ISSUER_ID          the issuer ID shown above the keys list
   #   ASC_KEY_P8             the contents of the downloaded AuthKey_<id>.p8
@@ -419,8 +419,9 @@ jobs:
     steps:
       # Each secret is passed only to the step that needs it, so third-party actions and the Gradle
       # daemon that xcodebuild starts never see the .p12, its password or the .p8 in their environment.
-      - id: key
-        name: Check for the App Store Connect key and CI certificate
+      # A missing secret fails the job: all five exist, so a deleted or renamed one must be loud
+      # instead of TestFlight quietly getting no builds while the release stays green.
+      - name: Check for the App Store Connect key and CI certificate
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -428,37 +429,36 @@ jobs:
           IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
           IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
-          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$IOS_DEV_P12" ] && [ -n "$IOS_DEV_P12_PASSWORD" ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "TestFlight upload skipped: set ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, IOS_DEV_P12 and IOS_DEV_P12_PASSWORD to enable it." >> "$GITHUB_STEP_SUMMARY"
+          MISSING=""
+          [ -n "$ASC_KEY_ID" ] || MISSING="$MISSING ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ] || MISSING="$MISSING ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ] || MISSING="$MISSING ASC_KEY_P8"
+          [ -n "$IOS_DEV_P12" ] || MISSING="$MISSING IOS_DEV_P12"
+          [ -n "$IOS_DEV_P12_PASSWORD" ] || MISSING="$MISSING IOS_DEV_P12_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::TestFlight upload cannot run, missing secrets:$MISSING"
+            exit 1
           fi
 
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
           java-version: 21
 
       # No build caches here: the signing secrets are in this job, and caches are shared with every
       # other job of a master run (a poisoned entry would run with them). Costs a longer build.
-      - if: steps.key.outputs.ok == 'true'
-        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           cache-disabled: true
 
-      - if: steps.key.outputs.ok == 'true'
-        name: Set the version
+      - name: Set the version
         run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
 
       # A throwaway keychain holding only the CI certificate, first in the search list so xcodebuild
       # finds that identity and doesn't create a new one.
-      - if: steps.key.outputs.ok == 'true'
-        name: Load the CI development certificate
+      - name: Load the CI development certificate
         env:
           IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
           IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
@@ -478,8 +478,7 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Development' \
             || { echo "::error::IOS_DEV_P12 holds no Apple Development identity."; exit 1; }
 
-      - if: steps.key.outputs.ok == 'true'
-        name: Write the App Store Connect key
+      - name: Write the App Store Connect key
         env:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
@@ -487,8 +486,7 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
 
       # The key is read from the file only; ASC_KEY_P8 is not in this step's environment.
-      - if: steps.key.outputs.ok == 'true'
-        name: Archive and upload to TestFlight
+      - name: Archive and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -523,7 +521,7 @@ jobs:
             "${AUTH[@]}"
           echo "Uploaded $VERSION to TestFlight; it appears there once App Store Connect finishes processing." >> "$GITHUB_STEP_SUMMARY"
 
-      - if: always() && steps.key.outputs.ok == 'true'
+      - if: always()
         name: Remove the key and the signing keychain
         run: |
           rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/dev.p12"
