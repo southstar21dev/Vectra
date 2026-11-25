@@ -19,10 +19,11 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/sync/singleflight"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
-// Port of supabase/functions/futar-proxy/index.ts. The Futár API key is
+// Futár proxy (POST /api/vectra/futar). The Futár API key is
 // injected server-side and never reaches the client; the endpoint whitelist
 // plus param coercion are the abuse control (this route is intentionally
 // public — transit arrivals are public data and the proxy's only job is
@@ -40,7 +41,7 @@ const (
 	stopArrivalsMax   = 300
 	defaultBatchAfter = 90
 
-	// requestsPerWindow caps proxy calls per client IP per requestWindow. The
+	// limits.FutarPerIP caps proxy calls per client IP. The
 	// route is public and every call fans out to the keyed upstream, so an
 	// unbounded caller could burn the shared Futár quota. Every request costs
 	// one unit, and a stop-arrivals batch additionally costs one unit per stop
@@ -48,8 +49,6 @@ const (
 	// to maxBatchStops upstream calls for the price of one. The cap is
 	// generous because campus/CGNAT networks put many students behind one
 	// address and the app polls every few seconds.
-	requestsPerWindow = 300
-	requestWindow     = time.Minute
 )
 
 // futarBase is a var (not a const) solely so tests can point it at an
@@ -70,17 +69,15 @@ var upstreamClient = &http.Client{
 
 // limiter is the per-IP limiter for Handler. It is a var so tests can
 // substitute a fresh one.
-var limiter = ratelimit.New(requestsPerWindow, requestWindow)
+var limiter = ratelimit.New(limits.FutarPerIP.Max, limits.FutarPerIP.Window)
 
-// upstreamPerMinute is the process-wide ceiling on calls to Futár, whoever
+// limits.FutarUpstream is the process-wide ceiling on calls to Futár, whoever
 // asks. The per-IP limiter cannot bound the shared key against many source
 // addresses (an IPv6 /48 is 65,536 buckets), so this budget sits below the
 // key's quota and turns excess load into a 503 instead of a throttled or
 // revoked key for every user.
-const upstreamPerMinute = 1500
-
 // upstreamBudget is a var so tests can substitute a fresh one.
-var upstreamBudget = ratelimit.New(upstreamPerMinute, time.Minute)
+var upstreamBudget = ratelimit.New(limits.FutarUpstream.Max, limits.FutarUpstream.Window)
 
 // errUpstreamBusy is the message returned when the budget is spent.
 const errUpstreamBusy = "Transit data is busy, try again shortly"
@@ -169,10 +166,10 @@ func snapMinutes(v any, fallback int, buckets []int) int {
 }
 
 // ---------------------------------------------------------------------------
-// param coercion (mirrors the Deno ALLOWED_ENDPOINTS normalizers)
+// param coercion (the endpoint normalizers)
 // ---------------------------------------------------------------------------
 
-// asNumber mimics the Deno `Number(value)` coercion for the shapes that reach
+// asNumber mimics JavaScript `Number(value)` coercion for the shapes that reach
 // the JSON body: real JSON numbers decode to float64, but tests (and callers
 // building maps directly) may pass Go ints, so all numeric widths are handled.
 func asNumber(v any) (float64, bool) {
@@ -215,7 +212,7 @@ func asNumber(v any) (float64, bool) {
 	}
 }
 
-// clampInt clamps to Futár's accepted [0,600] window and rounds like Deno's
+// clampInt clamps to Futár's accepted [0,600] window and rounds like JavaScript's
 // Math.round. snapMinutes builds on it for minutesBefore/minutesAfter.
 func clampInt(v any, fallback int) int {
 	n, ok := asNumber(v)
@@ -550,8 +547,9 @@ type stopResult struct {
 }
 
 // buildStopArrivalsBatch compacts the per-stop upstream responses into the
-// batched wire format mirrored by expandStopArrivalsBatch in
-// src/features/transit/arrivals-batch.ts. `stops` stays per-stop (a station's
+// batched wire format parsed by the native app (FutarApi.kt in
+// native/shared/.../features/transit; the deprecated web client has its own
+// copy, src/features/transit/arrivals-batch.ts). `stops` stays per-stop (a station's
 // platform dots are derived from its own response), while the route/trip/alert
 // reference dictionaries are deduplicated across the whole batch.
 func buildStopArrivalsBatch(results []stopResult) map[string]any {
@@ -739,7 +737,7 @@ func Handler(e *core.RequestEvent) error {
 	}
 	defer resp.Body.Close()
 
-	// JSON pass-through, exactly like the Deno function: upstream 2xx -> 200,
+	// JSON pass-through: upstream 2xx -> 200,
 	// anything else -> 502, body forwarded verbatim.
 	status := http.StatusOK
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

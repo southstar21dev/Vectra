@@ -9,6 +9,8 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/mails"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
+
+	"vectra/pb/internal/schema"
 )
 
 func TestUsersCollection(t *testing.T) {
@@ -80,13 +82,17 @@ func TestDataCollections(t *testing.T) {
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	for _, name := range []string{"schedule_events", "neptun_schedule_events", "schedule_items",
-		"transit_trackers", "course_tracker_data", "trip_plans", "push_subscriptions"} {
-		c, err := app.FindCollectionByNameOrId(name)
-		require.NoError(t, err, name)
-		require.Equal(t, "user = @request.auth.id", *c.ListRule, name)
-		require.NotNil(t, c.Fields.GetByName("user"), name)
+	owned, err := schema.OwnerCollections(app)
+	require.NoError(t, err)
+	checked := 0
+	for _, c := range owned {
+		if strings.HasPrefix(c.Name, "passkey") {
+			continue // server-managed, with their own rules
+		}
+		require.Equal(t, "user = @request.auth.id", *c.ListRule, c.Name)
+		checked++
 	}
+	require.Equal(t, 7, checked, "schedule_events, neptun_schedule_events, schedule_items, transit_trackers, course_tracker_data, trip_plans, push_subscriptions")
 
 	tt, err := app.FindCollectionByNameOrId("transit_trackers")
 	require.NoError(t, err)

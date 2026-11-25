@@ -16,6 +16,29 @@ The native apps choose by build type (`native/androidApp/build.gradle.kts`,
 `native/shared/build.gradle.kts`); `-Pvectra.pocketbaseUrl=…` overrides both. New backend code
 reaches dev on every push to `dev`, so migrations run there before they reach production.
 
+## Environment variables (the reference)
+
+`internal/config` holds the same list (`config.Vars`) and checks it when the server starts: a missing
+required variable is logged as `config: ERROR ...`, an optional one as a warning, and a variable with
+one of our prefixes that nothing reads (for example `WEBAUTHN_RP_ORIGIN`) as a probable typo. Set
+`VECTRA_STRICT_CONFIG=1` to make a missing required variable abort the start instead of only logging.
+Add a new setting to `config.Vars` and to this table together. Without a variable, the route that
+needs it answers 500 and `/api/health` stays green.
+
+| Variable | Required | Used by | Production value | Dev value (Coolify) |
+|---|---|---|---|---|
+| `NEPTUN_ENCRYPTION_KEY` | yes | `/crypto`, `/neptun/replace`, old `vc2:` data upgrade | the production secret (`openssl rand -hex 32`) | a new random value, never production's |
+| `FUTAR_API_KEY` | yes | `/futar` | the BKK Futár key | production's key is fine |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | yes | `/push/send` | the production pair | a new pair |
+| `VAPID_SUBJECT` | no | `/push/send` | a `mailto:` address; defaults to a placeholder | `mailto:support@southstar21.dev` |
+| `WEBAUTHN_RP_ID` | yes | passkeys | `vectra.southstar21.dev` | `vectra.southstar21.dev` |
+| `WEBAUTHN_RP_ORIGINS` | yes | passkeys, comma-separated | the web origin plus the `android:apk-key-hash:` origin of the release signing key | web origin plus the debug key hash |
+| `WEBAUTHN_RP_DISPLAY_NAME` | yes | passkeys | the app name shown in the passkey prompt | `Vectra Dev` |
+| `TRUSTED_PROXY` | no | client IP for rate limits | `cloudflare` | `cloudflare` |
+| `VECTRA_STRICT_CONFIG` | no | boot check above | `1` once the list is verified | unset |
+
+`docker-compose.yml` sets every variable to a dev placeholder for a local instance.
+
 ## Setting up the dev resource in Coolify
 
 Same as production: build `backend/Dockerfile` with base directory `/backend`, a persistent volume
@@ -28,7 +51,7 @@ on `/app/pb_data`, port 8090, but branch `dev` and the domain above. Environment
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | a new pair (`npx web-push generate-vapid-keys`) |
 | `VAPID_SUBJECT` | `mailto:support@southstar21.dev` |
 | `WEBAUTHN_RP_ID` | `vectra.southstar21.dev` |
-| `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev,android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
+| `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev` (web-only: remove with web/), `android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Vectra Dev` |
 | `TRUSTED_PROXY` | `cloudflare` (see below) |
 
@@ -64,6 +87,37 @@ by the environment, not by the database:
 The environment wins over the "Trusted proxy" setting in the dashboard (a saved value is replaced on
 the next settings reload). Never publish the container port to the internet: reached directly, the
 header is client-controlled. The compose file binds it to `127.0.0.1` for that reason.
+
+## Rate limits
+
+Two layers, both keyed on the client IP (see above) unless a user or identity is named.
+
+**In-process limiters.** Every value is in one table, `internal/limits/limits.go`; each package builds
+its limiter from it. State is in memory, so it resets on every restart or deploy.
+
+| Limit | Applies to | Key |
+|---|---|---|
+| `ReauthUser` / `ReauthIP` | wrong current-password checks (account delete, email change, passkey enrolment, `users` password change) | user, IP |
+| `AuthIdentityFailures` / `AuthIPFailures` | failed password logins | identity, IP (v6 /64) |
+| `AuthSignups` / `AuthResets` | sign-ups, reset mails | IP (v6 /64) |
+| `CryptoValues` | `/crypto` values per window | user |
+| `NeptunReplace` | `/neptun/replace` | user |
+| `PasskeyLoginStart` | public passkey login start | IP |
+| `PushSend` | `/push/send` (superusers exempt) | user |
+| `FutarPerIP` / `FutarUpstream` | Futár proxy per IP / calls to the Futár API overall | IP, process |
+
+**PocketBase's own limiter** (dashboard, Settings > Application > Rate limiting). Migrations 9 and 12
+seed it once and never overwrite an operator's edit, so the dashboard is the source of truth. Expected
+state: enabled, with these rules:
+
+| Label | Max requests | Window (s) |
+|---|---|---|
+| `*:auth` | 2 | 3 |
+| `*:create` | 20 | 5 |
+| `/api/batch` | 3 | 1 |
+| `/api/` | 300 | 10 |
+| `*:requestPasswordReset` | 3 | 60 |
+| `*:confirmPasswordReset` | 10 | 60 |
 
 ## Container user
 

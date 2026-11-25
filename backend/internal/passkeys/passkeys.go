@@ -16,6 +16,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/types"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 	"vectra/pb/internal/reauth"
 )
@@ -45,17 +46,13 @@ const (
 	// grows without bound.
 	challengeCleanupJobID    = "passkey_challenges_cleanup"
 	challengeCleanupSchedule = "*/10 * * * *" // every 10 minutes
-
-	// loginStartMaxPerWindow caps how many public login ceremonies one client
-	// (keyed by remote IP) may begin per loginStartWindow, so a single caller
-	// cannot flood passkey_challenges.
-	loginStartMaxPerWindow = 30
-	loginStartWindow       = time.Minute
 )
 
 // loginStartLimiter is the process-wide fixed-window limiter guarding the
-// public LoginStartHandler. It is a var so tests can substitute a fresh one.
-var loginStartLimiter = ratelimit.New(loginStartMaxPerWindow, loginStartWindow)
+// public LoginStartHandler (limits.PasskeyLoginStart: how many ceremonies one
+// client IP may begin, so a single caller cannot flood passkey_challenges). It
+// is a var so tests can substitute a fresh one.
+var loginStartLimiter = ratelimit.New(limits.PasskeyLoginStart.Max, limits.PasskeyLoginStart.Window)
 
 var (
 	errChallengeNotFound = errors.New("challenge not found")
@@ -65,9 +62,9 @@ var (
 )
 
 // newWebAuthn builds the WebAuthn relying-party instance from the deployment
-// environment. RPID/RPOrigins MUST mirror Supabase's webauthn_rp_id /
-// webauthn_rp_origins (including any android:apk-key-hash: origin) or existing
-// Supabase-migrated passkeys will stop verifying.
+// environment. RPID/RPOrigins must stay the values existing credentials were
+// registered under (including any android:apk-key-hash: origin) or those
+// passkeys, migrated Supabase ones included, will stop verifying.
 //
 // User verification is required for both ceremonies: passkeys are the only
 // factor on this login path, so a bare user-presence tap must not suffice.

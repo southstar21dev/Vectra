@@ -33,6 +33,9 @@ services:
       # --- Passkey (WebAuthn) relying-party config ---
       WEBAUTHN_RP_DISPLAY_NAME: "${WEBAUTHN_RP_DISPLAY_NAME:-Vectra (dev)}"
       WEBAUTHN_RP_ID: "${WEBAUTHN_RP_ID:-localhost}"
+      # web-only: remove with web/ (the default origin is the web Vite dev
+      # server; a local native build needs its android:apk-key-hash: origin
+      # added by hand).
       WEBAUTHN_RP_ORIGINS: "${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}"
 
 volumes:

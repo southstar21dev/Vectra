@@ -8,23 +8,18 @@ import (
 
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
-const (
-	// Window / PerUserMax / PerIPMax bound password checks: each one is a
-	// password-guessing oracle for whoever holds the session token. All
-	// re-auth routes share one bucket per user and one per client IP, so
-	// spreading guesses across endpoints buys no extra attempts.
-	Window     = 15 * time.Minute
-	PerUserMax = 5
-	PerIPMax   = 20
-)
-
-// UserLimiter / IPLimiter are vars so tests can substitute fresh ones.
+// UserLimiter / IPLimiter bound password checks (limits.ReauthUser and
+// limits.ReauthIP): each one is a password-guessing oracle for whoever holds
+// the session token. All re-auth routes share one bucket per user and one per
+// client IP, so spreading guesses across endpoints buys no extra attempts.
+// They are vars so tests can substitute fresh ones (see reauthtest.Use).
 var (
-	UserLimiter = ratelimit.New(PerUserMax, Window)
-	IPLimiter   = ratelimit.New(PerIPMax, Window)
+	UserLimiter = ratelimit.New(limits.ReauthUser.Max, limits.ReauthUser.Window)
+	IPLimiter   = ratelimit.New(limits.ReauthIP.Max, limits.ReauthIP.Window)
 )
 
 // Check verifies that the authenticated caller supplied their current

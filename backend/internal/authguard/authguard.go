@@ -13,29 +13,20 @@ import (
 
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
-const (
-	failWindow = 15 * time.Minute
-	// FailsPerIdentity bounds failed password logins per account identity,
-	// whatever addresses they come from. FailsPerIP bounds them per client
-	// address (IPv4, or IPv6 /64), whichever identities are tried.
-	FailsPerIdentity = 10
-	FailsPerIP       = 30
-
-	// Sign-ups and reset mails per client address (IPv4, or IPv6 /64).
-	mailWindow   = 10 * time.Minute
-	SignupsPerIP = 30
-	ResetsPerIP  = 10
-)
-
+// Failed password logins are bounded per account identity (whatever addresses
+// they come from) and per client address (IPv4, or IPv6 /64), sign-ups and
+// reset mails per client address. The values live in internal/limits.
+//
 // Limiters are vars so tests can substitute fresh ones.
 var (
-	IdentityFailures = ratelimit.New(FailsPerIdentity, failWindow)
-	IPFailures       = ratelimit.New(FailsPerIP, failWindow)
-	Signups          = ratelimit.New(SignupsPerIP, mailWindow)
-	Resets           = ratelimit.New(ResetsPerIP, mailWindow)
+	IdentityFailures = ratelimit.New(limits.AuthIdentityFailures.Max, limits.AuthIdentityFailures.Window)
+	IPFailures       = ratelimit.New(limits.AuthIPFailures.Max, limits.AuthIPFailures.Window)
+	Signups          = ratelimit.New(limits.AuthSignups.Max, limits.AuthSignups.Window)
+	Resets           = ratelimit.New(limits.AuthResets.Max, limits.AuthResets.Window)
 )
 
 // Register binds every guard.

@@ -2,6 +2,7 @@ package routes_test
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -131,5 +132,74 @@ func TestRouteBindings(t *testing.T) {
 
 	for i := range scenarios {
 		scenarios[i].Test(t)
+	}
+}
+
+// TestSuperuserBindings enforces the auth convention: routes for signed-in
+// users refuse a superuser token (403), and push send, the one route
+// superusers may call, lets it through to the handler.
+func TestSuperuserBindings(t *testing.T) {
+	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) { routes.Register(e) }
+	super := func(t testing.TB, app *tests.TestApp) {
+		_, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "root@test.local")
+		if err == nil {
+			return
+		}
+		col, err := app.FindCollectionByNameOrId(core.CollectionNameSuperusers)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := core.NewRecord(col)
+		r.SetEmail("root@test.local")
+		r.SetPassword("password123")
+		if err := app.Save(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	token := func(t testing.TB, app *tests.TestApp) string {
+		super(t, app)
+		r, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "root@test.local")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tok, err := r.NewAuthToken()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tok
+	}
+
+	for _, tc := range []struct {
+		name, method, url string
+		status            int
+	}{
+		{"crypto", http.MethodPost, "/api/vectra/crypto", http.StatusForbidden},
+		{"account delete", http.MethodPost, "/api/vectra/account/delete", http.StatusForbidden},
+		{"account email", http.MethodPost, "/api/vectra/account/email", http.StatusForbidden},
+		{"neptun replace", http.MethodPost, "/api/vectra/neptun/replace", http.StatusForbidden},
+		{"passkeys list", http.MethodGet, "/api/vectra/passkeys", http.StatusForbidden},
+		{"push send is superuser-capable", http.MethodPost, "/api/vectra/push/send", http.StatusBadRequest},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := tests.NewTestApp()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer app.Cleanup()
+			s := tests.ApiScenario{
+				Name:            tc.name,
+				Method:          tc.method,
+				URL:             tc.url,
+				Body:            strings.NewReader(`{}`),
+				Headers:         map[string]string{"Authorization": token(t, app)},
+				ExpectedStatus:  tc.status,
+				ExpectedContent: []string{`"status":` + strconv.Itoa(tc.status)},
+				TestAppFactory:  func(testing.TB) *tests.TestApp { return app },
+				BeforeTestFunc:  register,
+			}
+			s.DisableTestAppCleanup = true
+			s.Test(t)
+		})
 	}
 }

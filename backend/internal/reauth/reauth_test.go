@@ -4,13 +4,11 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
 
-	"vectra/pb/internal/ratelimit"
 	_ "vectra/pb/migrations"
 )
 
@@ -18,10 +16,7 @@ import (
 // guesses spend the shared budget, then even the right one is refused (429),
 // while updates that do not touch password fields are never throttled.
 func TestPasswordChangeGuard(t *testing.T) {
-	prevUser, prevIP := UserLimiter, IPLimiter
-	UserLimiter = ratelimit.New(2, time.Minute)
-	IPLimiter = ratelimit.New(100, time.Minute)
-	t.Cleanup(func() { UserLimiter, IPLimiter = prevUser, prevIP })
+	swapLimiters(t, 2, 100)
 
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)

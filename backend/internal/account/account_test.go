@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
@@ -14,18 +13,14 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
 	"github.com/stretchr/testify/require"
 
-	"vectra/pb/internal/ratelimit"
-	"vectra/pb/internal/reauth"
+	"vectra/pb/internal/reauth/reauthtest"
 	_ "vectra/pb/migrations"
 )
 
 // useLimiters swaps in fresh re-auth limiters allowing perUser checks per user.
 func useLimiters(t *testing.T, perUser int) {
 	t.Helper()
-	prevUser, prevIP := reauth.UserLimiter, reauth.IPLimiter
-	reauth.UserLimiter = ratelimit.New(perUser, time.Minute)
-	reauth.IPLimiter = ratelimit.New(100, time.Minute)
-	t.Cleanup(func() { reauth.UserLimiter, reauth.IPLimiter = prevUser, prevIP })
+	reauthtest.Use(t, perUser, 100)
 }
 
 func postAs(app *tests.TestApp, auth *core.Record, target, body string, handler func(*core.RequestEvent) error) (*httptest.ResponseRecorder, error) {

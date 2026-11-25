@@ -15,7 +15,7 @@ var RowQuotas = map[string]int{
 	"schedule_items":         5000,
 	"transit_trackers":       200,
 	"course_tracker_data":    500,
-	"trip_plans":             100,
+	"trip_plans":             100, // web-only: remove with web/
 }
 
 // RegisterRowQuotas refuses record creation through the API once the caller
