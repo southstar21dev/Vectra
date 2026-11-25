@@ -261,6 +261,8 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             // A pushed screen slides in from the right; the bar leaves just ahead of its edge.
             // By the view's right edge: on iPad the bar's area is a centred strip, not the whole window.
             view.transform = CGAffineTransform(translationX: -(view.center.x + view.bounds.width / 2) * covered, y: 0)
+            // Folding from the vertical layout while covered leaves its faded alpha behind.
+            view.alpha = shownAlpha
         }
     }
 
