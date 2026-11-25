@@ -14,7 +14,6 @@ import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.color
 import dev.southstar21.vectra.core.preferences.TimeFormat
-import dev.southstar21.vectra.core.time.formatMinuteOfDay
 import dev.southstar21.vectra.core.time.formatTime
 
 /** The type word and its colour tone, the same tones the class chips used before the redesign. */
@@ -36,8 +35,8 @@ private fun classTypeWord(event: ScheduleEvent, intensiveCourses: Set<String>?):
     }
 }
 
-private fun overlapNote(o: Overlap): CardNote =
-    CardNote("Overlaps ${o.otherTitle} ${formatMinuteOfDay(o.start)}–${formatMinuteOfDay(o.end % (24 * 60))}", alert = true)
+private fun overlapNote(o: Overlap, timeFormat: TimeFormat): CardNote =
+    CardNote("Overlaps ${o.otherTitle} ${rangeLabel(o.start, o.end, timeFormat)}", alert = true)
 
 /** One class card: what the list knows about it for this day. */
 internal class ClassCardState(
@@ -73,7 +72,7 @@ internal fun ClassCard(
     val type = classTypeWord(event, intensiveCourses)
     // No "cancelled" line: it would push the orb down between taps of the status cycle; the stamp says it.
     val notes = listOfNotNull(
-        state.overlap?.let(::overlapNote),
+        state.overlap?.let { overlapNote(it, timeFormat) },
         CardNote("Checked in. Will sync when you are back online").takeIf { state.pendingSync && state.status != AttendanceStatus.Unmarked },
     )
     val content = DayCardContent(
@@ -125,11 +124,11 @@ private fun itemTime(entry: DayEntry.Item, timeFormat: TimeFormat): TimeBlock {
     }
 }
 
-private fun itemNotes(c: ItemConflicts): List<CardNote> {
+private fun itemNotes(c: ItemConflicts, timeFormat: TimeFormat): List<CardNote> {
     val pending = c.conflicts.any { it.needsAcknowledgment }
     val repoOverlap = c.conflicts.firstOrNull()?.let { Overlap(it.otherTitle, it.startMinute, it.endMinute) }
     return listOfNotNull(
-        (c.overlap ?: repoOverlap?.takeIf { pending })?.let(::overlapNote),
+        (c.overlap ?: repoOverlap?.takeIf { pending })?.let { overlapNote(it, timeFormat) },
         CardNote("Open this item to review and acknowledge the clash", alert = true).takeIf { pending || c.waitingForAck },
         CardNote("Changed on another device too. Keep which copy?", alert = true).takeIf { c.syncConflict },
     )
@@ -163,7 +162,7 @@ internal fun ItemCard(
         startColor = d.text,
         struck = task && done,
         clash = conflicts.overlap != null || conflicts.conflicts.any { it.needsAcknowledgment },
-        notes = itemNotes(conflicts),
+        notes = itemNotes(conflicts, timeFormat),
         room = item.location,
         clickLabel = "Open ${item.title}",
     )

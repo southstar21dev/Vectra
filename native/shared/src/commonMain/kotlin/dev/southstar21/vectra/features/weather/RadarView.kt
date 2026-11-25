@@ -59,6 +59,7 @@ import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
 import dev.southstar21.vectra.core.maps.OpenFreeMapAttribution
 import dev.southstar21.vectra.core.maps.easeTo
+import dev.southstar21.vectra.core.preferences.TimeFormat
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -219,13 +220,14 @@ private fun RadarOverlays(
     onLocate: () -> Unit,
 ) {
     val c = Vectra.colors
+    val hour12 = Vectra.appearance.timeFormat == TimeFormat.H12
     val weather by repo.weather.collectAsStateWithLifecycle()
     val safeTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val safeBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Box(Modifier.fillMaxSize()) {
         RadarHeader(
             weather.data,
-            timeline.label,
+            timeline.label(hour12),
             onClose,
             Modifier.align(Alignment.TopCenter).padding(top = safeTop + 8.dp, start = 12.dp, end = 12.dp).widthIn(max = RadarControlsMaxWidth)
                 .graphicsLayer { alpha = chrome; translationY = (1 - chrome) * -12.dp.toPx() },
@@ -243,7 +245,7 @@ private fun RadarOverlays(
                 .graphicsLayer { alpha = chrome; translationY = (1 - chrome) * 24.dp.toPx() },
         ) {
             RadarTimeline(
-                TimelineState(timeline.rain, timeline.index, timeline.label, timeline.playing, enabled = settled),
+                TimelineState(timeline.rain, timeline.index, timeline.label(hour12), timeline.playing, enabled = settled),
                 onTogglePlay = timeline::togglePlay,
                 onPick = timeline::pick,
             )
@@ -302,7 +304,7 @@ internal class RadarTimelineState {
     val frames: List<RadarFrame> get() = data?.radarFrames.orEmpty()
     val current: RadarFrame? get() = frames.getOrNull(index)
     val live: RadarFrame? get() = data?.let { d -> frames.firstOrNull { it.time == d.latestPastTime } ?: frames.lastOrNull() }
-    val label: RadarFrameLabel? get() = current?.let { f -> data?.let { formatRadarFrameLabel(f, it.latestPastTime) } }
+    fun label(hour12: Boolean): RadarFrameLabel? = current?.let { f -> data?.let { formatRadarFrameLabel(f, it.latestPastTime, hour12 = hour12) } }
     val rain: List<RainSample?> get() = samples
 
     fun togglePlay() { playing = !playing }

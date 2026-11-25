@@ -99,7 +99,7 @@ fun formatRadarFrameLabel(
     val t = Instant.fromEpochSeconds(frame.time).toLocalDateTime(zone)
     val timeStr = if (hour12) {
         val h = (t.hour % 12).let { if (it == 0) 12 else it }
-        "${pad2(h)}:${pad2(t.minute)} ${if (t.hour >= 12) "PM" else "AM"}"
+        "$h:${pad2(t.minute)} ${if (t.hour >= 12) "PM" else "AM"}"
     } else "${pad2(t.hour)}:${pad2(t.minute)}"
     val diffMinutes = floor((frame.time - referenceTime) / 60.0 + 0.5).toLong()
     val relative = if (diffMinutes <= -5) "-${abs(diffMinutes)}m" else "Now"
