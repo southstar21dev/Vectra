@@ -1,0 +1,65 @@
+# Warns before the iOS CI development certificate (the IOS_DEV_P12 secret) expires, which would make
+# every TestFlight archive fail after the GitHub release is already published. Renew it with
+# scripts/renew-ci-cert.sh. A weekly run opens one issue when the certificate has under 30 days left
+# (or when the secret is missing or unreadable), and does nothing while an issue is still open.
+name: iOS CI certificate expiry
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The secrets live in (or are readable from) the release environment, like the testflight job.
+    environment: release
+    permissions:
+      contents: read
+      issues: write
+    env:
+      WARN_DAYS: 30
+    steps:
+      - id: expiry
+        name: Read the certificate expiry
+        env:
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
+        run: |
+          if [ -z "$IOS_DEV_P12" ] || [ -z "$IOS_DEV_P12_PASSWORD" ]; then
+            echo "problem=IOS_DEV_P12 or IOS_DEV_P12_PASSWORD is not set." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$IOS_DEV_P12" | base64 --decode > "$RUNNER_TEMP/dev.p12"
+          trap 'rm -f "$RUNNER_TEMP/dev.p12" "$RUNNER_TEMP/dev.pem"' EXIT
+          # The .p12 uses legacy encryption (3DES, SHA1) so macOS can import it; OpenSSL 3 needs -legacy.
+          export P12PASS="$IOS_DEV_P12_PASSWORD"
+          openssl pkcs12 -in "$RUNNER_TEMP/dev.p12" -passin env:P12PASS -nokeys -clcerts -legacy -out "$RUNNER_TEMP/dev.pem" 2>/dev/null \
+            || openssl pkcs12 -in "$RUNNER_TEMP/dev.p12" -passin env:P12PASS -nokeys -clcerts -out "$RUNNER_TEMP/dev.pem" 2>/dev/null \
+            || { echo "problem=IOS_DEV_P12 cannot be read with IOS_DEV_P12_PASSWORD." >> "$GITHUB_OUTPUT"; exit 0; }
+          END="$(openssl x509 -in "$RUNNER_TEMP/dev.pem" -noout -enddate | cut -d= -f2)"
+          echo "The CI certificate expires on $END." >> "$GITHUB_STEP_SUMMARY"
+          if ! openssl x509 -in "$RUNNER_TEMP/dev.pem" -noout -checkend $(( WARN_DAYS * 86400 )) > /dev/null; then
+            echo "problem=The iOS CI certificate expires on $END (within $WARN_DAYS days)." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open an issue
+        if: steps.expiry.outputs.problem != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROBLEM: ${{ steps.expiry.outputs.problem }}
+        run: |
+          TITLE="Renew the iOS CI certificate"
+          OPEN="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" --json number --jq 'length')"
+          if [ "$OPEN" != 0 ]; then
+            echo "An issue is already open: $PROBLEM" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$PROBLEM
+
+          Without a valid certificate every TestFlight upload fails at archive time, after the GitHub release is published, in every app repo that uses it. Make a new one with \`scripts/renew-ci-cert.sh\` (csr, upload the CSR to Apple, then install) and set IOS_DEV_P12 and IOS_DEV_P12_PASSWORD in each repo."
+          echo "Opened an issue: $PROBLEM" >> "$GITHUB_STEP_SUMMARY"

@@ -7,8 +7,9 @@
 // so nothing has to be committed back to the repo. Needs GITHUB_REPOSITORY and GITHUB_TOKEN.
 //
 //   node .github/scripts/altstore-source.mjs site
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const outDir = process.argv[2] ?? 'site';
 const repo = process.env.GITHUB_REPOSITORY ?? 'southstar21dev/Vectra';
@@ -17,7 +18,16 @@ const token = process.env.GITHUB_TOKEN;
 const KEEP = 20;
 const iconURL = `https://raw.githubusercontent.com/${repo}/master/native/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png`;
 const tintColor = '8B5CF6';
-const minOSVersion = '18.5'; // native/iosApp/project.yml deploymentTarget
+
+// The iOS minimum is owned by native/iosApp/project.yml (options.deploymentTarget.iOS); read it from
+// there so raising the target there is enough and AltStore never offers an update a device can't run.
+async function deploymentTarget() {
+  const file = join(dirname(fileURLToPath(import.meta.url)), '../../native/iosApp/project.yml');
+  const match = /^\s*deploymentTarget:\s*\n\s+iOS:\s*"?(\d+(?:\.\d+)*)"?/m.exec(await readFile(file, 'utf8'));
+  if (!match) throw new Error(`No deploymentTarget.iOS found in ${file}`);
+  return match[1];
+}
+const minOSVersion = await deploymentTarget();
 
 async function releases() {
   const all = [];
@@ -35,7 +45,8 @@ async function releases() {
   }
 }
 
-// Same rule as native/androidApp/build.gradle.kts and iosApp/project.yml: dev.N is 0-49, rc.N is
+// Same rule as versionCodeOf in native/androidApp/build.gradle.kts and the build number in
+// native/iosApp/project.yml (keep all three in step; both native files point back here): dev.N is 0-49, rc.N is
 // 50-98 and the release is 99, so every published build installs as an update over the one before.
 // CFBundleShortVersionString is the plain x.y.z.
 function bundleVersions(tag) {
