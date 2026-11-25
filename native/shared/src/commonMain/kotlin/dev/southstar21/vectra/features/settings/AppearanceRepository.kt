@@ -11,10 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Appearance prefs: the stored prefs paint first; once the profile loads its
- * `appearance` wins (per user, once), unless this device holds a change it never
+ * `appearance` wins (and again whenever a newer record brings a different one), unless this device holds a change it never
  * managed to save there; changes apply instantly and sync to the profile in the background.
  */
 class AppearanceRepository(
@@ -25,6 +26,8 @@ class AppearanceRepository(
     private val _prefs = MutableStateFlow(AppearancePrefs.Default)
     val prefs: StateFlow<AppearancePrefs> = _prefs.asStateFlow()
     private var hydratedFor: String? = null
+    /** The profile's `appearance` as last applied here, to tell a newer one (from another device) apart. */
+    private var hydratedAppearance: JsonElement? = null
 
     private val _loaded = MutableStateFlow(false)
     /** The stored theme is in [prefs]. Until then the first frames would paint the default one. */
@@ -47,12 +50,20 @@ class AppearanceRepository(
                 if (profile == null) {
                     if (hydratedFor != null) {
                         hydratedFor = null
+                        hydratedAppearance = null
                         kv.set(UNSYNCED_KEY, null)
                         set(AppearancePrefs.Default)
                     }
                 } else if (hydratedFor != profile.id) {
                     hydratedFor = profile.id
+                    hydratedAppearance = profile.appearance
                     hydrate(profile)
+                } else if (hydratedAppearance != profile.appearance) {
+                    // A fresher record (token refresh, another device's change): follow it unless a local change is unsaved.
+                    hydratedAppearance = profile.appearance
+                    if (kv.get(UNSYNCED_KEY) != profile.id) {
+                        set(profile.appearance?.let(AppearancePrefs::normalize) ?: AppearancePrefs.Default)
+                    }
                 }
             }
         }

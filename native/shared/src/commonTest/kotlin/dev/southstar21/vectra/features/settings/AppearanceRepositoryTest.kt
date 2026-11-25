@@ -40,6 +40,7 @@ class AppearanceRepositoryTest {
     private val scopes = mutableListOf<CoroutineScope>()
     private val patchLock = Mutex()
     private val patches = mutableListOf<String>()
+    private var store = AuthStore(kv, PlainSecretCipher)
 
     @AfterTest fun stop() = scopes.forEach { it.cancel() }
 
@@ -53,7 +54,7 @@ class AppearanceRepositoryTest {
     /** One launch, as AppStartup does it: stored prefs first, then the stored session. */
     private suspend fun launch(online: Boolean, serverAccent: AccentKey = AccentKey.Blue): AppearanceRepository {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default).also { scopes += it }
-        val store = AuthStore(kv, PlainSecretCipher)
+        store = AuthStore(kv, PlainSecretCipher)
         val engine = MockEngine { req ->
             if (!online) throw IOException("offline")
             if (req.method == HttpMethod.Patch) patchLock.withLock { patches += (req.body as TextContent).text }
@@ -121,6 +122,27 @@ class AppearanceRepositoryTest {
         repo.update { it.copy(accent = AccentKey.Green) }
         until("green sent") { patched("green") }
         until("the mark cleared") { unsynced() == null }
+        assertEquals(AccentKey.Green, repo.prefs.value.accent)
+    }
+
+    @Test fun aFresherRecordWithAnotherDevicesChoiceIsFollowed() = runTest {
+        signedIn("u1", AccentKey.Blue)
+        val repo = launch(online = true)
+        until("the profile's accent applied") { repo.prefs.value.accent == AccentKey.Blue }
+        // A token refresh brings a record another device changed.
+        store.save(AuthState("tok", VectraJson.parseToJsonElement(record("u1", AccentKey.Pink)).jsonObject))
+        until("the newer accent applied") { repo.prefs.value.accent == AccentKey.Pink }
+        assertTrue(patchLock.withLock { patches.isEmpty() })
+    }
+
+    @Test fun aFresherRecordDoesNotOverwriteAnUnsavedLocalChange() = runTest {
+        signedIn("u1", AccentKey.Blue)
+        val repo = launch(online = false)
+        until("the profile's accent applied") { repo.prefs.value.accent == AccentKey.Blue }
+        repo.update { it.copy(accent = AccentKey.Green) }
+        until("the change stored with its mark") { storedAccent() == AccentKey.Green && unsynced() == "u1" }
+        store.save(AuthState("tok", VectraJson.parseToJsonElement(record("u1", AccentKey.Pink)).jsonObject))
+        delay(200)
         assertEquals(AccentKey.Green, repo.prefs.value.accent)
     }
 }
