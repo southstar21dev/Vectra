@@ -100,15 +100,22 @@ class AndroidLocationProvider(private val context: Context) : LocationProvider {
         val fix = withTimeoutOrNull(10_000) {
             suspendCancellableCoroutine { cont ->
                 val signal = CancellationSignal()
-                cont.invokeOnCancellation { signal.cancel() }
+                // Pre-Android-11 single updates have no signal: keep the listeners so none outlives the call.
+                val legacy = mutableListOf<LocationListener>()
+                fun release() = legacy.forEach { runCatching { lm.removeUpdates(it) } }
+                cont.invokeOnCancellation { signal.cancel(); release() }
                 providers.forEach { p ->
                     if (Build.VERSION.SDK_INT >= 30) {
                         lm.getCurrentLocation(p, signal, context.mainExecutor) { loc ->
                             if (loc != null && cont.isActive) { signal.cancel(); cont.resume(loc.toFix()) }
                         }
                     } else {
+                        val listener = LocationListener { loc ->
+                            if (cont.isActive) { cont.resume(loc.toFix()); release() }
+                        }
+                        legacy += listener
                         @Suppress("DEPRECATION")
-                        lm.requestSingleUpdate(p, { loc -> if (cont.isActive) cont.resume(loc.toFix()) }, Looper.getMainLooper())
+                        lm.requestSingleUpdate(p, listener, Looper.getMainLooper())
                     }
                 }
             }

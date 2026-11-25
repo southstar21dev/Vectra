@@ -168,6 +168,8 @@ fun LiquidNavbar(
                     selectedIndex = activeIndex,
                     // The drop ticks as it crosses each tab; landing is felt by that last tick.
                     onSelect = { index -> onNavigate(items[index].route) },
+                    onReselect = { index -> onNavigate(items[index].route) },
+                    label = { index -> items[index].label },
                     onCross = { haptics.frequentTick() },
                     backdrop = backdrop,
                     accent = c.accentPrimary,

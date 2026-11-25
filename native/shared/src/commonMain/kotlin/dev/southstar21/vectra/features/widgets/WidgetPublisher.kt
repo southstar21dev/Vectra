@@ -65,30 +65,31 @@ class WidgetPublisher(
     }
 
     /** For a cold start with no screen (background refresh): waits for the cached schedule, then publishes. */
-    suspend fun publishWhenReady(timeoutMs: Long = 20_000) {
+    suspend fun publishWhenReady(timeoutMs: Long = 20_000): Boolean {
         start()
         withTimeoutOrNull(timeoutMs) { schedule.localReady.first { it } }
-        publish()
+        return publish()
     }
 
-    suspend fun publish() = lock.withLock {
+    /** Returns whether a snapshot was handed to the host (false when the cache wasn't ready). */
+    suspend fun publish(): Boolean = lock.withLock {
         // Without a screen nothing has read the stored session yet: "no session" isn't "signed out".
         auth.restore()
         // Without a screen nothing has read a stored lock either.
         updateGate.loadStored()
         if (updateGate.state.value != null) {
             host.publish(encodeWidgetSnapshot(updateRequiredSnapshot(nowMs())))
-            return@withLock
+            return@withLock true
         }
         val today = nowInBudapest().date
         // From Monday, so the week view has the days already gone.
         val monday = mondayOf(today)
         if (auth.session.value == null) {
             host.publish(encodeWidgetSnapshot(signedOutSnapshot(nowMs())))
-            return@withLock
+            return@withLock true
         }
         // Before the cached schedule is in memory an empty list means "not read yet", not "no classes".
-        if (!schedule.localReady.value) return@withLock
+        if (!schedule.localReady.value) return@withLock false
         val events = schedule.events.value
         val items = schedule.items.value.map { it.toItem() }
         val days = (today.toEpochDays() - monday.toEpochDays()).toInt() + AheadDays + 1
@@ -99,6 +100,7 @@ class WidgetPublisher(
             encodeWidgetSnapshot(buildWidgetSnapshot(sessions, nowMs()))
         }
         host.publish(snapshot)
+        true
     }
 
     override suspend fun onSessionCleared() {
