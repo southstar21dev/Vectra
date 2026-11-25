@@ -96,10 +96,9 @@ private fun timeRange(date: LocalDate, start: String, end: String): Pair<Long, L
 private fun personalRange(o: ScheduleItemOccurrence): Pair<Long, Long>? {
     val date = LocalDate.parse(o.date)
     if (o.endTime != "24:00") return timeRange(date, o.startTime, o.endTime)
-    val start = budapestMs(date, o.startTime) ?: return null
-    val nextDay = date.plus(DatePeriod(days = 1))
-    val end = budapestMs(nextDay, o.item.endTime) ?: return null
-    return if (end > start) start to end else null
+    val start = budapestMs(date, o.startTime)
+    val end = budapestMs(date.plus(DatePeriod(days = 1)), o.item.endTime)
+    return if (start != null && end != null && end > start) start to end else null
 }
 
 /**
