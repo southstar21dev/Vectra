@@ -76,7 +76,8 @@ class Toast internal constructor(
 
 /**
  * App-wide toasts. One shows at a time, floating above the navbar; later ones queue
- * behind it. A newer toast of the same title replaces a queued one rather than piling up.
+ * behind it. A newer toast of the same title replaces a queued plain one rather than piling up;
+ * queued actionable toasts all stay, so every Undo remains reachable.
  */
 @Stable
 class Toaster {
@@ -93,7 +94,8 @@ class Toaster {
         push(ToastType.Warning, title, description, action, durationMs)
 
     private fun push(type: ToastType, title: String, description: String?, action: ToastAction?, durationMs: Long) {
-        queue.removeAll { it !== queue.firstOrNull() && it.title == title }
+        // An actionable toast (an Undo) is never dropped: each carries its own action.
+        queue.removeAll { it !== queue.firstOrNull() && it.action == null && it.title == title }
         queue.add(Toast(nextId++, type, title, description, action, durationMs))
         // Only an actionable toast is worth waiting behind; plain ones give way immediately.
         if (queue.size > 1 && queue.first().action == null) queue.removeAt(0)
