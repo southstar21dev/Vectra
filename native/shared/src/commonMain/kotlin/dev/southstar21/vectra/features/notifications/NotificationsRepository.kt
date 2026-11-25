@@ -42,7 +42,7 @@ class NotificationsRepository(
 
     suspend fun subscribe() {
         val token = push.token() ?: error("Push notifications are not available on this build")
-        val user = auth.session.value?.userId ?: error("Not authenticated")
+        val user = auth.userId ?: error("Not authenticated")
         val col = pb.collection("push_subscriptions")
         // Same token → one row: delete existing rows for this token before creating it.
         col.getFullList(filter = "user = '$user' && transport = 'fcm'").forEach { row ->
@@ -68,7 +68,7 @@ class NotificationsRepository(
 
     /** sendServerTestNotification: returns the number of devices reached. */
     suspend fun sendServerTest(): Int {
-        val user = auth.session.value?.userId ?: error("Not authenticated")
+        val user = auth.userId ?: error("Not authenticated")
         val res = pb.send(
             "/api/vectra/push/send",
             HttpMethod.Post,

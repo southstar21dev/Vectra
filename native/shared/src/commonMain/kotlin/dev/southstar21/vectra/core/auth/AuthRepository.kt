@@ -57,6 +57,16 @@ class AuthRepository(
     private val listeners: Lazy<List<SessionListener>>,
 ) {
     val session: StateFlow<AuthState?> = store.state
+
+    /**
+     * The signed-in user's id, the one answer to "who is signed in": null when signed out or when
+     * the id is empty, so no feature has its own idea of "no user". Read it where the answer must be
+     * current; [currentUserId] is the observable form.
+     */
+    val userId: String? get() = store.current?.userId?.ifEmpty { null }
+
+    val currentUserId: StateFlow<String?> = store.state.map { it?.userId?.ifEmpty { null } }
+        .stateIn(scope, SharingStarted.Eagerly, userId)
     val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
         .stateIn(scope, SharingStarted.Eagerly, store.current?.record?.let(Profile::from))
 

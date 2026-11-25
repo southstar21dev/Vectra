@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.config.DemoAccounts
 import kotlinx.coroutines.awaitCancellation
 
 /**
@@ -8,8 +9,8 @@ import kotlinx.coroutines.awaitCancellation
  */
 internal object DemoFeed {
     const val Prefix = "DEMO_"
-    const val DemoEmail = "transit-demo@test.com"
-    const val NoPinEmail = "transit-nopin@test.com"
+    const val DemoEmail = DemoAccounts.Transit
+    const val NoPinEmail = DemoAccounts.TransitNoPin
 
     private val stopsByKey by lazy { DemoLines.flatMap { line -> line.stops.map { it.key to (line to it) } }.toMap() }
     private val stopsById by lazy { stopsByKey.values.associateBy { it.second.stopId } }

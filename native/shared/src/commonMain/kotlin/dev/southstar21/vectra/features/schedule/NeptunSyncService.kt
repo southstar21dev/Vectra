@@ -197,20 +197,7 @@ internal class NeptunSyncService(
     ) {
         requireCurrent(owner, epoch)
         val encrypted = coroutineScope {
-            events.map { e ->
-                async {
-                    val enc = listOf(
-                        e.courseName, e.courseCode, e.instructor, e.location, e.dayOfWeek.toString(), e.startTime, e.endTime,
-                        e.semester, e.semesterStart, e.semesterEnd, e.eventType,
-                    ).map { v -> async { crypto.encrypt(v) } }.awaitAll()
-                    buildJsonObject {
-                        put("course_name", enc[0]); put("course_code", enc[1]); put("instructor", enc[2]); put("location", enc[3])
-                        put("day_of_week", enc[4]); put("start_time", enc[5]); put("end_time", enc[6])
-                        put("color", e.color)
-                        put("semester", enc[7]); put("semester_start", enc[8]); put("semester_end", enc[9]); put("event_type", enc[10])
-                    }
-                }
-            }.awaitAll()
+            events.map { e -> async { neptunRecord(e) { v -> crypto.encrypt(v) } } }.awaitAll()
         }
         requireCurrent(owner, epoch)
         pb.send("/api/vectra/neptun/replace", HttpMethod.Post, buildJsonObject { put("events", JsonArray(encrypted)) })

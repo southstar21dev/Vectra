@@ -92,7 +92,7 @@ class AppearanceRepository(
         val next = transform(_prefs.value)
         scope.launch {
             set(next)
-            val uid = auth.session.value?.userId?.ifEmpty { null } ?: return@launch
+            val uid = auth.userId ?: return@launch
             // Marked before the request, so a process killed mid-save still knows.
             kv.set(UNSYNCED_KEY, uid)
             push(uid, next)
@@ -101,7 +101,7 @@ class AppearanceRepository(
 
     /** Saves [next] to [uid]'s profile; the mark goes once the newest change is saved. */
     private suspend fun push(uid: String, next: AppearancePrefs) {
-        if (auth.session.value?.userId != uid) return
+        if (auth.userId != uid) return
         val saved = runSuspendCatching { auth.updateProfile(mapOf("appearance" to next.toJson())) }.isSuccess
         if (saved && _prefs.value == next && kv.get(UNSYNCED_KEY) == uid) kv.set(UNSYNCED_KEY, null)
     }

@@ -22,7 +22,7 @@ internal suspend fun removeTrackerWithUndo(repo: TransitRepository, toaster: Toa
  * order. Runs on the app scope: Undo can be tapped after the screen has gone.
  */
 private fun restoreTracker(repo: TransitRepository, toaster: Toaster, tracker: TransitTracker) {
-    repo.scope.launch {
+    repo.launchInAppScope {
         try {
             val stops = getTrackerStops(tracker)
             val restored = repo.addTracker(

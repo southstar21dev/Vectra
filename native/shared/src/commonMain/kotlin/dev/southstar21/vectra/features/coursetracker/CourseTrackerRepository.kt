@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.coursetracker
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.util.runSuspendCatching
@@ -21,7 +22,7 @@ import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
 /** Offline cache base key: `<base>_<userId>`, the bare base when signed out. */
-const val CourseTrackerCacheKey = "vectra_course_tracker_cache"
+const val CourseTrackerCacheKey = UserKeys.COURSE_TRACKER
 
 fun courseTrackerCacheKey(userId: String?): String = if (userId.isNullOrEmpty()) CourseTrackerCacheKey else "${CourseTrackerCacheKey}_$userId"
 

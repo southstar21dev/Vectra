@@ -316,7 +316,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
                 scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update favourites", it.message) } }
             },
             SheetAction("Remove tracker", RemixIcons.DeleteBinLine, destructive = true) {
-                repo.scope.launch { runSuspendCatching { removeTrackerWithUndo(repo, toaster, menu) }.onFailure { toaster.error("Failed to remove tracker", trackerErrorMessage(it)) } }
+                repo.launchInAppScope { runSuspendCatching { removeTrackerWithUndo(repo, toaster, menu) }.onFailure { toaster.error("Failed to remove tracker", trackerErrorMessage(it)) } }
             },
         ),
     )

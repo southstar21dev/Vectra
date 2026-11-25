@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.time.isValidCalendarDate
 import kotlinx.serialization.Serializable
@@ -68,11 +69,11 @@ data class ScheduleItemsState(
     val queue: List<ScheduleItemMutation> = emptyList(),
 )
 
-const val SCHEDULE_ITEMS_CACHE_BASE_KEY = "vectra_schedule_items"
+const val ScheduleItemsCacheBaseKey = UserKeys.SCHEDULE_ITEMS
 
 fun getScheduleItemsStorageKey(userId: String?): String {
     val scope = userId?.trim()?.ifEmpty { null } ?: "anonymous"
-    return "${SCHEDULE_ITEMS_CACHE_BASE_KEY}_$scope"
+    return "${ScheduleItemsCacheBaseKey}_$scope"
 }
 
 fun createEmptyScheduleItemsState() = ScheduleItemsState()
