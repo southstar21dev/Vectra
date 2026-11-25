@@ -122,7 +122,7 @@
   {
     "id": "volan_5",
     "shortName": "5",
-    "description": "Gödöllő, Hegy utca autóbusz-forduló | Vác, autóbusz-állomás",
+    "description": "Gödöllő, Hegy utca autóbusz-forduló | Gödöllő, autóbusz-állomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -656,17 +656,17 @@
     "textColor": "FFFFFF"
   },
   {
-    "id": "BKK_3410",
+    "id": "BKK_3411",
     "shortName": "41",
-    "description": "Kőérberek | Bécsi út / Vörösvári út",
+    "description": "Balatoni út | Kamaraerdei Ifjúsági Park",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
   },
   {
-    "id": "BKK_3411",
+    "id": "BKK_3410",
     "shortName": "41",
-    "description": "Balatoni út | Kamaraerdei Ifjúsági Park",
+    "description": "Kőérberek | Bécsi út / Vörösvári út",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -4562,7 +4562,7 @@
   {
     "id": "volan_869",
     "shortName": "869",
-    "description": "Szentendre, autóbusz-állomás | Budapest, Heltai Jenő tér",
+    "description": "Budapest, Heltai Jenő tér | Szentendre, autóbusz-állomás",
     "type": "COACH",
     "color": "F9AB13",
     "textColor": "000000"
@@ -5461,14 +5461,6 @@
     "description": "Kelenföld vasútállomás | Keleti pályaudvar",
     "type": "SUBWAY",
     "color": "4CA22F",
-    "textColor": "FFFFFF"
-  },
-  {
-    "id": "BKK_MOZG",
-    "shortName": "MOZG",
-    "description": "Különjárat | Különjárat",
-    "type": "BUS",
-    "color": "009EE3",
     "textColor": "FFFFFF"
   },
   {
