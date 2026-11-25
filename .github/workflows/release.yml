@@ -171,6 +171,11 @@ jobs:
     needs: plan
     if: needs.plan.outputs.version != ''
     runs-on: ubuntu-latest
+    # The signing secrets belong in the "release" environment (deployment branches: master only), so a
+    # workflow on any other ref cannot read them. Until they are moved there the repo secrets still work.
+    environment: release
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -220,6 +225,17 @@ jobs:
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
           cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
+      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
+      # downloaded files against them before anything is attached to the release.
+      - id: sums
+        name: Hash the release assets
+        run: |
+          {
+            echo "sums<<SUMS_EOF"
+            (cd release-assets && sha256sum *)
+            echo "SUMS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: android
@@ -235,6 +251,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true'
     runs-on: macos-latest
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -290,6 +308,17 @@ jobs:
           codesign -d --entitlements - "$APP/PlugIns/VectraWidgets.appex" | grep -q application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
+      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
+      # downloaded files against them before anything is attached to the release.
+      - id: sums
+        name: Hash the release assets
+        run: |
+          {
+            echo "sums<<SUMS_EOF"
+            (cd release-assets && shasum -a 256 *)
+            echo "SUMS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ios
@@ -323,10 +352,27 @@ jobs:
         with:
           node-version: 22
 
+      # Only the two build jobs' artifacts: a pattern, so an artifact another job of the run uploaded
+      # (the reusable CI web job, say) is never merged into the release.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: release-assets
+          pattern: '{android,ios}'
           merge-multiple: true
+
+      # The files must be exactly the ones the build jobs hashed. SHA256SUMS is attached to the release.
+      - name: Verify the assets against the build jobs' hashes
+        env:
+          ANDROID_SUMS: ${{ needs.android.outputs.sums }}
+          IOS_SUMS: ${{ needs.ios.outputs.sums }}
+        run: |
+          cd release-assets
+          { printf '%s\n' "$ANDROID_SUMS"; [ -z "$IOS_SUMS" ] || printf '%s\n' "$IOS_SUMS"; } > "$RUNNER_TEMP/SHA256SUMS"
+          sha256sum -c "$RUNNER_TEMP/SHA256SUMS"
+          EXPECTED=$(awk '{print $2}' "$RUNNER_TEMP/SHA256SUMS" | sed 's/^\*//' | sort)
+          ACTUAL=$(ls | sort)
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::release-assets holds files the build jobs did not hash."; exit 1; }
+          cp "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
 
       # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
       # a write token, so nothing resolved fresh or run at install time may reach it.
@@ -367,6 +413,7 @@ jobs:
     needs: [plan, publish]
     if: ${{ !cancelled() && needs.publish.result == 'success' && needs.plan.outputs.ios == 'true' }}
     runs-on: macos-latest
+    environment: release
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
