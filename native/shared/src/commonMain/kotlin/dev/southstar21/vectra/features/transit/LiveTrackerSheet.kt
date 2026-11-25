@@ -57,7 +57,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -365,9 +364,10 @@ private fun FeedUnavailable(modifier: Modifier = Modifier) {
 @Composable
 private fun StopsSection(tracker: TransitTracker, routeColor: String, stopId: String, directions: List<DirectionView>, loading: Boolean) {
     val c = Vectra.colors
-    var picked by rememberSaveable(tracker.id, stopId) { mutableIntStateOf(0) }
+    // Picked by label, not index: the lead direction changes as vehicles appear and disappear.
+    var picked by rememberSaveable(tracker.id, stopId) { mutableStateOf<String?>(null) }
     var showAll by rememberSaveable(tracker.id) { mutableStateOf(false) }
-    val dirIndex = picked.coerceIn(0, (directions.size - 1).coerceAtLeast(0))
+    val dirIndex = directionTabIndex(directions.map(::directionLabel), picked)
     Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 24.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             VText("Stops", style = vtext(20.sp to 24.sp, Weight.Bold), color = c.textPrimary)
@@ -376,7 +376,7 @@ private fun StopsSection(tracker: TransitTracker, routeColor: String, stopId: St
                 VTabs(
                     selected = dirIndex,
                     options = directions.indices.toList(),
-                    onSelect = { picked = it },
+                    onSelect = { picked = directionLabel(directions[it]) },
                     modifier = Modifier.widthIn(max = 230.dp),
                 ) { i, _ -> VText(directionLabel(directions[i]), maxLines = 1) }
             }

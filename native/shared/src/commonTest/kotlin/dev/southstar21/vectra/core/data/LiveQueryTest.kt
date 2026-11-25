@@ -208,6 +208,28 @@ class LiveQueryTest {
         job.cancel()
     }
 
+    @Test fun invalidateDuringAFetchRefetchesAfterIt() = real {
+        val scope = appScope()
+        val gate = CompletableDeferred<Unit>()
+        var server = 1
+        var calls = 0
+        val q = LiveQuery<Int, Int>(scope, staleTimeMs = 60_000) {
+            calls++
+            val seen = server
+            if (calls == 1) gate.await()
+            seen
+        }
+        val job = scope.launch { q.observe(1).collect { } }
+        waitFor { calls == 1 }
+        // The write lands while the first read is still in flight.
+        server = 2
+        q.invalidate(1)
+        gate.complete(Unit)
+        waitFor { q.peek(1).data == 2 }
+        assertEquals(2, calls)
+        job.cancel()
+    }
+
     @Test fun anAwaiterLeavingDoesNotCancelTheSharedFetch() = real {
         val gate = CompletableDeferred<Unit>()
         var started = false

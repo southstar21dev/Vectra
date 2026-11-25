@@ -88,7 +88,10 @@ fun AddTrackerScreen(repo: TransitRepository, onBack: () -> Unit) {
     val haptics = Vectra.haptics
     val scope = rememberCoroutineScope()
     val reduceMotion = Vectra.reduceMotion
-    val existing = repo.trackersQuery.collect(Unit).data.orEmpty()
+    val trackersData = repo.trackersQuery.collect(Unit).data
+    val existing = trackersData.orEmpty()
+    // Saving before the list is known would miss the line's existing tracker and create a second one.
+    val trackersReady = trackersData != null
     val draft = rememberTrackerDraft()
     val state = remember { AddTrackerState(repo, scope, toaster, draft) }
     var scrolled by remember { mutableStateOf(false) }
@@ -192,13 +195,13 @@ fun AddTrackerScreen(repo: TransitRepository, onBack: () -> Unit) {
             onBack()
         }
         when (pane) {
-            is AddTrackerPane.Line -> LineSaveBar(state, pane.route, existing, onSaved)
+            is AddTrackerPane.Line -> LineSaveBar(state, pane.route, existing, trackersReady, onSaved)
             is AddTrackerPane.Stop -> BottomBar {
                 SheetPrimaryButton(
                     onClick = { state.saveStop(pane.stop, existing, onSaved) },
                     Modifier.fillMaxWidth(),
                     pressedScale = 0.98f,
-                    enabled = state.selectedRouteId != null && !state.isSaving,
+                    enabled = state.selectedRouteId != null && trackersReady && !state.isSaving,
                 ) {
                     SheetPrimaryLabel(state.isSaving, state.selectedRoute?.let { "Track ${it.shortName} here" } ?: "Pick a line to track")
                 }
@@ -404,7 +407,7 @@ private fun BrowseAccessory(state: AddTrackerState, searchFocus: FocusRequester)
 }
 
 @Composable
-private fun LineSaveBar(state: AddTrackerState, route: FutarRoute, existing: List<TransitTracker>, onSaved: () -> Unit) {
+private fun LineSaveBar(state: AddTrackerState, route: FutarRoute, existing: List<TransitTracker>, ready: Boolean, onSaved: () -> Unit) {
     BottomBar {
         val n = state.draft.stops.size
         val tracked = existing.any { isRouteMatch(it.routeId, route.id) }
@@ -412,7 +415,7 @@ private fun LineSaveBar(state: AddTrackerState, route: FutarRoute, existing: Lis
             onClick = { state.saveLine(route, existing, onSaved) },
             Modifier.fillMaxWidth(),
             pressedScale = 0.98f,
-            enabled = n > 0 && !state.isSaving,
+            enabled = n > 0 && ready && !state.isSaving,
         ) {
             SheetPrimaryLabel(
                 state.isSaving,
