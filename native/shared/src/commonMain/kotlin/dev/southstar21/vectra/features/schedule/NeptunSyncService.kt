@@ -148,6 +148,14 @@ internal class NeptunSyncService(
         error(NEPTUN_FETCH_FAILED)
     }
 
+    /**
+     * Whether [url] serves a calendar with at least one class, checked before it is saved: a link that
+     * only looks like a URL would otherwise be stored as "connected" and fail every sync. Throws when
+     * nothing could be downloaded from it.
+     */
+    suspend fun verifyNeptunLink(url: String): Boolean =
+        parseIcs(fetchNeptunIcs(url, maxRetries = VERIFY_FETCH_ATTEMPTS)).valid.isNotEmpty()
+
     /** Parse off the main thread. */
     suspend fun parseIcs(text: String): ParseIcsResult = withContext(Dispatchers.Default) { parseIcsContent(text) }
 
@@ -360,5 +368,6 @@ internal class NeptunSyncService(
         const val MAX_SYNCS_PER_HOUR = 3
         const val ONE_HOUR_MS = 60L * 60 * 1000
         private const val ICS_FETCH_TIMEOUT_MS = 30_000L
+        private const val VERIFY_FETCH_ATTEMPTS = 2
     }
 }
