@@ -4,6 +4,7 @@ import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.platform.GeoFix
 import dev.southstar21.vectra.core.platform.GeoPermission
+import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import dev.southstar21.vectra.core.util.runSuspendCatching
@@ -57,6 +58,7 @@ class WeatherRepository(
     private val kv: KeyValueStore,
     private val locationProvider: LocationProvider,
     private val scope: CoroutineScope,
+    private val connectivity: Connectivity? = null,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val _location = MutableStateFlow<WeatherLocationState?>(null)
@@ -91,6 +93,16 @@ class WeatherRepository(
         }
         scope.launch {
             _location.filterNotNull().map { it.coords ?: BudapestCoords }.distinctUntilChanged().collect { refreshWeather(it) }
+        }
+        // Gave up while offline (or the data went stale): try again as soon as the network is back.
+        connectivity?.let { net ->
+            scope.launch {
+                var wasOnline = net.online.value
+                net.online.collect { online ->
+                    if (online && !wasOnline && _location.value != null) refreshWeather(currentCoords)
+                    wasOnline = online
+                }
+            }
         }
     }
 

@@ -281,8 +281,13 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideWeather(http: HttpClient, kv: KeyValueStore, location: LocationProvider, scope: CoroutineScope): WeatherRepository =
-        WeatherRepository(http, kv, location, scope)
+    fun provideWeather(
+        http: HttpClient,
+        kv: KeyValueStore,
+        location: LocationProvider,
+        scope: CoroutineScope,
+        connectivity: Connectivity,
+    ): WeatherRepository = WeatherRepository(http, kv, location, scope, connectivity)
 
     @DependencyGraph.Factory
     fun interface Factory {
