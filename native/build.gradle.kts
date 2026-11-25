@@ -31,12 +31,13 @@ val gitCommit: Provider<String> = providers.exec {
 }.standardOutput.asText.map { it.trim().ifEmpty { null } }
 
 /** The x.y.z a debug build is based on: the newest release tag, else vectra.versionName. */
-val debugBaseVersion by extra(latestReleaseTag.orElse(providers.gradleProperty("vectra.versionName")))
+val debugBaseVersion: Provider<String> = latestReleaseTag.orElse(providers.gradleProperty("vectra.versionName"))
+extra.set("debugBaseVersion", debugBaseVersion)
 
 /** What a debug build shows: [debugBaseVersion] plus the commit. */
-val debugVersionName by extra(
-    debugBaseVersion.zip(gitCommit.orElse("")) { version, commit -> if (commit.isEmpty()) version else "$version+$commit" },
-)
+val debugVersionName: Provider<String> =
+    debugBaseVersion.zip(gitCommit.orElse("")) { version, commit -> if (commit.isEmpty()) version else "$version+$commit" }
+extra.set("debugVersionName", debugVersionName)
 
 // One run over all modules' sources: `./gradlew detekt`; `detektBaseline` regenerates the baseline.
 detekt {
