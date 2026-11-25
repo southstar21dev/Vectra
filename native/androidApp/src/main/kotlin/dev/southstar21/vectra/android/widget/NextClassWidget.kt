@@ -28,6 +28,7 @@ import dev.southstar21.vectra.features.widgets.dayDistanceLabel
 import dev.southstar21.vectra.features.widgets.AfterRow
 import dev.southstar21.vectra.features.widgets.ExamHeadsUpMs
 import dev.southstar21.vectra.features.widgets.HourMs
+import dev.southstar21.vectra.features.widgets.fitRows
 import dev.southstar21.vectra.features.widgets.afterRows
 import dev.southstar21.vectra.features.widgets.dayMonthLabel
 import dev.southstar21.vectra.features.widgets.doneOf
@@ -92,7 +93,7 @@ private class RingSpec(val fraction: Float, val kind: WidgetKind, val value: Str
 @Composable
 private fun Small(context: Context, ring: RingSpec, side: List<String>, title: String, sub: String, rows: List<AfterRow>, fallback: String) {
     val size = LocalSize.current
-    val b = Budget(context)
+    val b = budgetFor(context)
     val inner = DpSize(size.width - 26.dp, size.height - 26.dp)
     val nameLines = b.lines(title, 15f, inner.width.value, max = 2)
     val used = 50f + 7f + b.line(15f) * nameLines + (if (sub.isBlank()) 0f else b.line(11f)) + 12f
@@ -120,16 +121,6 @@ private fun Small(context: Context, ring: RingSpec, side: List<String>, title: S
     }
 }
 
-/** How many of the rows, at these heights, fit in [space]. */
-internal fun fitRows(heights: List<Float>, space: Float): Int {
-    var left = space
-    heights.forEachIndexed { i, h ->
-        left -= h
-        if (left < 0) return i
-    }
-    return heights.size
-}
-
 @Composable
 private fun RingHead(context: Context, ring: RingSpec, side: List<String>) {
     val p = LocalWPalette.current
@@ -153,7 +144,7 @@ private fun DayDone(context: Context, frame: WidgetFrame, up: NextUp.DayDone) {
     // The next day first, then the days after it, so the widget stays full.
     val upcoming = next?.let { n -> frame.snapshot?.sessions.orEmpty().filter { it.day >= n.day } }.orEmpty().take(6)
     val size = LocalSize.current
-    val b = Budget(context)
+    val b = budgetFor(context)
     val rowWidth = size.width.value - 26f - 40f
     val fit = fitRows(upcoming.map { b.height(it.title, 12f, rowWidth - if (it.day != next?.day) 26f else 0f, max = 2) + 4f }, size.height.value - 26f - 50f - 12f - 1f - b.line(10f) - 10f)
     WidgetSurface(context) {

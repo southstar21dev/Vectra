@@ -34,7 +34,9 @@ import dev.southstar21.vectra.features.widgets.footNotes
 import dev.southstar21.vectra.features.widgets.nextDayNote
 import dev.southstar21.vectra.features.widgets.taskNote
 import dev.southstar21.vectra.features.widgets.SpineRow
+import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.WidgetKind
+import dev.southstar21.vectra.features.widgets.pickCut
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.agendaCuts
 import dev.southstar21.vectra.features.widgets.clockLabel
@@ -78,12 +80,14 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val taskLine = snap.taskNote(day, frame.nowMs)
     val nextLine = snap.nextDayNote(day, frame.today)
     val size = LocalSize.current
-    val b = Budget(context)
-    val width = size.width.value - 34f
-    val space = size.height.value - 27f - (b.line(11f) + b.line(24f)) - 9f
+    val b = budgetFor(context)
+    val width = WidgetGeometry.agendaRowWidth(size.width.value)
+    val space = size.height.value - WidgetGeometry.AgendaPadTop - WidgetGeometry.AgendaPadBottom - (b.line(11f) + b.line(24f)) - 9f
     val pick = pickCut(agendaCuts(rows), taskLine, nextLine, b, width, space)
     WidgetSurface(context, padding = 0.dp) {
-        Column(GlanceModifier.fillMaxSize().padding(start = 16.dp, top = 14.dp, end = 18.dp, bottom = 13.dp)) {
+        Column(GlanceModifier.fillMaxSize().padding(
+            start = WidgetGeometry.AgendaPadStart.dp, top = WidgetGeometry.AgendaPadTop.dp, end = WidgetGeometry.AgendaPadEnd.dp, bottom = WidgetGeometry.AgendaPadBottom.dp,
+        )) {
             Header(day, frame.today, done, total)
             Spacer(GlanceModifier.height(9.dp))
             if (rows.isEmpty()) Quiet("Nothing on today.", 12f)
@@ -158,21 +162,21 @@ private fun BreakRow(minutes: Int, height: Float) {
 @Composable
 private fun SessionRow(s: WidgetSession, nowMs: Long, height: Float, last: Boolean, compact: Boolean, width: Float, done: Boolean = false, live: Boolean = false) {
     val p = LocalWPalette.current
-    val nameLines = Budget(LocalContext.current).lines(s.title, 14f, width - 72f, max = 2)
+    val nameLines = budgetFor(LocalContext.current).lines(s.title, 14f, WidgetGeometry.agendaNameWidth(width), max = 2)
     // Compact cuts leave the rooms out, except the class on now's.
     val showRoom = !done && (live || !compact) && s.place.isNotBlank()
     Row(GlanceModifier.fillMaxWidth().height(height.dp)) {
-        Column(GlanceModifier.width(40.dp), horizontalAlignment = Alignment.End) {
+        Column(GlanceModifier.width(WidgetGeometry.AgendaTimeColumn.dp), horizontalAlignment = Alignment.End) {
             Mono(clockLabel(s.startMs), color = if (done) p.muted else null)
             if (!done) Mono(clockLabel(s.endMs), 11f, p.muted, FontWeight.Medium)
         }
-        Spacer(GlanceModifier.width(10.dp))
-        Column(GlanceModifier.width(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(GlanceModifier.width(WidgetGeometry.AgendaTimeGap.dp))
+        Column(GlanceModifier.width(WidgetGeometry.AgendaNodeColumn.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(GlanceModifier.height(2.dp))
             Node(s.kind, live, done)
             if (!last) SpineLine((height - 14f).dp)
         }
-        Spacer(GlanceModifier.width(10.dp))
+        Spacer(GlanceModifier.width(WidgetGeometry.AgendaNodeGap.dp))
         Column(GlanceModifier.defaultWeight()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeWord(s.kind)

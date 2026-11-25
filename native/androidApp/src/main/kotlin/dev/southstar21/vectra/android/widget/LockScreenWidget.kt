@@ -110,7 +110,7 @@ private fun Detail(text: String) = Text(text, style = style(13.sp, FontWeight.Me
 @Composable
 private fun Headline(text: String) {
     // Shrink before wrapping, and wrap before cutting: a long course title must stay whole.
-    val b = Budget(LocalContext.current)
+    val b = budgetFor(LocalContext.current)
     val width = LocalSize.current.width.value
     val size = listOf(17f, 15f, 13f).firstOrNull { b.lines(text, it, width, max = 2) == 1 }
     Text(text, style = style((size ?: 12f).sp, FontWeight.Bold, Primary), maxLines = if (size == null) 2 else 1)
