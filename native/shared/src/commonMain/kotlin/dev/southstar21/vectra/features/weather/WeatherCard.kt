@@ -154,8 +154,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
 
     // Ticks each minute so the age label, and the drop past a day, follow the clock while the app is open.
     val now = rememberPageClock(60_000)
-    if (weather.error != null && data == null) return
-    if (data != null && isWeatherTooOld(weather.fetchedAt, now)) return
+    if (!weatherCardVisible(weather, now)) return
     if (loc == null || data == null) {
         WeatherCardSkeleton(modifier)
         return
@@ -297,4 +296,10 @@ private fun WeatherCardSkeleton(modifier: Modifier) {
             Box(Modifier.width(64.dp).height(36.dp).background(c.surfaceOverlay, Radius.Hairline))
         }
     }
+}
+
+/** Hidden when the first fetch failed with nothing to show, and once the data is older than a stored snapshot may be. */
+private fun weatherCardVisible(weather: WeatherState, now: Long): Boolean {
+    weather.data ?: return weather.error == null
+    return !isWeatherTooOld(weather.fetchedAt, now)
 }
