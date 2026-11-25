@@ -38,7 +38,7 @@ fun NearbyDeparturesList(
     maxLines: Int = 3,
 ) {
     val c = Vectra.colors
-    val lead = items.firstOrNull()
+    val lead = nearestStopItem(items)
     val groups = remember(items, lead, maxLines) { if (lead != null) groupByLine(items, lead.stopId, maxLines) else emptyList() }
 
     if (lead == null || groups.isEmpty()) {

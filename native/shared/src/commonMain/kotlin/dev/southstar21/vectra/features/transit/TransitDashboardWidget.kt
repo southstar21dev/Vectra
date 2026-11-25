@@ -77,7 +77,7 @@ fun TransitDashboardWidget(
                 }
             }
         } else {
-            val first = nearby.radarItems.firstOrNull()
+            val first = nearestStopItem(nearby.radarItems)
             TransitSectionHeader("Nearby", first?.stopName, onAction = openNearby)
             val lines = remember(nearby.radarItems, first?.stopId) { first?.let { nearbyTrackers(nearby.radarItems, it.stopId) }.orEmpty() }
             if (lines.isEmpty()) {

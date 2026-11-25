@@ -141,6 +141,12 @@ fun rememberNearbyStops(repo: TransitRepository, deviceLocation: DeviceLocation)
     return NearbyStopsState(stops, position, geoState, status, refreshLocation)
 }
 
+/**
+ * Cap on the dashboard feed. It is sorted by mode and line rather than distance, so a tight cap
+ * could cut the nearest stop's lines before the dashboard picks its lead stop.
+ */
+private const val DashboardRadarItems = 200
+
 @Immutable
 data class NearbyDataState(
     val stops: List<NearbyStop>,
@@ -177,7 +183,7 @@ fun rememberNearbyData(
     }
     val stopDeparturesMap = remember(boards, now) { boards.mapValues { dropDepartedBoards(it.value, now) } }
     val radarItems = remember(stops, stopDeparturesMap, now, modeFilter) {
-        buildRadarDepartures(stops = stops, stopDeparturesMap = stopDeparturesMap, now = now, modeFilter = modeFilter, maxItems = 24)
+        buildRadarDepartures(stops = stops, stopDeparturesMap = stopDeparturesMap, now = now, modeFilter = modeFilter, maxItems = DashboardRadarItems)
     }
     return NearbyDataState(nearby.stops, nearby.position, nearby.geoState, nearby.status, nearby.refreshLocation, radarItems)
 }
