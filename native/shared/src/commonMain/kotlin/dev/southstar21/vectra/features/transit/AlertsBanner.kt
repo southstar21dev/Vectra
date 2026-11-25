@@ -64,7 +64,7 @@ private fun AlertCard(alert: TransitAlert) {
         ) {
             VIcon(RemixIcons.AlertLine, tint = amber)
             VText(
-                alert.header,
+                alert.header.replaceFirstChar { it.uppercase() },
                 Modifier.weight(1f),
                 vtext(TypeScale.Body, Weight.Bold, lineHeight = 17.5.sp),
                 amber,
@@ -75,7 +75,7 @@ private fun AlertCard(alert: TransitAlert) {
         if (expanded) {
             Column(Modifier.padding(start = 44.dp, end = 16.dp, bottom = 14.dp)) {
                 if (alert.description.isNotEmpty()) {
-                    VText(alert.description, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = amber.copy(alpha = 0.7f))
+                    VText(alert.description.replaceFirstChar { it.uppercase() }, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = amber.copy(alpha = 0.7f))
                 }
                 val url = alert.url
                 if (!url.isNullOrEmpty()) {

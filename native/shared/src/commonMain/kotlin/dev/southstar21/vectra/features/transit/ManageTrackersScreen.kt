@@ -145,17 +145,17 @@ fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
     }
     val handleToggleFavorite: (TransitTracker) -> Unit = { tracker ->
         if (!tracker.isFavorite && sourceTrackers.count { it.isFavorite } >= MaxFavoriteTrackers) {
-            toaster.error("Maximum of $MaxFavoriteTrackers favorite trackers allowed.")
+            toaster.error("Maximum of $MaxFavoriteTrackers favourite trackers allowed.")
         } else {
             favoriteBusyId = tracker.id
             scope.launch {
                 try {
                     val next = repo.toggleFavorite(tracker.id)
-                    toaster.success(if (next) "Added to dashboard favorites" else "Removed from dashboard favorites")
+                    toaster.success(if (next) "Added to dashboard favourites" else "Removed from dashboard favourites")
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    toaster.error("Could not update favorite", t.message)
+                    toaster.error("Could not update favourites", t.message)
                 } finally {
                     favoriteBusyId = null
                 }

@@ -27,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,8 +97,8 @@ fun AppearanceSettings(repo: AppearanceRepository) {
                                 .pressScale(interaction)
                                 .boxShadow(CircleShape, listOf(BoxShadow(y = 1f, blur = 3f, color = Color.Black.copy(alpha = 0.1f))))
                                 .background(if (c.isDark) preset.dark else preset.light, CircleShape)
-                                .tappable(role = null, highlight = false, interactionSource = interaction) { repo.update { it.copy(accent = preset.key) } }
-                                .semantics { contentDescription = preset.name },
+                                .tappable(role = Role.RadioButton, highlight = false, interactionSource = interaction) { repo.update { it.copy(accent = preset.key) } }
+                                .semantics { contentDescription = preset.name; selected = active },
                             contentAlignment = Alignment.Center,
                         ) {
                             if (active) VIcon(RemixIcons.CheckFill, tint = Color.White)
@@ -119,8 +121,8 @@ fun AppearanceSettings(repo: AppearanceRepository) {
                                 .pressScale(interaction)
                                 .clip(shape)
                                 .border(1.dp, lerp(c.borderSubtle, c.accentPrimary, lit), shape)
-                                .tappable(role = null, highlight = false, interactionSource = interaction) { repo.update { it.copy(background = key) } }
-                                .semantics { contentDescription = key.label },
+                                .tappable(role = Role.RadioButton, highlight = false, interactionSource = interaction) { repo.update { it.copy(background = key) } }
+                                .semantics { contentDescription = key.label; selected = active },
                         ) { BackgroundPreview(key, c) }
                     }
                 }

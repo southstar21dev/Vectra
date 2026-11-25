@@ -265,7 +265,7 @@ private fun TestNotificationLink(repo: NotificationsRepository) {
         if (subscribed) {
             scope.launchCatching({ val n = repo.sendServerTest(); sending = false; toaster.success("Server test push delivered to $n device(s)!") }) { sending = false; toaster.error(it.message ?: "Test failed") }
         } else {
-            val shown = repo.showLocal("Vectra Local Alert 🚀", "Local notifications are active. Turn on push notifications above for background alerts.")
+            val shown = repo.showLocal("Vectra Local Alert 🚀", if (repo.pushAvailable) "Local notifications are active. Enable push notifications above for alerts while Vectra is closed." else "Notifications are working on this device.")
             sending = false
             if (!shown) toaster.error("Notifications are blocked. Allow them for Vectra in system settings.")
         }

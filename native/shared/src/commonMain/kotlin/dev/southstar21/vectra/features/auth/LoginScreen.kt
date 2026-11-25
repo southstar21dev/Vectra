@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -40,6 +41,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -85,8 +88,11 @@ fun LoginScreen(auth: AuthRepository, passkeys: PasskeyActions? = null) {
     var mode by remember { mutableStateOf(AuthMode.Login) }
     // Set when the account was created but the sign-in after it failed: Sign in opens with this email.
     var createdEmail by remember { mutableStateOf<String?>(null) }
+    val focus = LocalFocusManager.current
     Box(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        // A tap on empty space dismisses the keyboard (fields and buttons take their own taps first).
+        Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { focus.clearFocus() } }
+            .verticalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
