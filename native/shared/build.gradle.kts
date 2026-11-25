@@ -17,9 +17,9 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
     @Suppress("UNCHECKED_CAST")
     val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl")
-    val pocketbaseUrl = pocketbaseOverride.orElse("https://apivectra.southstar21.dev")
-    val devPocketbaseUrl = pocketbaseOverride.orElse("https://apivectra-dev.southstar21.dev")
-    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin").orElse("https://vectra.southstar21.dev")
+    val pocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.release"))
+    val devPocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug"))
+    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin")
     inputs.property("versionName", versionName)
     inputs.property("debugVersionName", debugVersionName)
     inputs.property("pocketbaseUrl", pocketbaseUrl)

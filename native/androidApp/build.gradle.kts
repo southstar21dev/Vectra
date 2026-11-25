@@ -49,7 +49,7 @@ android {
         buildConfigField(
             "String",
             "CATALOG_ORIGIN",
-            "\"${providers.gradleProperty("vectra.catalogOrigin").getOrElse("https://vectra.southstar21.dev")}\"",
+            "\"${providers.gradleProperty("vectra.catalogOrigin").get()}\"",
         )
     }
 
@@ -69,20 +69,21 @@ android {
     }
 
     // PocketBase backend: debug builds use the dev backend, release builds production, so testing never
-    // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The same split is in
-    // shared/build.gradle.kts for iOS.
+    // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The defaults are in gradle.properties,
+    // shared with iOS (shared/build.gradle.kts).
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl").orNull
-    fun pocketbaseUrl(default: String) = "\"${pocketbaseOverride ?: default}\""
+    fun pocketbaseUrl(defaultProperty: String) =
+        "\"${pocketbaseOverride ?: providers.gradleProperty(defaultProperty).get()}\""
 
     buildTypes {
         debug {
             // Installs next to the release app. Passkeys need this package in assetlinks.json.
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "Vectra Dev"
-            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra-dev.southstar21.dev"))
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.debug"))
         }
         release {
-            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra.southstar21.dev"))
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.release"))
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
