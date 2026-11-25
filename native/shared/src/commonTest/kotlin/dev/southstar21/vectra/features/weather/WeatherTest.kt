@@ -303,6 +303,7 @@ class RadarApiTest {
         assertEquals("Now", formatRadarFrameLabel(RadarFrame(1725576000 - 240, "/n"), latest).relative)
         // 2024-09-05T22:40Z is 00:40 in Budapest.
         assertEquals("00:40", formatRadarFrameLabel(RadarFrame(1725576000, "/n"), latest).timeStr)
+        assertEquals("12:40 AM", formatRadarFrameLabel(RadarFrame(1725576000, "/n"), latest, hour12 = true).timeStr)
     }
 }
 

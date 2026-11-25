@@ -48,6 +48,7 @@ import dev.southstar21.vectra.features.schedule.ScheduleItemConflictException
 import dev.southstar21.vectra.features.schedule.ScheduleCourses
 import dev.southstar21.vectra.features.schedule.getScheduleItemOccurrencesForDate
 import dev.southstar21.vectra.features.schedule.isExamEvent
+import dev.southstar21.vectra.features.schedule.rememberMinuteClock
 import dev.southstar21.vectra.features.schedule.nextScheduledStart
 import dev.southstar21.vectra.features.schedule.scheduleTodayEvents
 import dev.southstar21.vectra.features.shell.VectraPage
@@ -60,7 +61,7 @@ import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
-import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** The home tab: weather, holidays, today's timeline and favourite trackers. */
 @Composable
@@ -136,7 +137,8 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
     val localReady by schedule.localReady.collectAsStateWithLifecycle()
     val eventsLoading by schedule.eventsLoading.collectAsStateWithLifecycle()
     val items = itemsState.items
-    val now = nowInBudapest(Clock.System.now())
+    // Minute clock so Today rolls over at midnight while the app stays alive.
+    val now = nowInBudapest(Instant.fromEpochMilliseconds(rememberMinuteClock()))
     val todayStr = now.ymd
     // Cancelled classes stay in the list (with a CANCELLED stamp) so the day still makes sense.
     val todayEvents = remember(events, todayStr) { scheduleTodayEvents(events) }

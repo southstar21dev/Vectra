@@ -45,6 +45,17 @@ const val WeatherSnapshotKey = "vectra.weather.snapshot"
 /** Weather older than this is not worth showing — a fresh fetch is awaited. */
 const val WeatherSnapshotMaxAgeMs = 24 * 60 * 60_000L
 
+/** Past this age the live data is no longer worth showing, same as a stored snapshot. */
+fun isWeatherTooOld(fetchedAt: Long, now: Long): Boolean = now - fetchedAt >= WeatherSnapshotMaxAgeMs
+
+/** "Updated 25 min ago" once the conditions are older than the ~15 min refresh window; null while fresh. */
+fun weatherAgeLabel(fetchedAt: Long, now: Long, staleMs: Long = WeatherRepository.StaleMs): String? {
+    val age = now - fetchedAt
+    if (age < staleMs) return null
+    val minutes = age / 60_000
+    return if (minutes < 60) "Updated $minutes min ago" else "Updated ${minutes / 60} h ago"
+}
+
 @Serializable
 data class WeatherSnapshot(
     val coords: WeatherCoords,

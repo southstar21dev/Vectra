@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.settings
 
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
@@ -110,7 +112,7 @@ fun SettingsScreen(
                 SettingsSection(
                     "Permissions",
                     tilt = StampTilt.Left,
-                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository),
+                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository, graph.launcher),
                     footer = { TestNotificationLink(graph.notificationsRepository) },
                 )
             }
@@ -202,10 +204,10 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
 }
 
 /** The push-notifications toggle for the Permissions group. */
-private fun pushRow(repo: NotificationsRepository): @Composable () -> Unit = { PushNotificationsRow(repo) }
+private fun pushRow(repo: NotificationsRepository, launcher: Launcher): @Composable () -> Unit = { PushNotificationsRow(repo, launcher) }
 
 @Composable
-private fun PushNotificationsRow(repo: NotificationsRepository) {
+private fun PushNotificationsRow(repo: NotificationsRepository, launcher: Launcher) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -213,6 +215,11 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
     var busy by remember { mutableStateOf(false) }
     var granted by remember { mutableStateOf(repo.permissionGranted()) }
     LaunchedEffect(repo) { repo.check() }
+    // Settings stays composed in its tab, so re-read the OS permission when the app returns.
+    LifecycleResumeEffect(repo) {
+        granted = repo.permissionGranted()
+        onPauseOrDispose { }
+    }
     val requester = rememberPermissionRequester(PermissionKind.Notifications)
     val on = if (repo.pushAvailable) subscribed else granted
     SettingsRow(
@@ -235,6 +242,10 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
                     else if (!repo.pushAvailable) busy = false
                     else scope.launchCatching({ repo.subscribe(); busy = false; toaster.success("Push notifications enabled and synced") }) { busy = false; toaster.error(it.message ?: "Failed to toggle push notifications") }
                 }
+            } else if (!repo.pushAvailable) {
+                // Without push the switch mirrors the system permission, which only system settings can revoke.
+                busy = false
+                launcher.openAppSettings()
             } else {
                 scope.launchCatching({ repo.unsubscribe(); busy = false; toaster.show("Push notifications disabled") }) { busy = false }
             }

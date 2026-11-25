@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -151,7 +152,9 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
     if (data != null && !isPlaceholder && settledTitle != liveTitle) settledTitle = liveTitle
     val title = if (isPlaceholder) settledTitle else liveTitle
 
-    if (weather.error != null && data == null) return
+    // Ticks each minute so the age label, and the drop past a day, follow the clock while the app is open.
+    val now = rememberPageClock(60_000)
+    if (!weatherCardVisible(weather, now)) return
     if (loc == null || data == null) {
         WeatherCardSkeleton(modifier)
         return
@@ -192,6 +195,9 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     VIcon(RemixIcons.MapPin2Fill, size = 14.dp, tint = c.textSecondary)
                     VText(title, Modifier.weight(1f, fill = false), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary, maxLines = 1)
+                    weatherAgeLabel(weather.fetchedAt, now)?.let {
+                        VText(it, Modifier.padding(start = 6.dp), vtext(TypeScale.Caption, Weight.Medium), c.textMuted, maxLines = 1)
+                    }
                     Row(
                         Modifier.padding(start = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -290,4 +296,10 @@ private fun WeatherCardSkeleton(modifier: Modifier) {
             Box(Modifier.width(64.dp).height(36.dp).background(c.surfaceOverlay, Radius.Hairline))
         }
     }
+}
+
+/** Hidden when the first fetch failed with nothing to show, and once the data is older than a stored snapshot may be. */
+private fun weatherCardVisible(weather: WeatherState, now: Long): Boolean {
+    weather.data ?: return weather.error == null
+    return !isWeatherTooOld(weather.fetchedAt, now)
 }
