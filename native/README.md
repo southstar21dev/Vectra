@@ -74,6 +74,9 @@ production `https://apivectra.southstar21.dev` (iOS: Xcode's Debug and Release c
 catalog `/catalog/*.json` is served).
 
 ## Stack
+Building needs any JDK to run Gradle; the modules compile with a JDK 17 toolchain, which Gradle downloads
+through the foojay resolver in `settings.gradle.kts` when none is installed (CI sets up Java 21 and relies on this too).
+
 Kotlin 2.4.21 · AGP 9.5 · Gradle 9.8.2 · Compose Multiplatform 1.12.2 · Navigation 3 ·
 Metro DI · Ktor 3.6 · kotlinx.serialization / datetime · DataStore 1.3 ·
 maplibre-compose 0.20 · Kyant backdrop 2.0 (Liquid Glass navbar) · Credential Manager 1.6 ·
