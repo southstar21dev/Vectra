@@ -31,6 +31,10 @@ func RegisterTimestamps(app core.App) {
 		if e.Record.Collection().Fields.GetByName("updated_at") != nil {
 			e.Record.Set("updated_at", time.Now().UTC())
 		}
+		// created_at is immutable: undo any client-sent value.
+		if e.Record.Collection().Fields.GetByName("created_at") != nil {
+			e.Record.Set("created_at", e.Record.Original().Get("created_at"))
+		}
 		return e.Next()
 	})
 }
