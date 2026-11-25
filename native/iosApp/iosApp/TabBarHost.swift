@@ -90,7 +90,7 @@ private final class ClearPage: UIViewController {
     }
 }
 
-final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, IosTabBarHost {
+final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, @preconcurrency UIEditMenuInteractionDelegate, @preconcurrency IosTabBarHost {
     /// The tabs, as the shared PrimaryNavItems describe them in every state the app pushes (labels, SF Symbols,
     /// which ones open something when held). Empty until the first render.
     private var items: [SystemNavbarTab] = []

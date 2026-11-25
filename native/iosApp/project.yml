@@ -8,7 +8,11 @@ options:
   createIntermediateGroups: true
 settings:
   base:
+    # Swift 5 mode with the Swift 6 data-race checks on as warnings. The sources already build clean in Swift 6
+    # mode with Xcode 27; flip this to "6.0" once the hosts' main-thread callbacks have been checked on a device
+    # (Swift 6 turns the isolation of those callbacks into runtime checks).
     SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
     # The Gradle phase reads the repo and writes the framework outside the sandbox's declared outputs.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 targets:
