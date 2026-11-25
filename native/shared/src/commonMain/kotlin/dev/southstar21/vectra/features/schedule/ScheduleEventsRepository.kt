@@ -194,7 +194,7 @@ internal class ScheduleEventsRepository(
         }
         val clear = crypto.decryptAll(
             manualRows.flatMap { row -> ManualEncryptedFields.map { row.string(it) } } +
-                neptunRows.flatMap { row -> NeptunEncryptedFields.map { row.string(it) } },
+                neptunRows.flatMap { row -> NeptunColumns.ciphertexts(row) },
         )
         val manualFieldCount = manualRows.size * ManualEncryptedFields.size
         val manual = manualRows.mapIndexed { i, row ->
@@ -202,33 +202,11 @@ internal class ScheduleEventsRepository(
             if (listOf(name, instructor, location).any(::isCiphertext)) error("Could not decrypt the latest class schedule.")
             adaptManualRow(row, name, instructor, location)
         }
+        val neptunClear = clear.drop(manualFieldCount)
         val neptun = neptunRows.mapIndexed { i, row ->
-            val start = manualFieldCount + i * NeptunEncryptedFields.size
-            val v = clear.subList(start, start + NeptunEncryptedFields.size)
-            if (v.any(::isCiphertext)) error("Could not decrypt the latest Neptun schedule.")
-            val day = v[4]
-            ScheduleEvent(
-                id = row.string("id").orEmpty(),
-                userId = row.string("user").orEmpty(),
-                courseName = v[0].orEmpty(),
-                courseCode = v[1].orEmpty(),
-                instructor = v[2].orEmpty(),
-                location = v[3].orEmpty(),
-                // A missing weekday must not become 0 (Sunday); -1 lists it on no day.
-                dayOfWeek = day?.trim()?.toIntOrNull() ?: -1,
-                startTime = v[5].orEmpty(),
-                endTime = v[6].orEmpty(),
-                color = row.string("color").orEmpty(),
-                semester = v[7].orEmpty(),
-                semesterStart = v[8]?.ifEmpty { null },
-                semesterEnd = v[9]?.ifEmpty { null },
-                eventType = v[10]?.ifEmpty { null } ?: "class",
-                attendanceType = null,
-                csvMetadata = null,
-                createdAt = row.string("created_at").orEmpty(),
-                updatedAt = row.string("updated_at").orEmpty(),
-                source = "neptun",
-            )
+            val c = NeptunColumns.clear(neptunClear, i)
+            if (c.hasCiphertext) error("Could not decrypt the latest Neptun schedule.")
+            adaptNeptunRow(row, c)
         }
         val all = (manual + neptun).sortedWith(compareBy<ScheduleEvent> { it.dayOfWeek }.thenBy { it.startTime })
         eventsCache.write(uid, all)
@@ -344,9 +322,5 @@ internal class ScheduleEventsRepository(
         const val EVENTS_STALE_MS = 15L * 60 * 1000
         const val EVENTS_LOAD_FAILED = "Could not load your classes. Pull down to try again."
         val ManualEncryptedFields = listOf("course_name", "instructor", "location")
-        val NeptunEncryptedFields = listOf(
-            "course_name", "course_code", "instructor", "location", "day_of_week", "start_time", "end_time",
-            "semester", "semester_start", "semester_end", "event_type",
-        )
     }
 }
