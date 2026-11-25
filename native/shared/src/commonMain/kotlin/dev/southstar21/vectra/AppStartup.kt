@@ -28,6 +28,8 @@ object AppStartup {
         startup.restored = true
         graph.watchdog.trigger()
         // Neptun auto-sync starts from the repository's init, so it can't wait for a screen to ask.
-        graph.scheduleRepository
+        // A process started in the background (alarm, widget) never got here, so the timetable
+        // refetch and the auto-sync it held back start now.
+        graph.scheduleRepository.onForeground()
     }
 }

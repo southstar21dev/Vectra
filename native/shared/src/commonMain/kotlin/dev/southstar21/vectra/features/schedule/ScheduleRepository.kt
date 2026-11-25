@@ -88,7 +88,7 @@ class ScheduleRepository(
             }
         }
         scope.launch {
-            auth.profile.collect { neptun.maybeAutoSync() }
+            auth.profile.collect { maybeAutoSync() }
         }
     }
 
@@ -102,6 +102,28 @@ class ScheduleRepository(
         }
         _localReady.value = true
         neptun.restoreStatus()
+        // A process started for an alarm or a widget only reads the caches: the forced refetches and the
+        // Neptun auto-sync wait until a screen is shown ([onForeground]).
+        if (!foreground) return
+        scope.launch { runSuspendCatching { classes.refreshEvents(force = true) } }
+        scope.launch { itemsSync.refreshItems(force = true) }
+        maybeAutoSync()
+    }
+
+    @Volatile private var foreground = false
+
+    private fun maybeAutoSync() {
+        if (foreground) neptun.maybeAutoSync()
+    }
+
+    /**
+     * The app is on screen (startup finished): do the network work a background-started process
+     * skipped. Safe to call more than once.
+     */
+    fun onForeground() {
+        if (foreground) return
+        foreground = true
+        if (session.userId == null) return
         scope.launch { runSuspendCatching { classes.refreshEvents(force = true) } }
         scope.launch { itemsSync.refreshItems(force = true) }
         neptun.maybeAutoSync()
@@ -132,6 +154,7 @@ class ScheduleRepository(
 
     /** Delete every manual and Neptun class (items stay). */
     suspend fun clearAllEvents() {
+        neptun.invalidateRunningSyncs()
         classes.deleteAll()
         onScheduleReplaced()
     }
@@ -159,7 +182,7 @@ class ScheduleRepository(
     suspend fun importNeptunEvents(events: List<NeptunSyncEvent>) = neptun.importNeptunEvents(events)
     suspend fun runSync(url: String, isAutoSync: Boolean = false): String? = neptun.runSync(url, isAutoSync)
     suspend fun savedNeptunUrl(): String = neptun.savedNeptunUrl()
-    suspend fun saveNeptunUrl(url: String) = neptun.saveNeptunUrl(url)
+    suspend fun saveNeptunUrl(url: String, claimFirstSync: Boolean = false) = neptun.saveNeptunUrl(url, claimFirstSync)
     suspend fun checkSyncRateLimit(nowMs: Long = Clock.System.now().toEpochMilliseconds()): RateLimit = neptun.checkSyncRateLimit(nowMs)
 
     data class RateLimit(val allowed: Boolean, val remainingMinutes: Int)
