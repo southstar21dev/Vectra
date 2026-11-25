@@ -75,6 +75,10 @@ docs/superpowers/
 plans/
 mockups/
 
+# Audit reports and research scratch: kept on disk, not source (the repo is public)
+reports/
+research_notes/
+
 # Local tool scratch
 .tachyons/
 .playwright-mcp/
@@ -83,6 +87,12 @@ mockups/
 *.jks
 *.keystore
 *.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.csr
+AuthKey_*
 *.mobileprovision
 google-services.json
 GoogleService-Info.plist
