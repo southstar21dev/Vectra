@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.coursetracker
 
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
+import dev.southstar21.vectra.features.schedule.classOccursOnDate
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -30,6 +31,25 @@ class ManualClassParityTest {
         assertEquals(november, december)
         assertTrue("2026-11-09" in november && "2026-11-23" in november)
         assertTrue("2026-11-02" !in november && "2026-11-16" !in november)
+    }
+
+    @Test fun aClassWithoutSemesterFollowsTheTimetablesOfficialWeekOne() {
+        // Neptun's term starts on Mon 7 Sep, a week after the nominal 1 Sep, and the timetable counts
+        // a semester-less class from that official start.
+        val neptun = event("Micro", dayOfWeek = 3, startTime = "08:00", endTime = "09:30", semester = "2026/27/1",
+            semesterStart = "2026-09-07", semesterEnd = "2026-12-12", source = "neptun")
+        val odd = event("Odd Lab", dayOfWeek = 1, startTime = "10:00", endTime = "12:00", source = "manual")
+            .copy(csvMetadata = JsonObject(mapOf("frequency" to JsonPrimitive("odd"))))
+        val all = listOf(neptun, odd)
+        val generated = generateSessionsFromScheduleEvents(
+            courseName = odd.courseName,
+            scheduleEvents = all,
+            today = LocalDate.parse("2026-11-24"),
+        ).map { it.date }.filter { it.startsWith("2026-11") }
+        val timetable = listOf("2026-11-02", "2026-11-09", "2026-11-16", "2026-11-23", "2026-11-30")
+            .filter { classOccursOnDate(odd, it, all) }
+        assertEquals(listOf("2026-11-02", "2026-11-16", "2026-11-30"), timetable)
+        assertEquals(timetable, generated)
     }
 
     @Test fun weeklyManualClassStartsAtSemesterWeekOne() {
