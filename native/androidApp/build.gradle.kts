@@ -1,3 +1,4 @@
+import com.android.build.api.variant.BuildConfigField
 import com.android.build.api.variant.HostTestBuilder
 
 plugins {
@@ -134,6 +135,15 @@ kotlin {
 androidComponents {
     beforeVariants { variant ->
         variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+    // The baseline profile variants (nonMinifiedRelease, benchmarkRelease) are release-derived and keep the
+    // production package, but their journeys sign in and browse live data, so they talk to the dev backend.
+    onVariants { variant ->
+        if (variant.buildType in setOf("nonMinifiedRelease", "benchmarkRelease")) {
+            val url = providers.gradleProperty("vectra.pocketbaseUrl")
+                .orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug")).get()
+            variant.buildConfigFields?.put("POCKETBASE_URL", BuildConfigField("String", "\"$url\"", null))
+        }
     }
     // Debug: the newest release plus the commit (1.8.2+92e0b25), with that release's code, so a
     // rebuild installs over the last one and a new release tag moves it forward.

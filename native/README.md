@@ -55,7 +55,10 @@ Without a keystore a local release build is signed with the debug key so it inst
 with `-Pvectra.distribution=true` that fails the build instead.
 
 Baseline profile: the checked-in profile lives under `androidApp/src/release/generated/baselineProfiles/`.
-Regenerate it after large UI changes, with one device attached and the test account's credentials:
+Regenerate it after large UI changes and before a release when feature packages have moved (a stale profile
+names classes that no longer exist, so their startup code runs interpreted). The profile variants talk to the
+dev backend (`vectra.pocketbaseUrl.debug`, or `-Pvectra.pocketbaseUrl=...`), so use a dev test account.
+Run it with one device attached and the test account's credentials:
 ```
 ./gradlew :androidApp:generateBaselineProfile -Pvectra.testEmail=… -Pvectra.testPassword=…
 ./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest \
