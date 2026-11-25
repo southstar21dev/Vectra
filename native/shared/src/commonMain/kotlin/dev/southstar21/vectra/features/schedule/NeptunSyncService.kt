@@ -101,6 +101,8 @@ internal class NeptunSyncService(
     private val scope: CoroutineScope,
     private val listener: NeptunSyncListener,
     private val onScheduleReplaced: () -> Unit,
+    /** Wall clock in epoch milliseconds; a seam so the rate limit and the 24 h auto-sync gate can be tested. */
+    private val clockMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val userId: String? get() = session.userId
 
@@ -246,7 +248,7 @@ internal class NeptunSyncService(
         persistNeptunEvents(events, owner)
         notifyListener(owner, events)
         requireOwner(owner)
-        stampLastSync(Clock.System.now().toEpochMilliseconds())
+        stampLastSync(clockMs())
         onScheduleReplaced()
     }
 
@@ -275,7 +277,7 @@ internal class NeptunSyncService(
             persistNeptunEvents(clean, owner, epoch)
             notifyListener(owner, clean)
             requireCurrent(owner, epoch)
-            val nowMs = Clock.System.now().toEpochMilliseconds()
+            val nowMs = clockMs()
             // Only successful manual syncs consume the rate-limit quota.
             if (!isAutoSync) recordManualSync(nowMs)
             stampLastSync(nowMs)
@@ -312,7 +314,7 @@ internal class NeptunSyncService(
     }.getOrNull().orEmpty()
 
     /** checkSyncRateLimit: at most 3 manual syncs per rolling hour. */
-    suspend fun checkSyncRateLimit(nowMs: Long = Clock.System.now().toEpochMilliseconds()): ScheduleRepository.RateLimit {
+    suspend fun checkSyncRateLimit(nowMs: Long = clockMs()): ScheduleRepository.RateLimit {
         val valid = readTimestamps().filter { nowMs - it < ONE_HOUR_MS }
         if (valid.size >= MAX_SYNCS_PER_HOUR) {
             val oldest = valid.min()
@@ -362,7 +364,7 @@ internal class NeptunSyncService(
                 if (url.isNullOrEmpty() || autoSyncAttempted) return@launch
                 val last = profile.neptunLastSync?.let { runCatching { Instant.parse(it).toEpochMilliseconds() }.getOrNull() }
                     ?: profile.neptunLastSync?.let { runCatching { Instant.parse(it.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull() }
-                val now = Clock.System.now().toEpochMilliseconds()
+                val now = clockMs()
                 if (last == null || now - last > 24 * ONE_HOUR_MS) {
                     autoSyncAttempted = true
                     runSync(url, isAutoSync = true)
