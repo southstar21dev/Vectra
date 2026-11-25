@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.features.navbar.dockMaterial
 
 import androidx.compose.animation.core.animate

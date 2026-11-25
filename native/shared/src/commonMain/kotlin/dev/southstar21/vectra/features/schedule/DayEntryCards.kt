@@ -13,6 +13,8 @@ import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.color
+import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.preferences.TimeFormat
 import dev.southstar21.vectra.core.time.formatTime
 
@@ -62,7 +64,7 @@ internal fun ClassCard(
     selected: Boolean = false,
 ) {
     val event = state.entry.event
-    val raw = parseOpaqueHexColor(event.color.ifEmpty { "#38bdf8" })
+    val raw = parseHexColor(event.color.ifEmpty { "#38bdf8" }, opaque = true) ?: Palette.Sky400
     val course = readableOn(raw, d.card, d.isDark)
     val startTint = when {
         !state.focus -> d.text

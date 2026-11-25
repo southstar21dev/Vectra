@@ -36,6 +36,7 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.time.parseIsoDate
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
@@ -69,7 +70,6 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.features.schedule.parseOpaqueHexColor
 import dev.southstar21.vectra.navigation.AppNavigator
 import kotlinx.coroutines.launch
 
@@ -394,7 +394,7 @@ private fun HubSheetHeader(tracker: CourseTracker, onClose: () -> Unit, tabs: @C
                 )
                 if (details.isNotEmpty()) {
                     Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(8.dp).background(parseOpaqueHexColor(tracker.color, c.accentPrimary), CircleShape))
+                        Box(Modifier.size(8.dp).background(parseHexColor(tracker.color, opaque = true) ?: c.accentPrimary, CircleShape))
                         VText(details, style = vtext(TypeScale.Caption, Weight.Medium), color = c.textSecondary, maxLines = 1)
                     }
                 }

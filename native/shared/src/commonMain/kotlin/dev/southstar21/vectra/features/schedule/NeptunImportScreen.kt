@@ -64,6 +64,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.bleed
 import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlin.io.encoding.Base64
@@ -258,7 +259,7 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Box(Modifier.size(10.dp).background(parseOpaqueHexColor(evt.color.ifEmpty { "#3B82F6" }), CircleShape))
+                                        Box(Modifier.size(10.dp).background(parseHexColor(evt.color.ifEmpty { "#3B82F6" }, opaque = true) ?: Palette.Sky400, CircleShape))
                                         VText(evt.courseName, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 1)
                                     }
                                 }

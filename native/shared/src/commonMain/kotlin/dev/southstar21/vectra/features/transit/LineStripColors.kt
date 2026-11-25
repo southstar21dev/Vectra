@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 
 /** The colours one strip is drawn in. */
 internal class StripColors(

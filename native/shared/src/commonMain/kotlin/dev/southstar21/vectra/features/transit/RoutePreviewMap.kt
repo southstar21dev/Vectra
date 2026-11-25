@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
 import androidx.compose.ui.text.style.TextAlign
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.MapAttribution
 import androidx.compose.foundation.background

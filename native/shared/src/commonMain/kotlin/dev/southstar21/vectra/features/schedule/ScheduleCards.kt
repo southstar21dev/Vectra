@@ -29,22 +29,6 @@ interface ScheduleCourseTrackerHooks {
     fun presentStreak(event: ScheduleEvent, date: String): Int
 }
 
-/**
- * `#RRGGBB` (or `#RGB`) → opaque Color; [fallback] when unreadable. Unlike the
- * transit `parseHexColor`, an 8-digit value drops its alpha and nothing returns null.
- */
-internal fun parseOpaqueHexColor(hex: String?, fallback: Color = Palette.Sky400): Color {
-    val h = hex?.trim()?.removePrefix("#") ?: return fallback
-    val full = when (h.length) {
-        3 -> h.map { "$it$it" }.joinToString("")
-        6 -> h
-        8 -> h.take(6)
-        else -> return fallback
-    }
-    val v = full.toLongOrNull(16) ?: return fallback
-    return Color(0xFF000000 or v)
-}
-
 /** Minute clock: recomposes every minute so "now" states roll over. */
 @Composable
 internal fun rememberMinuteClock(): Long = rememberPageClock(60_000)

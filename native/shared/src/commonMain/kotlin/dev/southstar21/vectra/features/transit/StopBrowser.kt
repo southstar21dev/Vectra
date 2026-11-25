@@ -23,6 +23,8 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatClock
 import dev.southstar21.vectra.core.preferences.TimeFormat
@@ -239,7 +241,7 @@ private fun DepartureChip(t: Arrival, timeFormat: TimeFormat) {
         else VIcon(RemixIcons.TimeLine, size = 10.dp, tint = c.textMuted)
         VText(
             formatClock(t.arrivalMs, timeFormat),
-            style = vtext(11.sp to 16.sp, Weight.Semibold).copy(fontFeatureSettings = "tnum"),
+            style = vtext(11.sp to 16.sp, Weight.Semibold).tnum(),
             color = c.textSecondary,
             maxLines = 1,
         )

@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.weather
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.navigation.LocalNavigator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -122,7 +123,6 @@ private fun alertIcon(key: WeatherAlertKey) = when (key) {
     WeatherAlertKey.Rain -> RemixIcons.RainyLine
 }
 
-private val Tnum = "tnum"
 
 /**
  * The dashboard's slim weather strip; tapping it opens the
@@ -210,7 +210,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                 VText(
                     "${roundHalfUpToInt(data.temperature)}°",
                     Modifier.padding(top = 8.dp),
-                    vtext(54.sp to 54.sp, Weight.Bold, Tracking.Tighter).copy(fontFeatureSettings = Tnum),
+                    vtext(54.sp to 54.sp, Weight.Bold, Tracking.Tighter).tnum(),
                     c.textPrimary,
                 )
                 Row(
@@ -265,7 +265,7 @@ private fun Reading(icon: ImageVector, value: String, label: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(icon, size = 14.dp, tint = c.textMuted)
-        VText(value, style = vtext(13.sp to 18.sp, Weight.Bold).copy(fontFeatureSettings = Tnum), color = c.textPrimary, maxLines = 1)
+        VText(value, style = vtext(13.sp to 18.sp, Weight.Bold).tnum(), color = c.textPrimary, maxLines = 1)
     }
 }
 

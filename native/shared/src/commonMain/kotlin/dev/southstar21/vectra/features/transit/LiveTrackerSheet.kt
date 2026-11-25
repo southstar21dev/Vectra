@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
 import androidx.compose.ui.text.style.TextAlign
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
