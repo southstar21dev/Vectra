@@ -23,7 +23,8 @@ const val DeepReuseMs = 15_000L
 
 /**
  * Request coalescing for per-stop arrivals. Stops
- * requested within [BatchWindowMs] go out as one `stop-arrivals` batch call; a
+ * requested within [BatchWindowMs] go out as one `stop-arrivals` batch call, even a window with
+ * a single stop: only that endpoint is cached and collapsed on the server (audit C1-03). A
  * fresh deep (trip-planning) response for a station also answers a shallow
  * request for it.
  */
@@ -49,16 +50,6 @@ class ArrivalsLoader(
         }
         val ids = batch.keys.toList()
         if (ids.isEmpty()) return
-        if (ids.size == 1) {
-            val id = ids[0]
-            try {
-                val r = fetchSingle(id, ArrivalsMinutesAfter, null)
-                batch[id]?.forEach { it.complete(r) }
-            } catch (t: Throwable) {
-                batch[id]?.forEach { it.completeExceptionally(t) }
-            }
-            return
-        }
         try {
             val (responses, errors) = fetchBatch(ids, ArrivalsMinutesAfter)
             for (id in ids) {
