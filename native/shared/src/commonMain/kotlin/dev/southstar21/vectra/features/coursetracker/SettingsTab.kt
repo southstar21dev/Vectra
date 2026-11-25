@@ -84,6 +84,7 @@ internal fun SettingsTab(
     val c = Vectra.colors
     var maxInput by remember { mutableStateOf("") }
     var totalInput by remember { mutableStateOf("") }
+    var totalAppliedLive by remember { mutableStateOf(false) }
     var scale by remember { mutableStateOf(DefaultGradingScale) }
     val tierInputs = remember { mutableStateMapOf<Int, String>() }
     var scaleError by remember { mutableStateOf<String?>(null) }
@@ -153,9 +154,24 @@ internal fun SettingsTab(
         val parsed = parseFiniteNumber(totalInput)
         val value = if (parsed == null) DefaultCourseTotalPoints else clampNumber(round(parsed), 1.0, 10000.0)
         totalInput = formatNumber(value)
-        if (value == (tracker.points.totalPoints.takeIf { it > 0 } ?: DefaultCourseTotalPoints)) return
+        if (value == (tracker.points.totalPoints.takeIf { it > 0 } ?: DefaultCourseTotalPoints)) {
+            if (totalAppliedLive) flashSaved(SaveWhere.Points)
+            totalAppliedLive = false
+            return
+        }
+        totalAppliedLive = false
         onUpdateLimits(TrackerLimits(tracker.attendance.maxAbsencesAllowed, tracker.attendance.minAttendancePercent, totalPoints = value))
         flashSaved(SaveWhere.Points)
+    }
+
+    // Applies a valid total as it is typed, so the Grades meter follows without waiting for Done;
+    // a blank or partial entry waits for [commitTotal] to settle it.
+    fun applyTotalWhileTyping(text: String) {
+        totalInput = text
+        val value = parseFiniteNumber(text)?.let { clampNumber(round(it), 1.0, 10000.0) } ?: return
+        if (value == (tracker.points.totalPoints.takeIf { it > 0 } ?: DefaultCourseTotalPoints)) return
+        totalAppliedLive = true
+        onUpdateLimits(TrackerLimits(tracker.attendance.maxAbsencesAllowed, tracker.attendance.minAttendancePercent, totalPoints = value))
     }
 
     fun reset() {
@@ -253,7 +269,7 @@ internal fun SettingsTab(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         DraftField(
                             value = totalInput,
-                            onValueChange = { totalInput = it.filter(Char::isDigit).take(5) },
+                            onValueChange = { applyTotalWhileTyping(it.filter(Char::isDigit).take(5)) },
                             onCommit = ::commitTotal,
                             modifier = Modifier.width(72.dp).height(40.dp),
                             style = field,
