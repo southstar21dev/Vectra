@@ -35,6 +35,7 @@ import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.TransitMap

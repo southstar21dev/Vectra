@@ -51,9 +51,11 @@ import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VSelect
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatHHMM
@@ -297,7 +299,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                                                 .border(2.dp, c.surfaceSecondary, CircleShape)
                                             else Modifier,
                                         )
-                                        .background(parseOpaqueHexColor(hex), CircleShape)
+                                        .background(parseHexColor(hex, opaque = true) ?: Palette.Sky400, CircleShape)
                                         .tappable(CircleShape, role = Role.RadioButton, onClickLabel = "Colour $colourName", highlight = false, haptic = { if (!active) tick() }) {
                                             form.color = hex
                                         }

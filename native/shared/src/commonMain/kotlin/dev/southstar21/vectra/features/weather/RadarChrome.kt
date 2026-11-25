@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateContentSize
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
@@ -96,7 +97,7 @@ private fun NowPill(weather: WeatherData) {
         VIcon(skyArt(meta.sky), Modifier.graphicsLayer { this.alpha = alpha }, size = 22.dp, tint = tint)
         VText(
             "${roundHalfUpToInt(weather.temperature)}°",
-            style = vtext(TypeScale.BodyLarge, Weight.Bold).copy(fontFeatureSettings = "tnum"),
+            style = vtext(TypeScale.BodyLarge, Weight.Bold).tnum(),
             color = c.textPrimary,
         )
     }

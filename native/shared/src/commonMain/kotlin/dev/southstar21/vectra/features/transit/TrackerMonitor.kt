@@ -49,12 +49,9 @@ fun buildMonitorGrid(stops: List<MonitorStopInput>, maxColumns: Int = MonitorMax
     )
 }
 
-/** Minutes until [arrivalMs], never negative. */
-fun minutesUntil(arrivalMs: Long, now: Long): Int = max(0, ceil((arrivalMs - now) / 60_000.0).toInt())
-
 /** "NOW" when due, `7'` within the hour, the Budapest clock time beyond it. */
 fun formatMonitorTime(arrivalMs: Long, now: Long): String {
-    val minutes = minutesUntil(arrivalMs, now)
+    val minutes = etaMinutes(arrivalMs, now)
     if (minutes <= 0) return "NOW"
     if (minutes < 60) return "$minutes'"
     return formatBudapestHm(arrivalMs)

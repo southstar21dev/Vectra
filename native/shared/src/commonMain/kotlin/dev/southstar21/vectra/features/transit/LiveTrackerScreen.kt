@@ -276,12 +276,3 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
         routeColor = tracker?.routeColor?.takeIf { it.isNotEmpty() } ?: "3b82f6",
     )
 }
-
-/** A route badge beside the stop name: the live screens' bar title. */
-@Composable
-internal fun LiveTrackerTitle(tracker: TransitTracker, stopName: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Sm)
-        VText(stopName, Modifier.weight(1f, fill = false), maxLines = 1)
-    }
-}

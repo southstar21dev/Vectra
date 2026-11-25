@@ -37,23 +37,3 @@ val OfflineQueueKeyPrefixes: Array<String> =
 
 /** This user's [OfflineQueueKeyPrefixes] keys. */
 fun offlineQueueKeys(userId: String): Set<String> = OfflineQueueKeyPrefixes.mapTo(LinkedHashSet()) { "${it}_$userId" }
-
-/**
- * Offline-first read: cache when offline; otherwise fetch → write cache, and
- * fall back to the cache when the fetch fails (no cache → rethrow).
- */
-suspend fun <T> offlineFirst(
-    online: Boolean,
-    cache: OfflineCache<T>,
-    userId: String,
-    fetch: suspend () -> T,
-): T {
-    if (!online) return cache.read(userId) ?: fetch()
-    return try {
-        fetch().also { cache.write(userId, it) }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        cache.read(userId) ?: throw e
-    }
-}

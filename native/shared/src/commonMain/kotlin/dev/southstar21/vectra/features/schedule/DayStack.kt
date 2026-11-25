@@ -47,9 +47,9 @@ private const val StackCardDp = 50
 private const val StackGapDp = 6
 private const val StackPeekDp = 7
 
-private fun discDescription(title: String, status: AttendanceStatus?, task: Boolean): String = when {
-    task -> "$title: ${if (status == AttendanceStatus.Present) "done" else "not done"}. Tap to change"
-    else -> "Attendance for $title: ${(status ?: AttendanceStatus.Unmarked).name.lowercase()}"
+private fun discDescription(title: String, status: CardAttendance?, task: Boolean): String = when {
+    task -> "$title: ${if (status == CardAttendance.Present) "done" else "not done"}. Tap to change"
+    else -> "Attendance for $title: ${(status ?: CardAttendance.Unmarked).name.lowercase()}"
 }
 
 private fun mix(a: Float, b: Float, f: Float) = a + (b - a) * f
@@ -60,7 +60,7 @@ private class SmallCardLook(val bg: Color, val contentAlpha: Float, val subtitle
 @Composable
 private fun SmallCard(
     entry: DayEntry,
-    status: AttendanceStatus?,
+    status: CardAttendance?,
     subtitle: String?,
     look: SmallCardLook,
     d: DayColors,
@@ -105,7 +105,7 @@ private fun SmallCard(
  * tapping the card does once the stack is open (its Course Hub, or the item's editor).
  */
 internal class StackActions(
-    val statusOf: (DayEntry) -> AttendanceStatus?,
+    val statusOf: (DayEntry) -> CardAttendance?,
     val onDisc: (DayEntry) -> (() -> Unit)?,
     val onOpen: (DayEntry) -> (() -> Unit)? = { null },
 ) {

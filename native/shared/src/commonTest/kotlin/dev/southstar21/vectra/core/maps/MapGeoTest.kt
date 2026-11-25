@@ -2,7 +2,7 @@ package dev.southstar21.vectra.core.maps
 
 import androidx.compose.ui.graphics.Color
 import dev.southstar21.vectra.features.transit.assertCloseTo
-import dev.southstar21.vectra.features.transit.parseHexColor
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.features.transit.withHash
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject

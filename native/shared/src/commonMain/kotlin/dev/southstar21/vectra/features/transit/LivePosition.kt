@@ -42,58 +42,6 @@ fun <T> clipRouteToTrackedStop(
 fun clipRouteToTrackedStop(polyline: List<LatLon>, stops: List<LatLon>, trackedIndex: Int): ClippedRoute<LatLon>? =
     clipRouteToTrackedStop(polyline, stops, trackedIndex) { it }
 
-data class ApproachStop(val id: String, val name: String, val lat: Double, val lon: Double)
-
-data class VehicleApproach(val polyline: List<LatLon>, val stops: List<ApproachStop>)
-
-/**
- * The remaining path a vehicle must travel to reach the tracked stop (from its projected
- * position, or the line start without a vehicle), plus the stops in between, inclusive.
- * Null when the vehicle already passed the tracked stop or geometry can't resolve it.
- */
-fun approachFromVehicle(
-    polyline: List<LatLon>,
-    stops: List<ApproachStop>,
-    trackedIndex: Int,
-    vehicle: LatLon?,
-): VehicleApproach? {
-    if (polyline.size < 2 || stops.isEmpty()) return null
-    if (trackedIndex < 0 || trackedIndex >= stops.size) return null
-    val tracked = stops[trackedIndex]
-    if (tracked.lat == 0.0 && tracked.lon == 0.0) return null
-
-    val dists = cumulativeHaversineDistances(polyline)
-    val total = dists[dists.size - 1]
-    if (total.isNaN() || total <= 0) return null
-
-    val trackedSnap = snapToPolyline(LatLon(tracked.lat, tracked.lon), polyline) ?: return null
-    val trackedDist = trackedSnap.distance
-
-    var startDist = 0.0
-    if (vehicle != null) {
-        snapToPolyline(vehicle, polyline)?.let { startDist = it.distance }
-    }
-    if (startDist >= trackedDist) return null
-
-    val toTracked = cutPolylineAtDistance(polyline, dists, trackedDist)
-    val toStart = cutPolylineAtDistance(polyline, dists, startDist)
-    if (toTracked.size < 2) return null
-
-    val start = toStart[toStart.size - 1]
-    val tail = toTracked.drop(max(0, toStart.size - 1))
-    val points = mutableListOf<LatLon>()
-    for (p in listOf(start) + tail) {
-        val prev = points.lastOrNull()
-        if (prev != null && prev.lat == p.lat && prev.lon == p.lon) continue
-        points += LatLon(p.lat, p.lon)
-    }
-    if (points.size < 2) return null
-
-    val stopDists = stops.take(trackedIndex + 1).map { snapToPolyline(LatLon(it.lat, it.lon), polyline)?.distance ?: 0.0 }
-    val firstIndex = nextStopIndex(stopDists, startDist)
-    return VehicleApproach(points, stops.subList(firstIndex, trackedIndex + 1).toList())
-}
-
 /** The next arrival's tripId per direction group (max three). Arrivals without a tripId are skipped. */
 fun trackedTripIds(arrivals: List<Arrival>): List<String> {
     val seenDirections = HashSet<String>()
@@ -174,20 +122,6 @@ fun routeProgress(
     )
 }
 
-data class StripLabels(val left: String, val middle: String?, val right: String)
-
-/** The three names under a direction's progress strip (start, tracked, end). */
-fun stripLabels(stopNames: List<String>, trackedIndex: Int): StripLabels {
-    val first = stopNames.firstOrNull() ?: ""
-    val last = stopNames.lastOrNull() ?: ""
-    val tracked = stopNames.getOrNull(trackedIndex) ?: first
-    if (trackedIndex < 0) return StripLabels(first, null, last)
-    if (stopNames.size <= 1) return StripLabels("$first, tracked", null, "")
-    if (trackedIndex == 0) return StripLabels("$tracked, tracked", null, last)
-    if (trackedIndex == stopNames.size - 1) return StripLabels(first, null, "$tracked, tracked")
-    return StripLabels(first, "$tracked, tracked", last)
-}
-
 data class ApproximateVehicleInput(
     /** Only departureTime / arrivalTime (epoch s) and shapeDistTraveled are read. */
     val stopTimes: List<FutarTripStopTime>,
@@ -227,10 +161,4 @@ fun approximateVehiclePosition(input: ApproximateVehicleInput): LatLon? {
     val total = last.shapeDistTraveled - first.shapeDistTraveled
     val fraction = if (total <= 0) 0.0 else min(1.0, max(0.0, (dist - first.shapeDistTraveled) / total))
     return pointAtFraction(polyline, fraction)
-}
-
-/** The headsign under a progress strip, only when it differs from the end label. */
-fun stripDirection(headsign: String?, endLabel: String): String? {
-    if (headsign.isNullOrEmpty()) return null
-    return if (headsign.trim().lowercase() == endLabel.trim().lowercase()) null else headsign
 }

@@ -28,10 +28,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
+import dev.southstar21.vectra.core.designsystem.components.OrbEngine
 import dev.southstar21.vectra.core.designsystem.components.VText
+import dev.southstar21.vectra.core.designsystem.components.drawOrb
+import dev.southstar21.vectra.core.designsystem.components.grey
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.easeInOutCubic
+import dev.southstar21.vectra.core.designsystem.theme.sineHash
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.position
@@ -66,14 +72,14 @@ private const val PointsStagger = 2.6f
 private const val PointsSpan = 0.6f
 
 /** A dot landing on its point shrinks and fades over the last part of its flight. */
-private fun landing(e: Float): Float = 1 - smooth(e, 0.6f, 1f)
+private fun landing(e: Float): Float = 1 - smoothstep(0.6f, 1f, e)
 
 private enum class CoverPhase { Loading, Melting, Gone }
 
 /** The cover's phase and frame clock. Frames are read in draw only, so they never recompose. */
 @Stable
 private class OrbCover(loading: Boolean) {
-    val engine = OrbEngine(ThinkingOrbState.Searching, OrbSize.value.toDouble())
+    val engine = OrbEngine(OrbSize.value.toDouble())
     val plan = MeltPlan(engine.count)
     var phase by mutableStateOf(if (loading) CoverPhase.Loading else CoverPhase.Gone)
         private set
@@ -111,7 +117,7 @@ private class OrbCover(loading: Boolean) {
         }
     }
 
-    /** The orb's clock (a still frame at 0.6, as ThinkingOrb). */
+    /** The orb's clock (a still frame at 0.6). */
     fun orbTime(reduced: Boolean): Double = if (reduced || frame == 0L) 0.6 else frame / 1e9 * engine.speed
 
     /** Melt progress 0..1 (0 while loading). */
@@ -193,7 +199,7 @@ fun BoxScope.MapLoadingOrb(
                 .offset(y = LabelDrop)
                 .graphicsLayer {
                     val p = cover.progress(reduced)
-                    alpha = if (reduced) 1 - p else 1 - smooth(p, 0f, 0.15f)
+                    alpha = if (reduced) 1 - p else 1 - smoothstep(0f, 0.15f, p)
                 },
             style = vtext(TypeScale.Caption, Weight.Medium),
             color = c.textSecondary,
@@ -226,7 +232,7 @@ private fun DrawScope.drawCover(
             drawOrb(engine, orbCenter, k, ink.dark, alpha = 1 - p)
         }
         else -> {
-            drawRect(ink.cover.copy(alpha = 1 - smooth(p, 0.08f, 0.7f)))
+            drawRect(ink.cover.copy(alpha = 1 - smoothstep(0.08f, 0.7f, p)))
             val runs = routePath().flatMap { visibleRuns(it, size.width, size.height) }
             drawScatter(engine, cover.plan, p, orbCenter, k, ink, RunPath(runs))
             // The map's stops pop in over the dots, never under them.
@@ -247,8 +253,8 @@ private class MeltPlan(n: Int) {
         val byX = (0 until n).sortedBy { engine.x[it] }
         byX.forEachIndexed { rank, i ->
             share[i] = LineInset + (1 - 2 * LineInset) * rank / max(1, n - 1)
-            delay[i] = hash(i, 3.1) * 0.14f
-            side[i] = if (hash(i, 9.2) < 0.5f) -1f else 1f
+            delay[i] = sineHash(i.toDouble(), 3.1).toFloat() * 0.14f
+            side[i] = if (sineHash(i.toDouble(), 9.2).toFloat() < 0.5f) -1f else 1f
         }
     }
 }
@@ -268,15 +274,15 @@ private fun DrawScope.drawScatter(
     val total = line.total
     // Into points each dot goes out as it lands (see [landing]); along lines they all fade together.
     val points = orbInk.points && total > 0f
-    val fade = if (points) 1f else 1 - smooth(p, 0.78f, 1f)
+    val fade = if (points) 1f else 1 - smoothstep(0.78f, 1f, p)
     if (fade <= 0f) return
     val half = engine.size / 2
     val onLine = DotOnLine.toPx()
     val arcMax = ArcMax.toPx()
     for (o in 0 until engine.count) {
         val i = engine.order[o]
-        val e = if (points) easeInOut(((p - plan.delay[i] * PointsStagger) / PointsSpan).coerceIn(0f, 1f))
-        else easeInOut(((p - plan.delay[i]) / 0.58f).coerceIn(0f, 1f))
+        val e = if (points) easeInOutCubic(((p - plan.delay[i] * PointsStagger) / PointsSpan).coerceIn(0f, 1f))
+        else easeInOutCubic(((p - plan.delay[i]) / 0.58f).coerceIn(0f, 1f))
         val x0 = orbCenter.x + ((engine.x[i] - half) * k).toFloat()
         val y0 = orbCenter.y + ((engine.y[i] - half) * k).toFloat()
         val to = if (total > 0f) line.at(plan.share[i] * total)
@@ -288,7 +294,7 @@ private fun DrawScope.drawScatter(
         val x = x0 + dx * e - dy / len * bow
         val y = y0 + dy * e + dx / len * bow
         val g = engine.grey(i, dark)
-        val ink = lerp(Color(g, g, g), routeColor, if (total > 0f) smooth(e, 0.35f, 1f) else 0f)
+        val ink = lerp(Color(g, g, g), routeColor, if (total > 0f) smoothstep(0.35f, 1f, e) else 0f)
         val land = if (points) landing(e) else 1f
         val a = (engine.a[i].toFloat() + (1 - engine.a[i].toFloat()) * e) * fade * land
         if (a < 0.02f) continue
@@ -382,9 +388,3 @@ private class RunPath(private val runs: List<List<Offset>>) {
     }
 }
 
-private fun easeInOut(u: Float): Float = if (u < 0.5f) 4 * u * u * u else 1 - (-2 * u + 2).pow(3) / 2
-
-private fun hash(a: Int, b: Double): Float {
-    val h = sin(a * 12.9898 + b * 78.233) * 43758.5453
-    return (h - floor(h)).toFloat()
-}

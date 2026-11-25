@@ -126,7 +126,7 @@ internal fun FollowedDeparture(selection: ExplorerSelection, countdown: Int, onS
                 }
                 VText("from ${selection.stopName}", style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 1)
             }
-            NearbyEtaRow(selection.isPredicted, formatNearbyCountdown(countdown))
+            NearbyEtaRow(selection.isPredicted, formatPrimeCountdown(countdown))
             VText(
                 "Stop",
                 Modifier.tappable(CircleShape, role = Role.Button, onClickLabel = "Stop following this line", onClick = onStop).padding(horizontal = 10.dp, vertical = 8.dp),

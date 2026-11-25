@@ -308,7 +308,7 @@ class TransitRepository(
             if (demo(it)) DemoFeed.arrivals(it, nowMs()) else arrivalsLoader.load(it)
         }
 
-    /** Deep arrivals (trip planning): key = stopId to stop-times limit. */
+    /** Arrivals with a stop-times limit (multi-stop boards, see `rememberMultiStopArrivals`): key = stopId to limit. */
     val deepArrivals: LiveQuery<Pair<String, Int>, FutarArrivalsResponse> =
         LiveQuery(scope, refetchIntervalMs = 20_000, staleTimeMs = 10_000, online = connectivity.online, maxIdleEntries = MaxIdleStops, shouldRetry = ::isRetryableFeedError) { (id, limit) -> arrivalsLoader.loadWithLimit(id, limit) }
 

@@ -59,14 +59,6 @@ class LivePositionTest {
 
     @Test fun progressIndexFallback() = assertEquals(1.0, routeProgress(ns, emptyList(), null, 3).trackedFraction)
 
-    // ---- stripLabels ----
-    private val names = listOf("A", "B", "C", "D")
-
-    @Test fun trackedInMiddle() = assertEquals(StripLabels("A", "C, tracked", "D"), stripLabels(names, 2))
-    @Test fun trackedOwnsStart() = assertEquals(StripLabels("A, tracked", null, "D"), stripLabels(names, 0))
-    @Test fun trackedOwnsEnd() = assertEquals(StripLabels("A", null, "D, tracked"), stripLabels(names, 3))
-    @Test fun singleStopLine() = assertEquals(StripLabels("A, tracked", null, ""), stripLabels(listOf("A"), 0))
-
     // ---- clipRouteToTrackedStop ----
     private data class NamedStop(val lat: Double, val lon: Double, val name: String)
     private val namedStops = ns.mapIndexed { i, p -> NamedStop(p.lat, p.lon, "S$i") }
@@ -92,32 +84,6 @@ class LivePositionTest {
         assertNull(clip(emptyList(), namedStops, 1))
         assertNull(clip(ns, emptyList(), 1))
         assertNull(clip(ns, namedStops, 99))
-    }
-
-    // ---- approachFromVehicle ----
-    private val approachStops = ns.mapIndexed { i, p -> ApproachStop("S$i", "S$i", p.lat, p.lon) }
-
-    @Test fun approachFromVehiclePosition() {
-        val out = assertNotNull(approachFromVehicle(ns, approachStops, 2, LatLon(47.505, 19.04)))
-        assertEquals(listOf("S1", "S2"), out.stops.map { it.id })
-        assertCloseTo(47.505, out.polyline[0].lat, 3)
-        assertCloseTo(47.52, out.polyline.last().lat, 4)
-    }
-
-    @Test fun approachFromLineStart() {
-        val out = approachFromVehicle(ns, approachStops, 2, null)!!
-        assertEquals(listOf("S0", "S1", "S2"), out.stops.map { it.id })
-        assertCloseTo(47.5, out.polyline[0].lat, 4)
-    }
-
-    @Test fun approachNullOncePassed() = assertNull(approachFromVehicle(ns, approachStops, 2, LatLon(47.525, 19.04)))
-
-    @Test fun approachNullAtLineStart() = assertNull(approachFromVehicle(ns, approachStops, 0, LatLon(47.5, 19.04)))
-
-    @Test fun approachNullWithoutGeometry() {
-        assertNull(approachFromVehicle(emptyList(), approachStops, 1, null))
-        assertNull(approachFromVehicle(ns, emptyList(), 1, null))
-        assertNull(approachFromVehicle(ns, approachStops, 99, null))
     }
 
     // ---- resolveTrackedStopIndex ----
@@ -166,19 +132,5 @@ class LivePositionTest {
         assertTrue(p.lon < 19.1)
         assertCloseTo(19.0917, p.lon, 3)
         assertEquals(ew.last(), approximateVehiclePosition(ApproximateVehicleInput(trip, ew, 300_000)))
-    }
-
-    // ---- stripDirection ----
-    @Test fun directionNullWhenEqualsEnd() {
-        assertNull(stripDirection("Széll Kálmán tér", "Széll Kálmán tér"))
-        assertNull(stripDirection(" széll kálmán tér ", "Széll Kálmán tér"))
-    }
-
-    @Test fun directionWhenDiffers() =
-        assertEquals("Újpalota, Szentmihályi út", stripDirection("Újpalota, Szentmihályi út", "Blaha Lujza tér M"))
-
-    @Test fun directionNullForEmpty() {
-        assertNull(stripDirection(null, "X"))
-        assertNull(stripDirection("", "X"))
     }
 }

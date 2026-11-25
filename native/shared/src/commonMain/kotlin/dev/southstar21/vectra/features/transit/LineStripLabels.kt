@@ -208,29 +208,6 @@ private fun AlignedEndColumn(data: AlignedEndData, modifier: Modifier = Modifier
     }
 }
 
-/**
- * Quiet follow-up departure times under each side of the strip ("then 14', 19'"), aligned with
- * the header and vehicle above. Also lists a forked branch's destination and ETA when present.
- */
-@Composable
-internal fun StripEnds(model: StripModel, modifier: Modifier = Modifier) {
-    val leftLater = model.rightTimes.drop(1)
-    val rightLater = model.leftTimes.drop(1)
-    val fork = model.fork
-    if (leftLater.isEmpty() && rightLater.isEmpty() && fork == null) return
-    Column(modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (leftLater.isNotEmpty() || rightLater.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { EndTimes(leftLater) }
-                if (model.leftEnd != null || rightLater.isNotEmpty()) {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { EndTimes(rightLater) }
-                }
-            }
-        }
-        if (fork != null) ForkEndRow(fork, model.forkTimes)
-    }
-}
-
 @Composable
 internal fun ForkEndRow(fork: StripFork, times: List<StripTime>) {
     val c = Vectra.colors

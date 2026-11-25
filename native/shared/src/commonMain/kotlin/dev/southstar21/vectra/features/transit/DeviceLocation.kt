@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.haversineMeters
 import dev.southstar21.vectra.core.platform.GeoFix
@@ -59,8 +60,8 @@ data class WatchLocationState(
 
 val InitialWatchLocationState = WatchLocationState(
     status = WatchLocationStatus.Idle,
-    lat = 47.4979, // Budapest center fallback while no fix exists
-    lon = 19.0402,
+    lat = BudapestCenter.lat, // fallback while no fix exists
+    lon = BudapestCenter.lon,
     accuracy = 0.0,
     heading = null,
     speed = null,

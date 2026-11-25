@@ -6,6 +6,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
+import dev.southstar21.vectra.core.designsystem.theme.backOut
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -50,7 +52,7 @@ class MapReveal {
     }
 }
 
-internal fun revealLine(p: Float): Float = smooth(p, 0.62f, 0.9f)
+internal fun revealLine(p: Float): Float = smoothstep(0.62f, 0.9f, p)
 
 /** A stop's pop; [order] 0 is your stop, 1 the farthest. */
 internal fun revealStop(p: Float, order: Float): Float = backOut(((p - 0.55f - order * 0.25f) / 0.2f).coerceIn(0f, 1f))
@@ -60,16 +62,5 @@ internal fun revealLocation(p: Float): Float = backOut(((p - 0.75f) / 0.2f).coer
 /** The [index]th vehicle's pop (a slight stagger between the first few). */
 internal fun revealVehicle(p: Float, index: Int): Float = backOut(((p - 0.78f - min(index, 2) * 0.02f) / 0.18f).coerceIn(0f, 1f))
 
-internal fun revealControls(p: Float): Float = smooth(p, 0.55f, 0.95f)
+internal fun revealControls(p: Float): Float = smoothstep(0.55f, 0.95f, p)
 
-internal fun smooth(x: Float, a: Float, b: Float): Float {
-    val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
-    return u * u * (3 - 2 * u)
-}
-
-/** Ease-out with a small overshoot: a pop. */
-internal fun backOut(u: Float): Float {
-    val c1 = 1.70158f
-    val v = u.coerceIn(0f, 1f) - 1
-    return if (u <= 0f) 0f else 1 + (c1 + 1) * v.pow(3) + c1 * v.pow(2)
-}

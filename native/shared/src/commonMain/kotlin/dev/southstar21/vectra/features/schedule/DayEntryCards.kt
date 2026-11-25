@@ -13,6 +13,8 @@ import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.color
+import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.preferences.TimeFormat
 import dev.southstar21.vectra.core.time.formatTime
 
@@ -41,7 +43,7 @@ private fun overlapNote(o: Overlap, timeFormat: TimeFormat): CardNote =
 /** One class card: what the list knows about it for this day. */
 internal class ClassCardState(
     val entry: DayEntry.Class,
-    val status: AttendanceStatus,
+    val status: CardAttendance,
     val focus: Boolean,
     val live: Boolean,
     val overlap: Overlap?,
@@ -58,11 +60,11 @@ internal fun ClassCard(
     intensiveCourses: Set<String>?,
     onClick: ((ScheduleEvent) -> Unit)?,
     streak: () -> Int,
-    onSetStatus: (AttendanceStatus) -> Unit,
+    onSetStatus: (CardAttendance) -> Unit,
     selected: Boolean = false,
 ) {
     val event = state.entry.event
-    val raw = parseOpaqueHexColor(event.color.ifEmpty { "#38bdf8" })
+    val raw = parseHexColor(event.color.ifEmpty { "#38bdf8" }, opaque = true) ?: Palette.Sky400
     val course = readableOn(raw, d.card, d.isDark)
     val startTint = when {
         !state.focus -> d.text
@@ -73,7 +75,7 @@ internal fun ClassCard(
     // No "cancelled" line: it would push the orb down between taps of the status cycle; the stamp says it.
     val notes = listOfNotNull(
         state.overlap?.let { overlapNote(it, timeFormat) },
-        CardNote("Checked in. Will sync when you are back online").takeIf { state.pendingSync && state.status != AttendanceStatus.Unmarked },
+        CardNote("Checked in. Will sync when you are back online").takeIf { state.pendingSync && state.status != CardAttendance.Unmarked },
     )
     val content = DayCardContent(
         typeWord = type.first,

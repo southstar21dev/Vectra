@@ -7,6 +7,7 @@ import dev.southstar21.vectra.core.network.PocketBaseException
 import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -462,7 +463,7 @@ internal class ScheduleItemsSync(
     /** Exponential backoff while the queue is non-empty and the last pass failed. */
     private fun scheduleRetry() {
         retryJob?.cancel()
-        val delayMs = minOf(60_000L, 2_000L * (1L shl minOf(syncRetryCount, MaxRetryShift)))
+        val delayMs = exponentialBackoffMs(minOf(syncRetryCount, MaxRetryShift), 2_000L, 60_000L)
         retryJob = scope.launch {
             delay(delayMs)
             if (online && currentLocal().queue.isNotEmpty() && _itemSyncError.value != null) executeSync()

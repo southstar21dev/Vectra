@@ -48,6 +48,7 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Connectivity
@@ -59,18 +60,6 @@ import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 // ---- colours ---------------------------------------------------------------
-
-/** `#rrggbb` / `rrggbb` / `rrggbbaa` (with or without hash) → Color; null when unparsable. */
-fun parseHexColor(hex: String?): Color? {
-    val h = hex?.trim()?.removePrefix("#") ?: return null
-    val v = when (h.length) {
-        6 -> h.toLongOrNull(16)?.let { 0xFF000000 or it }
-        8 -> h.toLongOrNull(16)?.let { ((it and 0xFF) shl 24) or (it shr 8) }
-        3 -> h.map { "$it$it" }.joinToString("").toLongOrNull(16)?.let { 0xFF000000 or it }
-        else -> null
-    } ?: return null
-    return Color(v)
-}
 
 /** Departure-board display ink: bright amber = live, dim amber = timetable. */
 @Immutable

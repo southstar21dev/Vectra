@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext

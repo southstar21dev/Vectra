@@ -241,3 +241,18 @@ object Palette {
     val Sky400 = Color(0xFF38BDF8)
     val Sky500 = Color(0xFF0EA5E9)
 }
+
+/**
+ * `#rrggbb`, `rrggbb`, `#rgb` or `rrggbbaa` (hash optional) to a Color; null when unparsable.
+ * With [opaque] an 8-digit value drops its alpha instead of honouring it.
+ */
+fun parseHexColor(hex: String?, opaque: Boolean = false): Color? {
+    val h = hex?.trim()?.removePrefix("#") ?: return null
+    val v = when (h.length) {
+        6 -> h.toLongOrNull(16)?.let { 0xFF000000 or it }
+        8 -> h.toLongOrNull(16)?.let { if (opaque) 0xFF000000 or (it shr 8) else ((it and 0xFF) shl 24) or (it shr 8) }
+        3 -> h.map { "$it$it" }.joinToString("").toLongOrNull(16)?.let { 0xFF000000 or it }
+        else -> null
+    }
+    return v?.let { Color(it) }
+}

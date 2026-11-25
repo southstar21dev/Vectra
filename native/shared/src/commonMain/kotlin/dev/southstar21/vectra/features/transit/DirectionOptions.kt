@@ -210,7 +210,7 @@ private fun buildGroupedDirectionOption(
             value = value,
             label = value,
             subtitle = baseSubtitle,
-            liveMinutes = minutesUntil(soonestRegular.arrivalMs, ctx.now),
+            liveMinutes = etaMinutes(soonestRegular.arrivalMs, ctx.now),
             memberHeadsigns = headsigns,
             directionId = dirId,
         )

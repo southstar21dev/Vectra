@@ -18,8 +18,9 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 
 /**
- * The device's push
- * registration lives in `push_subscriptions` with `transport = 'fcm'`.
+ * The device's notification state. Push is currently off (`PushRegistrar` is `NoPush`, and the
+ * backend dropped `transport = 'fcm'` rows in migration 1700000006); the registration code below
+ * stays for when a push transport returns, and nothing reaches the server until then.
  */
 class NotificationsRepository(
     private val pb: PocketBaseClient,

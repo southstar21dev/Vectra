@@ -36,7 +36,6 @@ import dev.southstar21.vectra.core.time.getDayName
 import dev.southstar21.vectra.core.time.monthName
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.util.runSuspendCatching
-import dev.southstar21.vectra.features.coursetracker.resolveCourseKey
 import dev.southstar21.vectra.features.holidays.HolidayCard
 import dev.southstar21.vectra.features.schedule.DayListHeader
 import dev.southstar21.vectra.features.schedule.DemoScheduleSeedEffect
@@ -158,7 +157,7 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
             tracker = graph.courseTrackerHooks,
             dateStr = todayStr,
             items = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) },
-            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.openCourseHub(resolveCourseKey(e)) },
+            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.openCourseHub(graph.courseTrackerHooks.courseKey(e)) },
             onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
             onToggleTaskComplete = { item ->
                 scope.launch {

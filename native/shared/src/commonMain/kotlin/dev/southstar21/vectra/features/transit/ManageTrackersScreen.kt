@@ -79,6 +79,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Screen
@@ -199,7 +200,7 @@ fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
                     textSize = TypeScale.Body,
                 ) { tab, _ ->
                     val ink = LocalContentColor.current
-                    val countStyle = vtext(TypeScale.Body, Weight.Semibold).copy(fontFeatureSettings = "tnum")
+                    val countStyle = vtext(TypeScale.Body, Weight.Semibold).tnum()
                     if (tab == ReorderTab.All) {
                         VText("All", maxLines = 1)
                         VText("${allItems.size}", style = countStyle, color = ink.copy(alpha = ink.alpha * 0.6f), maxLines = 1)

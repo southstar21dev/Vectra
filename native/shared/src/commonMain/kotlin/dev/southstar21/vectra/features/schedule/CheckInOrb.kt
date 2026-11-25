@@ -174,11 +174,11 @@ internal class OrbLook(
  */
 @Composable
 internal fun CheckInOrb(
-    status: AttendanceStatus,
+    status: CardAttendance,
     title: String,
     look: OrbLook,
     streak: () -> Int,
-    onSetStatus: (AttendanceStatus) -> Unit,
+    onSetStatus: (CardAttendance) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptics = Vectra.haptics
@@ -202,8 +202,8 @@ internal fun CheckInOrb(
                 val next = nextStatus(status)
                 onSetStatus(next)
                 when {
-                    next == AttendanceStatus.Present && !reduceMotion -> reward.play(streak(), haptics)
-                    next == AttendanceStatus.Present -> haptics.confirm()
+                    next == CardAttendance.Present && !reduceMotion -> reward.play(streak(), haptics)
+                    next == CardAttendance.Present -> haptics.confirm()
                     else -> {
                         haptics.tick()
                         if (!reduceMotion) reward.nod()
@@ -222,9 +222,9 @@ internal fun CheckInOrb(
 
 /** The orb at rest: the ring when unmarked, else the status disc; plus the offline clock. */
 @Composable
-private fun SettledOrb(status: AttendanceStatus, look: OrbLook, scale: () -> Float, reduceMotion: Boolean) {
+private fun SettledOrb(status: CardAttendance, look: OrbLook, scale: () -> Float, reduceMotion: Boolean) {
     Box(contentAlignment = Alignment.CenterEnd) {
-        val orb: @Composable (AttendanceStatus) -> Unit = { s ->
+        val orb: @Composable (CardAttendance) -> Unit = { s ->
             Box(
                 // The 36dp orb sits centred in the right-most 44dp of the slot.
                 Modifier.padding(end = 4.dp).size(OrbSize.dp).graphicsLayer {
@@ -233,7 +233,7 @@ private fun SettledOrb(status: AttendanceStatus, look: OrbLook, scale: () -> Flo
                 },
                 contentAlignment = Alignment.Center,
             ) {
-                if (s == AttendanceStatus.Unmarked) {
+                if (s == CardAttendance.Unmarked) {
                     Ring(
                         if (look.focus) look.courseColor.copy(alpha = 0.9f) else look.neutralRing,
                         if (look.focus) look.courseColor else null,
@@ -246,7 +246,7 @@ private fun SettledOrb(status: AttendanceStatus, look: OrbLook, scale: () -> Flo
         }
         // Reduced motion: no orbit, no pill; the new state cross-fades in.
         if (reduceMotion) Crossfade(status, animationSpec = tween(150), label = "orbFade") { orb(it) } else orb(status)
-        if (look.pendingSync && status != AttendanceStatus.Unmarked) {
+        if (look.pendingSync && status != CardAttendance.Unmarked) {
             // The badge overhangs the orb's bottom-right by 4dp.
             Box(Modifier.align(Alignment.BottomEnd).offset(y = 4.dp).size(16.dp).background(look.badgeBg, CircleShape), contentAlignment = Alignment.Center) {
                 VIcon(RemixIcons.TimeLine, size = 12.dp, tint = Color(0xFFFBBF24))
@@ -370,7 +370,7 @@ private fun RewardPill(t: Float, fill: Float, pillWidth: Float, streak: Int, clo
             )
         }
         Canvas(Modifier.align(Alignment.CenterEnd).size(OrbSize.dp)) {
-            drawGlyph(AttendanceStatus.Present, 17.dp, progress = phase(t, 620f, 940f, TickEase))
+            drawGlyph(CardAttendance.Present, 17.dp, progress = phase(t, 620f, 940f, TickEase))
         }
     }
 }

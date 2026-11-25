@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import dev.southstar21.vectra.core.util.parseLeadingNumber
+import kotlin.math.ceil
 import kotlin.math.min
 
 data class RouteTypeMeta(val label: String, val emoji: String, val icon: ImageVector)
@@ -440,16 +441,11 @@ private fun effectWeight(effectType: String?): Int = when (effectType) {
     else -> 3
 }
 
-/** "3 MIN" — total-minute countdown text for departure cards. */
-fun formatCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes MIN"
+/** Whole minutes until [ms], rounded up; 0 once it is due. */
+fun etaMinutes(ms: Long, now: Long): Int = maxOf(0, ceil((ms - now) / 60_000.0).toInt())
 
 /** "2'" — prime-marked total minutes for compact readouts. */
 fun formatPrimeCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes'"
-
-const val CompactCountdownMaxMinutes = 99
-
-/** Compact minutes for dashboard tiles; null past the horizon. */
-fun formatCompactCountdown(minutes: Int): String? = if (minutes > CompactCountdownMaxMinutes) null else formatPrimeCountdown(minutes)
 
 /** Snapshots older than this (or offline) are stale: 3× the 20s poll. */
 const val ArrivalsStaleMs = 60_000L
