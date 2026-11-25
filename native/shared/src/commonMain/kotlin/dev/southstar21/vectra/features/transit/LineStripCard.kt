@@ -83,6 +83,17 @@ internal class StopStrip(
     val running: Boolean get() = !noDepartures || replaced
 }
 
+/**
+ * Where the line now terminates when the very next departure no longer heads where the tracker
+ * was saved for, or null. Only that next departure counts: a timetabled short-turn later in the
+ * window is normal service, not a diversion.
+ */
+internal fun divertedDestination(savedHeadsign: String?, arrivals: List<Arrival>): String? {
+    val next = arrivals.filter { !it.isReplacementBus }.minByOrNull { it.arrivalMs }
+    val diverted = savedHeadsign != null && next != null && !isHeadsignMatch(savedHeadsign, next.headSign, next.tripHeadsign)
+    return if (diverted) extractHeadsignDestination(next.headSign.ifEmpty { next.tripHeadsign }).takeIf { it.isNotEmpty() } else null
+}
+
 @Composable
 internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker, stops: List<TrackerStop>, stop: TrackerStop, now: Long, offline: Boolean): StopStrip {
     val live = rememberLiveRoute(repo, tracker, stops, stop, now)
@@ -98,12 +109,7 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
     }
     val loaded = q.data != null
     val savedHeadsign = stop.headsign?.takeIf { it.isNotBlank() }
-    val divertedTo = remember(savedHeadsign, live.arrivals) {
-        if (savedHeadsign == null) null
-        else live.arrivals.firstOrNull { !it.isReplacementBus && !isHeadsignMatch(savedHeadsign, it.headSign, it.tripHeadsign) }
-            ?.let { extractHeadsignDestination(it.headSign.ifEmpty { it.tripHeadsign }) }
-            ?.takeIf { it.isNotEmpty() }
-    }
+    val divertedTo = remember(savedHeadsign, live.arrivals) { divertedDestination(savedHeadsign, live.arrivals) }
     return StopStrip(
         stop = stop,
         model = model,
