@@ -42,7 +42,7 @@ import dev.southstar21.vectra.core.time.parseIsoDate
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.schedule.TrackerCourses
-import dev.southstar21.vectra.features.schedule.isExamEvent
+import dev.southstar21.vectra.features.schedule.isExam
 import dev.southstar21.vectra.features.schedule.normalizeTime
 import dev.southstar21.vectra.features.schedule.rememberExitOnce
 import androidx.compose.animation.animateColorAsState
@@ -183,7 +183,7 @@ private fun CourseHubFor(
 
     val course = remember(events, data, courseKey) {
         val matching = events.filter { resolveCourseKey(it) == courseKey }
-        val event = matching.firstOrNull { !isExamEvent(it.eventType, it.courseName) } ?: matching.firstOrNull()
+        val event = matching.firstOrNull { !it.isExam() } ?: matching.firstOrNull()
         event?.let(CourseTrackerCourse::from) ?: data.trackers[courseKey]?.let(CourseTrackerCourse::from)
     }
     val missing = course == null || course.courseName.isEmpty()

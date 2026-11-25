@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ManualClassParityTest {
@@ -50,6 +51,15 @@ class ManualClassParityTest {
             .filter { classOccursOnDate(odd, it, all) }
         assertEquals(listOf("2026-11-02", "2026-11-16", "2026-11-30"), timetable)
         assertEquals(timetable, generated)
+    }
+
+    @Test fun aManualClassNamedLikeAnExamKeepsItsTrackerAcrossSyncs() {
+        val prep = event("Exam prep seminar", dayOfWeek = 1, startTime = "10:00", endTime = "12:00", semester = "2026/27/1", source = "manual")
+        val first = reconcileTrackersWithSchedule(createEmptyTrackerData(), listOf(prep), now = "2026-11-24T10:00:00Z")
+        assertEquals(1, first.data.trackers.size)
+        val second = reconcileTrackersWithSchedule(first.data, listOf(prep), now = "2026-11-24T11:00:00Z")
+        assertFalse(second.changed)
+        assertEquals(first.data, second.data)
     }
 
     @Test fun weeklyManualClassStartsAtSemesterWeekOne() {
