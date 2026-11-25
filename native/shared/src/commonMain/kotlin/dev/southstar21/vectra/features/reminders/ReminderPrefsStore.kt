@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.JsonObject
 
 /**
  * The reminder settings, on the device and in the profile (`preferences.reminders`): a device that
@@ -91,9 +90,8 @@ internal class ReminderPrefsStore(
     private suspend fun push() = pushLock.withLock {
         if (auth.session.value == null) return@withLock
         runSuspendCatching {
-            val current = auth.profile.value?.preferences ?: JsonObject(emptyMap())
             val mine = VectraJson.encodeToJsonElement(ReminderPrefs.serializer(), _prefs.value)
-            if (current[ProfileKey] != mine) auth.updateProfile(mapOf("preferences" to JsonObject(current + (ProfileKey to mine))))
+            if (auth.profile.value?.preferences?.get(ProfileKey) != mine) auth.setPreference(ProfileKey, mine)
         }
     }
 
