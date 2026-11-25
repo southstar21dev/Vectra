@@ -8,7 +8,6 @@ import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.AttendanceStatus as CardStatus
 import dev.southstar21.vectra.features.schedule.normalizeTime
-import dev.southstar21.vectra.core.time.nowInBudapest
 
 /**
  * The course tracker's side of the schedule: the class card's check-in button and

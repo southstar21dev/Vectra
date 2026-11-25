@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -38,9 +37,6 @@ import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.maps.LatLon
-import dev.southstar21.vectra.core.maps.haversineMeters
-import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.features.schedule.rememberDayColors
 import kotlinx.coroutines.delay
 

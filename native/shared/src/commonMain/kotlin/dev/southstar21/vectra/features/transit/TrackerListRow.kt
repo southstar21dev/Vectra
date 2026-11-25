@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import dev.southstar21.vectra.core.designsystem.components.SelectOption
 import dev.southstar21.vectra.core.designsystem.components.StatusLabel
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.designsystem.components.VIcon

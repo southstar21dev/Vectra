@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.metro)
+    alias(libs.plugins.detekt)
 }
 
 // iOS gets the same build-time values as androidApp's BuildConfig, from the same Gradle properties,
@@ -45,6 +46,13 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
             |""".trimMargin(),
         )
     }
+}
+
+// Type-resolved detekt: the root detekt task has no classpath, so UnusedImport and other rules that
+// need types stay silent there. The root detekt task depends on these, so `./gradlew detekt` runs them.
+detekt {
+    config.setFrom(rootProject.file("config/detekt/type-resolved.yml"))
+    buildUponDefaultConfig = false
 }
 
 kotlin {

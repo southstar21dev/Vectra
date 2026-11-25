@@ -5,7 +5,6 @@ import dev.southstar21.vectra.features.navbar.dockMaterial
 
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -95,7 +94,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import dev.southstar21.vectra.core.designsystem.theme.tappable
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 private const val SheetFraction = 0.72f
 private const val PeekVisibleFraction = 0.3f

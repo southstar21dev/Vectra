@@ -51,3 +51,8 @@ detekt {
 dependencies {
     detektPlugins(libs.compose.rules.detekt)
 }
+
+// UnusedImport and similar rules need type resolution, which only the per-module tasks have.
+tasks.named("detekt") {
+    dependsOn(":androidApp:detektDebug", ":shared:detektMainAndroid", ":shared:detektHostTestAndroid")
+}

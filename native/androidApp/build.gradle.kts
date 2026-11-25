@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.metro)
     alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.detekt)
 }
 
 // The version lives in gradle.properties (CI writes the release version there); the code is derived
@@ -33,6 +34,13 @@ fun versionCodeOf(versionName: String): Int {
         else -> 99
     }
     return (major * 10_000 + minor * 100 + patch) * 100 + build
+}
+
+// Type-resolved detekt: the root detekt task has no classpath, so UnusedImport and other rules that
+// need types stay silent there. The root detekt task depends on these, so `./gradlew detekt` runs them.
+detekt {
+    config.setFrom(rootProject.file("config/detekt/type-resolved.yml"))
+    buildUponDefaultConfig = false
 }
 
 android {
