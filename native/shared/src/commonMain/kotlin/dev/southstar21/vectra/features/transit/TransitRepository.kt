@@ -186,8 +186,7 @@ class TransitRepository(
             }
         }
         val record = pb.collection("transit_trackers").create(body)
-        trackersQuery.invalidate(Unit)
-        return TransitTracker(
+        val created = TransitTracker(
             id = record.string("id").orEmpty(),
             userId = uid,
             stopId = primary.stopId,
@@ -200,7 +199,20 @@ class TransitRepository(
             routeTextColor = input.routeTextColor,
             headsign = primary.headsign.orEmpty(),
             stops = stopsList,
+            dedupeKey = record.string("dedupe_key").orEmpty(),
+            createdAt = record.string("created_at").orEmpty(),
+            sortOrder = record.int("sort_order"),
         )
+        // Show it at once; the refetch below replaces this with the server's copy.
+        patchTrackers { list -> if (list.any { it.id == created.id }) list else list + created }
+        trackersQuery.invalidate(Unit)
+        return created
+    }
+
+    /** Update the cached list in place so every screen observing it reflects a write before the refetch lands. */
+    private fun patchTrackers(transform: (List<TransitTracker>) -> List<TransitTracker>) {
+        val current = trackersQuery.peek(Unit).data ?: return
+        trackersQuery.setData(Unit, transform(current))
     }
 
     suspend fun updateTrackerStops(id: String, stops: List<TrackerStop>) {
@@ -254,6 +266,11 @@ class TransitRepository(
                 orderedIds.mapIndexed { i, id ->
                     async { pb.collection("transit_trackers").update(id, buildJsonObject { put("sort_order", i) }) }
                 }.awaitAll()
+            }
+            patchTrackers { list ->
+                val rank = orderedIds.withIndex().associate { (i, id) -> id to i }
+                list.map { t -> rank[t.id]?.let { t.copy(sortOrder = it) } ?: t }
+                    .sortedBy { rank[it.id] ?: Int.MAX_VALUE }
             }
         } finally {
             // Refetch on failure too: some rows may already have their new order.
