@@ -418,7 +418,7 @@ struct AgendaFit: View {
             while let last = current.last, last.isFiller { current.removeLast() }
             out.append((current, []))
         }
-        // Finished classes go one at a time, but the last one stays while nothing else is left.
+        // Finished classes go one at a time, but three stay while nothing else is left.
         while let i = current.firstIndex(where: { if case .past = $0 { true } else { false } }),
               current.contains(where: { r in if case .past = r { false } else { r.session != nil } }) || current.filter({ $0.session != nil }).count > 3 {
             current.remove(at: i)

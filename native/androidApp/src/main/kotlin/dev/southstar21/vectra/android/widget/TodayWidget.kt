@@ -22,16 +22,18 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.features.widgets.TodayEntry
+import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.clockLabel
-import dev.southstar21.vectra.features.widgets.dayDistanceLabel
-import dev.southstar21.vectra.features.widgets.dayHeading
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.listedMs
+import dev.southstar21.vectra.features.widgets.fitRows
 import dev.southstar21.vectra.features.widgets.progress
 import dev.southstar21.vectra.features.widgets.remainingLabel
-import dev.southstar21.vectra.features.widgets.sessionsOn
+import dev.southstar21.vectra.features.widgets.todayEntries
+import dev.southstar21.vectra.features.widgets.todayRowHeight
 
 /** Medium: what's left today on a time line, then the next day under its name. */
 class TodayWidget : GlanceAppWidget() {
@@ -47,12 +49,6 @@ class TodayWidget : GlanceAppWidget() {
     }
 }
 
-private sealed interface Item {
-    class Session(val s: WidgetSession) : Item
-
-    class Day(val label: String) : Item
-}
-
 @Composable
 private fun TodayContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
@@ -60,52 +56,39 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see your day here."))
         return
     }
-    val items = buildList<Item> {
-        addAll(snap.sessionsOn(frame.today).filter { it.endMs > frame.nowMs }.map { Item.Session(it) })
-        // Then the days after, each under its name, until the widget is full.
-        snap.sessions.map { it.day }.filter { it > frame.today }.distinct().forEach { day ->
-            if (size >= 8) return@forEach
-            add(Item.Day("${dayDistanceLabel(frame.today, day)}, ${dayHeading(day)}"))
-            addAll(snap.sessionsOn(day).map { Item.Session(it) })
-        }
-    }
+    val items = snap.todayEntries(frame.today, frame.nowMs)
     val size = LocalSize.current
-    val b = Budget(context)
-    val nameWidth = size.width.value - 27f - 40f - 9f - 11f - 9f
+    val b = budgetFor(context)
+    val nameWidth = WidgetGeometry.todayNameWidth(size.width.value)
     val heights = items.map { item ->
         when (item) {
-            is Item.Day -> b.line(10f) + 2f
-            is Item.Session -> rowHeight(b, item.s, frame.nowMs, nameWidth)
+            is TodayEntry.Day -> b.line(10f) + 2f
+            is TodayEntry.Session -> todayRowHeight(b, item.session, frame.nowMs, nameWidth)
         }
     }
-    var shown = items.take(fitRows(heights.map { it + 5f }, size.height.value - 21f).coerceAtMost(9))
-    while (shown.lastOrNull() is Item.Day) shown = shown.dropLast(1)
+    var shown = items.take(fitRows(heights.map { it + WidgetGeometry.TodayRowGap }, WidgetGeometry.todayRowSpace(size.height.value)).coerceAtMost(9))
+    while (shown.lastOrNull() is TodayEntry.Day) shown = shown.dropLast(1)
     WidgetSurface(context, padding = 0.dp) {
-        Column(GlanceModifier.fillMaxSize().padding(start = 12.dp, top = 11.dp, end = 15.dp, bottom = 10.dp)) {
+        Column(GlanceModifier.fillMaxSize().padding(
+            start = WidgetGeometry.TodayPadStart.dp, top = WidgetGeometry.TodayPadTop.dp, end = WidgetGeometry.TodayPadEnd.dp, bottom = WidgetGeometry.TodayPadBottom.dp,
+        )) {
             if (shown.isEmpty()) Quiet("Nothing coming up in the next two weeks.", 12f)
             shown.forEachIndexed { i, item ->
                 when (item) {
                     // One child per item: Glance draws at most ten per column.
-                    is Item.Day -> Column {
-                        Row(GlanceModifier.padding(start = 60.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
-                        Spacer(GlanceModifier.height(5.dp))
+                    is TodayEntry.Day -> Column {
+                        Row(GlanceModifier.padding(start = WidgetGeometry.TodayNameOffset.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
+                        Spacer(GlanceModifier.height(WidgetGeometry.TodayRowGap.dp))
                     }
-                    is Item.Session -> {
-                        val last = i == shown.lastIndex || shown[i + 1] is Item.Day
+                    is TodayEntry.Session -> {
+                        val last = i == shown.lastIndex || shown[i + 1] is TodayEntry.Day
                         // The gap below belongs to the row, so the time line runs on through it.
-                        CompactRow(item.s, frame.nowMs, heights[i] + 5f, last, b.lines(item.s.title, 14f, nameWidth, max = 2))
+                        CompactRow(item.session, frame.nowMs, heights[i] + WidgetGeometry.TodayRowGap, last, b.lines(item.session.title, 14f, nameWidth, max = 2))
                     }
                 }
             }
         }
     }
-}
-
-private fun rowHeight(b: Budget, s: WidgetSession, nowMs: Long, nameWidth: Float): Float {
-    val live = s.startMs <= nowMs && nowMs < s.endMs && s.kind.isTimed
-    val body = b.line(10f) + 1f + b.height(s.title, 14f, nameWidth, max = 2) + if (live) 7f else 0f
-    val times = b.line(12f) + if (s.kind.isTimed) b.line(10f) + 1f else 0f
-    return maxOf(body, times)
 }
 
 /** One row: start over end, a node on the line, the type and room over the name. */
@@ -114,12 +97,12 @@ private fun CompactRow(s: WidgetSession, nowMs: Long, height: Float, last: Boole
     val p = LocalWPalette.current
     val live = s.kind.isTimed && s.startMs <= nowMs && nowMs < s.endMs
     Row(GlanceModifier.fillMaxWidth().height(height.dp)) {
-        Column(GlanceModifier.width(40.dp), horizontalAlignment = Alignment.End) {
+        Column(GlanceModifier.width(WidgetGeometry.TodayTimeColumn.dp), horizontalAlignment = Alignment.End) {
             Mono(clockLabel(s.listedMs))
             if (s.kind.isTimed) Mono(clockLabel(s.endMs), 10f, p.muted, FontWeight.Medium)
         }
-        Spacer(GlanceModifier.width(9.dp))
-        Column(GlanceModifier.width(11.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(GlanceModifier.width(WidgetGeometry.TodayTimeGap.dp))
+        Column(GlanceModifier.width(WidgetGeometry.TodayNodeColumn.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(GlanceModifier.height(2.dp))
             Node(s.kind, live, done = false)
             if (!last) {
@@ -127,7 +110,7 @@ private fun CompactRow(s: WidgetSession, nowMs: Long, height: Float, last: Boole
                 SpineLine((height - 15f).dp)
             }
         }
-        Spacer(GlanceModifier.width(9.dp))
+        Spacer(GlanceModifier.width(WidgetGeometry.TodayNodeGap.dp))
         Column(GlanceModifier.defaultWeight()) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TypeWord(s.kind)

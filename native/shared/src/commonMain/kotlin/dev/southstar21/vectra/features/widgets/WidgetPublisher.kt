@@ -27,7 +27,7 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.plus
 
 /** Days after today the snapshot covers: next week's view at the weekend and an exam heads-up a week out. */
-private const val AheadDays = 14
+const val SnapshotAheadDays = 14
 
 /**
  * Keeps the home-screen widgets' snapshot current: rewrites it whenever the timetable, personal
@@ -92,7 +92,7 @@ class WidgetPublisher(
         if (!schedule.localReady.value) return@withLock false
         val events = schedule.events.value
         val items = schedule.items.value.map { it.toItem() }
-        val days = (today.toEpochDays() - monday.toEpochDays()).toInt() + AheadDays + 1
+        val days = (today.toEpochDays() - monday.toEpochDays()).toInt() + SnapshotAheadDays + 1
         val snapshot = withContext(Dispatchers.Default) {
             val sessions = expandSessions(events, items, includeItems = true, from = monday, days = days) { e, ymd ->
                 courseTracker.isSessionHoliday(e.courseName, e.courseCode, e.semester, ymd, e.startTime)

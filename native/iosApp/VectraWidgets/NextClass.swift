@@ -43,7 +43,7 @@ extension Snapshot {
             s("Statistics Lab", "QB 112", .lab, 250, 340, "Nagy Gábor", "L2"),
             s("Problem set 3", "", .task, 600, 601),
             s("Algorithms", "B 012", .lecture, 1300, 1390, "Dr. Varga Béla", day: tomorrow),
-        ], updateRequired: nil)
+        ], updateRequired: nil, aheadDays: nil)
     }
 }
 
@@ -107,7 +107,7 @@ struct SmallNextClass: View {
             }, title: s.title, sub: s.teacher, rows: afterRows(s), fallback: "Nothing else coming up")
         case .examSoon(let exam):
             let label = ringLabel(exam.start.timeIntervalSince(now), hoursWord: "TO GO")
-            SmallLayout(head: RingHead(fraction: max(0, 1 - exam.start.timeIntervalSince(now) / (7 * 86_400)), kind: .exam, value: label.value, unit: label.unit) {
+            SmallLayout(head: RingHead(fraction: max(0, 1 - exam.start.timeIntervalSince(now) / Snapshot.examHeadsUp), kind: .exam, value: label.value, unit: label.unit) {
                 TypeWord(kind: .exam)
                 Mono(text: "\(Budapest.weekday(exam.day)) \(Budapest.clock(exam.start))", size: 11)
                 RoomLine(room: exam.location)

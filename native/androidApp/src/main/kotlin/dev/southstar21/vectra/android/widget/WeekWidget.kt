@@ -70,7 +70,7 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
     val grid = snap.weekGrid(frame.today, frame.nowMs, ::minuteOfDay)
     val classes = snap.week(frame.today).classCount()
     val exam = snap.examThisWeek(frame.today)
-    val b = Budget(context)
+    val b = budgetFor(context)
     val countText = (if (classes == 1) "1 class" else "$classes classes") + if (grid.weekendFree()) ", weekend free" else ""
     val examText = exam?.let { "${it.title}, ${weekdayLabel(it.day)} " }.orEmpty()
     // The exam title takes what the class count and the time leave, on up to two lines, never cutting the time.
