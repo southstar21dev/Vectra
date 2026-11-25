@@ -13,21 +13,53 @@ import kotlin.time.Instant
  * rekeyed on their next write.
  */
 
+private fun markedAtMs(session: AttendanceSession): Long =
+    session.markedAt?.let { runCatching { Instant.parse(it).toEpochMilliseconds() }.getOrNull() } ?: 0L
+
 private fun updatedAtMs(tracker: CourseTracker): Long =
     runCatching { Instant.parse(tracker.updatedAt).toEpochMilliseconds() }.getOrDefault(0L)
 
 /**
- * Local vs cloud: the newest version of each tracker wins (local on a tie);
- * trackers on one side only are kept. A stale cloud snapshot must never revert
- * a just-applied local update whose upload is still in flight.
+ * Local vs cloud: the newest version of each tracker wins its fields (local on a tie), but the
+ * attendance marks of both sides are combined (see [mergeAttendanceMarks]), so two devices that
+ * each marked something in the same course before syncing keep both. Trackers on one side only
+ * are kept. A stale cloud snapshot must never revert a just-applied local update whose upload
+ * is still in flight.
  */
 fun mergeTrackerData(local: CourseTrackerData, cloud: CourseTrackerData): CourseTrackerData {
     val trackers = LinkedHashMap(cloud.trackers)
     for ((key, localTracker) in local.trackers) {
         val cloudTracker = trackers[key]
-        if (cloudTracker == null || updatedAtMs(localTracker) >= updatedAtMs(cloudTracker)) trackers[key] = localTracker
+        trackers[key] = when {
+            cloudTracker == null -> localTracker
+            updatedAtMs(localTracker) >= updatedAtMs(cloudTracker) -> mergeAttendanceMarks(localTracker, cloudTracker)
+            else -> mergeAttendanceMarks(cloudTracker, localTracker)
+        }
     }
     return CourseTrackerData(1, trackers)
+}
+
+/**
+ * [newer] with the student's own work from [older] added back: a session both copies have takes
+ * the status changed last (by [AttendanceSession.markedAt]; the newer copy on a tie or without
+ * clocks), and a marked or custom session only [older] has is kept unless the newer copy deleted
+ * that slot. Unmarked generated sessions are not carried over; the reconciler regenerates them.
+ */
+private fun mergeAttendanceMarks(newer: CourseTracker, older: CourseTracker): CourseTracker {
+    val removed = newer.attendance.removedSessionKeys.toSet()
+    fun isWork(s: AttendanceSession) = s.isCustom == true || s.status != AttendanceStatus.Unmarked
+    val olderWork = older.attendance.sessions.filter { isWork(it) && sessionSlotKey(it) !in removed }
+    if (olderWork.isEmpty()) return newer
+    val olderById = older.attendance.sessions.associateBy { it.id }
+    val olderBySlot = older.attendance.sessions.associateBy { sessionSlotKey(it) }
+    val merged = newer.attendance.sessions.map { s ->
+        val counterpart = olderById[s.id] ?: olderBySlot[sessionSlotKey(s)]
+        if (counterpart != null && markedAtMs(counterpart) > markedAtMs(s)) counterpart.copy(id = s.id) else s
+    }
+    val have = merged.map { it.id }.toSet() + merged.map { sessionSlotKey(it) }.toSet()
+    val extra = olderWork.filter { it.id !in have && sessionSlotKey(it) !in have }
+    if (merged == newer.attendance.sessions && extra.isEmpty()) return newer
+    return newer.copy(attendance = newer.attendance.copy(sessions = deduplicateSessions(merged + extra)))
 }
 
 private fun splitCourseKey(key: String): Pair<String, String> {
@@ -130,7 +162,7 @@ fun applySetAttendanceStatus(
     val nextSessions: List<AttendanceSession>
     val changedSlot: String
     if (target != null) {
-        val updated = target.copy(startTime = target.startTime.nonEmpty() ?: normStart, endTime = target.endTime.nonEmpty() ?: normEnd, status = status)
+        val updated = target.copy(startTime = target.startTime.nonEmpty() ?: normStart, endTime = target.endTime.nonEmpty() ?: normEnd, status = status, markedAt = now)
         changedSlot = sessionSlotKey(updated)
         nextSessions = sessions.map { if (it.id == target.id) updated else it }
     } else {
@@ -143,6 +175,7 @@ fun applySetAttendanceStatus(
             title = title.nonEmpty() ?: tracker.courseName.nonEmpty() ?: "Class Session",
             sessionType = sessionType ?: SessionType.Lecture,
             status = status,
+            markedAt = now,
         )
         changedSlot = sessionSlotKey(created)
         nextSessions = deduplicateSessions(sessions + created)
@@ -174,18 +207,20 @@ fun applyUpsertTracker(data: CourseTrackerData, tracker: CourseTracker, now: Str
 /**
  * Writes to the tracker the Course Hub shows: the canonical key, else a legacy-keyed tracker
  * (moved to the canonical key), else a new one when [create]. Without [create] a course with
- * no tracker is left alone.
+ * no tracker is left alone. Machine-made changes pass `bumpUpdatedAt = false` so they never beat
+ * another device's real edits.
  */
 private fun CourseTrackerData.withTracker(
     identity: CourseIdentity,
     now: String,
     create: Boolean = true,
+    bumpUpdatedAt: Boolean = true,
     change: (CourseTracker) -> CourseTracker,
 ): CourseTrackerData {
     val canonicalKey = resolveCourseKey(identity)
     val found = if (create) getOrCreateTrackerFromStore(trackers, canonicalKey, identity) else findTrackerInStore(trackers, canonicalKey, identity)
     val tracker = found.tracker ?: return this
-    val next = change(tracker).copy(courseKey = found.key, updatedAt = now)
+    val next = change(tracker).copy(courseKey = found.key, updatedAt = if (bumpUpdatedAt) now else tracker.updatedAt)
     return copy(trackers = commitTracker(trackers, found.key, next, found.legacyKey))
 }
 
@@ -231,7 +266,7 @@ fun applyRestoreSession(data: CourseTrackerData, identity: CourseIdentity, sessi
 
 /** The Course Hub's regenerated sessions for the course. */
 fun applySessions(data: CourseTrackerData, identity: CourseIdentity, sessions: List<AttendanceSession>, now: String = nowIso()) =
-    data.withTracker(identity, now) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(sessions))) }
+    data.withTracker(identity, now, bumpUpdatedAt = false) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(sessions))) }
 
 /** Assessment writes resolve the tracker the way the sheet reads it (canonical, then legacy). */
 fun applyAssessments(

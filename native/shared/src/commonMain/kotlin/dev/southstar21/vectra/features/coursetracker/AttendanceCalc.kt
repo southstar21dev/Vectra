@@ -302,6 +302,7 @@ fun generateSessionsFromScheduleEvents(
                 status = existing?.status ?: AttendanceStatus.Unmarked,
                 notes = existing?.notes,
                 isCustom = existing?.isCustom,
+                markedAt = existing?.markedAt,
             )
         }
     }
