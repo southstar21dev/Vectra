@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.features.transit
+package dev.southstar21.vectra.core.designsystem.components
 
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 import androidx.compose.foundation.Canvas

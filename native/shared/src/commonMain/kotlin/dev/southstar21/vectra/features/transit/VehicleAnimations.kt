@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import dev.southstar21.vectra.core.maps.LatLon
+import dev.southstar21.vectra.core.maps.VehicleFrame
 import dev.southstar21.vectra.core.maps.color
 import dev.southstar21.vectra.core.maps.cumulativeHaversineDistances
 import dev.southstar21.vectra.core.maps.isValidLatLon
@@ -52,17 +53,6 @@ import kotlin.time.TimeSource
  * AnimatedVehicleMarkers(frames, mapBearing = { mapState.cameraPosition.bearing })
  * ```
  */
-
-/** One vehicle's rendered state for the current frame. */
-@Immutable
-data class VehicleFrame(
-    val id: String,
-    /** Where the marker sits now (snapped onto / gliding along the polyline). */
-    val position: LatLon,
-    /** Heading in degrees (0 = north), rounded to a whole degree. */
-    val bearing: Double,
-    val variant: VehicleVariant,
-)
 
 private class VehicleAnimState(
     var polyline: List<LatLon>,

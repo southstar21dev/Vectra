@@ -22,12 +22,12 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.OrbEngine
+import dev.southstar21.vectra.core.designsystem.components.drawOrb
+import dev.southstar21.vectra.core.designsystem.components.grey
 import dev.southstar21.vectra.core.designsystem.theme.easeInOutCubic
 import dev.southstar21.vectra.core.designsystem.theme.sineHash
 import dev.southstar21.vectra.core.designsystem.theme.smoothstep
-import dev.southstar21.vectra.features.transit.OrbEngine
-import dev.southstar21.vectra.features.transit.drawOrb
-import dev.southstar21.vectra.features.transit.grey
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor

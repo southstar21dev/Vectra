@@ -28,7 +28,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
+import dev.southstar21.vectra.core.designsystem.components.OrbEngine
 import dev.southstar21.vectra.core.designsystem.components.VText
+import dev.southstar21.vectra.core.designsystem.components.drawOrb
+import dev.southstar21.vectra.core.designsystem.components.grey
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight

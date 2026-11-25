@@ -28,6 +28,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.GeoJson
 import dev.southstar21.vectra.core.maps.MapFontStack
+import dev.southstar21.vectra.core.maps.VehicleFrame
 import dev.southstar21.vectra.core.maps.VehicleToken
 import dev.southstar21.vectra.core.maps.VehicleTokenBodyPainter
 import dev.southstar21.vectra.core.maps.VehicleTokenPointPainter
