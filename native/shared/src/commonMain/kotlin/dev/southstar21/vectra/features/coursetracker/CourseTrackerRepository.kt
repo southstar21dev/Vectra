@@ -157,8 +157,9 @@ class CourseTrackerRepository(
             if (userId != uid) return@withLock
             // Merge against the live data at return time so an edit that landed
             // during the fetch is never clobbered by the cloud snapshot.
-            val reconciled = mergeTrackerData(_data.value, parsed)
-            _data.value = reconciled
+            var reconciledNext: CourseTrackerData? = null
+            _data.update { live -> mergeTrackerData(live, parsed).also { reconciledNext = it } }
+            val reconciled = reconciledNext ?: return@withLock
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
