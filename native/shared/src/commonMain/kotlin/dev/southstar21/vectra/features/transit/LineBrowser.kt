@@ -119,10 +119,26 @@ internal fun searchableRoutes(catalog: List<FutarRoute>): List<SearchableRoute> 
         )
     }
 
+/**
+ * The catalog narrowed to [query] and [typeFilter]. A typed query ranks the line numbers it
+ * names first (exact, then starting with it, then containing it), then matches on the
+ * description, so "7" leads with bus 7 instead of the trams and trolleys that merely contain a 7
+ * in their route. The display order holds within each rank.
+ */
 internal fun filterRoutes(routes: List<SearchableRoute>, query: String, typeFilter: String): List<FutarRoute> {
     val q = normalizeSearchText(query.trim())
-    return routes
-        .filter { r -> (typeFilter == "ALL" || r.typeGroup == typeFilter) && (q.isEmpty() || r.searchText.any { it.contains(q) }) }
+    val byType = routes.filter { r -> typeFilter == "ALL" || r.typeGroup == typeFilter }
+    if (q.isEmpty()) return byType.map { it.route }
+    return byType.filter { r -> r.searchText.any { it.contains(q) } }
+        .sortedBy { r ->
+            val name = r.searchText[0]
+            when {
+                name == q -> 0
+                name.startsWith(q) -> 1
+                name.contains(q) -> 2
+                else -> 3
+            }
+        }
         .map { it.route }
 }
 
