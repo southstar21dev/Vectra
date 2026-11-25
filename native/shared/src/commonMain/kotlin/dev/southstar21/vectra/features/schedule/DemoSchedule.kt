@@ -2,6 +2,7 @@ package dev.southstar21.vectra.features.schedule
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import dev.southstar21.vectra.core.config.DemoAccounts
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.flow.first
@@ -12,7 +13,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
 /** The demo account that gets a made-up week of classes (debug builds only). */
-private const val DemoScheduleEmail = "transit-demo@test.com"
+private const val DemoScheduleEmail = DemoAccounts.Transit
 
 private val seedLock = Mutex()
 private var seeded = false
