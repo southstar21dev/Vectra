@@ -51,4 +51,9 @@ fun isExamEvent(eventType: String?, courseName: String?): Boolean {
     return isExamSummary(courseName.orEmpty())
 }
 
-fun ScheduleEvent.isExam(): Boolean = isExamEvent(eventType, courseName)
+/**
+ * Manual classes never carry an exam type (the editor has no such field), so the
+ * title heuristic must not turn "Exam prep seminar" into a one-off exam row.
+ */
+fun ScheduleEvent.isExam(): Boolean =
+    if (source == "manual") eventType.lowercase() == "exam" else isExamEvent(eventType, courseName)

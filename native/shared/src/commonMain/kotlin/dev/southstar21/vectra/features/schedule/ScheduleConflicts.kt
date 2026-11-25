@@ -116,13 +116,13 @@ fun isConflictRelevantClass(event: ScheduleEvent, intensive: Boolean = false): B
  */
 internal class ScheduleEventIndex(private val events: List<ScheduleEvent>) {
     private val validDates = HashMap<String, Boolean>()
-    private val exams = HashMap<Pair<String, String>, Boolean>()
+    private val exams = HashMap<Triple<String, String, String?>, Boolean>()
     private val weekOnes = HashMap<String, String?>()
 
     fun isValid(date: String): Boolean = validDates.getOrPut(date) { isValidCalendarDate(date) }
 
     fun isExam(event: ScheduleEvent): Boolean =
-        exams.getOrPut(event.eventType to event.courseName) { event.isExam() }
+        exams.getOrPut(Triple(event.eventType, event.courseName, event.source)) { event.isExam() }
 
     /**
      * The Monday of week one of [semester] as the schedule's week header counts it
