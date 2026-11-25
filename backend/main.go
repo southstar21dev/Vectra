@@ -2,12 +2,15 @@ package main
 
 import (
 	"log"
+	"os"
+	"strings"
 
 	"ganigeorgiev.com/pocketbase/pocketbase"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/plugins/migratecmd"
 
 	"vectra/pb/internal/authguard"
+	"vectra/pb/internal/config"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/push"
@@ -47,6 +50,13 @@ func main() {
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
 
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		// Log missing or misspelled settings at boot instead of on the first
+		// request; VECTRA_STRICT_CONFIG=1 turns a missing required one into a
+		// failed start (see backend/README.md).
+		strict := strings.TrimSpace(os.Getenv("VECTRA_STRICT_CONFIG")) == "1"
+		if err := config.Validate(os.Getenv, os.Environ(), strict); err != nil {
+			return err
+		}
 		// Refuses app builds older than the minimum in app_config (426), before any route runs.
 		versiongate.Register(se)
 		routes.Register(se)

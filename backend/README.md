@@ -16,6 +16,29 @@ The native apps choose by build type (`native/androidApp/build.gradle.kts`,
 `native/shared/build.gradle.kts`); `-Pvectra.pocketbaseUrl=…` overrides both. New backend code
 reaches dev on every push to `dev`, so migrations run there before they reach production.
 
+## Environment variables (the reference)
+
+`internal/config` holds the same list (`config.Vars`) and checks it when the server starts: a missing
+required variable is logged as `config: ERROR ...`, an optional one as a warning, and a variable with
+one of our prefixes that nothing reads (for example `WEBAUTHN_RP_ORIGIN`) as a probable typo. Set
+`VECTRA_STRICT_CONFIG=1` to make a missing required variable abort the start instead of only logging.
+Add a new setting to `config.Vars` and to this table together. Without a variable, the route that
+needs it answers 500 and `/api/health` stays green.
+
+| Variable | Required | Used by | Production value | Dev value (Coolify) |
+|---|---|---|---|---|
+| `NEPTUN_ENCRYPTION_KEY` | yes | `/crypto`, `/neptun/replace`, old `vc2:` data upgrade | the production secret (`openssl rand -hex 32`) | a new random value, never production's |
+| `FUTAR_API_KEY` | yes | `/futar` | the BKK Futár key | production's key is fine |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | yes | `/push/send` | the production pair | a new pair |
+| `VAPID_SUBJECT` | no | `/push/send` | a `mailto:` address; defaults to a placeholder | `mailto:support@southstar21.dev` |
+| `WEBAUTHN_RP_ID` | yes | passkeys | `vectra.southstar21.dev` | `vectra.southstar21.dev` |
+| `WEBAUTHN_RP_ORIGINS` | yes | passkeys, comma-separated | the web origin plus the `android:apk-key-hash:` origin of the release signing key | web origin plus the debug key hash |
+| `WEBAUTHN_RP_DISPLAY_NAME` | yes | passkeys | the app name shown in the passkey prompt | `Vectra Dev` |
+| `TRUSTED_PROXY` | no | client IP for rate limits | `cloudflare` | `cloudflare` |
+| `VECTRA_STRICT_CONFIG` | no | boot check above | `1` once the list is verified | unset |
+
+`docker-compose.yml` sets every variable to a dev placeholder for a local instance.
+
 ## Setting up the dev resource in Coolify
 
 Same as production: build `backend/Dockerfile` with base directory `/backend`, a persistent volume
