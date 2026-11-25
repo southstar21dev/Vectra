@@ -8,11 +8,11 @@ internal fun httpsHost(url: String): String? {
     val trimmed = url.trim()
     if (!trimmed.startsWith("https://", ignoreCase = true)) return null
     val authority = trimmed.substring("https://".length).takeWhile { it != '/' && it != '?' && it != '#' }
-    if (authority.isEmpty() || authority.any { it == '@' || it == '\\' || it.isWhitespace() }) return null
-    val host = authority.substringBefore(':').lowercase()
+    val unsafe = authority.any { it == '@' || it == '\\' || it.isWhitespace() }
     val port = authority.substringAfter(':', "")
-    if (port.any { !it.isDigit() }) return null
-    return host.takeIf { h -> h.isNotEmpty() && h.all { it.isLetterOrDigit() || it == '.' || it == '-' } }
+    val host = authority.substringBefore(':').lowercase()
+    val wellFormed = host.isNotEmpty() && host.all { it.isLetterOrDigit() || it == '.' || it == '-' } && port.all { it.isDigit() }
+    return host.takeIf { !unsafe && wellFormed }
 }
 
 /** True when [host] is [domain] or one of its subdomains. */

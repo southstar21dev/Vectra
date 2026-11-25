@@ -29,6 +29,7 @@ object IosApp {
 
     @OptIn(ExperimentalNativeApi::class)
     val graph: AppGraph by lazy {
+        val httpCache = IosHttpCache()
         createGraphFactory<AppGraph.Factory>().create(
             config = VectraConfig(
                 // Debug builds use the dev backend, like androidApp's debug build type.
@@ -48,7 +49,8 @@ object IosApp {
             dataStore = createDataStore(),
             blobs = createBlobStore(),
             catalogCache = createCatalogCache(),
-            http = createIosHttpClient(),
+            http = createIosHttpClient(httpCache),
+            httpCache = httpCache,
             cipher = KeychainSecretCipher(),
             connectivity = IosConnectivity(),
             location = IosLocationProvider(),

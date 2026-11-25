@@ -13,6 +13,7 @@ import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.platform.Connectivity
+import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.Notifier
@@ -138,6 +139,7 @@ interface AppGraph {
     @Provides
     fun provideSessionListeners(
         crypto: CryptoClient,
+        httpCache: HttpCache,
         transit: TransitRepository,
         notifications: NotificationsRepository,
         reminders: ReminderScheduler,
@@ -148,6 +150,10 @@ interface AppGraph {
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
+        },
+        // Cached responses hold the previous account's proxy, weather and map requests.
+        object : SessionListener {
+            override suspend fun onSessionCleared() = httpCache.clear()
         },
         // Both react to the session themselves; here they only get to upload before an explicit sign-out.
         object : SessionListener {
@@ -293,6 +299,7 @@ interface AppGraph {
             @Provides blobs: BlobStore,
             @Provides catalogCache: CatalogDiskCache,
             @Provides http: HttpClient,
+            @Provides httpCache: HttpCache,
             @Provides cipher: SecretCipher,
             @Provides connectivity: Connectivity,
             @Provides location: LocationProvider,

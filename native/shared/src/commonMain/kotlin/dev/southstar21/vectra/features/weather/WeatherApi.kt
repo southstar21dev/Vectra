@@ -6,8 +6,10 @@ import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
@@ -168,6 +170,8 @@ suspend fun fetchWeather(http: HttpClient, coords: WeatherCoords = BudapestCoord
         parameter("daily", "temperature_2m_max,temperature_2m_min")
         parameter("timezone", "auto")
         parameter("forecast_days", "1")
+        // The coordinates are in the URL: keep the response out of the disk cache.
+        header(HttpHeaders.CacheControl, "no-store")
     } }
     if (!res.status.isSuccess()) error("Open-Meteo returned HTTP ${res.status.value}")
     return parseWeatherResponse(VectraJson.parseToJsonElement(res.bodyAsText())).toWeatherData()
