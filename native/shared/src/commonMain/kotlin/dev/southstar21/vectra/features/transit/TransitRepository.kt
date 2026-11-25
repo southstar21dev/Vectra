@@ -234,7 +234,7 @@ class TransitRepository(
         var nextSort = row.int("sort_order") ?: 0
         if (next) {
             val favorites = col.getFullList(filter = "user = ${pbString(uid)} && is_favorite = true")
-            if (favorites.size >= MaxFavoriteTrackers) error("Maximum of $MaxFavoriteTrackers favorite trackers allowed.")
+            if (favorites.size >= MaxFavoriteTrackers) error("Maximum of $MaxFavoriteTrackers favourite trackers allowed.")
             nextSort = (favorites.maxOfOrNull { it.int("sort_order") ?: 0 } ?: -1) + 1
         }
         val updated = col.update(trackerId, buildJsonObject {
@@ -242,7 +242,7 @@ class TransitRepository(
             put("sort_order", nextSort)
         })
         trackersQuery.invalidate(Unit)
-        if ((updated.bool("is_favorite") ?: false) != next) error("Could not update favorite")
+        if ((updated.bool("is_favorite") ?: false) != next) error("Could not update favourites")
         next
     }
 
