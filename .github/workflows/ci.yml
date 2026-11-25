@@ -32,6 +32,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       backend: ${{ steps.filter.outputs.backend }}
       native: ${{ steps.filter.outputs.native }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -47,6 +48,36 @@ jobs:
             native:
               - 'native/**'
               - '.github/workflows/ci.yml'
+              - '.github/actions/**'
+            workflows:
+              - '.github/**'
+              - 'scripts/**'
+
+  # Release logic (the plan, publish, testflight and pages jobs) only runs on a master push, so a
+  # mistake in it would first show up during a real release. This lints the workflows and shell
+  # scripts on every change to them: actionlint (which also runs shellcheck on `run:` blocks) and
+  # shellcheck on the standalone scripts.
+  workflows:
+    needs: changes
+    if: inputs.all-jobs || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Pinned version and checksum, like XcodeGen below.
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/actionlint.tar.gz" \
+            "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+
+      - run: '"$RUNNER_TEMP/actionlint"'
+
+      - run: shellcheck .github/scripts/*.sh scripts/*.sh
 
   web:
     needs: changes

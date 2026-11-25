@@ -219,7 +219,7 @@ jobs:
         run: |
           {
             echo "sums<<SUMS_EOF"
-            (cd release-assets && sha256sum *)
+            (cd release-assets && sha256sum -- *)
             echo "SUMS_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -285,7 +285,7 @@ jobs:
         run: |
           {
             echo "sums<<SUMS_EOF"
-            (cd release-assets && shasum -a 256 *)
+            (cd release-assets && shasum -a 256 -- *)
             echo "SUMS_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -340,7 +340,7 @@ jobs:
           { printf '%s\n' "$ANDROID_SUMS"; [ -z "$IOS_SUMS" ] || printf '%s\n' "$IOS_SUMS"; } > "$RUNNER_TEMP/SHA256SUMS"
           sha256sum -c "$RUNNER_TEMP/SHA256SUMS"
           EXPECTED=$(awk '{print $2}' "$RUNNER_TEMP/SHA256SUMS" | sed 's/^\*//' | sort)
-          ACTUAL=$(ls | sort)
+          ACTUAL=$(printf '%s\n' * | sort)
           [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::release-assets holds files the build jobs did not hash."; exit 1; }
           cp "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
 
