@@ -95,6 +95,16 @@ fun formatDDMMYYYY(date: String?): String {
         .getOrDefault(date)
 }
 
+/**
+ * `DD/MM/YYYY` of a stored timestamp (UTC, as PocketBase writes it: `2026-11-24 23:51:00.000Z`) on the
+ * device's own calendar, so a late-evening event does not show yesterday's date. Falls back to [formatDDMMYYYY].
+ */
+fun formatLocalDate(timestamp: String?, zone: TimeZone = TimeZone.currentSystemDefault()): String {
+    val instant = runCatching { Instant.parse(timestamp.orEmpty().trim().replaceFirst(' ', 'T')) }.getOrNull()
+    val date = instant?.toLocalDateTime(zone)?.date ?: return formatDDMMYYYY(timestamp?.take(10))
+    return "${pad2(date.day)}/${pad2(date.month.number)}/${date.year}"
+}
+
 private val MonthNames = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
 fun monthName(month: Int): String = MonthNames.getOrElse(month - 1) { "" }
 

@@ -103,7 +103,7 @@ private fun AuthCard(
     auth: AuthRepository,
     passkeys: PasskeyActions?,
     createdEmail: String?,
-    onAccountCreated: (email: String) -> Unit,
+    onSwitchToSignIn: (email: String) -> Unit,
 ) {
     val c = Vectra.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -153,7 +153,7 @@ private fun AuthCard(
                 },
                 label = "authMode",
             ) { m ->
-                if (m == AuthMode.Login) LoginForm(auth, passkeys, createdEmail) else SignupForm(auth, passkeys, onAccountCreated)
+                if (m == AuthMode.Login) LoginForm(auth, passkeys, createdEmail) else SignupForm(auth, passkeys, onSwitchToSignIn)
             }
         }
     }
@@ -228,13 +228,7 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        if (createdEmail != null) {
-            Banner(
-                "Your account was created, but signing in failed. Sign in with your password to continue.",
-                c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine,
-            )
-        } else if (notice != null) Banner(notice, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
-        else if (sessionExpired) Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
+        LoginNotice(createdEmail != null, notice, sessionExpired)
         if (error != null) Banner(AccountLogic.loginErrorMessage(error), c.tints.red, Palette.Red500.copy(alpha = 0.1f))
         if (passkeys?.isSupported == true) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -282,6 +276,17 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
         VButton(onClick = { submit() }, modifier = Modifier.fillMaxWidth(), variant = ButtonVariant.Primary, enabled = !pending) {
             if (pending) InlineLoader() else VText("Sign in")
         }
+    }
+}
+
+/** The hint above the sign-in form: a message to show (green), else the expired-session hint (amber). */
+@Composable
+private fun LoginNotice(accountCreated: Boolean, notice: String?, sessionExpired: Boolean) {
+    val c = Vectra.colors
+    val message = if (accountCreated) "Your account was created, but signing in failed. Sign in with your password to continue." else notice
+    when {
+        message != null -> Banner(message, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
+        sessionExpired -> Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
     }
 }
 
@@ -349,7 +354,7 @@ private fun ResetPasswordForm(auth: AuthRepository, initialEmail: String, onBack
 }
 
 @Composable
-private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onAccountCreated: (email: String) -> Unit) {
+private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onSwitchToSignIn: (email: String) -> Unit) {
     val c = Vectra.colors
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
@@ -379,7 +384,7 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onAccoun
                     pending = false
                 }) {
                     pending = false
-                    if (it is AccountCreatedSignInFailed) onAccountCreated(email.trim()) else error = it
+                    if (it is AccountCreatedSignInFailed) onSwitchToSignIn(email.trim()) else error = it
                 }
             }
         }
@@ -419,7 +424,7 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onAccoun
             ) {
                 Column(Modifier.weight(1f)) {
                     VText("Enable biometric sign-in", style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary)
-                    VText("Sign in with your fingerprint instead of a password", Modifier.padding(top = 4.dp), vtext(TypeScale.Caption), c.textMuted)
+                    VText(BiometricCopy.signInInstead(), Modifier.padding(top = 4.dp), vtext(TypeScale.Caption), c.textMuted)
                     PasskeyResetNote(PasskeyResetNotes.SIGNUP, Modifier.padding(top = 8.dp))
                 }
                 VToggle(biometrics, { biometrics = it }, label = "Enable biometric sign-in for faster logins")

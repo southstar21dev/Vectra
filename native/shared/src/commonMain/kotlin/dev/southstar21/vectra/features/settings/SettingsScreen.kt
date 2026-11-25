@@ -36,8 +36,9 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
-import dev.southstar21.vectra.core.time.formatDDMMYYYY
+import dev.southstar21.vectra.core.time.formatLocalDate
 import dev.southstar21.vectra.core.util.runSuspendCatching
+import dev.southstar21.vectra.features.auth.BiometricCopy
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.classReminderRows
@@ -185,7 +186,7 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
             list == null -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Checking your passkeys…")
             list.isNotEmpty() -> {
                 list.forEach { p ->
-                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatDDMMYYYY(p.createdAt.take(10))}") {
+                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatLocalDate(p.createdAt)}") {
                         VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting, contentDescription = "Delete passkey ${p.friendlyName ?: ""}".trim()) {
                             if (deleting) InlineLoader(tint = c.textMuted) else VIcon(RemixIcons.DeleteBinLine, tint = c.textMuted)
                         }
@@ -193,7 +194,7 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
                 }
                 SettingsRow(RemixIcons.AddLine, c.textSecondary, "Add another passkey", "Register this device too", enabled = !registering, onClick = register)
             }
-            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Use your fingerprint or face instead of a password") {
+            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", BiometricCopy.useInstead()) {
                 SettingsLink("Set up", register, enabled = !registering)
             }
         }

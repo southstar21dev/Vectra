@@ -109,9 +109,7 @@ class AuthRepository(
         )
         try {
             pb.authWithPassword(email, password)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
+        } catch (e: PocketBaseException) {
             throw AccountCreatedSignInFailed(e)
         }
         settleKeptQueue()
