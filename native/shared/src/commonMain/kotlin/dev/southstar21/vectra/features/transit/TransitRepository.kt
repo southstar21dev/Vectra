@@ -65,12 +65,12 @@ class TransitRepository(
     http: HttpClient,
     catalogOrigin: String,
     catalogCache: CatalogDiskCache,
-    val scope: CoroutineScope,
+    private val scope: CoroutineScope,
     /** Debug builds: DEMO_ trackers (the demo accounts') get [DemoFeed]'s fake data. */
     val demoFeed: Boolean = false,
 ) : SessionListener {
     private fun demo(id: String?) = demoFeed && DemoFeed.handles(id)
-    val api = FutarApi(pb)
+    private val api = FutarApi(pb)
     val catalog = TransitCatalog(http, catalogOrigin, scope, catalogCache)
     private val cache = OfflineCache(kv, UserKeys.TRANSIT_TRACKERS, ListSerializer(TransitTracker.serializer()))
     private var cachedTrackers: Pair<String, List<TransitTracker>>? = null
@@ -296,7 +296,7 @@ class TransitRepository(
 
     // ---- live Futár queries ------------------------------------------------
 
-    val arrivalsLoader = ArrivalsLoader(
+    private val arrivalsLoader = ArrivalsLoader(
         scope,
         fetchSingle = { id, minutes, limit -> api.fetchStopArrivals(id, minutes, limit) },
         fetchBatch = { ids, minutes -> api.fetchStopArrivalsBatch(ids, minutes) },
@@ -353,20 +353,33 @@ class TransitRepository(
             getCombinedRouteIds(id)?.takeIf { it.size > 1 } ?: listOf(id)
         }.distinct()
 
+    /**
+     * One stop's arrivals once, outside the polled [arrivals] query (the add-tracker flow and
+     * reminders), through the same demo routing.
+     */
+    suspend fun stopArrivals(stopId: String, minutesAfter: Int): FutarArrivalsResponse =
+        if (demo(stopId)) DemoFeed.arrivals(stopId, nowMs()) else api.fetchStopArrivals(stopId, minutesAfter)
+
+    /** A route's stops, headsigns and polylines, parsed off the main thread. */
+    internal suspend fun parsedRouteDetails(routeId: String): RouteDetailsParsed = api.fetchParsedRouteDetails(routeId)
+
+    /** Runs [block] on the app-lifetime scope, for work that must outlive the screen that started it. */
+    fun launchInAppScope(block: suspend CoroutineScope.() -> Unit) {
+        scope.launch(block = block)
+    }
+
+    /** The queries that pull to refresh and an app resume cover. The trip and route detail queries are left out on purpose. */
+    private val refreshedQueries: List<LiveQuery<*, *>> =
+        listOf(trackersQuery, arrivals, deepArrivals, batchArrivals, vehicles, memberVehicles)
+
     /** Pull to refresh: refetches everything on screen and returns when it has landed. */
     suspend fun refresh() = coroutineScope {
-        listOf(trackersQuery, arrivals, deepArrivals, batchArrivals, vehicles, memberVehicles)
-            .forEach { q -> launch { q.refetchObserved() } }
+        refreshedQueries.forEach { q -> launch { q.refetchObserved() } }
     }
 
     /** An app resume refreshes everything that is observed and stale. */
     fun onAppResumed() {
-        trackersQuery.refetchStaleObserved()
-        arrivals.refetchStaleObserved()
-        deepArrivals.refetchStaleObserved()
-        batchArrivals.refetchStaleObserved()
-        vehicles.refetchStaleObserved()
-        memberVehicles.refetchStaleObserved()
+        refreshedQueries.forEach { it.refetchStaleObserved() }
     }
 
     override suspend fun onSessionCleared() {

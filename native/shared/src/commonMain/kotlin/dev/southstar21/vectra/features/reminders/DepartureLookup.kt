@@ -15,7 +15,7 @@ internal class DepartureLookup(private val transit: TransitRepository) {
     /** The next [count] departures of [query] from [fromMs]; null when they can't be fetched. */
     suspend fun times(query: DepartureQuery, fromMs: Long, count: Int = 4): List<Long>? = runSuspendCatching {
         val minutesAfter = ((fromMs - nowMs()) / MinuteMs + 60).toInt().coerceIn(30, FeedReachMinutes)
-        val response = transit.api.fetchStopArrivals(query.stopId, minutesAfter)
+        val response = transit.stopArrivals(query.stopId, minutesAfter)
         parseStopArrivals(response, query.routeId, query.headsign, now = fromMs).take(count).map { it.arrivalMs }
     }.getOrNull()
 

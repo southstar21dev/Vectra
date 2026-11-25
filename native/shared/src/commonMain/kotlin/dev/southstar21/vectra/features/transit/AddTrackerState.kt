@@ -189,7 +189,7 @@ internal class AddTrackerState(
         selectedHeadsign = ""
         scope.launch {
             try {
-                val res = repo.api.fetchStopArrivals(stopId, 90)
+                val res = repo.stopArrivals(stopId, 90)
                 if (seq != routeFetchSeq) return@launch
                 arrivalsData = res
                 var routeList = res.data?.references?.routes?.values?.toList().orEmpty()
@@ -221,7 +221,7 @@ internal class AddTrackerState(
 
         scope.launch {
             try {
-                val details = repo.api.fetchParsedRouteDetails(route.id)
+                val details = repo.parsedRouteDetails(route.id)
                 if (seq != routeFetchSeq) return@launch
                 draft.showRoute(details)
                 if (details.stops.isEmpty()) throw IllegalStateException("No stops returned for this line")
