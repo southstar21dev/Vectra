@@ -34,7 +34,7 @@ import kotlin.time.Clock
 
 /** Who the schedule belongs to right now and whether the network is reachable. */
 internal class ScheduleSession(private val auth: AuthRepository, private val connectivity: Connectivity) {
-    val userId: String? get() = auth.session.value?.userId?.ifEmpty { null }
+    val userId: String? get() = auth.userId
     val online: Boolean get() = connectivity.online.value
     fun requireUserId(): String = userId ?: error("Not authenticated")
 }

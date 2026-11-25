@@ -242,14 +242,12 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
     ): CourseTrackerRepository {
-        val uid = MutableStateFlow(auth.session.value?.userId)
-        scope.launch { auth.session.collect { uid.value = it?.userId } }
         return CourseTrackerRepository(
             cloud = PocketBaseTrackerCloud(pb),
             cipher = CryptoTrackerCipher(crypto),
             kv = kv,
             scope = scope,
-            userIdFlow = uid,
+            userIdFlow = auth.currentUserId,
             isOnline = { connectivity.online.value },
             onlineChanges = connectivity.online,
         )

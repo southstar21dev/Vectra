@@ -69,11 +69,11 @@ data class ScheduleItemsState(
     val queue: List<ScheduleItemMutation> = emptyList(),
 )
 
-const val SCHEDULE_ITEMS_CACHE_BASE_KEY = UserKeys.SCHEDULE_ITEMS
+const val ScheduleItemsCacheBaseKey = UserKeys.SCHEDULE_ITEMS
 
 fun getScheduleItemsStorageKey(userId: String?): String {
     val scope = userId?.trim()?.ifEmpty { null } ?: "anonymous"
-    return "${SCHEDULE_ITEMS_CACHE_BASE_KEY}_$scope"
+    return "${ScheduleItemsCacheBaseKey}_$scope"
 }
 
 fun createEmptyScheduleItemsState() = ScheduleItemsState()
