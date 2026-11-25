@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.OfflineCache
 import dev.southstar21.vectra.core.network.CryptoClient
@@ -66,7 +67,7 @@ internal class ScheduleEventsRepository(
     private val session: ScheduleSession,
     private val scope: CoroutineScope,
 ) {
-    private val eventsCache = OfflineCache(kv, "vectra_schedule_cache_events", ListSerializer(ScheduleEvent.serializer()))
+    private val eventsCache = OfflineCache(kv, UserKeys.SCHEDULE_EVENTS, ListSerializer(ScheduleEvent.serializer()))
 
     private val userId: String? get() = session.userId
     private val online: Boolean get() = session.online

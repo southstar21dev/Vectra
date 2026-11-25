@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.data.UserKeys
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -75,7 +76,7 @@ val GeoErrorMessages: Map<Int, String> = mapOf(
     3 to "Location timed out. Try again",
 )
 
-const val DeviceLocationStorageKey = "vectra.deviceLocation"
+const val DeviceLocationStorageKey = UserKeys.DEVICE_LOCATION
 
 /** A fix older than this is considered lost: the watchdog restarts the watch. */
 const val DeviceLocationStaleMs = 30_000L

@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.time.nowMs
 
 import dev.southstar21.vectra.core.data.KeyValueStore
@@ -71,7 +72,7 @@ class TransitRepository(
     private fun demo(id: String?) = demoFeed && DemoFeed.handles(id)
     val api = FutarApi(pb)
     val catalog = TransitCatalog(http, catalogOrigin, scope, catalogCache)
-    private val cache = OfflineCache(kv, "vectra_transit_trackers_cache", ListSerializer(TransitTracker.serializer()))
+    private val cache = OfflineCache(kv, UserKeys.TRANSIT_TRACKERS, ListSerializer(TransitTracker.serializer()))
     private var cachedTrackers: Pair<String, List<TransitTracker>>? = null
 
     val userId: String? get() = pb.auth.current?.userId?.takeIf { it.isNotEmpty() }

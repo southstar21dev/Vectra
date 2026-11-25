@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.roundHalfUp
 import kotlinx.serialization.Serializable
@@ -40,7 +41,7 @@ fun weatherAlertItems(weather: WeatherData): List<WeatherAlertItem> = buildList 
 // immediately on app open instead of flashing its skeleton.
 // ---------------------------------------------------------------------------
 
-const val WeatherSnapshotKey = "vectra.weather.snapshot"
+const val WeatherSnapshotKey = UserKeys.WEATHER_SNAPSHOT
 
 /** Weather older than this is not worth showing — a fresh fetch is awaited. */
 const val WeatherSnapshotMaxAgeMs = 24 * 60 * 60_000L
