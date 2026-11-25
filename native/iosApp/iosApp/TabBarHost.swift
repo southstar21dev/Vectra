@@ -132,6 +132,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         config.cornerStyle = .capsule
         let button = UIButton(configuration: config, primaryAction: UIAction { [weak self] _ in self?.presentActions() })
         button.accessibilityLabel = actionTab.title
+        button.accessibilityHint = "Shows what you can add on this page"
         button.alpha = 0
         button.isHidden = true
         return button
