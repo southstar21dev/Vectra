@@ -75,6 +75,8 @@ class LiveQuery<K, T>(
     private val clock: () -> Long = ::nowMs,
     private val online: StateFlow<Boolean>? = null,
     private val maxIdleEntries: Int? = null,
+    /** False for a failure another try cannot fix (a 4xx, a rate limit): it settles at once and backs off. */
+    private val shouldRetry: (Throwable) -> Boolean = { true },
     private val fetcher: suspend (K) -> T,
 ) {
     private val confined = Dispatchers.Default.limitedParallelism(1)
@@ -232,7 +234,7 @@ class LiveQuery<K, T>(
             } catch (c: CancellationException) {
                 throw c
             } catch (t: Throwable) {
-                if (attempt >= retry) {
+                if (attempt >= retry || !shouldRetry(t)) {
                     e.failures++
                     e.lastSettledAt = clock()
                     e.state.update { it.copy(isFetching = false, isLoading = false, isError = true, error = t, isFetched = true) }

@@ -108,6 +108,15 @@ class LiveQueryTest {
         assertEquals(1, calls)
     }
 
+    @Test fun aFailureThatCannotBeFixedIsNotRetried() = real {
+        var calls = 0
+        val q = LiveQuery<Int, String>(appScope(), retry = 2, shouldRetry = { false }) { calls++; error("429") }
+        val failure = runCatching { q.fetch(1) }.exceptionOrNull()
+        assertEquals("429", failure?.message)
+        assertTrue(q.peek(1).isError)
+        assertEquals(1, calls)
+    }
+
     @Test fun concurrentFetchesShareOneRequest() = real {
         val gate = CompletableDeferred<Unit>()
         var calls = 0

@@ -600,6 +600,9 @@ func buildStopArrivalsBatch(results []stopResult) map[string]any {
 	}
 }
 
+// allStopsFailedCode marks the batch 502 sent when every stop failed upstream.
+const allStopsFailedCode = "all_stops_failed"
+
 func handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) error {
 	bp, err := normalizeBatchParams(params)
 	if err != nil {
@@ -640,14 +643,16 @@ func handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) err
 			succeeded++
 		}
 	}
-	// Total failure keeps the single-stop endpoint's error semantics so the
-	// client's per-stop fallback can take over instead of painting an empty feed.
+	// Total failure keeps the single-stop endpoint's 502 status (and its error
+	// text) rather than painting an empty feed.
 	if succeeded == 0 {
 		msg := "Futár batch request failed"
 		if len(results) > 0 && results[0].errMsg != "" {
 			msg = results[0].errMsg
 		}
-		return e.JSON(http.StatusBadGateway, map[string]any{"error": msg})
+		// The code lets the client tell this from a broken batch endpoint: the
+		// per-stop path asks the same upstream, so it must not fan out.
+		return e.JSON(http.StatusBadGateway, map[string]any{"error": msg, "code": allStopsFailedCode})
 	}
 
 	return e.JSON(http.StatusOK, buildStopArrivalsBatch(results))

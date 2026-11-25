@@ -181,6 +181,24 @@ class FutarApiTest {
         assertEquals(3, requests.size)
     } }
 
+    @Test fun anAllStopsFailedBatchDoesNotFanOut() = runTest { withContext(Dispatchers.Default) {
+        val requests = mutableListOf<HttpRequestData>()
+        val failure = runCatching {
+            apiAnswering(HttpStatusCode.BadGateway, requests) { """{"error":"Futár returned HTTP 429","code":"all_stops_failed"}""" }
+                .fetchStopArrivalsBatch(listOf("BKK_CS1", "BKK_CS2"))
+        }.exceptionOrNull()
+        assertIs<PocketBaseException>(failure)
+        assertEquals(1, requests.size)
+        assertEquals(false, isRetryableFeedError(failure))
+    } }
+
+    @Test fun feedErrorsRetryOnlyWhenAnotherTryCanHelp() {
+        assertEquals(true, isRetryableFeedError(PocketBaseException(502, "bad")))
+        assertEquals(true, isRetryableFeedError(PocketBaseException(0, "offline")))
+        assertEquals(false, isRetryableFeedError(PocketBaseException(429, "slow down")))
+        assertEquals(true, isRetryableFeedError(FutarException("x")))
+    }
+
     @Test fun aBatchWhereEveryStopFailedIsAFailure() = runTest { withContext(Dispatchers.Default) {
         val failure = runCatching {
             apiAnswering { """{"status":"ERROR","error":"down"}""" }.fetchStopArrivalsBatch(listOf("BKK_CS1", "BKK_CS2"))

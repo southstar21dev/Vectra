@@ -396,6 +396,8 @@ func TestHandlerBatchTransportFailureDoesNotLeakKey(t *testing.T) {
 		require.Equal(t, http.StatusBadGateway, rec.Code)
 		require.NotContains(t, rec.Body.String(), sentinelKey)
 		require.Contains(t, rec.Body.String(), "Upstream request failed")
+		// The client keys its no-fan-out decision on this code.
+		require.Contains(t, rec.Body.String(), `"code":"all_stops_failed"`)
 	})
 }
 
