@@ -86,15 +86,21 @@ internal class ScheduleEventsRepository(
     // Written from whichever Default thread a coroutine lands on.
     @Volatile private var eventsFetchedAt = 0L
     private val eventsJobLock = Mutex()
-    private var eventsJob: Deferred<Unit>? = null
+    private var eventsJob: Pair<Int, Deferred<Unit>>? = null
     private val eventsFetchLock = Mutex()
-    private var eventsFetch: Pair<String, Deferred<List<ScheduleEvent>>>? = null
+    private var eventsFetch: Triple<String, Int, Deferred<List<ScheduleEvent>>>? = null
+
+    /**
+     * Bumped by every write. A load or fetch that started before a write may have read the
+     * collection without it, so it is never joined or published after the bump.
+     */
+    @Volatile private var writeEpoch = 0
 
     /** Forget the previous account; a new one paints its cached classes first. */
     suspend fun onUserChanged(uid: String?) {
         eventsFetchedAt = 0L
         // The previous account's load must not run on, or be joined by, the next one.
-        eventsJobLock.withLock { eventsJob?.cancel() }
+        eventsJobLock.withLock { eventsJob?.second?.cancel() }
         _eventsError.value = null
         if (uid == null) {
             _events.value = emptyList()
@@ -128,9 +134,10 @@ internal class ScheduleEventsRepository(
     /** The fetch: cache offline; cloud otherwise, falling back to a non-empty cache. */
     suspend fun refreshEvents(force: Boolean = false) {
         val job = eventsJobLock.withLock {
-            val running = eventsJob?.takeIf { it.isActive }
+            val epoch = writeEpoch
+            val running = eventsJob?.takeIf { (startedAt, job) -> job.isActive && startedAt == epoch }?.second
             if (running == null && !force && Clock.System.now().toEpochMilliseconds() - eventsFetchedAt < EVENTS_STALE_MS) return
-            running ?: scope.async { loadEvents() }.also { eventsJob = it }
+            running ?: scope.async { loadEvents() }.also { eventsJob = epoch to it }
         }
         job.await()
     }
@@ -143,8 +150,11 @@ internal class ScheduleEventsRepository(
                 return
             }
             try {
+                val epoch = writeEpoch
                 val fresh = fetchShared(uid)
                 if (userId != uid) return
+                // A write landed meanwhile: its own reload publishes the newer list.
+                if (writeEpoch != epoch) return
                 _events.value = fresh
                 _eventsError.value = null
                 eventsFetchedAt = Clock.System.now().toEpochMilliseconds()
@@ -166,8 +176,9 @@ internal class ScheduleEventsRepository(
      */
     internal suspend fun fetchShared(uid: String): List<ScheduleEvent> {
         val job = eventsFetchLock.withLock {
-            eventsFetch?.takeIf { (owner, job) -> owner == uid && job.isActive }?.second
-                ?: scope.async { fetchEventsFromCloud(uid) }.also { eventsFetch = uid to it }
+            val epoch = writeEpoch
+            eventsFetch?.takeIf { (owner, startedAt, job) -> owner == uid && startedAt == epoch && job.isActive }?.third
+                ?: scope.async { fetchEventsFromCloud(uid) }.also { eventsFetch = Triple(uid, epoch, it) }
         }
         return job.await()
     }
@@ -323,6 +334,7 @@ internal class ScheduleEventsRepository(
     }
 
     suspend fun invalidateEvents() {
+        writeEpoch++
         eventsFetchedAt = 0L
         runSuspendCatching { refreshEvents(force = true) }
     }
