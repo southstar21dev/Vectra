@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.glance.unit.ColorProvider
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.createBitmap

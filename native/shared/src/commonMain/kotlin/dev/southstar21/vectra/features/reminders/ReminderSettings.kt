@@ -3,10 +3,8 @@ package dev.southstar21.vectra.features.reminders
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,10 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.HairlineDivider
-import dev.southstar21.vectra.core.designsystem.components.InlineLoader
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
-import dev.southstar21.vectra.core.designsystem.components.OptionSheet
-import dev.southstar21.vectra.core.designsystem.components.SelectOption
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
 import dev.southstar21.vectra.core.designsystem.components.SettingsFooterLink
 import dev.southstar21.vectra.core.designsystem.components.VButton
@@ -42,7 +37,6 @@ import dev.southstar21.vectra.core.designsystem.components.VTabs
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
@@ -53,12 +47,6 @@ import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
 import dev.southstar21.vectra.core.util.runSuspendCatching
-import dev.southstar21.vectra.features.transit.RouteBadge
-import dev.southstar21.vectra.features.transit.RouteBadgeSize
-import dev.southstar21.vectra.features.transit.TransitRepository
-import dev.southstar21.vectra.features.transit.TransitTracker
-import dev.southstar21.vectra.features.transit.collect
-import dev.southstar21.vectra.features.transit.getTrackerStops
 import kotlinx.coroutines.launch
 
 /** Turning a reminder on asks for the notification permission first; [enable] runs once it's granted. */

@@ -25,6 +25,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Vectra.Splash"
         tools:targetApi="33">
+        <!-- Portrait applies to phones only: from Android 16, with targetSdk 36 or higher, the system ignores
+             screenOrientation on screens 600dp wide and up (tablets, unfolded foldables), so wide layouts are
+             a supported state on Android and must be tested in landscape. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -53,7 +53,6 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.preferences.BackgroundKey
 import dev.southstar21.vectra.core.preferences.ThemeMode
 import dev.southstar21.vectra.core.preferences.TimeFormat
-import dev.southstar21.vectra.core.preferences.isDark
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 

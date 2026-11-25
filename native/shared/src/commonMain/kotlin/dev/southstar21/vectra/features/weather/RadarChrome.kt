@@ -38,7 +38,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateContentSize
-import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.core.designsystem.components.VIcon

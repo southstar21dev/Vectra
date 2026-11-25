@@ -1,9 +1,9 @@
 # Changes outside `native/` that the native apps need
 
-The native app was built without touching `backend/`, `web/` or `.github/`.
-Everything works against today's backend except **native push** and **passkeys**,
-which need the changes below. The transit catalog (section 3) needs a new home before the
-web host is retired.
+Open items only. Everything else works against the current backend. Native **push** (section 2) is
+still not implemented server-side; passkeys (section 1) need the three pieces below to be live on the
+host, and the transit catalog (section 3) needs a new home before the web host is retired.
+CI for the native build already exists (`.github/workflows/ci.yml`), so it is no longer listed here.
 
 ## 1. Passkeys (Credential Manager, AuthenticationServices)
 
@@ -100,26 +100,6 @@ plugin + `firebase-messaging` (BoM 35.x), and replace `NoPush` in `VectraApplica
 `FirebaseMessagingService` that posts through `AndroidNotifier`. The settings toggle and the
 "Test" button switch to server push automatically once `isConfigured` is true.
 
-## 3. CI
-
-GitHub only reads `.github/workflows/`. A job for the native build:
-
-```yaml
-  native:
-    runs-on: ubuntu-latest
-    env:
-      TZ: Europe/Budapest
-    defaults:
-      run:
-        working-directory: native
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: '17' }
-      - uses: gradle/actions/setup-gradle@v5
-      - run: ./gradlew :shared:testAndroidHostTest :androidApp:assembleDebug :androidApp:lintDebug
-```
-
 ## 3. Transit catalog (before retiring the web host)
 
 The app downloads its BKK catalog (`routes.json`, `stops.json`, `route-variants.json`) from
@@ -127,5 +107,6 @@ The app downloads its BKK catalog (`routes.json`, `stops.json`, `route-variants.
 Today that origin is the web host, refreshed by the "refresh BKK transit catalog" workflow.
 When the web app goes away, keep serving those three files from the same path (a static
 bucket, nginx location or a PocketBase route all work) or point `-Pvectra.catalogOrigin` at
-their new home. The Digital Asset Links file from section 1 must also stay on
+their new home. The Digital Asset Links and apple-app-site-association files from section 1 (today in
+`web/public/.well-known/`) must also stay on
 `vectra.southstar21.dev` for passkeys to keep working.

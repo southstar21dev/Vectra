@@ -27,7 +27,6 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
-import dev.southstar21.vectra.features.widgets.AgendaCut
 import dev.southstar21.vectra.features.widgets.FootNote
 import dev.southstar21.vectra.features.widgets.FootNoteType
 import dev.southstar21.vectra.features.widgets.footNotes

@@ -62,7 +62,6 @@ import dev.southstar21.vectra.core.time.formatHHMM
 import dev.southstar21.vectra.core.time.parseHourMinute
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.navigation.LocalNavigator
-import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.launch
 
 /** Monday-first, the way a Budapest timetable reads. */

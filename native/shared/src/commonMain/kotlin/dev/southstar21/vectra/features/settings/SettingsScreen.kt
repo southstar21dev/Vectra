@@ -32,7 +32,6 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.PermissionKind

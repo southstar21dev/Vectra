@@ -43,7 +43,6 @@ import dev.southstar21.vectra.core.maps.boundsOf
 import dev.southstar21.vectra.core.maps.fitBounds
 import dev.southstar21.vectra.core.maps.easeTo
 import dev.southstar21.vectra.core.maps.jumpTo
-import dev.southstar21.vectra.core.maps.labelPriority
 import dev.southstar21.vectra.core.maps.lineFeatureCollection
 import dev.southstar21.vectra.core.maps.rememberProgrammaticGuard
 import dev.southstar21.vectra.core.maps.samePoints

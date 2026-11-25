@@ -24,11 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.GeoJson
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
@@ -44,7 +41,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import org.maplibre.compose.expressions.dsl.const
-import org.maplibre.compose.expressions.dsl.dp
 import org.maplibre.compose.interaction.ClickResult
 import org.maplibre.compose.map.MapState
 import org.maplibre.compose.sources.GeoJsonData

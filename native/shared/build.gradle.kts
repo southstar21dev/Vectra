@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.metro)
+    alias(libs.plugins.detekt)
 }
 
 // iOS gets the same build-time values as androidApp's BuildConfig, from the same Gradle properties,
@@ -17,9 +18,9 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
     @Suppress("UNCHECKED_CAST")
     val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl")
-    val pocketbaseUrl = pocketbaseOverride.orElse("https://apivectra.southstar21.dev")
-    val devPocketbaseUrl = pocketbaseOverride.orElse("https://apivectra-dev.southstar21.dev")
-    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin").orElse("https://vectra.southstar21.dev")
+    val pocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.release"))
+    val devPocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug"))
+    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin")
     inputs.property("versionName", versionName)
     inputs.property("debugVersionName", debugVersionName)
     inputs.property("pocketbaseUrl", pocketbaseUrl)
@@ -45,6 +46,13 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
             |""".trimMargin(),
         )
     }
+}
+
+// Type-resolved detekt: the root detekt task has no classpath, so UnusedImport and other rules that
+// need types stay silent there. The root detekt task depends on these, so `./gradlew detekt` runs them.
+detekt {
+    config.setFrom(rootProject.file("config/detekt/type-resolved.yml"))
+    buildUponDefaultConfig = false
 }
 
 kotlin {

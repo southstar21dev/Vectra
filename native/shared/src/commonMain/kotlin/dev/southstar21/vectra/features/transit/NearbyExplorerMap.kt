@@ -1,7 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.glass
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,21 +22,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VText
-import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapAttribution
@@ -65,7 +57,6 @@ import org.maplibre.compose.camera.CameraUpdate
 import org.maplibre.compose.expressions.dsl.asNumber
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.expressions.dsl.convertToColor
-import org.maplibre.compose.expressions.dsl.dp
 import org.maplibre.compose.expressions.dsl.feature
 import org.maplibre.compose.interaction.ClickResult
 import org.maplibre.compose.layers.CircleLayer
@@ -78,7 +69,6 @@ import org.maplibre.compose.sources.rememberGeoJsonSource
 import dev.southstar21.vectra.core.maps.MapColors
 import dev.southstar21.vectra.core.maps.SelectedStopLayers
 import dev.southstar21.vectra.core.maps.UserLocationLayers
-import dev.southstar21.vectra.core.maps.VehicleLayers
 import dev.southstar21.vectra.core.maps.composeOverlaysTrackMap
 
 @Immutable

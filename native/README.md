@@ -16,9 +16,11 @@ plus the platform seams in `shared/src/androidMain` and `shared/src/iosMain`.
     wall-clock helpers, small shared helpers, build-time config, and the expect/actual seams.
   - `navigation` — tabs, the pushed-screen stack (Navigation 3) and deep links.
   - `features/*` — one package per feature (auth, dashboard, schedule, transit,
-    weather, holidays, coursetracker, settings, notifications, navbar, shell, splash).
+    weather, holidays, coursetracker, settings, notifications, navbar, shell, splash, reminders,
+    update, widgets).
 - `androidApp/` — the Android shell (Activity, application graph, manifest, resources).
-- `iosApp/` — the iOS shell: a SwiftUI scene hosting `MainViewController()`, Info.plist, icon. The
+- `iosApp/`: the iOS shell: a SwiftUI scene hosting `MainViewController()` inside a native
+  `UITabBarController` (`TabBarHost.swift`), the `VectraWidgets` widget extension (pure SwiftUI), Info.plist, icon. The
   Xcode project is generated from `iosApp/project.yml` (`cd iosApp && xcodegen`); its build phase
   compiles `shared` through Gradle, so Xcode always builds the current shared code.
 - `tools/` — icon (`icons.txt` → `RemixIcons.kt`) and logo generators; `cd tools && npm install` first.
@@ -55,7 +57,10 @@ Without a keystore a local release build is signed with the debug key so it inst
 with `-Pvectra.distribution=true` that fails the build instead.
 
 Baseline profile: the checked-in profile lives under `androidApp/src/release/generated/baselineProfiles/`.
-Regenerate it after large UI changes, with one device attached and the test account's credentials:
+Regenerate it after large UI changes and before a release when feature packages have moved (a stale profile
+names classes that no longer exist, so their startup code runs interpreted). The profile variants talk to the
+dev backend (`vectra.pocketbaseUrl.debug`, or `-Pvectra.pocketbaseUrl=...`), so use a dev test account.
+Run it with one device attached and the test account's credentials:
 ```
 ./gradlew :androidApp:generateBaselineProfile -Pvectra.testEmail=… -Pvectra.testPassword=…
 ./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest \
@@ -71,7 +76,10 @@ production `https://apivectra.southstar21.dev` (iOS: Xcode's Debug and Release c
 catalog `/catalog/*.json` is served).
 
 ## Stack
-Kotlin 2.4.21 · AGP 9.5 · Gradle 9.8.2 · Compose Multiplatform 1.12.2 · Navigation 3 ·
-Metro DI · Ktor 3.6 · kotlinx.serialization / datetime · DataStore 1.3 ·
-maplibre-compose 0.20 · Kyant backdrop 2.0 (Liquid Glass navbar) · Credential Manager 1.6 ·
+Building needs any JDK to run Gradle; the modules compile with a JDK 17 toolchain, which Gradle downloads
+through the foojay resolver in `settings.gradle.kts` when none is installed (CI sets up Java 21 and relies on this too).
+
+Kotlin 2.4.21, AGP 9.5, Gradle 9.9, Compose Multiplatform 1.12.2, Navigation 3,
+Metro DI, Ktor 3.6, kotlinx.serialization / datetime, DataStore 1.3,
+maplibre-compose 0.20, Kyant backdrop 2.0 (Liquid Glass navbar), Credential Manager 1.6,
 detekt 2.0 alpha with compose-rules.

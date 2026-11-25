@@ -1,3 +1,4 @@
+import com.android.build.api.variant.BuildConfigField
 import com.android.build.api.variant.HostTestBuilder
 
 plugins {
@@ -5,11 +6,12 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.metro)
     alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.detekt)
 }
 
 // The version lives in gradle.properties (CI writes the release version there); the code is derived
 // so the two can't drift. 1.2.3 -> 1020399. Prereleases sort below their release and dev below rc:
-// 1.2.3-dev.4 -> 1020304, 1.2.3-rc.2 -> 1020352. The same rule is in iosApp/project.yml.
+// 1.2.3-dev.4 -> 1020304, 1.2.3-rc.2 -> 1020352. The same rule is in iosApp/scripts/version.sh.
 // Debug builds are versioned from git instead (see the root build.gradle.kts and androidComponents below).
 val appVersionName: String = providers.gradleProperty("vectra.versionName").get()
 val appVersionCode: Int = versionCodeOf(appVersionName)
@@ -34,6 +36,13 @@ fun versionCodeOf(versionName: String): Int {
     return (major * 10_000 + minor * 100 + patch) * 100 + build
 }
 
+// Type-resolved detekt: the root detekt task has no classpath, so UnusedImport and other rules that
+// need types stay silent there. The root detekt task depends on these, so `./gradlew detekt` runs them.
+detekt {
+    config.setFrom(rootProject.file("config/detekt/type-resolved.yml"))
+    buildUponDefaultConfig = false
+}
+
 android {
     namespace = "dev.southstar21.vectra.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -49,7 +58,7 @@ android {
         buildConfigField(
             "String",
             "CATALOG_ORIGIN",
-            "\"${providers.gradleProperty("vectra.catalogOrigin").getOrElse("https://vectra.southstar21.dev")}\"",
+            "\"${providers.gradleProperty("vectra.catalogOrigin").get()}\"",
         )
     }
 
@@ -69,20 +78,21 @@ android {
     }
 
     // PocketBase backend: debug builds use the dev backend, release builds production, so testing never
-    // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The same split is in
-    // shared/build.gradle.kts for iOS.
+    // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The defaults are in gradle.properties,
+    // shared with iOS (shared/build.gradle.kts).
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl").orNull
-    fun pocketbaseUrl(default: String) = "\"${pocketbaseOverride ?: default}\""
+    fun pocketbaseUrl(defaultProperty: String) =
+        "\"${pocketbaseOverride ?: providers.gradleProperty(defaultProperty).get()}\""
 
     buildTypes {
         debug {
             // Installs next to the release app. Passkeys need this package in assetlinks.json.
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "Vectra Dev"
-            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra-dev.southstar21.dev"))
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.debug"))
         }
         release {
-            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("https://apivectra.southstar21.dev"))
+            buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.release"))
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -133,6 +143,15 @@ kotlin {
 androidComponents {
     beforeVariants { variant ->
         variant.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+    // The baseline profile variants (nonMinifiedRelease, benchmarkRelease) are release-derived and keep the
+    // production package, but their journeys sign in and browse live data, so they talk to the dev backend.
+    onVariants { variant ->
+        if (variant.buildType in setOf("nonMinifiedRelease", "benchmarkRelease")) {
+            val url = providers.gradleProperty("vectra.pocketbaseUrl")
+                .orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug")).get()
+            variant.buildConfigFields?.put("POCKETBASE_URL", BuildConfigField("String", "\"$url\"", null))
+        }
     }
     // Debug: the newest release plus the commit (1.8.2+92e0b25), with that release's code, so a
     // rebuild installs over the last one and a new release tag moves it forward.

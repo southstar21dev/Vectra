@@ -90,17 +90,23 @@ private final class ClearPage: UIViewController {
     }
 }
 
-final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, IosTabBarHost {
-    // Same order as the shared PrimaryNavItems.
-    private static let items: [(title: String, symbol: String)] = [
-        ("Dashboard", "square.grid.2x2"),
-        ("Schedule", "calendar"),
-        ("Transit", "tram"),
-        ("Settings", "gearshape"),
-    ]
+final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, @preconcurrency UIEditMenuInteractionDelegate, @preconcurrency IosTabBarHost {
+    /// The tabs, as the shared PrimaryNavItems describe them in every state the app pushes (labels, SF Symbols,
+    /// which ones open something when held). Empty until the first render.
+    private var items: [SystemNavbarTab] = []
 
-    private lazy var mainTabs: [UITab] = Self.items.enumerated().map { index, item in
-        UITab(title: item.title, image: UIImage(systemName: item.symbol), identifier: "tab.\(index)") { _ in ClearPage() }
+    private var mainTabs: [UITab] = []
+
+    /// Rebuilds the tabs when the shared list changed (it does once, at the first render).
+    private func adopt(tabs newItems: [SystemNavbarTab]) {
+        guard newItems.map({ [$0.label, $0.sfSymbol] }) != items.map({ [$0.label, $0.sfSymbol] }) else {
+            items = newItems
+            return
+        }
+        items = newItems
+        mainTabs = newItems.enumerated().map { index, item in
+            UITab(title: item.label, image: UIImage(systemName: item.sfSymbol), identifier: "tab.\(index).\(item.label)") { _ in ClearPage() }
+        }
     }
 
     /// The + sits apart from the bar, in the slot iOS gives a search tab; it opens the page's actions.
@@ -190,8 +196,8 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         guard recognizer.state == .began, isInteractive, !isVertical else { return }
         let point = recognizer.location(in: view)
         guard let (index, frame) = tabItem(at: point) else { return }
-        // Only Transit's hold opens something that a following selection would close.
-        holdSwallowsSelect = Self.items[index].title == "Transit"
+        // Only a holdable tab's hold (Transit's) opens something that a following selection would close.
+        holdSwallowsSelect = items.indices.contains(index) && items[index].holdable
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         // The Compose app fills the window, in pixels.
         let scale = traitCollection.displayScale
@@ -210,13 +216,14 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             if node.isHidden || node === sideActionButton { return nil }
             let frame = node.convert(node.bounds, to: view)
             if frame.contains(point), frame.width < view.bounds.width / 2,
-               let label = node.accessibilityLabel, let index = Self.items.firstIndex(where: { $0.title == label }) {
+               let label = node.accessibilityLabel, let index = items.firstIndex(where: { $0.label == label }) {
                 return (index, frame)
             }
             for sub in node.subviews { if let hit = search(sub) { return hit } }
             return nil
         }
         if let hit = search(view) { return hit }
+        logViewTreeFallback("tab buttons not found by title; splitting the bar's strip evenly")
         var strip = tabBar.convert(tabBar.bounds, to: view)
         if tabs.contains(where: { $0 === actionTab }) { strip.size.width -= strip.height + 12 }
         guard strip.contains(point), strip.width > 0 else { return nil }
@@ -225,11 +232,21 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         return (index, CGRect(x: strip.minX + width * CGFloat(index), y: strip.minY, width: width, height: strip.height))
     }
 
+    private var loggedFallbacks = Set<String>()
+
+    /// The hit testing and the side + lean on UIKit's private view tree. When a heuristic stops matching
+    /// (an iOS release changed the tree), say so once per kind in the log instead of failing silently.
+    private func logViewTreeFallback(_ message: String) {
+        guard loggedFallbacks.insert(message).inserted else { return }
+        NSLog("TabBarHost: %@", message)
+    }
+
     // MARK: IosTabBarHost
 
     func render(state: SystemNavbarState) {
         loadViewIfNeeded()
         self.state = state
+        adopt(tabs: state.tabs)
 
         // Along the bottom the + is a tab that comes and goes with the page. Down the side it is
         // sideActionButton instead, so the bar itself never changes.
@@ -341,7 +358,9 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             for sub in node.subviews { if let hit = find(sub) { return hit } }
             return nil
         }
-        return view.subviews.lazy.compactMap(find).first
+        let pill = view.subviews.lazy.compactMap(find).first
+        if pill == nil { logViewTreeFallback("tabs pill not found; the side + button keeps its last position") }
+        return pill
     }
 
     /// Fully shown, less how far a pushed screen covers the tabs where the bar fades for it.

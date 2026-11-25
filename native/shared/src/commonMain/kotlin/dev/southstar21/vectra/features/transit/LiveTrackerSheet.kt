@@ -2,44 +2,17 @@ package dev.southstar21.vectra.features.transit
 
 import androidx.compose.ui.text.style.TextAlign
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.CoroutineScope
 import dev.southstar21.vectra.core.maps.MapAttribution
-import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.data.KeyValueStore
-import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.layout
-import kotlin.math.abs
-import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.components.VBackHandler
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.platform.LocalDensity
 import org.maplibre.compose.map.MapState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,10 +23,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,7 +58,6 @@ import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.isValidLatLon
 import dev.southstar21.vectra.navigation.AppNavigator
 import dev.southstar21.vectra.navigation.LiveTrackerSheet
-import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.CancellationException
 
 /** The share of the window the sheet covers at its half-height rest. */
