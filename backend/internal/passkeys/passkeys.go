@@ -62,9 +62,9 @@ var (
 )
 
 // newWebAuthn builds the WebAuthn relying-party instance from the deployment
-// environment. RPID/RPOrigins MUST mirror Supabase's webauthn_rp_id /
-// webauthn_rp_origins (including any android:apk-key-hash: origin) or existing
-// Supabase-migrated passkeys will stop verifying.
+// environment. RPID/RPOrigins must stay the values existing credentials were
+// registered under (including any android:apk-key-hash: origin) or those
+// passkeys, migrated Supabase ones included, will stop verifying.
 //
 // User verification is required for both ceremonies: passkeys are the only
 // factor on this login path, so a bare user-presence tap must not suffice.

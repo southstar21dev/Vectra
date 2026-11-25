@@ -10,12 +10,12 @@ import (
 	"vectra/pb/internal/ratelimit"
 )
 
-// Port of the Supabase RPC replace_neptun_schedule(p_user_id, p_events).
+// POST /api/vectra/neptun/replace: replaces the caller's stored Neptun calendar.
 //
 // The client syncs its whole Neptun calendar at once; the server atomically
 // replaces the user's stored set (delete + insert in one transaction) so a
 // mid-sync failure can never leave the calendar empty or duplicated. Every
-// event content field arrives already encrypted with the app's vc2: scheme and
+// event content field arrives already encrypted with the app's vc3: scheme and
 // is stored verbatim — the server never decrypts or re-encrypts.
 
 const (
@@ -38,7 +38,7 @@ var limiter = ratelimit.New(limits.NeptunReplace.Max, limits.NeptunReplace.Windo
 // verbatimFields are the client-supplied content fields copied as-is into a
 // row. Their values are ciphertext (or, for color, display metadata) and must
 // not be interpreted by the server. semester_start/semester_end are included
-// because the client encrypts them as vc2: ciphertext too; typing them as
+// because the client encrypts them as vc3: ciphertext too; typing them as
 // dates would silently discard that ciphertext.
 var verbatimFields = []string{
 	"course_name", "course_code", "instructor", "location",

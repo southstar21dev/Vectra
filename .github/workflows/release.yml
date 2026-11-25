@@ -1,6 +1,6 @@
 # semantic-release for the native apps.
 #
-#   master  -> 1.4.0         GitHub release
+#   master  -> vX.Y.Z        GitHub release (version from Conventional Commits)
 #   dev     -> CI only       no builds, no release (dev builds are checked locally)
 #
 # The version comes from Conventional Commits since the last tag (feat: minor, fix:/perf: patch,
