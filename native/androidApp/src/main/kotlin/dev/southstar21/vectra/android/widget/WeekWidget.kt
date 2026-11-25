@@ -71,7 +71,12 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
     val classes = snap.week(frame.today).classCount()
     val exam = snap.examThisWeek(frame.today)
     val b = Budget(context)
-    val height = (LocalSize.current.height.value - 21f - 24f - b.line(11f) - 7f).coerceAtLeast(40f)
+    val countText = (if (classes == 1) "1 class" else "$classes classes") + if (grid.weekendFree()) ", weekend free" else ""
+    val examText = exam?.let { "${it.title}, ${weekdayLabel(it.day)} " }.orEmpty()
+    // The exam title takes what the class count and the time leave, on up to two lines, never cutting the time.
+    val examRoom = LocalSize.current.width.value - 23f - 11f * 0.5f * countText.length - 60f
+    val examLines = if (exam == null) 1 else b.lines(examText, 11f, examRoom.coerceAtLeast(60f), bold = false, max = 2)
+    val height = (LocalSize.current.height.value - 21f - 24f - b.line(11f) * examLines - 7f).coerceAtLeast(40f)
     WidgetSurface(context, padding = 0.dp) {
         Column(GlanceModifier.fillMaxSize().padding(start = 10.dp, top = 11.dp, end = 13.dp, bottom = 10.dp)) {
             Row(GlanceModifier.fillMaxWidth()) {
@@ -80,13 +85,15 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
             }
             Spacer(GlanceModifier.height(7.dp))
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Quiet((if (classes == 1) "1 class" else "$classes classes") + if (grid.weekendFree()) ", weekend free" else "")
-                Spacer(GlanceModifier.defaultWeight())
+                Quiet(countText)
+                Spacer(GlanceModifier.width(8.dp))
                 if (exam != null) {
                     TypeWord(WidgetKind.Exam)
                     Spacer(GlanceModifier.width(6.dp))
-                    Quiet("${exam.title}, ${weekdayLabel(exam.day)} ")
+                    Quiet(examText, maxLines = 2, modifier = GlanceModifier.defaultWeight())
                     Mono(clockLabel(exam.startMs), 11f, p.secondary)
+                } else {
+                    Spacer(GlanceModifier.defaultWeight())
                 }
             }
         }

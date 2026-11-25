@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -106,7 +108,13 @@ private fun Coming(s: WidgetSession, frame: WidgetFrame) {
 private fun Detail(text: String) = Text(text, style = style(13.sp, FontWeight.Medium, Dim), maxLines = 1)
 
 @Composable
-private fun Headline(text: String) = Text(text, style = style(17.sp, FontWeight.Bold, Primary), maxLines = 1)
+private fun Headline(text: String) {
+    // Shrink before wrapping, and wrap before cutting: a long course title must stay whole.
+    val b = Budget(LocalContext.current)
+    val width = LocalSize.current.width.value
+    val size = listOf(17f, 15f, 13f).firstOrNull { b.lines(text, it, width, max = 2) == 1 }
+    Text(text, style = style((size ?: 12f).sp, FontWeight.Bold, Primary), maxLines = if (size == null) 2 else 1)
+}
 
 @Composable
 private fun Clock(text: String) = Text(text, style = style(13.sp, FontWeight.Bold, Primary), maxLines = 1)
