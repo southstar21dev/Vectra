@@ -28,7 +28,7 @@ on `/app/pb_data`, port 8090, but branch `dev` and the domain above. Environment
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | a new pair (`npx web-push generate-vapid-keys`) |
 | `VAPID_SUBJECT` | `mailto:support@southstar21.dev` |
 | `WEBAUTHN_RP_ID` | `vectra.southstar21.dev` |
-| `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev,android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
+| `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev` (web-only: remove with web/), `android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Vectra Dev` |
 | `TRUSTED_PROXY` | `cloudflare` (see below) |
 
