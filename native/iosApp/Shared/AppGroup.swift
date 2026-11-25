@@ -24,7 +24,12 @@ enum AppGroup {
 
     static let snapshotFile = "widget_snapshot.json"
 
-    static var snapshotURL: URL? { container?.appendingPathComponent(snapshotFile) }
+    /// A subdirectory the app excludes from backups (IosWidgets.kt), unlike the container root.
+    static let snapshotDirectory = "Widgets"
+
+    static var snapshotURL: URL? {
+        container?.appendingPathComponent(snapshotDirectory, isDirectory: true).appendingPathComponent(snapshotFile)
+    }
 
     /// The signing team, read from the access group the keychain gives this app's own items
     /// (`<TeamID>.<bundle id>`). There is no public API for it.
