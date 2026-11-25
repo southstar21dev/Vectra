@@ -48,10 +48,6 @@ coverage/
 backend/pb
 backend/pb_data/
 
-# One-off scratch files (kept on disk, not source)
-Export.xlsx
-remove-svg-bg.js
-
 # Windows junk
 Thumbs.db
 desktop.ini
@@ -59,7 +55,7 @@ desktop.ini
 # IntelliJ module files
 *.iml
 
-# Vendored agent skills — reinstallable from skills-lock.json (source + hash per skill)
+# Vendored agent skills and agent tool folders (local only)
 .claude/
 .openchamber/
 .codex/
