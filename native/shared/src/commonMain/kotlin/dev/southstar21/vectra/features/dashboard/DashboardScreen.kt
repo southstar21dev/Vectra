@@ -42,9 +42,9 @@ import dev.southstar21.vectra.features.schedule.rememberMinuteClock
 import dev.southstar21.vectra.features.schedule.nextScheduledStart
 import dev.southstar21.vectra.features.schedule.scheduleTodayEvents
 import dev.southstar21.vectra.features.shell.VectraPage
-import dev.southstar21.vectra.features.weather.WeatherCard
 import dev.southstar21.vectra.features.transit.TransitDashboardWidget
 import dev.southstar21.vectra.features.transit.rememberFavoriteTrackers
+import dev.southstar21.vectra.features.weather.WeatherCard
 import dev.southstar21.vectra.navigation.LocalNavigator
 import dev.southstar21.vectra.navigation.Route
 import dev.southstar21.vectra.navigation.Screen

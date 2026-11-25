@@ -34,6 +34,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.features.transit.data.TransitAlert
 
 private val AlertShape = Radius.Panel
 
@@ -108,7 +109,7 @@ private fun AlertCard(alert: TransitAlert) {
  * the amber rows are self-evidently alerts.
  */
 @Composable
-fun AlertsSection(alerts: List<TransitAlert>, modifier: Modifier = Modifier) {
+internal fun AlertsSection(alerts: List<TransitAlert>, modifier: Modifier = Modifier) {
     if (alerts.isEmpty()) return
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         alerts.forEach { a -> key(a.id) { AlertCard(a) } }

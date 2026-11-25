@@ -1,9 +1,9 @@
 package dev.southstar21.vectra.features.reminders
 
 import dev.southstar21.vectra.core.platform.DepartureQuery
+import dev.southstar21.vectra.core.network.OneOrManySerializer
 import dev.southstar21.vectra.features.transit.findCombinedGroup
 import dev.southstar21.vectra.features.transit.formatRouteDisplayName
-import dev.southstar21.vectra.core.network.OneOrManySerializer
 import kotlinx.serialization.Serializable
 
 /** Settings saved when each leg held a single line. */

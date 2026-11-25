@@ -31,6 +31,18 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.demo.DemoSeedEffect
+import dev.southstar21.vectra.features.transit.nearby.NearbyDeparturesList
+import dev.southstar21.vectra.features.transit.nearby.RadarDepartureItem
+import dev.southstar21.vectra.features.transit.nearby.groupByLine
+import dev.southstar21.vectra.features.transit.nearby.nearestStopItem
+import dev.southstar21.vectra.features.transit.nearby.rememberNearbyData
+import dev.southstar21.vectra.features.transit.strip.LineStripCard
+import dev.southstar21.vectra.features.transit.strip.LineStripSlimCard
+import dev.southstar21.vectra.features.transit.strip.stripCardSurface
 import dev.southstar21.vectra.navigation.LocalNavigator
 
 /** From this many pinned trackers the dashboard shows slim cards. */
@@ -46,7 +58,7 @@ private const val SlimCardsFrom = 4
  * to pin it here").
  */
 @Composable
-fun TransitDashboardWidget(
+internal fun TransitDashboardWidget(
     repo: TransitRepository,
     deviceLocation: DeviceLocation,
     auth: AuthRepository,
@@ -143,7 +155,7 @@ internal fun TransitSectionHeader(title: String, action: String?, modifier: Modi
 
 /** The dashboard's starred trackers, in their saved order. */
 @Composable
-fun rememberFavoriteTrackers(repo: TransitRepository): List<TransitTracker> {
+internal fun rememberFavoriteTrackers(repo: TransitRepository): List<TransitTracker> {
     val state = repo.trackersQuery.collect(Unit)
     val trackers = state.data.orEmpty()
     DemoSeedEffect(repo, trackers, state.isFetched && state.data != null)

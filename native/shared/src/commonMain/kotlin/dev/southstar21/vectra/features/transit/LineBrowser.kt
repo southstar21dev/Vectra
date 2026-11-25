@@ -64,6 +64,25 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.route.RoutePreviewMap
+import dev.southstar21.vectra.features.transit.route.RoutePreviewStop
+import dev.southstar21.vectra.features.transit.route.RoutePreviewVehicle
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormRow
+import dev.southstar21.vectra.features.transit.trackers.DirectionSelect
+import dev.southstar21.vectra.features.transit.trackers.ListRow
+import dev.southstar21.vectra.features.transit.trackers.ListStatus
+import dev.southstar21.vectra.features.transit.trackers.MapBottomFade
+import dev.southstar21.vectra.features.transit.trackers.RouteTypeFilters
+import dev.southstar21.vectra.features.transit.trackers.SheetFootnote
+import dev.southstar21.vectra.features.transit.trackers.SheetListSpinner
+import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
+import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
+import dev.southstar21.vectra.features.transit.trackers.StopCountPill
+import dev.southstar21.vectra.features.transit.trackers.TrackedChip
 
 /** Let a row run past the sheet gutter on both sides (negative margin, with the gutter added back as padding). */
 internal fun Modifier.bleedHorizontally(gutter: Dp): Modifier = layout { measurable, constraints ->
@@ -144,7 +163,7 @@ internal fun filterRoutes(routes: List<SearchableRoute>, query: String, typeFilt
 
 /** Root of By line: a type filter strip and the catalog as one list. */
 @Composable
-fun ColumnScope.LineBrowser(
+internal fun ColumnScope.LineBrowser(
     routeTypeFilter: String,
     setRouteTypeFilter: (String) -> Unit,
     catalogLoaded: Boolean,
@@ -257,7 +276,7 @@ private val MapHeight = 208.dp
 
 /** After a line is picked: the route on the map, then its stops to tick. */
 @Composable
-fun ColumnScope.LineStopPicker(
+internal fun ColumnScope.LineStopPicker(
     browseRoute: FutarRoute,
     selectedLineStops: List<TrackerStop>,
     routePolylines: List<List<LatLon>>,

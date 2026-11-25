@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.strip.divertedDestination
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

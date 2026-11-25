@@ -34,9 +34,9 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
-import dev.southstar21.vectra.features.transit.TransitRepository
-import dev.southstar21.vectra.features.transit.TransitTracker
 import dev.southstar21.vectra.features.transit.collect
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
 import dev.southstar21.vectra.features.transit.getTrackerStops
 
 /** The "Commute" settings group: which saved trackers get you to uni and back. */

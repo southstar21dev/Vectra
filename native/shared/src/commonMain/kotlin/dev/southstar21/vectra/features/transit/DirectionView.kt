@@ -1,12 +1,17 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.maps.LatLon
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.FutarTripStopTime
+import dev.southstar21.vectra.features.transit.live.RouteProgress
+import dev.southstar21.vectra.features.transit.route.RouteMapStop
+import dev.southstar21.vectra.features.transit.route.RouteMapVehicle
 
 /**
  * One direction of the tracked route — stops, geometry, vehicles and progress.
  * An all-directions tracker yields up to three of these; a direction tracker one.
  */
-data class DirectionView(
+internal data class DirectionView(
     val tripId: String?,
     val stops: List<RouteMapStop>,
     val polyline: List<LatLon>,

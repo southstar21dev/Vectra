@@ -13,7 +13,7 @@ import dev.southstar21.vectra.core.data.BlobStore
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.SecretCipher
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.io.files.Path

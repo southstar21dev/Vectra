@@ -17,6 +17,11 @@ import dev.southstar21.vectra.core.platform.GeoPermission
 import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.NewTrackerInput
+import dev.southstar21.vectra.features.transit.data.NotSignedInException
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.request.HttpRequestData

@@ -103,7 +103,7 @@ plugin + `firebase-messaging` (BoM 35.x), and replace `NoPush` in `VectraApplica
 ## 3. Transit catalog (before retiring the web host)
 
 The app downloads its BKK catalog (`routes.json`, `stops.json`, `route-variants.json`) from
-`<catalogOrigin>/catalog/` at runtime (`features/transit/Catalog.kt`) and caches it on disk.
+`<catalogOrigin>/catalog/` at runtime (`features/transit/data/Catalog.kt`) and caches it on disk.
 Today that origin is the web host, refreshed by the "refresh BKK transit catalog" workflow.
 When the web app goes away, keep serving those three files from the same path (a static
 bucket, nginx location or a PocketBase route all work) or point `-Pvectra.catalogOrigin` at

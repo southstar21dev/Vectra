@@ -4,7 +4,7 @@ import dev.southstar21.vectra.core.platform.DepartureQuery
 import dev.southstar21.vectra.core.platform.ScheduledNotification
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
-import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.parseStopArrivals
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

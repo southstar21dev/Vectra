@@ -1,6 +1,8 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.maps.LatLon
+import dev.southstar21.vectra.features.transit.data.shouldPersistFix
+import dev.southstar21.vectra.features.transit.nearby.anchorCell
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

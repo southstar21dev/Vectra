@@ -136,7 +136,7 @@ private class OrbCover(loading: Boolean) {
  * scrolls around the map. [maxDurationMs] caps how long it can stay up.
  */
 @Composable
-fun BoxScope.MapLoadingOrb(
+internal fun BoxScope.MapLoadingOrb(
     show: Boolean,
     modifier: Modifier = Modifier,
     label: String = "Loading map…",

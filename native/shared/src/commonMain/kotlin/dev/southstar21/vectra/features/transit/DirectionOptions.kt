@@ -3,12 +3,17 @@ package dev.southstar21.vectra.features.transit
 import dev.southstar21.vectra.core.designsystem.components.SelectOption
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.time.nowMs
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.FutarRouteVariant
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.strip.vehicleNoun
 
 /** Delimiter joining co-directional termini in a single direction option value (e.g. "Sörgyár / Új köztemető (Kozma u.)"). */
 internal const val DirectionGroupSeparator = " / "
 
 /** One selectable direction row for a tracked stop. */
-data class StopDirectionOption(
+internal data class StopDirectionOption(
     val value: String,
     val label: String,
     val subtitle: String? = null,
@@ -21,13 +26,13 @@ data class StopDirectionOption(
 )
 
 /** Stop-aware direction choices for one stop, plus any arrival-only termini that were hidden. */
-data class StopDirectionOptions(
+internal data class StopDirectionOptions(
     val options: List<StopDirectionOption>,
     val hiddenTermini: List<String> = emptyList(),
 )
 
 /** Inputs needed to build topology- and disruption-aware direction choices for one stop. */
-data class StopDirectionContext(
+internal data class StopDirectionContext(
     val stopId: String,
     val routeId: String,
     val routeShortName: String,
@@ -40,7 +45,7 @@ data class StopDirectionContext(
 )
 
 /** Split a stored direction value into its member headsigns ("A / B" → ["A", "B"]). */
-fun splitDirectionHeadsigns(headsign: String?): List<String> {
+internal fun splitDirectionHeadsigns(headsign: String?): List<String> {
     if (headsign.isNullOrBlank()) return emptyList()
     return headsign.split(DirectionGroupSeparator).map { it.trim() }.filter { it.isNotEmpty() }
 }
@@ -61,7 +66,7 @@ private fun variantStationIds(variant: FutarRouteVariant, stopRefs: Map<String, 
  * Resolve the Futár directionId ("0"/"1") for [headsign] using [variants] so direction-locked
  * trackers can keep following short-turned or diverted trips moving the same physical way.
  */
-fun targetDirectionIdFor(
+internal fun targetDirectionIdFor(
     headsign: String?,
     variants: List<FutarRouteVariant>,
     stopId: String? = null,
@@ -131,7 +136,7 @@ private fun fallbackShortNameForRoute(routeId: String): String? = when (routeId)
  * - Groups co-directional branches (e.g. 37 and 37A outbound) into one selectable direction.
  * - Annotates each direction with live ETA, replacement-bus status, or muted no-departures state.
  */
-fun buildStopDirectionOptions(ctx: StopDirectionContext): StopDirectionOptions {
+internal fun buildStopDirectionOptions(ctx: StopDirectionContext): StopDirectionOptions {
     val allOption = StopDirectionOption(
         value = "",
         label = "All directions",
@@ -239,7 +244,7 @@ private fun buildGroupedDirectionOption(
  * Resolve [savedHeadsign] against [options]: if the user previously saved a single branch
  * (e.g. "Sörgyár") that is now grouped under "Sörgyár / Új köztemető (Kozma u.)", select the group.
  */
-fun resolveDirectionValue(savedHeadsign: String, options: List<StopDirectionOption>): String = when {
+internal fun resolveDirectionValue(savedHeadsign: String, options: List<StopDirectionOption>): String = when {
     savedHeadsign.isBlank() -> ""
     else -> options.firstOrNull { it.value == savedHeadsign }?.value
         ?: options.firstOrNull { opt -> opt.memberHeadsigns.any { isHeadsignMatch(savedHeadsign, it) } }?.value

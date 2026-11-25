@@ -10,7 +10,7 @@ import dev.southstar21.vectra.core.data.moveStorage
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.SecretCipher
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.BetaInteropApi

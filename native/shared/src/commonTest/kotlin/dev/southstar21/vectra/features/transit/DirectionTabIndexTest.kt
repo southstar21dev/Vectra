@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.features.transit.live.directionTabIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 import dev.southstar21.vectra.core.designsystem.theme.backOut
 import dev.southstar21.vectra.core.designsystem.theme.smoothstep
+import dev.southstar21.vectra.features.transit.route.RevealHandOver
 import kotlin.math.min
 
 /**
@@ -17,7 +18,7 @@ import kotlin.math.min
  * Read [progress] in draw or layout where possible: it changes every frame of the melt.
  */
 @Stable
-class MapReveal {
+internal class MapReveal {
     /** 0 while the map is still covered, 1 once everything is in (and for a map that never melted). */
     var progress by mutableFloatStateOf(1f)
         internal set

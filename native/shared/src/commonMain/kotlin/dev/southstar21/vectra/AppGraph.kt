@@ -30,14 +30,14 @@ import dev.southstar21.vectra.features.coursetracker.CryptoTrackerCipher
 import dev.southstar21.vectra.features.coursetracker.PocketBaseTrackerCloud
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.ReminderScheduler
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.widgets.WidgetPublisher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.settings.AppearanceRepository
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
-import dev.southstar21.vectra.features.transit.DeviceLocation
-import dev.southstar21.vectra.features.transit.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import dev.southstar21.vectra.features.weather.WeatherRepository
 import dev.zacsweers.metro.AppScope

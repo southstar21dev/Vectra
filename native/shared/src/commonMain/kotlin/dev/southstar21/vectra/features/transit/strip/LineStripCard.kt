@@ -1,0 +1,317 @@
+package dev.southstar21.vectra.features.transit.strip
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
+import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.VText
+import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.boxShadow
+import dev.southstar21.vectra.core.designsystem.theme.specularBorder
+import dev.southstar21.vectra.core.designsystem.theme.tappable
+import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.features.schedule.rememberDayColors
+import dev.southstar21.vectra.features.transit.AlertContext
+import dev.southstar21.vectra.features.transit.RouteBadge
+import dev.southstar21.vectra.features.transit.RouteBadgeSize
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitAlert
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.extractHeadsignDestination
+import dev.southstar21.vectra.features.transit.formatRouteDisplayName
+import dev.southstar21.vectra.features.transit.getTrackerStops
+import dev.southstar21.vectra.features.transit.isArrivalsStale
+import dev.southstar21.vectra.features.transit.isHeadsignMatch
+import dev.southstar21.vectra.features.transit.isReplacementAlert
+import dev.southstar21.vectra.features.transit.isReplacementBus
+import dev.southstar21.vectra.features.transit.live.rememberLiveRoute
+import dev.southstar21.vectra.features.transit.parseAlerts
+import dev.southstar21.vectra.features.transit.rememberNowMillis
+import dev.southstar21.vectra.features.transit.rememberOnline
+import kotlinx.coroutines.delay
+
+internal val StripCardShape = RoundedCornerShape(22.dp)
+
+/** A stop still loading after this long stops holding up the not-running stack. */
+private const val SettleAfterMs = 8_000L
+
+/** The schedule's day-card surface: opaque, a soft drop shadow, a lit top edge. */
+@Composable
+internal fun Modifier.stripCardSurface(shape: Shape = StripCardShape): Modifier {
+    val d = rememberDayColors()
+    return this.boxShadow(shape, d.cardShadow).background(d.card, shape).specularBorder(shape, d.border, d.borderTop)
+}
+
+/** One tracked stop's strip and its state. */
+@Immutable
+internal class StopStrip(
+    val stop: TrackerStop,
+    val model: StripModel,
+    /** No arrivals have loaded yet. */
+    val loading: Boolean,
+    /** The feed failed and there is nothing to show. */
+    val error: Boolean,
+    /** Loaded, and nothing is coming. */
+    val noDepartures: Boolean,
+    val alerts: List<TransitAlert>,
+    /** Directions past the two the strip draws (a line that forks). */
+    val extra: List<StripDirection>,
+    /** Waiting for times it can stand behind (not while offline). */
+    val pending: Boolean,
+    val now: Long,
+    /** When a direction-locked tracker auto-switched to a short-turned / diverted trip. */
+    val divertedTo: String? = null,
+) {
+    /** Replacement buses stand in for the line (an alert says so). */
+    val replaced: Boolean get() = alerts.any(::isReplacementAlert)
+
+    /** Something is coming, or buses run in the line's place: not a line that's off for now. */
+    val running: Boolean get() = !noDepartures || replaced
+}
+
+/**
+ * Where the line now terminates when the very next departure no longer heads where the tracker
+ * was saved for, or null. Only that next departure counts: a timetabled short-turn later in the
+ * window is normal service, not a diversion.
+ */
+internal fun divertedDestination(savedHeadsign: String?, arrivals: List<Arrival>): String? {
+    val next = arrivals.filter { !it.isReplacementBus }.minByOrNull { it.arrivalMs }
+    val diverted = savedHeadsign != null && next != null && !isHeadsignMatch(savedHeadsign, next.headSign, next.tripHeadsign)
+    return if (diverted) extractHeadsignDestination(next.headSign.ifEmpty { next.tripHeadsign }).takeIf { it.isNotEmpty() } else null
+}
+
+@Composable
+internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker, stops: List<TrackerStop>, stop: TrackerStop, now: Long, offline: Boolean): StopStrip {
+    val live = rememberLiveRoute(repo, tracker, stops, stop, now)
+    val q = live.arrivalsQuery
+    val updatedAt = q.dataUpdatedAt.takeIf { it > 0 }
+    val frozen = isArrivalsStale(updatedAt, now, offline)
+    val metro = tracker.routeType == "SUBWAY"
+    // Enriched: the metro, which reports no GPS, gets its timetable-estimated position.
+    val dirs = remember(live.enriched) { live.enriched.map { it.toStripDirection() } }
+    val model = remember(dirs, now, metro, frozen) { buildStripModel(dirs, now, metro, frozen) }
+    val alerts = remember(q.data, tracker, stop.stopId, now / 60_000) {
+        parseAlerts(q.data, AlertContext(tracker.routeId, tracker.routeShortName, tracker.routeType, stop.stopId), now)
+    }
+    val loaded = q.data != null
+    val savedHeadsign = stop.headsign?.takeIf { it.isNotBlank() }
+    val divertedTo = remember(savedHeadsign, live.arrivals) { divertedDestination(savedHeadsign, live.arrivals) }
+    return StopStrip(
+        stop = stop,
+        model = model,
+        loading = !loaded && !q.isError,
+        error = !loaded && q.isError,
+        noDepartures = loaded && live.arrivals.isEmpty(),
+        alerts = alerts,
+        extra = remember(dirs) { extraDirections(dirs) },
+        pending = !offline && !q.isError && (!loaded || isArrivalsStale(updatedAt, now, false)),
+        now = now,
+        divertedTo = divertedTo,
+    )
+}
+
+/**
+ * A tracker as a line strip: the line through your stop with the vehicles coming each way.
+ * A tracker with several stops gets one slim row per stop instead. The card opens the live
+ * view of its stop; a long press opens the tracker's menu.
+ */
+@Composable
+internal fun LineStripCard(
+    repo: TransitRepository,
+    tracker: TransitTracker,
+    onOpen: (TransitTracker) -> Unit,
+    modifier: Modifier = Modifier,
+    onLongPress: ((TransitTracker) -> Unit)? = null,
+    onHasDeparturesChange: ((String, Boolean) -> Unit)? = null,
+    onPendingChange: ((String, Boolean) -> Unit)? = null,
+    /** Its place in the list: its entrance starts a beat after the cards above. */
+    revealIndex: Int = 0,
+) {
+    val now = rememberNowMillis(5_000)
+    val offline = !rememberOnline(repo.connectivity)
+    val stops = remember(tracker) { getTrackerStops(tracker) }
+    val strips = stops.map { stop -> key(stop.stopId) { rememberStopStrip(repo, tracker, stops, stop, now, offline) } }
+
+    val loaded = strips.any { !it.loading && !it.error }
+    val hasDepartures = strips.any { it.running && !it.loading && !it.error }
+    val pending = strips.any { it.pending }
+    val hasCb by rememberUpdatedState(onHasDeparturesChange)
+    val pendingCb by rememberUpdatedState(onPendingChange)
+    // A failed feed, or one still loading after a few seconds, counts as "keep showing it":
+    // the not-running stack must not wait forever on a stop that never answers.
+    val failed = strips.all { it.error }
+    LaunchedEffect(tracker.id, loaded, hasDepartures, failed) {
+        when {
+            loaded -> hasCb?.invoke(tracker.id, hasDepartures)
+            failed -> hasCb?.invoke(tracker.id, true)
+            else -> {
+                delay(SettleAfterMs)
+                hasCb?.invoke(tracker.id, true)
+            }
+        }
+    }
+    LaunchedEffect(tracker.id, pending) { pendingCb?.invoke(tracker.id, pending) }
+
+    val open = { stop: TrackerStop -> onOpen(tracker.copy(stopId = stop.stopId, stopName = stop.stopName, headsign = stop.headsign.orEmpty())) }
+    val longPress = onLongPress?.let { { it(tracker) } }
+    val shape = StripCardShape
+    val first = strips.first()
+    Column(
+        modifier
+            .fillMaxWidth()
+            .stripCardSurface(shape)
+            .clip(shape)
+            .tappable(shape, role = null, onClickLabel = "Open live departures", onLongClick = longPress) { open(first.stop) }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (stops.size > 1) {
+            MultiStopBody(tracker, strips, revealIndex, open)
+        } else {
+            SingleStopBody(repo, tracker, first, revealIndex)
+        }
+    }
+}
+
+@Composable
+private fun SingleStopBody(repo: TransitRepository, tracker: TransitTracker, s: StopStrip, revealIndex: Int) {
+    val c = Vectra.colors
+    val card = rememberDayColors().card
+    val grey = s.loading || s.error || s.noDepartures
+    val colors = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey)
+    val entrance = rememberStripEntrance(s.loading, revealIndex)
+    val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, card, grey = true)
+    val description = remember(s.model) { stripDescription(s.model) }
+    val title = s.stop.stopName.ifEmpty { tracker.stopName }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.widthIn(min = SlimBadgeSlot), contentAlignment = Alignment.CenterStart) {
+                RouteBadge(
+                    formatRouteDisplayName(tracker.routeShortName, tracker.routeId),
+                    if (grey) null else tracker.routeColor,
+                    if (grey) null else tracker.routeTextColor,
+                    size = RouteBadgeSize.Sm,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    VText(title, Modifier.weight(1f), vtext(14.sp to 18.sp, Weight.Bold), if (s.noDepartures) c.textSecondary else c.textPrimary, maxLines = 1)
+                    if (s.replaced) VIcon(RemixIcons.BusLine, size = 16.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
+                    else if (s.alerts.isNotEmpty()) VIcon(RemixIcons.AlertLine, size = 16.dp, tint = c.tints.amber.text, contentDescription = "Service alert")
+                    else if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
+                }
+                LineStrip(s.model, colors, Modifier.clipToBounds().semantics { contentDescription = description }, labels = false, entrance = entrance, skeletonColors = skeleton)
+                SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), showNext = true)
+            }
+        }
+        StripStatus(repo, tracker, s)
+    }
+}
+
+@Composable
+private fun StripHeader(
+    tracker: TransitTracker,
+    title: String,
+    grey: Boolean,
+    alert: Boolean,
+    subtitle: String? = null,
+    /** The alert is replacement buses: a bus in bus blue rather than a warning. */
+    replaced: Boolean = false,
+) {
+    val c = Vectra.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        RouteBadge(
+            formatRouteDisplayName(tracker.routeShortName, tracker.routeId),
+            if (grey) null else tracker.routeColor,
+            if (grey) null else tracker.routeTextColor,
+            size = RouteBadgeSize.Sm,
+        )
+        Column(Modifier.weight(1f)) {
+            VText(title, style = vtext(17.sp to 22.sp, Weight.Bold), color = if (grey) c.textSecondary else c.textPrimary, maxLines = 2)
+            if (subtitle != null) VText(subtitle, style = vtext(13.sp to 18.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
+        }
+        if (replaced) VIcon(RemixIcons.BusLine, size = 18.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
+        else if (alert) VIcon(RemixIcons.AlertLine, size = 18.dp, tint = c.tints.amber.text, contentDescription = "Service alert")
+    }
+}
+
+/** Option A for several stops: one slim row per stop under a "3 stops" header. */
+@Composable
+private fun MultiStopBody(tracker: TransitTracker, strips: List<StopStrip>, revealIndex: Int, open: (TrackerStop) -> Unit) {
+    val ends = strips.firstOrNull { it.model.leftEnd != null || it.model.rightEnd != null }?.model
+    val subtitle = ends?.let { listOfNotNull(it.leftEnd, it.rightEnd).joinToString(" ↔ ") }
+    Column(Modifier.fillMaxWidth()) {
+        StripHeader(tracker, "${strips.size} stops", grey = strips.all { it.noDepartures }, alert = strips.any { it.alerts.isNotEmpty() }, subtitle = subtitle, replaced = strips.any { it.replaced })
+        strips.forEachIndexed { i, s ->
+            StopRow(tracker, s, divider = i > 0, last = i == strips.lastIndex, revealIndex = revealIndex + i) { open(s.stop) }
+        }
+    }
+}
+
+/** One stop of a several-stop tracker: name, a short strip and labelled direction times below. */
+@Composable
+private fun StopRow(tracker: TransitTracker, s: StopStrip, divider: Boolean, last: Boolean, revealIndex: Int, onOpen: () -> Unit) {
+    val c = Vectra.colors
+    val d = rememberDayColors()
+    val rule = d.border
+    val colors = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, s.loading || s.error || s.noDepartures)
+    val entrance = rememberStripEntrance(s.loading, revealIndex)
+    val skeleton = stripColors(tracker.routeColor, tracker.routeTextColor, d.card, grey = true)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(if (divider) Modifier.drawBehind { drawLine(rule, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) } else Modifier)
+            .tappable(role = null, highlight = false, onClickLabel = "Open ${s.stop.stopName}", onClick = onOpen)
+            .padding(top = 12.dp, bottom = if (last) 4.dp else 14.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 1.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            VText(
+                s.stop.stopName,
+                Modifier.weight(1f),
+                style = vtext(14.sp to 18.sp, Weight.Bold),
+                color = if (s.noDepartures) c.textSecondary else c.textPrimary,
+                maxLines = 1,
+            )
+            if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
+        }
+        LineStrip(s.model, colors, labels = false, entrance = entrance, skeletonColors = skeleton)
+        SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), fallback = if (s.error) "-" else null, showNext = true)
+    }
+}

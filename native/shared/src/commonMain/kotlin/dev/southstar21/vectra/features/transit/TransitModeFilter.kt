@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** Order-insensitive equality for mode-filter lists. */
-fun sameModeFilter(a: List<String>, b: List<String>): Boolean {
+internal fun sameModeFilter(a: List<String>, b: List<String>): Boolean {
     if (a.size != b.size) return false
     val set = a.toSet()
     return b.all { it in set }
@@ -20,7 +20,7 @@ fun sameModeFilter(a: List<String>, b: List<String>): Boolean {
  * persisted. A write repeating the last successfully written value is skipped. Each
  * call throws only for its own write; the queue keeps accepting later writes.
  */
-class ModeFilterWriteQueue {
+internal class ModeFilterWriteQueue {
     private class Desired(val filter: List<String>, val write: suspend (List<String>) -> Unit)
 
     private val mutex = Mutex()
@@ -41,13 +41,13 @@ class ModeFilterWriteQueue {
     }
 }
 
-fun createModeFilterWriteQueue(): ModeFilterWriteQueue = ModeFilterWriteQueue()
+internal fun createModeFilterWriteQueue(): ModeFilterWriteQueue = ModeFilterWriteQueue()
 
 /**
  * Selected transit modes from the user's `preferences` JSON; empty = no filter (ALL).
  * Reads the list form and the legacy single-string value.
  */
-fun parseModeFilter(preferences: JsonObject?): List<String> {
+internal fun parseModeFilter(preferences: JsonObject?): List<String> {
     val raw = preferences?.get("transit_mode_filter")
     if (raw is JsonArray) {
         return raw.filterIsInstance<JsonPrimitive>()
@@ -65,7 +65,7 @@ fun parseModeFilter(preferences: JsonObject?): List<String> {
  * Next filter list when `id` is picked from the explorer's single-select chips: tapping
  * the only active mode clears the filter, any other replaces the selection ("ALL" clears).
  */
-fun selectSingleModeFilter(current: List<String>, id: String): List<String> {
+internal fun selectSingleModeFilter(current: List<String>, id: String): List<String> {
     val upper = id.uppercase()
     if (upper == "ALL") return emptyList()
     if (current.size == 1 && current[0].uppercase() == upper) return emptyList()

@@ -52,7 +52,7 @@
     <ID>ContentSlotReused:Misc.kt:content: @Composable () -&gt; Unit</ID>
     <ID>ContentSlotReused:Overlay.kt:content: @Composable () -&gt; Unit</ID>
     <ID>CyclomaticComplexMethod:AddAssessmentDialog.kt:@Composable private fun ColumnScope.AssessmentForm</ID>
-    <ID>CyclomaticComplexMethod:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>CyclomaticComplexMethod:AddTrackerScreen.kt:@Composable internal fun AddTrackerScreen</ID>
     <ID>CyclomaticComplexMethod:AppSplash.kt:@Composable fun AppSplash</ID>
     <ID>CyclomaticComplexMethod:AppearancePrefs.kt:AppearancePrefs.Companion$fun normalize: AppearancePrefs</ID>
     <ID>CyclomaticComplexMethod:AttendanceCalc.kt:fun calculateAttendanceStats: AttendanceStats</ID>
@@ -69,25 +69,25 @@
     <ID>CyclomaticComplexMethod:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
     <ID>CyclomaticComplexMethod:DirectionStopList.kt:@Composable fun DirectionStopList</ID>
     <ID>CyclomaticComplexMethod:DirectionStrip.kt:@Composable fun DirectionStrip</ID>
-    <ID>CyclomaticComplexMethod:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>CyclomaticComplexMethod:EditTrackerScreen.kt:@Composable internal fun EditTrackerScreen</ID>
     <ID>CyclomaticComplexMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
     <ID>CyclomaticComplexMethod:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
     <ID>CyclomaticComplexMethod:ItemEditorScreen.kt:@Composable private fun ItemEditorContent</ID>
     <ID>CyclomaticComplexMethod:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
     <ID>CyclomaticComplexMethod:LivePosition.kt:fun approachFromVehicle: VehicleApproach?</ID>
-    <ID>CyclomaticComplexMethod:LivePosition.kt:fun routeProgress: RouteProgress</ID>
+    <ID>CyclomaticComplexMethod:LivePosition.kt:internal fun routeProgress: RouteProgress</ID>
     <ID>CyclomaticComplexMethod:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
     <ID>CyclomaticComplexMethod:LiveTrackerScreen.kt:@Composable internal fun rememberLiveRoute: LiveRoute</ID>
-    <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable internal fun ManageTrackersScreen</ID>
     <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun ReorderList</ID>
     <ID>CyclomaticComplexMethod:ManageTrackersScreen.kt:@Composable private fun TrackerRow</ID>
     <ID>CyclomaticComplexMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
     <ID>CyclomaticComplexMethod:NearbyExplorerMap.kt:@Composable internal fun NearbyExplorerMap</ID>
-    <ID>CyclomaticComplexMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
-    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildExplorerMapStops: List&lt;ExplorerMapStop&gt;</ID>
-    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
-    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun parseAllNearbyBoards: List&lt;NearbyDeparture&gt;</ID>
-    <ID>CyclomaticComplexMethod:NearbyStops.kt:fun routeNameCompare: Int</ID>
+    <ID>CyclomaticComplexMethod:NearbyExplorerState.kt:@Composable internal fun rememberNearbyExplorer: NearbyExplorerState</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun buildExplorerMapStops: List&lt;ExplorerMapStop&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun parseAllNearbyBoards: List&lt;NearbyDeparture&gt;</ID>
+    <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun routeNameCompare: Int</ID>
     <ID>CyclomaticComplexMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
     <ID>CyclomaticComplexMethod:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
     <ID>CyclomaticComplexMethod:Pickers.kt:@Composable fun DatePickerSheet</ID>
@@ -96,8 +96,8 @@
     <ID>CyclomaticComplexMethod:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
     <ID>CyclomaticComplexMethod:RadarRecolor.kt:fun recolorRadarPixels</ID>
     <ID>CyclomaticComplexMethod:RouteGeometry.kt:fun snapToPolyline: SnappedPoint?</ID>
-    <ID>CyclomaticComplexMethod:RouteMap.kt:@Composable fun RouteMap</ID>
-    <ID>CyclomaticComplexMethod:RoutePreviewMap.kt:@Composable fun RoutePreviewMap</ID>
+    <ID>CyclomaticComplexMethod:RouteMap.kt:@Composable internal fun RouteMap</ID>
+    <ID>CyclomaticComplexMethod:RoutePreviewMap.kt:@Composable internal fun RoutePreviewMap</ID>
     <ID>CyclomaticComplexMethod:ScheduleCards.kt:@Composable fun ScheduleCard</ID>
     <ID>CyclomaticComplexMethod:ScheduleCards.kt:@Composable fun ScheduleItemCard</ID>
     <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:fun getScheduleConflicts: List&lt;ScheduleConflict&gt;</ID>
@@ -117,17 +117,17 @@
     <ID>CyclomaticComplexMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
     <ID>CyclomaticComplexMethod:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
     <ID>CyclomaticComplexMethod:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
-    <ID>CyclomaticComplexMethod:TransitCommon.kt:@Composable fun RouteBadge</ID>
+    <ID>CyclomaticComplexMethod:TransitCommon.kt:@Composable internal fun RouteBadge</ID>
     <ID>CyclomaticComplexMethod:TransitMap.kt:@Composable fun TransitMap</ID>
-    <ID>CyclomaticComplexMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
-    <ID>CyclomaticComplexMethod:TransitUtils.kt:fun isHeadsignMatch: Boolean</ID>
-    <ID>CyclomaticComplexMethod:TransitUtils.kt:fun parseAlerts: List&lt;TransitAlert&gt;</ID>
+    <ID>CyclomaticComplexMethod:TransitScreen.kt:@Composable internal fun TransitScreen</ID>
+    <ID>CyclomaticComplexMethod:TransitUtils.kt:internal fun isHeadsignMatch: Boolean</ID>
+    <ID>CyclomaticComplexMethod:TransitUtils.kt:internal fun parseAlerts: List&lt;TransitAlert&gt;</ID>
     <ID>CyclomaticComplexMethod:WeatherCard.kt:@Composable fun WeatherCard</ID>
     <ID>CyclomaticComplexMethod:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
     <ID>CyclomaticComplexMethod:WeatherRadarScreen.kt:@Composable private fun ColumnScope.RadarContent</ID>
     <ID>CyclomaticComplexMethod:WeatherRepository.kt:WeatherRepository$fun refreshWeather</ID>
     <ID>DestructuringDeclarationWithTooManyEntries:NearbyStops.kt:val (north, south, east, west) = bounds</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:TransitCommon.kt:val (minW, h, padX, radius) = when (size) { RouteBadgeSize.Xs2 -&gt; Quad(24.dp, 24.dp, 6.dp, 999.dp) RouteBadgeSize.Xs -&gt; Quad(28.dp, 28.dp, 4.dp, 999.dp) RouteBadgeSize.Tag -&gt; Quad(24.dp, 22.dp, 5.dp, 6.dp) RouteBadgeSize.TagMd -&gt; Quad(28.dp, 26.dp, 5.dp, 7.dp) RouteBadgeSize.Sm -&gt; Quad(32.dp, 32.dp, 6.dp, 8.dp) RouteBadgeSize.Lg -&gt; Quad(48.dp, 48.dp, 8.dp, 12.dp) RouteBadgeSize.Md -&gt; Quad(36.dp, 36.dp, 6.dp, 8.dp) }</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:TransitCommon.kt:internal val (minW, h, padX, radius) = when (size) { RouteBadgeSize.Xs2 -&gt; Quad(24.dp, 24.dp, 6.dp, 999.dp) RouteBadgeSize.Xs -&gt; Quad(28.dp, 28.dp, 4.dp, 999.dp) RouteBadgeSize.Tag -&gt; Quad(24.dp, 22.dp, 5.dp, 6.dp) RouteBadgeSize.TagMd -&gt; Quad(28.dp, 26.dp, 5.dp, 7.dp) RouteBadgeSize.Sm -&gt; Quad(32.dp, 32.dp, 6.dp, 8.dp) RouteBadgeSize.Lg -&gt; Quad(48.dp, 48.dp, 8.dp, 12.dp) RouteBadgeSize.Md -&gt; Quad(36.dp, 36.dp, 6.dp, 8.dp) }</ID>
     <ID>EmptyElseBlock:LiveQueryTest.kt:LiveQueryTest$if (++calls == 1) gate.await()</ID>
     <ID>EmptyElseBlock:RunSuspendCatchingTest.kt:RunSuspendCatchingTest$if (i == 2) this@launch.cancel()</ID>
     <ID>LambdaParameterEventTrailing:ManageTrackersScreen.kt:onEdit: ((TransitTracker) -&gt; Unit)?</ID>
@@ -136,7 +136,7 @@
     <ID>LambdaParameterInRestartableEffect:PageScope.kt:nowMillis: () -&gt; Long = { Clock.System.now().toEpochMilliseconds() }</ID>
     <ID>LongMethod:AddAssessmentDialog.kt:@Composable private fun ColumnScope.AssessmentForm</ID>
     <ID>LongMethod:AddSessionDialog.kt:@Composable private fun ColumnScope.AddSessionForm</ID>
-    <ID>LongMethod:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>LongMethod:AddTrackerScreen.kt:@Composable internal fun AddTrackerScreen</ID>
     <ID>LongMethod:AppSplash.kt:@Composable fun AppSplash</ID>
     <ID>LongMethod:AppearanceSettings.kt:@Composable fun AppearanceSettings</ID>
     <ID>LongMethod:AttendanceCalc.kt:fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
@@ -149,34 +149,34 @@
     <ID>LongMethod:Dialog.kt:@Composable fun VDialog</ID>
     <ID>LongMethod:DirectionStopList.kt:@Composable fun DirectionStopList</ID>
     <ID>LongMethod:DirectionStrip.kt:@Composable fun DirectionStrip</ID>
-    <ID>LongMethod:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>LongMethod:EditTrackerScreen.kt:@Composable internal fun EditTrackerScreen</ID>
     <ID>LongMethod:HolidayCard.kt:@Composable private fun HolidayRow</ID>
     <ID>LongMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
     <ID>LongMethod:ItemEditorScreen.kt:@Composable private fun ItemEditorContent</ID>
     <ID>LongMethod:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
-    <ID>LongMethod:LineBrowser.kt:@Composable fun ColumnScope.LineStopPicker</ID>
+    <ID>LongMethod:LineBrowser.kt:@Composable internal fun ColumnScope.LineStopPicker</ID>
     <ID>LongMethod:LiquidNavbar.kt:@Composable fun LiquidNavbar</ID>
     <ID>LongMethod:LiquidTabs.kt:@Composable fun LiquidTabs</ID>
     <ID>LongMethod:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
     <ID>LongMethod:LiveTrackerScreen.kt:@Composable internal fun rememberLiveRoute: LiveRoute</ID>
     <ID>LongMethod:LoginScreen.kt:@Composable private fun LoginForm</ID>
     <ID>LongMethod:LoginScreen.kt:@Composable private fun SignupForm</ID>
-    <ID>LongMethod:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>LongMethod:ManageTrackersScreen.kt:@Composable internal fun ManageTrackersScreen</ID>
     <ID>LongMethod:ManageTrackersScreen.kt:@Composable private fun ReorderList</ID>
     <ID>LongMethod:ManageTrackersScreen.kt:@Composable private fun TrackerRow</ID>
     <ID>LongMethod:Misc.kt:@Composable fun EmptyState</ID>
-    <ID>LongMethod:NearbyDeparturesList.kt:@Composable fun NearbyDeparturesList</ID>
+    <ID>LongMethod:NearbyDeparturesList.kt:@Composable internal fun NearbyDeparturesList</ID>
     <ID>LongMethod:NearbyDeparturesSheet.kt:@Composable private fun BoxScope.SheetBody</ID>
     <ID>LongMethod:NearbyExplorerMap.kt:@Composable internal fun NearbyExplorerMap</ID>
-    <ID>LongMethod:NearbyExplorerState.kt:@Composable fun rememberNearbyExplorer: NearbyExplorerState</ID>
-    <ID>LongMethod:NearbyMapStrip.kt:@Composable fun NearbyMapStrip</ID>
+    <ID>LongMethod:NearbyExplorerState.kt:@Composable internal fun rememberNearbyExplorer: NearbyExplorerState</ID>
+    <ID>LongMethod:NearbyMapStrip.kt:@Composable internal fun NearbyMapStrip</ID>
     <ID>LongMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
     <ID>LongMethod:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
     <ID>LongMethod:Pickers.kt:@Composable fun DatePickerSheet</ID>
     <ID>LongMethod:PointsTab.kt:@Composable internal fun AssessmentCard</ID>
     <ID>LongMethod:PointsTab.kt:@Composable internal fun PointsTab</ID>
-    <ID>LongMethod:RouteMap.kt:@Composable fun RouteMap</ID>
-    <ID>LongMethod:RoutePreviewMap.kt:@Composable fun RoutePreviewMap</ID>
+    <ID>LongMethod:RouteMap.kt:@Composable internal fun RouteMap</ID>
+    <ID>LongMethod:RoutePreviewMap.kt:@Composable internal fun RoutePreviewMap</ID>
     <ID>LongMethod:ScheduleCards.kt:@Composable fun ScheduleCard</ID>
     <ID>LongMethod:ScheduleCards.kt:@Composable fun ScheduleItemCard</ID>
     <ID>LongMethod:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
@@ -186,12 +186,12 @@
     <ID>LongMethod:ScheduleView.kt:@Composable internal fun ScheduleView</ID>
     <ID>LongMethod:SettingsTab.kt:@Composable internal fun SettingsTab</ID>
     <ID>LongMethod:Sheet.kt:@Composable fun VSheet</ID>
-    <ID>LongMethod:StopBrowser.kt:@Composable fun StopRoutePicker</ID>
+    <ID>LongMethod:StopBrowser.kt:@Composable internal fun StopRoutePicker</ID>
     <ID>LongMethod:StopsProgressVisualizer.kt:@Composable fun StopsProgressVisualizer</ID>
     <ID>LongMethod:Tabs.kt:@Composable fun &lt;T&gt; VTabs</ID>
     <ID>LongMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
     <ID>LongMethod:TransitMap.kt:@Composable fun TransitMap</ID>
-    <ID>LongMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
+    <ID>LongMethod:TransitScreen.kt:@Composable internal fun TransitScreen</ID>
     <ID>LongMethod:VectraApp.kt:@Composable fun VectraApp</ID>
     <ID>LongMethod:WeatherCard.kt:@Composable fun WeatherCard</ID>
     <ID>LongMethod:WeatherRadarScreen.kt:@Composable private fun ColumnScope.RadarContent</ID>
@@ -216,29 +216,29 @@
     <ID>ModifierComposed:Modifiers.kt:fun Modifier.tappable: Modifier</ID>
     <ID>ModifierMissing:AccountSettings.kt:@Composable fun DeleteAccountButton</ID>
     <ID>ModifierMissing:ActionSheet.kt:@Composable fun ActionSheet</ID>
-    <ID>ModifierMissing:AddTrackerScreen.kt:@Composable fun AddTrackerScreen</ID>
+    <ID>ModifierMissing:AddTrackerScreen.kt:@Composable internal fun AddTrackerScreen</ID>
     <ID>ModifierMissing:AppShell.kt:@Composable fun AppShell</ID>
     <ID>ModifierMissing:AppSplash.kt:@Composable fun AppSplash</ID>
     <ID>ModifierMissing:AppearanceSettings.kt:@Composable fun AppearanceSettings</ID>
     <ID>ModifierMissing:DashboardScreen.kt:@Composable fun DashboardScreen</ID>
     <ID>ModifierMissing:Dialog.kt:@Composable fun ConfirmDialog</ID>
-    <ID>ModifierMissing:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>ModifierMissing:EditTrackerScreen.kt:@Composable internal fun EditTrackerScreen</ID>
     <ID>ModifierMissing:KeptAliveTabs.kt:@Composable fun KeptAliveTabs</ID>
-    <ID>ModifierMissing:LineBrowser.kt:@Composable fun ColumnScope.LineBrowser</ID>
-    <ID>ModifierMissing:LineBrowser.kt:@Composable fun ColumnScope.LineStopPicker</ID>
+    <ID>ModifierMissing:LineBrowser.kt:@Composable internal fun ColumnScope.LineBrowser</ID>
+    <ID>ModifierMissing:LineBrowser.kt:@Composable internal fun ColumnScope.LineStopPicker</ID>
     <ID>ModifierMissing:LiveTrackerScreen.kt:@Composable fun LiveTrackerScreen</ID>
     <ID>ModifierMissing:LoginScreen.kt:@Composable fun LoginScreen</ID>
-    <ID>ModifierMissing:ManageTrackersScreen.kt:@Composable fun ManageTrackersScreen</ID>
+    <ID>ModifierMissing:ManageTrackersScreen.kt:@Composable internal fun ManageTrackersScreen</ID>
     <ID>ModifierMissing:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
     <ID>ModifierMissing:Pickers.kt:@Composable fun DatePickerSheet</ID>
     <ID>ModifierMissing:Pickers.kt:@Composable fun TimePickerSheet</ID>
     <ID>ModifierMissing:ScheduleScreen.kt:@Composable fun ScheduleScreen</ID>
     <ID>ModifierMissing:SettingsRow.kt:@Composable fun SettingsRow</ID>
     <ID>ModifierMissing:SettingsScreen.kt:@Composable fun SettingsScreen</ID>
-    <ID>ModifierMissing:StopBrowser.kt:@Composable fun StopBrowser</ID>
-    <ID>ModifierMissing:StopBrowser.kt:@Composable fun StopRoutePicker</ID>
+    <ID>ModifierMissing:StopBrowser.kt:@Composable internal fun StopBrowser</ID>
+    <ID>ModifierMissing:StopBrowser.kt:@Composable internal fun StopRoutePicker</ID>
     <ID>ModifierMissing:TrackerMapScreen.kt:@Composable fun TrackerMapScreen</ID>
-    <ID>ModifierMissing:TransitScreen.kt:@Composable fun TransitScreen</ID>
+    <ID>ModifierMissing:TransitScreen.kt:@Composable internal fun TransitScreen</ID>
     <ID>ModifierMissing:WeatherRadarScreen.kt:@Composable fun WeatherRadarScreen</ID>
     <ID>ModifierNaming:LiquidTabs.kt:rowModifier: Modifier</ID>
     <ID>ModifierNotUsedAtRoot:Dialog.kt:Modifier .graphicsLayer { alpha = panelAlpha.value.coerceIn(0f, 1f) scaleX = panelScale.value; scaleY = panelScale.value } .widthIn(max = maxWidth) .fillMaxWidth() .heightIn(max = this@BoxWithConstraints.maxHeight * 0.9f) .boxShadow(shape, cardDepthShadows(c.isDark)) .background(c.surfaceSecondary, shape) .insetShadow(shape, cardDepthShadows(c.isDark)) .then(if (c.isDark) Modifier.border(1.dp, c.borderSubtle, shape) else Modifier) .consumeTouches() .then(modifier)</ID>
@@ -257,7 +257,7 @@
     <ID>ModifierWithoutDefault:WeatherRadarScreen.kt:modifier: Modifier</ID>
     <ID>MutableStateAutoboxing:Toaster.kt:mutableStateOf(0f)</ID>
     <ID>NestedBlockDepth:CourseTrackerRepository.kt:CourseTrackerRepository$private suspend fun uploadPending</ID>
-    <ID>NestedBlockDepth:NearbyStops.kt:fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
+    <ID>NestedBlockDepth:NearbyStops.kt:internal fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
     <ID>NestedBlockDepth:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
     <ID>ParameterNaming:AddAssessmentDialog.kt:onExited: () -&gt; Unit</ID>
     <ID>ParameterNaming:AddSessionDialog.kt:onExited: (() -&gt; Unit)? = null</ID>
@@ -293,7 +293,7 @@
     <ID>ReturnCount:DeviceLocation.kt:DeviceLocation$private fun restartWatchIfStale</ID>
     <ID>ReturnCount:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
     <ID>ReturnCount:DeviceLocation.kt:fun num: Double?</ID>
-    <ID>ReturnCount:DeviceLocation.kt:fun readStoredLocation: WatchLocationState?</ID>
+    <ID>ReturnCount:DeviceLocation.kt:internal fun readStoredLocation: WatchLocationState?</ID>
     <ID>ReturnCount:DragGestureInspector.kt:private suspend inline fun AwaitPointerEventScope.awaitDragOrUp: PointerInputChange?</ID>
     <ID>ReturnCount:DragGestureInspector.kt:private suspend inline fun AwaitPointerEventScope.drag: PointerInputChange?</ID>
     <ID>ReturnCount:ExamDetection.kt:fun isExamEvent: Boolean</ID>
@@ -303,11 +303,11 @@
     <ID>ReturnCount:IcsParser.kt:fun parseIcsTimestamp: IcsTimestampInfo?</ID>
     <ID>ReturnCount:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
     <ID>ReturnCount:IcsParserTest.kt:IcsParserTest$private fun inRange: Boolean</ID>
-    <ID>ReturnCount:LivePosition.kt:fun &lt;T&gt; clipRouteToTrackedStop: ClippedRoute&lt;T&gt;?</ID>
+    <ID>ReturnCount:LivePosition.kt:internal fun &lt;T&gt; clipRouteToTrackedStop: ClippedRoute&lt;T&gt;?</ID>
     <ID>ReturnCount:LivePosition.kt:fun approachFromVehicle: VehicleApproach?</ID>
-    <ID>ReturnCount:LivePosition.kt:fun approximateVehiclePosition: LatLon?</ID>
-    <ID>ReturnCount:LivePosition.kt:fun resolveTrackedStopIndex: Int</ID>
-    <ID>ReturnCount:LivePosition.kt:fun routeProgress: RouteProgress</ID>
+    <ID>ReturnCount:LivePosition.kt:internal fun approximateVehiclePosition: LatLon?</ID>
+    <ID>ReturnCount:LivePosition.kt:internal fun resolveTrackedStopIndex: Int</ID>
+    <ID>ReturnCount:LivePosition.kt:internal fun routeProgress: RouteProgress</ID>
     <ID>ReturnCount:LivePosition.kt:fun stripLabels: StripLabels</ID>
     <ID>ReturnCount:LiveTrackerScreen.kt:fun variantEntryForArrival: GeoEntry?</ID>
     <ID>ReturnCount:ManageTrackersScreen.kt:fun checkReorder</ID>
@@ -315,9 +315,9 @@
     <ID>ReturnCount:MapGeo.kt:fun samePoints: Boolean</ID>
     <ID>ReturnCount:NavGestures.kt:NavGestures$fun resolve: Result</ID>
     <ID>ReturnCount:NearbyExplorerMap.kt:fun emitViewport</ID>
-    <ID>ReturnCount:NearbySheetGesture.kt:fun shouldPullSheet: Boolean</ID>
-    <ID>ReturnCount:NearbyStops.kt:fun matchesLineSearch: Boolean</ID>
-    <ID>ReturnCount:NearbyStops.kt:fun routeNameCompare: Int</ID>
+    <ID>ReturnCount:NearbySheetGesture.kt:internal fun shouldPullSheet: Boolean</ID>
+    <ID>ReturnCount:NearbyStops.kt:internal fun matchesLineSearch: Boolean</ID>
+    <ID>ReturnCount:NearbyStops.kt:internal fun routeNameCompare: Int</ID>
     <ID>ReturnCount:NeptunSettings.kt:internal fun syncCounterText: String</ID>
     <ID>ReturnCount:NeptunSyncService.kt:NeptunSyncService$fun maybeAutoSync</ID>
     <ID>ReturnCount:Numbers.kt:fun toFixed: String</ID>
@@ -353,21 +353,21 @@
     <ID>ReturnCount:ScheduleReconciler.kt:fun trackerHasUserWork: Boolean</ID>
     <ID>ReturnCount:SemesterLogic.kt:fun calculateBreakInfo: BreakInfo?</ID>
     <ID>ReturnCount:SessionWatchdog.kt:internal fun shouldRefreshSession: Boolean</ID>
-    <ID>ReturnCount:TrackerMonitor.kt:fun formatMonitorTime: String</ID>
+    <ID>ReturnCount:TrackerMonitor.kt:internal fun formatMonitorTime: String</ID>
     <ID>ReturnCount:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
     <ID>ReturnCount:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
     <ID>ReturnCount:TransitCommon.kt:fun parseHexColor: Color?</ID>
-    <ID>ReturnCount:TransitModeFilter.kt:fun parseModeFilter: List&lt;String&gt;</ID>
-    <ID>ReturnCount:TransitModeFilter.kt:fun selectSingleModeFilter: List&lt;String&gt;</ID>
+    <ID>ReturnCount:TransitModeFilter.kt:internal fun parseModeFilter: List&lt;String&gt;</ID>
+    <ID>ReturnCount:TransitModeFilter.kt:internal fun selectSingleModeFilter: List&lt;String&gt;</ID>
     <ID>ReturnCount:TransitRepository.kt:TransitRepository$private suspend fun fetchTrackers: List&lt;TransitTracker&gt;</ID>
-    <ID>ReturnCount:TransitUtils.kt:fun addOrUpdateTrackerStop: List&lt;TrackerStop&gt;</ID>
-    <ID>ReturnCount:TransitUtils.kt:fun findCombinedGroup: CombinedRouteGroup?</ID>
-    <ID>ReturnCount:TransitUtils.kt:fun isHeadsignMatch: Boolean</ID>
-    <ID>ReturnCount:TransitUtils.kt:fun isRouteMatch: Boolean</ID>
-    <ID>ReturnCount:TransitUtils.kt:fun normalizeStopIdToStation: String</ID>
+    <ID>ReturnCount:TransitUtils.kt:internal fun addOrUpdateTrackerStop: List&lt;TrackerStop&gt;</ID>
+    <ID>ReturnCount:TransitUtils.kt:internal fun findCombinedGroup: CombinedRouteGroup?</ID>
+    <ID>ReturnCount:TransitUtils.kt:internal fun isHeadsignMatch: Boolean</ID>
+    <ID>ReturnCount:TransitUtils.kt:internal fun isRouteMatch: Boolean</ID>
+    <ID>ReturnCount:TransitUtils.kt:internal fun normalizeStopIdToStation: String</ID>
     <ID>ReturnCount:TransitUtils.kt:fun vehicleTypeMatch: Boolean</ID>
-    <ID>ReturnCount:VehicleAnimMath.kt:fun resolveBearing: Double</ID>
-    <ID>ReturnCount:VehicleAnimMath.kt:fun transitionFor: VehicleTransition</ID>
+    <ID>ReturnCount:VehicleAnimMath.kt:internal fun resolveBearing: Double</ID>
+    <ID>ReturnCount:VehicleAnimMath.kt:internal fun transitionFor: VehicleTransition</ID>
     <ID>ReturnCount:WeatherLogic.kt:fun applyErrorState: WeatherLocationState</ID>
     <ID>ReturnCount:WeatherLogic.kt:fun parseGeoCity: String?</ID>
     <ID>ReturnCount:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
@@ -381,7 +381,7 @@
     <ID>SwallowedException:ScheduleScreen.kt:e: ScheduleItemConflictException</ID>
     <ID>ThrowingExceptionsWithoutMessageOrCause:ScheduleItemsStore.kt:IllegalArgumentException()</ID>
     <ID>ThrowsCount:AndroidDevice.kt:AndroidLocationProvider$@SuppressLint("MissingPermission") override suspend fun current: GeoFix</ID>
-    <ID>ThrowsCount:EditTrackerScreen.kt:@Composable fun EditTrackerScreen</ID>
+    <ID>ThrowsCount:EditTrackerScreen.kt:@Composable internal fun EditTrackerScreen</ID>
     <ID>ThrowsCount:PocketBase.kt:PocketBaseClient$suspend fun sendText: String</ID>
     <ID>ThrowsCount:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
     <ID>TooGenericExceptionCaught:AddTrackerState.kt:AddTrackerState$e: Throwable</ID>
@@ -410,7 +410,7 @@
     <ID>TooGenericExceptionCaught:TrackerActions.kt:t: Throwable</ID>
     <ID>TooGenericExceptionCaught:TransitRepository.kt:TransitRepository$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:WeatherRepository.kt:WeatherRepository$e: Throwable</ID>
-    <ID>TooManyFunctions:AddTrackerScreen.kt:dev.southstar21.vectra.features.transit.AddTrackerScreen.kt</ID>
+    <ID>TooManyFunctions:AddTrackerScreen.kt:dev.southstar21.vectra.features.transit.trackers.AddTrackerScreen.kt</ID>
     <ID>TooManyFunctions:AppGraph.kt:AppGraph</ID>
     <ID>TooManyFunctions:AttendanceParts.kt:dev.southstar21.vectra.features.coursetracker.AttendanceParts.kt</ID>
     <ID>TooManyFunctions:AuthRepository.kt:AuthRepository</ID>
@@ -422,8 +422,8 @@
     <ID>TooManyFunctions:DeviceLocation.kt:DeviceLocation</ID>
     <ID>TooManyFunctions:IcsParser.kt:dev.southstar21.vectra.features.schedule.IcsParser.kt</ID>
     <ID>TooManyFunctions:LiveQuery.kt:LiveQuery&lt;K, T&gt;</ID>
-    <ID>TooManyFunctions:NearbyDeparturesSheet.kt:dev.southstar21.vectra.features.transit.NearbyDeparturesSheet.kt</ID>
-    <ID>TooManyFunctions:NearbyStops.kt:dev.southstar21.vectra.features.transit.NearbyStops.kt</ID>
+    <ID>TooManyFunctions:NearbyDeparturesSheet.kt:dev.southstar21.vectra.features.transit.nearby.NearbyDeparturesSheet.kt</ID>
+    <ID>TooManyFunctions:NearbyStops.kt:dev.southstar21.vectra.features.transit.nearby.NearbyStops.kt</ID>
     <ID>TooManyFunctions:NeptunSyncService.kt:NeptunSyncService</ID>
     <ID>TooManyFunctions:PointsCalc.kt:dev.southstar21.vectra.features.coursetracker.PointsCalc.kt</ID>
     <ID>TooManyFunctions:RouteGeometry.kt:dev.southstar21.vectra.core.maps.RouteGeometry.kt</ID>

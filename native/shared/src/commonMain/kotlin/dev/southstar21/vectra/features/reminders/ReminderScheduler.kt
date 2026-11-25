@@ -11,7 +11,7 @@ import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
-import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

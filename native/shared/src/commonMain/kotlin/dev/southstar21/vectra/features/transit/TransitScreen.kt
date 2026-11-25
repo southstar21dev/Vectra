@@ -10,6 +10,23 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.demo.DemoSeedEffect
+import dev.southstar21.vectra.features.transit.nearby.NearbyMapStrip
+import dev.southstar21.vectra.features.transit.nearby.NearbyMapStripHeight
+import dev.southstar21.vectra.features.transit.nearby.PeekStop
+import dev.southstar21.vectra.features.transit.nearby.rememberNearbyStops
+import dev.southstar21.vectra.features.transit.nearby.rememberPeekChips
+import dev.southstar21.vectra.features.transit.strip.LineStrip
+import dev.southstar21.vectra.features.transit.strip.LineStripCard
+import dev.southstar21.vectra.features.transit.strip.StripModel
+import dev.southstar21.vectra.features.transit.strip.StripVehicle
+import dev.southstar21.vectra.features.transit.strip.stripCardSurface
+import dev.southstar21.vectra.features.transit.strip.stripColors
+import dev.southstar21.vectra.features.transit.trackers.removeTrackerWithUndo
+import dev.southstar21.vectra.features.transit.trackers.trackerErrorMessage
 import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.Stable
@@ -167,7 +184,7 @@ private fun Modifier.roomBelow(extra: Dp, fraction: () -> Float): Modifier = lay
 
 /** The Transit tab: the map around you, then your trackers as line strips straight on the page. */
 @Composable
-fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore) {
+internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore) {
     val scope = rememberCoroutineScope()
     val c = Vectra.colors
 
