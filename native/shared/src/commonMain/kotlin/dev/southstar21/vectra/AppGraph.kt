@@ -199,7 +199,8 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate)
+        crypto: CryptoClient,
+    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate, crypto)
 
     @SingleIn(AppScope::class)
     @Provides

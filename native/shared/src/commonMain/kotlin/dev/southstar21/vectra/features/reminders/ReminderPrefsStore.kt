@@ -3,6 +3,7 @@ package dev.southstar21.vectra.features.reminders
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.Profile
 import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +25,10 @@ internal class ReminderPrefsStore(
     private val kv: KeyValueStore,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
+    crypto: CryptoClient,
 ) {
+    private val cloud = ReminderPrefsCloud(crypto)
+
     private val _prefs = MutableStateFlow(ReminderPrefs())
     val prefs: StateFlow<ReminderPrefs> = _prefs.asStateFlow()
 
@@ -59,8 +63,8 @@ internal class ReminderPrefsStore(
     private suspend fun syncWith(profile: Profile) {
         if (syncedFor == profile.id) return
         syncedFor = profile.id
-        val remote = profile.preferences?.get(ProfileKey)
-            ?.let { runCatching { VectraJson.decodeFromJsonElement(ReminderPrefs.serializer(), it) }.getOrNull() }
+        val remoteJson = profile.preferences?.get(ProfileKey)
+        val remote = remoteJson?.let { cloud.decode(it) }
         val owner = kv.get(OwnerKey)
         if (owner != profile.id) {
             kv.set(OwnerKey, profile.id)
@@ -70,7 +74,7 @@ internal class ReminderPrefsStore(
                 owner != null -> store(ReminderPrefs())
             }
         }
-        if (remote != _prefs.value) push()
+        if (remote != _prefs.value || cloud.hasPlainLegs(remoteJson)) push()
     }
 
     private suspend fun store(next: ReminderPrefs) {
@@ -92,8 +96,12 @@ internal class ReminderPrefsStore(
         if (auth.session.value == null) return@withLock
         runSuspendCatching {
             val current = auth.profile.value?.preferences ?: JsonObject(emptyMap())
-            val mine = VectraJson.encodeToJsonElement(ReminderPrefs.serializer(), _prefs.value)
-            if (current[ProfileKey] != mine) auth.updateProfile(mapOf("preferences" to JsonObject(current + (ProfileKey to mine))))
+            val remoteJson = current[ProfileKey]
+            // The ciphertext differs on every encryption, so compare the settings, not the JSON.
+            val inSync = remoteJson != null && !cloud.hasPlainLegs(remoteJson) && cloud.decode(remoteJson) == _prefs.value
+            if (inSync) return@runSuspendCatching
+            val mine = cloud.encode(_prefs.value)
+            auth.updateProfile(mapOf("preferences" to JsonObject(current + (ProfileKey to mine))))
         }
     }
 
