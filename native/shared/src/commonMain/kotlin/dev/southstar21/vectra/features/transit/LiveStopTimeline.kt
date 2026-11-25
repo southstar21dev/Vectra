@@ -207,3 +207,7 @@ internal fun timelineColors(routeColor: String, routeTextColor: String?, card: C
 /** The tracked directions' names for the switch above the stops. */
 internal fun directionLabel(d: DirectionView): String =
     d.arrival?.headSign?.takeIf { it.isNotEmpty() } ?: d.stops.lastOrNull()?.name.orEmpty()
+
+/** The tab for the direction the user picked by [pickedLabel]; the first one when nothing was picked or it is gone. */
+internal fun directionTabIndex(labels: List<String>, pickedLabel: String?): Int =
+    pickedLabel?.let { labels.indexOf(it) }?.takeIf { it >= 0 } ?: 0
