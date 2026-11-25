@@ -311,6 +311,8 @@ class CourseTrackerRepository(
         val uid = userId
         val before = _data.value
         val existing = readForScheduleSync(uid)
+        // Signed out (or switched) while the cloud was read: this account's data must not be written back.
+        if (userId != uid) return _data.value
         var base = existing
         var result = reconcileTrackersWithSchedule(existing, events)
         if (userId == uid) {
