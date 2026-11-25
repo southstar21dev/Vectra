@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -26,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"vectra/pb/internal/ratelimit"
-	"vectra/pb/internal/reauth"
+	"vectra/pb/internal/reauth/reauthtest"
 	_ "vectra/pb/migrations"
 )
 
@@ -40,14 +39,6 @@ const (
 	startBody = `{"currentPassword":"password123"}`
 )
 
-// TestMain gives the package's tests roomy re-auth limiters: the real ones
-// would trip on the many register/start calls made from one test IP.
-func TestMain(m *testing.M) {
-	reauth.UserLimiter = ratelimit.New(1000, time.Minute)
-	reauth.IPLimiter = ratelimit.New(1000, time.Minute)
-	os.Exit(m.Run())
-}
-
 // setWebAuthnEnv points the RP config at the test origin. Call before invoking
 // any handler that builds the WebAuthn instance.
 func setWebAuthnEnv(t *testing.T) {
@@ -59,6 +50,9 @@ func setWebAuthnEnv(t *testing.T) {
 
 func newTestUser(t *testing.T, app *tests.TestApp, email, legacyID string) *core.Record {
 	t.Helper()
+	// Roomy re-auth limiters: the real ones would trip on the many
+	// register/start calls made from one test IP.
+	reauthtest.Use(t, 1000, 1000)
 	users, err := app.FindCollectionByNameOrId("users")
 	require.NoError(t, err)
 	u := core.NewRecord(users)
