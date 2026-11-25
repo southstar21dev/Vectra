@@ -175,7 +175,10 @@ fun rememberNearbyData(
     val now = rememberNowMillis(10_000)
     val catalogRoutes = rememberCatalogRoutes(repo)
 
-    val candidateStopIds = remember(stops, departures) { if (departures) stops.map { it.id } else emptyList() }
+    // Without a real fix the stops are the Budapest-centre fallback: showing or polling their
+    // departures would pass them off as the user's surroundings.
+    val located = nearby.status == NearbyLocationStatus.Tracking
+    val candidateStopIds = remember(stops, departures, located) { if (departures && located) stops.map { it.id } else emptyList() }
     val stopArrivalsResults = rememberBatchStopArrivals(repo, candidateStopIds)
 
     val boards = remember(stops, stopArrivalsResults, catalogRoutes.data) {
