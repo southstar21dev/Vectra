@@ -244,6 +244,7 @@ interface AppGraph {
             scope = scope,
             userIdFlow = uid,
             isOnline = { connectivity.online.value },
+            onlineChanges = connectivity.online,
         )
     }
 

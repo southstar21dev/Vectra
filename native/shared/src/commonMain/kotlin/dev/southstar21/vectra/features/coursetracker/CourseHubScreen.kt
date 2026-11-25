@@ -252,6 +252,7 @@ private fun CourseHub(
             startTime = course.startTime,
             endTime = course.endTime,
             eventType = course.eventType,
+            semesterStart = semesterStart,
             scheduleEvents = events,
             existingSessions = current,
             removedSessionKeys = tracker.attendance.removedSessionKeys,

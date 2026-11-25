@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +46,8 @@ class CourseTrackerRepository(
     private val userIdFlow: StateFlow<String?>,
     private val isOnline: () -> Boolean,
     private val gate: CloudWriteGate = CloudWriteGate(),
+    /** Connectivity changes: every false to true transition retries what never reached the cloud. */
+    onlineChanges: Flow<Boolean>? = null,
 ) {
     private val _data = MutableStateFlow(createEmptyTrackerData())
     val data: StateFlow<CourseTrackerData> = _data.asStateFlow()
@@ -65,15 +68,34 @@ class CourseTrackerRepository(
     private val userId: String? get() = userIdFlow.value
     private var uploadedSnapshot: CourseTrackerData? = null
 
+    // Tracker keys a schedule sync removed (stale exams, legacy keys): cloud copies of them are
+    // ignored in later merges, or a collapsed or later upload would put them back.
+    @Volatile private var droppedKeys: Set<String> = emptySet()
+
+    private fun withoutDropped(remote: CourseTrackerData): CourseTrackerData {
+        val keys = droppedKeys
+        return if (keys.isEmpty()) remote else remote.copy(trackers = remote.trackers - keys)
+    }
+
     // Signed-in edits made, and how many of them the cloud has: unequal means some exist only here.
     @Volatile private var editsMade = 0
     @Volatile private var editsUploaded = 0
 
     init {
+        onlineChanges?.let { flow ->
+            scope.launch {
+                var wasOnline = isOnline()
+                flow.collect { online ->
+                    if (online && !wasOnline) retryUnsynced()
+                    wasOnline = online
+                }
+            }
+        }
         scope.launch {
             userIdFlow.collect { uid ->
                 editsMade = 0
                 editsUploaded = 0
+                droppedKeys = emptySet()
                 _isLoading.value = true
                 _data.value = readCache(uid) ?: readCache(null) ?: createEmptyTrackerData()
                 refresh()
@@ -116,7 +138,8 @@ class CourseTrackerRepository(
         }
         gate.enqueue {
             val remote = readCloud(uid)
-            var merged = if (remote != null) mergeTrackerData(local, remote) else local
+            if (dropKeys.isNotEmpty()) droppedKeys += dropKeys
+            var merged = if (remote != null) mergeTrackerData(local, withoutDropped(remote)) else local
             if (dropKeys.isNotEmpty()) merged = merged.copy(trackers = merged.trackers - dropKeys.toSet())
             cloud.upsert(uid, cipher.encrypt(serializeTrackerData(merged)))
             uploadedSnapshot = merged
@@ -133,21 +156,15 @@ class CourseTrackerRepository(
     /** The query function: merge the cloud copy into the live data (newest tracker wins). */
     suspend fun refresh() = refreshLock.withLock {
         val uid = userId
-        lastFetchMs = Clock.System.now().toEpochMilliseconds()
         if (uid == null || !isOnline()) return@withLock
+        lastFetchMs = Clock.System.now().toEpochMilliseconds()
         try {
             val encrypted = cloud.fetch(uid)
             if (encrypted == null) {
                 // No cloud record yet: seed it from local data if there is any.
                 gate.markReadable(uid)
                 gate.takeHeldBack(uid)
-                val cached = _data.value
-                if (cached.trackers.isNotEmpty()) {
-                    runSuspendCatching {
-                        val enc = cipher.encrypt(serializeTrackerData(cached))
-                        gate.enqueue { cloud.upsert(uid, enc) }
-                    }
-                }
+                seedCloud(uid, _data.value)
                 return@withLock
             }
             val decrypted = cipher.decrypt(encrypted)
@@ -157,25 +174,36 @@ class CourseTrackerRepository(
             if (userId != uid) return@withLock
             // Merge against the live data at return time so an edit that landed
             // during the fetch is never clobbered by the cloud snapshot.
-            val reconciled = mergeTrackerData(_data.value, parsed)
-            _data.value = reconciled
+            var reconciledNext: CourseTrackerData? = null
+            _data.update { live -> mergeTrackerData(live, withoutDropped(parsed)).also { reconciledNext = it } }
+            val reconciled = reconciledNext ?: return@withLock
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
-            if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) {
-                try {
-                    val enc = cipher.encrypt(serializeTrackerData(reconciled))
-                    gate.enqueue { cloud.upsert(uid, enc) }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Throwable) {
-                    gate.noteHeldBack(uid)
-                }
-            }
+            if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) pushMerged(uid, reconciled)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
             // Keep the offline cache.
+        }
+    }
+
+    private suspend fun seedCloud(uid: String, cached: CourseTrackerData) {
+        if (cached.trackers.isEmpty()) return
+        runSuspendCatching {
+            val enc = cipher.encrypt(serializeTrackerData(cached))
+            gate.enqueue { cloud.upsert(uid, enc) }
+        }
+    }
+
+    private suspend fun pushMerged(uid: String, reconciled: CourseTrackerData) {
+        try {
+            val enc = cipher.encrypt(serializeTrackerData(reconciled))
+            gate.enqueue { cloud.upsert(uid, enc) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            gate.noteHeldBack(uid)
         }
     }
 
@@ -221,6 +249,26 @@ class CourseTrackerRepository(
             // Stays in the offline cache; the next save or refresh carries it.
         } finally {
             _isSaving.value = false
+        }
+    }
+
+    /**
+     * Back online or back in the foreground: sends edits that exist only on this device (an upload
+     * that failed offline or was held back because the cloud copy was never read).
+     */
+    fun retryUnsynced() {
+        scope.launch {
+            val uid = userId ?: return@launch
+            if (!isOnline()) return@launch
+            if (!gate.isReadable(uid)) refresh()
+            if (userId == uid && editsMade != editsUploaded && gate.isReadable(uid)) {
+                uploadLock.withLock {
+                    uploadTimer?.cancel()
+                    uploadTimer = null
+                    pendingUploadUser = uid
+                }
+                uploadPending()
+            }
         }
     }
 
@@ -320,14 +368,16 @@ class CourseTrackerRepository(
                 if (result.data === base) live else result.data
             }
         }
-        if (result.data === base) return base
-        writeCache(result.data, uid)
-        if (uid != null && result.changed) {
-            try {
-                upload(uid, result.data, result.dropKeys)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
+        // Signed out (or switched) while the cloud was read: this account's data must not be written back.
+        if (result.data !== base && userId == uid) {
+            writeCache(result.data, uid)
+            if (uid != null && result.changed) {
+                try {
+                    upload(uid, result.data, result.dropKeys)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                }
             }
         }
         return result.data

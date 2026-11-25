@@ -59,6 +59,7 @@ fun VectraApp(graph: AppGraph) {
     // Return to foreground → refresh the session; leaving flushes what is still debounced.
     LifecycleResumeEffect(graph) {
         graph.watchdog.trigger()
+        graph.courseTrackerRepository.retryUnsynced()
         onPauseOrDispose { graph.courseTrackerRepository.flushPendingUpload() }
     }
     LifecycleStartEffect(graph) {

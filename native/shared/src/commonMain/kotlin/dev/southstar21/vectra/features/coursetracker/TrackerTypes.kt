@@ -72,6 +72,8 @@ data class AttendanceSession(
     val status: AttendanceStatus,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val notes: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val isCustom: Boolean? = null,
+    /** ISO instant of the last status change, so a merge keeps the newer of two devices' marks. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val markedAt: String? = null,
 )
 
 /**
