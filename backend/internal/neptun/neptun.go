@@ -86,7 +86,6 @@ func insertEvents(app core.App, userID string, events []map[string]any) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
 	for _, ev := range events {
 		rec := core.NewRecord(collection)
 		rec.Set("user", userID)
@@ -98,10 +97,6 @@ func insertEvents(app core.App, userID string, events []map[string]any) error {
 		rec.Set("color", valueOrDefault(ev, "color", defaultColor))
 		rec.Set("semester", valueOrDefault(ev, "semester", ""))
 		rec.Set("event_type", valueOrDefault(ev, "event_type", defaultEventType))
-		// The Postgres columns default to now(); direct app.Save calls bypass
-		// the request-scoped timestamp hook, so set them explicitly.
-		rec.Set("created_at", now)
-		rec.Set("updated_at", now)
 		if err := app.Save(rec); err != nil {
 			return err
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/schema"
 	_ "vectra/pb/migrations"
 )
 
@@ -62,6 +63,7 @@ func TestReplaceNeptunSchedule(t *testing.T) {
 // their COALESCE defaults.
 func TestReplaceDefaultsAndVerbatimFields(t *testing.T) {
 	app, err := tests.NewTestApp()
+	schema.RegisterTimestamps(app)
 	require.NoError(t, err)
 	defer app.Cleanup()
 

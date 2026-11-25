@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/schema"
 	"vectra/pb/internal/reauth/reauthtest"
 	_ "vectra/pb/migrations"
 )
@@ -446,6 +447,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setWebAuthnEnv(t)
 			app, err := tests.NewTestApp()
+			schema.RegisterTimestamps(app)
 			require.NoError(t, err)
 			defer app.Cleanup()
 

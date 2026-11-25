@@ -3,7 +3,6 @@ package passkeys
 import (
 	"encoding/base64"
 	"encoding/json"
-	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -95,9 +94,7 @@ func StoreCredential(app core.App, userID string, cred *webauthn.Credential, fri
 	rec.Set("backup_eligible", cred.Flags.BackupEligible)
 	rec.Set("backed_up", cred.Flags.BackupState)
 	rec.Set("friendly_name", friendlyName)
-	// Passkeys are only created server-side, so the request-path timestamp hook
-	// does not run for them; set the custom created_at explicitly.
-	rec.Set("created_at", time.Now().UTC())
+	// created_at is filled by the model hook (schema.RegisterTimestamps).
 
 	if err := app.Save(rec); err != nil {
 		return nil, err

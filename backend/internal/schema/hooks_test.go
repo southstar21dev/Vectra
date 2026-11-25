@@ -76,6 +76,46 @@ func TestRegisterTimestampsCreateAndUpdate(t *testing.T) {
 	require.Equal(t, createdAt, reloaded.GetString("created_at"), "created_at must not change on update")
 }
 
+// TestTimestampsOnPlainSave: a server-side app.Save (no request hooks) still
+// fills both fields on create, keeps explicit values an import supplies, and
+// moves updated_at on update while leaving created_at alone.
+func TestTimestampsOnPlainSave(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	schema.RegisterTimestamps(app)
+	user := newUser(t, app, "plainsave@example.com")
+	col, err := app.FindCollectionByNameOrId("schedule_events")
+	require.NoError(t, err)
+
+	rec := core.NewRecord(col)
+	rec.Set("user", user.Id)
+	require.NoError(t, app.Save(rec))
+	require.False(t, rec.GetDateTime("created_at").IsZero())
+	require.False(t, rec.GetDateTime("updated_at").IsZero())
+
+	imported := core.NewRecord(col)
+	imported.Set("user", user.Id)
+	imported.Set("created_at", "2020-02-02 00:00:00.000Z")
+	require.NoError(t, app.Save(imported))
+	require.Equal(t, 2020, imported.GetDateTime("created_at").Time().Year(), "explicit created_at is kept")
+
+	createdAt := rec.GetString("created_at")
+	updatedAt := rec.GetString("updated_at")
+	time.Sleep(1100 * time.Millisecond)
+	rec.Set("course_name", "changed")
+	require.NoError(t, app.Save(rec))
+	require.Greater(t, rec.GetString("updated_at"), updatedAt)
+	require.Equal(t, createdAt, rec.GetString("created_at"))
+
+	// The email change route saves users with a bare app.Save too.
+	before := user.GetString("updated_at")
+	time.Sleep(1100 * time.Millisecond)
+	user.SetEmail("plainsave2@example.com")
+	require.NoError(t, app.Save(user))
+	require.Greater(t, user.GetString("updated_at"), before)
+}
+
 // TestRegisterTimestampsSkipsCollectionsWithoutFields proves the field guard:
 // passkey_challenges has neither created_at nor updated_at, so the hooks must
 // leave the record untouched and the save must not fail.
