@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.haversineMeters
 import dev.southstar21.vectra.core.time.nowMs
@@ -41,9 +42,6 @@ data class MapAnchor(
     val label: MapAnchorLabel,
     val outsideHungary: Boolean,
 )
-
-/** Budapest center — the fallback anchor when the user is outside Hungary. */
-val BudapestCenter = LatLon(47.4979, 19.0402)
 
 /** Approximate Hungary border (clockwise from Rajka, NW). */
 private val HungaryPolygon = listOf(
@@ -370,9 +368,6 @@ fun parseAllNearbyBoards(data: FutarArrivalsResponse?, catalogRoutes: Map<String
     }
 }
 
-/** Nearby departure ETAs use a compact apostrophe minute marker. */
-fun formatNearbyCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes'"
-
 /** "350 m" / "1.2 km" — compact walking-distance readout. */
 fun formatDistanceMeters(meters: Double): String =
     if (meters < 1000) "${roundHalfUp(meters).toLong()} m" else "${toFixed(meters / 1000, 1)} km"
@@ -490,7 +485,7 @@ fun buildRadarDepartures(
                 if (count >= (if (query != null) 4 else 3)) continue
                 seenRouteCounts[directionKey] = count + 1
 
-                val countdownMinutes = max(0, ceil((arrival.arrivalMs - now) / 60_000.0).toInt())
+                val countdownMinutes = etaMinutes(arrival.arrivalMs, now)
                 if (countdownMinutes > 99) continue
                 items += RadarDepartureItem(
                     id = "${stop.id}-${board.routeId}-${arrival.tripId.ifEmpty { "anon" }}-${arrival.arrivalMs}",

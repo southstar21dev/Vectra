@@ -19,6 +19,9 @@ import kotlinx.serialization.json.put
 @Serializable
 data class LatLon(val lat: Double = 0.0, val lon: Double = 0.0)
 
+/** Budapest centre: the fallback map anchor and initial camera. */
+val BudapestCenter = LatLon(47.4979, 19.0402)
+
 private val EmptyProps = JsonObject(emptyMap())
 
 fun isValidLatLon(p: LatLon?): Boolean =

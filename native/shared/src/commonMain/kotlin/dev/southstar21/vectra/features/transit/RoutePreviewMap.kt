@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
 import androidx.compose.ui.text.style.TextAlign
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.MapAttribution
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -144,7 +145,7 @@ fun RoutePreviewMap(
             .border(1.dp, c.borderSubtle, shape),
     ) {
         TransitMap(
-            initialCenter = LatLon(47.4979, 19.0402),
+            initialCenter = BudapestCenter,
             initialZoom = 12.0,
             modifier = Modifier.fillMaxWidth().height(height),
             minZoom = 5.0,

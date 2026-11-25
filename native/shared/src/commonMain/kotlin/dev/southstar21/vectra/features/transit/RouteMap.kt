@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import org.maplibre.compose.map.MapEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -305,7 +306,7 @@ fun RouteMap(
     }
 
     TransitMap(
-        initialCenter = LatLon(47.4979, 19.0402),
+        initialCenter = BudapestCenter,
         initialZoom = 13.0,
         modifier = if (fillHeight) modifier.fillMaxSize() else modifier.fillMaxWidth().height(height),
         minZoom = 6.0,

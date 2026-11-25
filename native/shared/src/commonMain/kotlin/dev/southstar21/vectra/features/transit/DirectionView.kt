@@ -23,5 +23,3 @@ data class DirectionView(
     val approxVehicle: RouteMapVehicle? = null,
 )
 
-/** Whole minutes until [ms], rounded up; 0 once it is due. */
-internal fun etaMinutes(ms: Long, now: Long): Int = maxOf(0, ceil((ms - now) / 60_000.0).toInt())

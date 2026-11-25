@@ -130,7 +130,7 @@ internal fun DepartureChip(chip: NearbyChip, onClick: () -> Unit, modifier: Modi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RouteBadge(chip.shortName, chip.color, chip.textColor, size = RouteBadgeSize.Tag)
-        VText(formatNearbyCountdown(chip.countdown), style = vtext(13.sp to 16.sp, Weight.Extrabold, mono = true), color = ink, maxLines = 1, softWrap = false)
+        VText(formatPrimeCountdown(chip.countdown), style = vtext(13.sp to 16.sp, Weight.Extrabold, mono = true), color = ink, maxLines = 1, softWrap = false)
     }
 }
 
@@ -175,7 +175,7 @@ private fun BoardRow(items: List<RadarDepartureItem>) {
         for (i in 0 until BoardTimes) {
             val d = items.getOrNull(i)
             VText(
-                d?.let { formatNearbyCountdown(it.countdownMinutes) }.orEmpty(),
+                d?.let { formatPrimeCountdown(it.countdownMinutes) }.orEmpty(),
                 Modifier.width(BoardTimeWidth),
                 vtext(13.sp to 16.sp, if (i == 0) Weight.Extrabold else Weight.Semibold, mono = true),
                 when {

@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import dev.southstar21.vectra.core.util.parseLeadingNumber
+import kotlin.math.ceil
 import kotlin.math.min
 
 data class RouteTypeMeta(val label: String, val emoji: String, val icon: ImageVector)
@@ -439,6 +440,9 @@ private fun effectWeight(effectType: String?): Int = when (effectType) {
     "SIGNIFICANT_DELAYS" -> 2
     else -> 3
 }
+
+/** Whole minutes until [ms], rounded up; 0 once it is due. */
+fun etaMinutes(ms: Long, now: Long): Int = maxOf(0, ceil((ms - now) / 60_000.0).toInt())
 
 /** "2'" — prime-marked total minutes for compact readouts. */
 fun formatPrimeCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes'"

@@ -634,7 +634,7 @@ private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, o
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             items.take(3).forEachIndexed { i, d ->
                 if (i == 0) {
-                    NearbyEtaRow(d.isPredicted, formatNearbyCountdown(d.countdownMinutes))
+                    NearbyEtaRow(d.isPredicted, formatPrimeCountdown(d.countdownMinutes))
                 } else {
                     LaterEta(d)
                 }
@@ -652,7 +652,7 @@ private fun LaterEta(d: RadarDepartureItem) {
         Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
             if (d.isPredicted) LiveSignalIcon(size = 11.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 11.dp, tint = tone)
         }
-        VText(formatNearbyCountdown(d.countdownMinutes), style = vtext(12.sp to 15.sp, Weight.Bold, mono = true), color = tone, maxLines = 1, softWrap = false)
+        VText(formatPrimeCountdown(d.countdownMinutes), style = vtext(12.sp to 15.sp, Weight.Bold, mono = true), color = tone, maxLines = 1, softWrap = false)
     }
 }
 

@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.PlacedVehicle
 import dev.southstar21.vectra.core.maps.VehiclePlacementInput
@@ -334,7 +335,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
         )
     }
 
-    val trackedCountdownMinutes = selection?.let { max(0, ceil((it.arrivalMs - now) / 60_000.0).toInt()) }
+    val trackedCountdownMinutes = selection?.let { etaMinutes(it.arrivalMs, now) }
 
     val vehiclesQuery = repo.vehicles.collect(selection?.routeId)
     val vehicles = remember(selection, vehiclesQuery.data, polylines) {

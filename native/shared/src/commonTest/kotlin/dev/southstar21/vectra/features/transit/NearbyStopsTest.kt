@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.maps.BudapestCenter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.test.Test
@@ -480,8 +481,8 @@ class NearbyStopsTest {
     }
 
     @Test fun nearbyCountdown() {
-        assertEquals("NOW", formatNearbyCountdown(0))
-        assertEquals("5'", formatNearbyCountdown(5))
+        assertEquals("NOW", formatPrimeCountdown(0))
+        assertEquals("5'", formatPrimeCountdown(5))
         assertNotNull(routeNameCompare("a", "b"))
     }
 }
