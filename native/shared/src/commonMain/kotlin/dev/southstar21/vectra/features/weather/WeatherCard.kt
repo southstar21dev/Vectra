@@ -181,10 +181,10 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                     contentDescription = "Weather for $title: ${roundHalfUpToInt(data.temperature)} degrees, ${meta.label}. Tap to open live weather radar."
                 },
         ) {
-            // Condition artwork spilling off the top-right corner.
+            // Condition artwork tucked into the top-right corner (inside the card's rounded edge, not cut by it).
             VIcon(
                 skyArt(meta.sky),
-                Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-12).dp).alpha(artAlpha),
+                Modifier.align(Alignment.TopEnd).offset(x = (-8).dp, y = 0.dp).alpha(artAlpha),
                 size = 104.dp,
                 tint = artTint,
             )
