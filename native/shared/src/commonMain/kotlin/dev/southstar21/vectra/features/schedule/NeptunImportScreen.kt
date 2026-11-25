@@ -131,7 +131,7 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
 
     suspend fun saveUrl(url: String) {
         try {
-            repo.saveNeptunUrl(url)
+            repo.saveNeptunUrl(url, claimFirstSync = true)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {

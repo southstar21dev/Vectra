@@ -82,6 +82,9 @@ fun interface NeptunSyncListener {
 /** Another account signed in while a Neptun sync or import ran; it stops before touching that account. */
 internal class AccountChangedException : IllegalStateException("You switched accounts during the Neptun sync. Please try again.")
 
+/** The link was removed or the classes were cleared while a sync ran; it stops without writing. */
+internal class SyncSupersededException : IllegalStateException("The Neptun sync was cancelled.")
+
 /**
  * Neptun calendar sync: fetch the ICS feed through the proxy, parse it, replace the stored
  * classes. Everything downstream hears about it through [onScheduleReplaced].
@@ -108,6 +111,19 @@ internal class NeptunSyncService(
     val neptunSyncError: StateFlow<String?> = _neptunError.asStateFlow()
 
     @Volatile private var autoSyncAttempted = false
+
+    /** Bumped when the link is removed or all classes are cleared, so a sync already running gives up. */
+    @Volatile private var syncEpoch = 0
+
+    /** Makes any sync that is already past its fetch abort before it writes. */
+    fun invalidateRunningSyncs() {
+        syncEpoch++
+    }
+
+    private fun requireCurrent(owner: String, epoch: Int) {
+        requireOwner(owner)
+        if (syncEpoch != epoch) throw SyncSupersededException()
+    }
     private val autoSyncCheckRunning = MutableStateFlow(false)
 
     fun onUserChanged() {
@@ -166,8 +182,12 @@ internal class NeptunSyncService(
      * persistNeptunEvents: encrypt, then the atomic server-side replace. [owner] is the account the
      * events belong to; the replace goes out with whoever is signed in, so it is checked again just before.
      */
-    suspend fun persistNeptunEvents(events: List<NeptunSyncEvent>, owner: String = session.requireUserId()) {
-        requireOwner(owner)
+    suspend fun persistNeptunEvents(
+        events: List<NeptunSyncEvent>,
+        owner: String = session.requireUserId(),
+        epoch: Int = syncEpoch,
+    ) {
+        requireCurrent(owner, epoch)
         val encrypted = coroutineScope {
             events.map { e ->
                 async {
@@ -184,7 +204,7 @@ internal class NeptunSyncService(
                 }
             }.awaitAll()
         }
-        requireOwner(owner)
+        requireCurrent(owner, epoch)
         pb.send("/api/vectra/neptun/replace", HttpMethod.Post, buildJsonObject { put("events", JsonArray(encrypted)) })
     }
 
@@ -251,14 +271,15 @@ internal class NeptunSyncService(
         return try {
             // The fetch can take a minute and a half: pin the account it was started for.
             val owner = session.requireUserId()
+            val epoch = syncEpoch
             val text = fetchNeptunIcs(url)
             val result = parseIcs(text)
             if (result.valid.isEmpty()) error("No valid class events found in calendar feed.")
             val semester = pickNeptunSyncSemester(result.valid) ?: error("No class events found for the current or upcoming semester.")
             val clean = result.valid.filter { it.semester == semester }.map { it.toSyncEvent() }
-            persistNeptunEvents(clean, owner)
+            persistNeptunEvents(clean, owner, epoch)
             notifyListener(owner, clean)
-            requireOwner(owner)
+            requireCurrent(owner, epoch)
             val nowMs = Clock.System.now().toEpochMilliseconds()
             // Only successful manual syncs consume the rate-limit quota.
             if (!isAutoSync) recordManualSync(nowMs)
@@ -274,6 +295,10 @@ internal class NeptunSyncService(
             semester
         } catch (e: CancellationException) {
             throw e
+        } catch (_: SyncSupersededException) {
+            // The user removed the link or cleared the classes meanwhile; nothing was written.
+            _neptunStatus.value = NeptunSyncStatus.Idle
+            null
         } catch (_: AccountChangedException) {
             // The account signed in now never asked for this sync; it reports nothing.
             _neptunStatus.value = NeptunSyncStatus.Idle
@@ -314,15 +339,18 @@ internal class NeptunSyncService(
     }
 
     /** Save (encrypted) or clear the subscription link; clearing also removes the synced rows. */
-    suspend fun saveNeptunUrl(url: String) {
+    suspend fun saveNeptunUrl(url: String, claimFirstSync: Boolean = false) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) {
+            invalidateRunningSyncs()
             clearNeptunEvents()
             auth.updateProfile(mapOf("neptun_ics_url" to JsonNull, "neptun_last_sync" to JsonNull))
             onScheduleReplaced()
             return
         }
         val encrypted = crypto.encrypt(trimmed)
+        // The import wizard imports on confirm; the profile update must not start a second, unconfirmed sync.
+        if (claimFirstSync) autoSyncAttempted = true
         auth.updateProfile(mapOf("neptun_ics_url" to JsonPrimitive(encrypted)))
     }
 

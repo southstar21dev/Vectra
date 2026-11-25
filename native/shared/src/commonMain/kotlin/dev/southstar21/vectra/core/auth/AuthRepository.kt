@@ -119,6 +119,18 @@ class AuthRepository(
         store.updateRecord(record)
     }
 
+    /**
+     * Sets one key of the profile's `preferences`, merged into the server's current copy: this
+     * device's cached profile may predate another device's change to a different key, and writing
+     * the whole object back would revert it.
+     */
+    suspend fun setPreference(key: String, value: JsonElement) {
+        val id = requireSession().userId
+        val fresh = runSuspendCatching { pb.collection("users").getOne(id)["preferences"] as? JsonObject }.getOrNull()
+        val current = fresh ?: profile.value?.preferences ?: JsonObject(emptyMap())
+        updateProfile(mapOf("preferences" to JsonObject(current + (key to value))))
+    }
+
     suspend fun changeEmail(currentPassword: String, newEmail: String) {
         requireSession()
         pb.send(

@@ -19,7 +19,6 @@ import dev.southstar21.vectra.core.maps.placeVehiclesOnPolyline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.ceil
 import kotlin.math.max
@@ -146,8 +145,6 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
     val profile by auth.profile.collectAsStateWithLifecycle()
-    // Latest preferences, read when a queued filter write actually runs.
-    val preferences by rememberUpdatedState(profile?.preferences)
     val (geoState, refreshLocation) = rememberDeviceLocation(deviceLocation)
     val now = rememberNowMillis(30_000)
     val catalogStops = rememberCatalogStops(repo)
@@ -370,10 +367,7 @@ fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: DeviceLocati
             scope.launch {
                 try {
                     writeModeFilter(next) { filter ->
-                        val prefs = preferences ?: JsonObject(emptyMap())
-                        auth.updateProfile(
-                            mapOf("preferences" to JsonObject(prefs + ("transit_mode_filter" to JsonArray(filter.map(::JsonPrimitive))))),
-                        )
+                        auth.setPreference("transit_mode_filter", JsonArray(filter.map(::JsonPrimitive)))
                     }
                 } catch (e: CancellationException) {
                     throw e

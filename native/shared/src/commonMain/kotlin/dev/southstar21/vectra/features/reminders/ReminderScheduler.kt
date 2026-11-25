@@ -58,6 +58,9 @@ class ReminderScheduler(
     /** What is scheduled right now (the test reminder rides along with it). */
     private var planned: List<ScheduledNotification> = emptyList()
 
+    /** Whether this process has handed a plan to the system yet; the first one is always applied. */
+    private var appliedOnce = false
+
     init {
         scope.launch { store.load { loaded.complete(Unit) } }
     }
@@ -108,10 +111,12 @@ class ReminderScheduler(
         // set by an earlier process are still pending while this one's plan starts empty.
         if (updateGate.state.value != null) {
             apply(emptyList(), force = true)
+            notifier.scheduleReplan(null)
             return@withLock
         }
         if (auth.session.value == null || !prefs.anyOn) {
             apply(emptyList())
+            notifier.scheduleReplan(null)
             return@withLock
         }
         // Before the cached schedule is in memory an empty list means "not read yet", not "no classes".
@@ -127,6 +132,8 @@ class ReminderScheduler(
         var plan = planReminders(sessions, prefs, now).take(MaxScheduled)
         if (!notifier.resolvesAtFireTime) plan = departures.bake(plan, now)
         apply(plan)
+        // Nothing else restarts the process in a quiet week, so ask the system to replan daily.
+        notifier.scheduleReplan(now + ReplanIntervalMs)
     }
 
     /** A sample reminder in a few seconds, so the user can see one without waiting for class. */
@@ -170,9 +177,11 @@ class ReminderScheduler(
     /**
      * [force] hands [plan] to the system even when it matches [planned]: that starts empty on every
      * launch while alarms set by an earlier process are still pending, so clearing must not be skipped.
+     * The first plan of a process is forced for the same reason.
      */
     private fun apply(plan: List<ScheduledNotification>, force: Boolean = false) {
-        if (!force && plan == planned) return
+        if (!force && appliedOnce && plan == planned) return
+        appliedOnce = true
         planned = plan
         notifier.replaceScheduled(plan)
     }
@@ -184,15 +193,23 @@ class ReminderScheduler(
         return auth.session.value != null && updateGate.state.value == null
     }
 
-    override suspend fun beforeSignOut() = lock.withLock { apply(emptyList(), force = true) }
+    override suspend fun beforeSignOut() = lock.withLock {
+        apply(emptyList(), force = true)
+        notifier.scheduleReplan(null)
+    }
 
     override suspend fun onSessionCleared() {
-        lock.withLock { apply(emptyList(), force = true) }
+        lock.withLock {
+            apply(emptyList(), force = true)
+            notifier.scheduleReplan(null)
+        }
         store.reset()
     }
 
     companion object {
         const val HorizonDays = 7
+        /** How often the system wakes the app to roll the horizon forward when it is never opened. */
+        const val ReplanIntervalMs = 24 * 60 * 60 * 1000L
         /** How long a firing reminder waits for live departures; the Android receiver has about 10 s in all. */
         const val LiveDeparturesBudgetMs = 5_000L
         /** iOS keeps at most 64 pending notifications per app. */

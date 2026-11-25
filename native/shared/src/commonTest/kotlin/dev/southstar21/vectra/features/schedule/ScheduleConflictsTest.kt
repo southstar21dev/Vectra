@@ -106,6 +106,17 @@ class ScheduleConflictsTest {
         assertFalse(classOccursOnDate(legacy, "2026-11-09"))
     }
 
+    @Test fun manualClassNamedLikeExamStillRepeatsWeekly() {
+        for (name in listOf("Exam prep seminar", "Matek ZH gyakorlas", "Zarthelyi felkeszito")) {
+            val manual = scheduleEvent(
+                source = "manual", courseName = name, eventType = "", dayOfWeek = 1,
+                semesterStart = null, semesterEnd = null,
+            )
+            assertTrue(classOccursOnDate(manual, "2026-11-02"), name)
+            assertTrue(classOccursOnDate(manual, "2026-11-09"), name)
+        }
+    }
+
     @Test fun manualAttendanceType() {
         assertFalse(isConflictRelevantClass(scheduleEvent(source = "manual", attendanceType = "lecture")))
         assertTrue(isConflictRelevantClass(scheduleEvent(source = "manual", attendanceType = "seminar")))
