@@ -27,6 +27,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +46,11 @@ import kotlin.math.roundToInt
 private const val StackCardDp = 50
 private const val StackGapDp = 6
 private const val StackPeekDp = 7
+
+private fun discDescription(title: String, status: AttendanceStatus?, task: Boolean): String = when {
+    task -> "$title: ${if (status == AttendanceStatus.Present) "done" else "not done"}. Tap to change"
+    else -> "Attendance for $title: ${(status ?: AttendanceStatus.Unmarked).name.lowercase()}"
+}
 
 private fun mix(a: Float, b: Float, f: Float) = a + (b - a) * f
 
@@ -79,6 +86,8 @@ private fun SmallCard(
         val fade = Modifier.graphicsLayer { alpha = look.contentAlpha.coerceIn(0f, 1f) }
         val discTap = if (onDisc != null) {
             Modifier.tappable(RoundedCornerShape(50), enabled = look.enabled, role = Role.Button, onClickLabel = "Change attendance for ${entry.title}", onClick = onDisc)
+                // A separate node from the card's own, so it needs its own name (a task reads like the Schedule's tick box).
+                .semantics { contentDescription = discDescription(entry.title, status, square) }
         } else Modifier
         SmallStatusDisc(status, d.dashed, fade.then(discTap), square = square)
         Column(fade.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
