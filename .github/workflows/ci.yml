@@ -123,11 +123,18 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.27'
+          # The one place the Go version lives for CI; the Dockerfile's golang:1.27 tag follows the
+          # same minor release.
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - run: go vet ./...
       - run: go test ./...
+
+      # The image is otherwise first built by Coolify on a push to dev; build it (no push) so a
+      # Dockerfile, .dockerignore or entrypoint mistake fails here.
+      - name: Build the Docker image
+        run: docker build --pull .
 
   native:
     needs: changes
