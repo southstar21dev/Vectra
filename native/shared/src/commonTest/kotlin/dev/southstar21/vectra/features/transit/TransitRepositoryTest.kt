@@ -68,37 +68,37 @@ private class TrackerBackend {
 
     fun handle(scope: io.ktor.client.engine.mock.MockRequestHandleScope, req: HttpRequestData) = with(scope) {
         val path = req.url.encodedPath
-        val id = path.substringAfter("/records", "").trim('/')
-        when {
-            path == "/api/vectra/crypto" -> crypto(this, body(req))
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Get && id.isNotEmpty() ->
-                json(row(id).toString())
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Get -> {
-                val filter = req.url.parameters["filter"].orEmpty()
-                val sort = req.url.parameters["sort"]
-                list(
-                    when {
-                        "is_favorite = true" in filter -> rows.filter { it.bool("is_favorite") == true }
-                        sort == "-sort_order" -> rows.sortedByDescending { it.int("sort_order") ?: -1 }.take(1)
-                        else -> rows.sortedBy { it.int("sort_order") ?: -1 }
-                    },
-                )
-            }
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Post -> {
+        if (path == "/api/vectra/crypto") crypto(this, body(req)) else records(this, req, path.substringAfter("/records", "").trim('/'))
+    }
+
+    private fun records(scope: io.ktor.client.engine.mock.MockRequestHandleScope, req: HttpRequestData, id: String) = with(scope) {
+        when (req.method) {
+            HttpMethod.Get -> if (id.isNotEmpty()) json(row(id).toString()) else list(listed(req))
+            HttpMethod.Post -> {
                 val saved = JsonObject(body(req) + ("id" to JsonPrimitive("t${nextId++}")))
                 rows += saved
                 json(saved.toString())
             }
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Patch -> {
-                if (id in failUpdatesFor) return@with json("{}", HttpStatusCode.InternalServerError)
-                val patch = body(req)
-                updates += id to patch
-                val i = rows.indexOfFirst { it.string("id") == id }
-                rows[i] = JsonObject(rows[i] + patch)
-                json(rows[i].toString())
-            }
-            else -> error("unexpected ${req.method} $path")
+            HttpMethod.Patch -> patch(this, id, body(req))
+            else -> error("unexpected ${req.method}")
         }
+    }
+
+    private fun listed(req: HttpRequestData): List<JsonObject> {
+        val filter = req.url.parameters["filter"].orEmpty()
+        return when {
+            "is_favorite = true" in filter -> rows.filter { it.bool("is_favorite") == true }
+            req.url.parameters["sort"] == "-sort_order" -> rows.sortedByDescending { it.int("sort_order") ?: -1 }.take(1)
+            else -> rows.sortedBy { it.int("sort_order") ?: -1 }
+        }
+    }
+
+    private fun patch(scope: io.ktor.client.engine.mock.MockRequestHandleScope, id: String, patch: JsonObject) = with(scope) {
+        if (id in failUpdatesFor) return@with json("{}", HttpStatusCode.InternalServerError)
+        updates += id to patch
+        val i = rows.indexOfFirst { it.string("id") == id }
+        rows[i] = JsonObject(rows[i] + patch)
+        json(rows[i].toString())
     }
 
     private fun crypto(scope: io.ktor.client.engine.mock.MockRequestHandleScope, b: JsonObject) = with(scope) {

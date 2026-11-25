@@ -128,7 +128,7 @@ class WeatherRepositoryTest {
         assertNull(repo.location.value?.city)
     }
 
-    @Test fun aDeniedPermissionErrorShowsDeniedAndKeepsBudapestWeather() = scenario(FakeLocation(failure = SecurityException("denied"))) {
+    @Test fun aDeniedPermissionErrorShowsDeniedAndKeepsBudapestWeather() = scenario(FakeLocation(failure = IllegalStateException("Permission denied"))) {
         val repo = repo()
         until { repo.location.value != null }
         repo.setMode(WeatherLocationMode.Auto)
