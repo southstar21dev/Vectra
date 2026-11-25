@@ -1,0 +1,15 @@
+# Installs semantic-release from the committed lockfile (.github/release-tools), with no lifecycle
+# scripts: the jobs that use it hold a write token, so nothing resolved fresh or run at install time
+# may reach them. Run actions/checkout and actions/setup-node first. The binary ends up at
+# $RUNNER_TEMP/semrel/node_modules/.bin/semantic-release.
+name: Install semantic-release
+description: Install semantic-release from the committed lockfile without running lifecycle scripts.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/semrel"
+        cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
+        npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"

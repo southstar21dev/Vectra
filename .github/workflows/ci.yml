@@ -111,7 +111,7 @@ jobs:
           # Runs the shared tests on an iOS simulator (Kotlin/Native's regex engine and Foundation
           # differ from the JVM's); the steps below also build the Swift app and widgets.
           # release.yml builds the IPA.
-          - os: macos-latest
+          - os: macos-26
             tasks: :shared:compileKotlinIosSimulatorArm64 :shared:iosSimulatorArm64Test
     runs-on: ${{ matrix.os }}
     env:
@@ -120,23 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
-        with:
-          distribution: temurin
-          java-version: 21
-
-      # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
-      # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
-      - id: kotlin
-        if: runner.os == 'macOS'
-        name: Read the Kotlin version
-        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        if: runner.os == 'macOS'
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+      - uses: ./.github/actions/native-setup
 
       # release.yml builds the committed iosApp.xcodeproj, so it must be what project.yml generates.
       # XcodeGen is pinned (version and checksum): another version may write the project differently.
@@ -157,8 +141,6 @@ jobs:
             echo "::error::native/iosApp differs from what project.yml generates; run xcodegen in native/iosApp and commit the result."
             exit 1
           fi
-
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       - name: Verify
         working-directory: native
