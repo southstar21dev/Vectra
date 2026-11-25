@@ -49,8 +49,7 @@ class WeekWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { WidgetTheme { WeekContent(context, frame) } }
+        provideContent { WidgetTheme { WeekContent(context, rememberFrame(context)) } }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {

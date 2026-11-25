@@ -43,8 +43,7 @@ class LockScreenWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { LockScreenContent(context, frame) }
+        provideContent { LockScreenContent(context, rememberFrame(context)) }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {

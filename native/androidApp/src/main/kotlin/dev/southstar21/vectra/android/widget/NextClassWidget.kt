@@ -46,8 +46,7 @@ class NextClassWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { WidgetTheme { NextClassContent(context, frame) } }
+        provideContent { WidgetTheme { NextClassContent(context, rememberFrame(context)) } }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
