@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
@@ -78,7 +79,14 @@ internal object WidgetStore {
         val now = System.currentTimeMillis()
         val at = snapshot.nextRefreshMs(now, nextBudapestMidnightMs()).coerceAtLeast(now + 30_000)
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
-        alarms.setWindow(AlarmManager.RTC, at, 60_000, refreshIntent(context))
+        val intent = refreshIntent(context)
+        // A 60 s window may be stretched to 10 minutes on Android 12+, so book exactly when allowed.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()) {
+            runCatching { alarms.setExact(AlarmManager.RTC, at, intent) }
+                .onFailure { alarms.setWindow(AlarmManager.RTC, at, 60_000, intent) }
+        } else {
+            alarms.setWindow(AlarmManager.RTC, at, 60_000, intent)
+        }
     }
 
     private fun refreshIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
