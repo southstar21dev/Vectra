@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +46,8 @@ class CourseTrackerRepository(
     private val userIdFlow: StateFlow<String?>,
     private val isOnline: () -> Boolean,
     private val gate: CloudWriteGate = CloudWriteGate(),
+    /** Connectivity changes: every false to true transition retries what never reached the cloud. */
+    onlineChanges: Flow<Boolean>? = null,
 ) {
     private val _data = MutableStateFlow(createEmptyTrackerData())
     val data: StateFlow<CourseTrackerData> = _data.asStateFlow()
@@ -79,6 +82,15 @@ class CourseTrackerRepository(
     @Volatile private var editsUploaded = 0
 
     init {
+        onlineChanges?.let { flow ->
+            scope.launch {
+                var wasOnline = isOnline()
+                flow.collect { online ->
+                    if (online && !wasOnline) retryUnsynced()
+                    wasOnline = online
+                }
+            }
+        }
         scope.launch {
             userIdFlow.collect { uid ->
                 editsMade = 0
@@ -144,8 +156,8 @@ class CourseTrackerRepository(
     /** The query function: merge the cloud copy into the live data (newest tracker wins). */
     suspend fun refresh() = refreshLock.withLock {
         val uid = userId
-        lastFetchMs = Clock.System.now().toEpochMilliseconds()
         if (uid == null || !isOnline()) return@withLock
+        lastFetchMs = Clock.System.now().toEpochMilliseconds()
         try {
             val encrypted = cloud.fetch(uid)
             if (encrypted == null) {
@@ -233,6 +245,26 @@ class CourseTrackerRepository(
             // Stays in the offline cache; the next save or refresh carries it.
         } finally {
             _isSaving.value = false
+        }
+    }
+
+    /**
+     * Back online or back in the foreground: sends edits that exist only on this device (an upload
+     * that failed offline or was held back because the cloud copy was never read).
+     */
+    fun retryUnsynced() {
+        scope.launch {
+            val uid = userId ?: return@launch
+            if (!isOnline()) return@launch
+            if (!gate.isReadable(uid)) refresh()
+            if (userId == uid && editsMade != editsUploaded && gate.isReadable(uid)) {
+                uploadLock.withLock {
+                    uploadTimer?.cancel()
+                    uploadTimer = null
+                    pendingUploadUser = uid
+                }
+                uploadPending()
+            }
         }
     }
 
