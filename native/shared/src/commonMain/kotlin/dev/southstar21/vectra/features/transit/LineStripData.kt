@@ -11,12 +11,6 @@ private fun DirectionView.stopsUntil(p: RouteProgress): Double? =
 /** How far (in stops) a direction's vehicle still is from your stop; null without a position. */
 fun DirectionView.vehicleDistance(): Double? = stopsUntil(progress)
 
-/** Stops between a vehicle at [location] and your stop along this direction; null when it can't be placed. */
-fun DirectionView.distanceOf(location: LatLon?): Double? {
-    if (!isValidLatLon(location) || trackedIndex < 0) return null
-    return stopsUntil(routeProgress(stops.map { LatLon(it.lat, it.lon) }, polyline, location, trackedIndex))
-}
-
 /** Where this direction goes: the arrival's headsign without its "via" part, else the last stop. */
 fun DirectionView.destination(): String =
     extractHeadsignDestination(arrival?.headSign?.takeIf { it.isNotEmpty() } ?: stops.lastOrNull()?.name)

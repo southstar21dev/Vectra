@@ -73,7 +73,7 @@ private enum class CoverPhase { Loading, Melting, Gone }
 /** The cover's phase and frame clock. Frames are read in draw only, so they never recompose. */
 @Stable
 private class OrbCover(loading: Boolean) {
-    val engine = OrbEngine(ThinkingOrbState.Searching, OrbSize.value.toDouble())
+    val engine = OrbEngine(OrbSize.value.toDouble())
     val plan = MeltPlan(engine.count)
     var phase by mutableStateOf(if (loading) CoverPhase.Loading else CoverPhase.Gone)
         private set
@@ -111,7 +111,7 @@ private class OrbCover(loading: Boolean) {
         }
     }
 
-    /** The orb's clock (a still frame at 0.6, as ThinkingOrb). */
+    /** The orb's clock (a still frame at 0.6). */
     fun orbTime(reduced: Boolean): Double = if (reduced || frame == 0L) 0.6 else frame / 1e9 * engine.speed
 
     /** Melt progress 0..1 (0 while loading). */

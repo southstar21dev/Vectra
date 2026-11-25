@@ -153,10 +153,3 @@ fun Modifier.bleed(horizontal: Dp = 0.dp, vertical: Dp = 0.dp): Modifier = layou
     val ht = (placeable.height - 2 * v).coerceAtLeast(0)
     layout(w, ht) { placeable.place(-h, -v) }
 }
-
-/** A negative top margin: the content moves up and the layout shrinks with it. */
-fun Modifier.pullUp(amount: Dp): Modifier = layout { measurable, constraints ->
-    val a = amount.roundToPx()
-    val placeable = measurable.measure(constraints)
-    layout(placeable.width, (placeable.height - a).coerceAtLeast(0)) { placeable.place(0, -a) }
-}

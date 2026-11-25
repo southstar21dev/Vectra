@@ -35,54 +35,10 @@ import kotlin.math.sqrt
 import kotlin.math.truncate
 
 /**
- * The dotted thought-orb loading indicator, drawn on a Canvas. Geometry, presets and ink
- * follow the original `thinking-orbs` engine: same lattice, same per-size preset tuning
- * (20 / 32 / 64), same shared clock (`t = seconds * presetSpeed`), same monochrome ink
- * (mirrored on dark substrates) and same reduced-motion behaviour (a single static frame at t = 0.6).
+ * The dotted globe loading orb ("Searching"), drawn on a Canvas by [drawOrb]. Geometry, presets
+ * and ink follow the original `thinking-orbs` engine: same lattice, same per-size preset tuning
+ * (20 / 32 / 64) and same monochrome ink (mirrored on dark substrates).
  */
-enum class ThinkingOrbState(internal val label: String) {
-    /** "rubik": latitude bands scramble, then click back solved. */
-    Solving("Solving…"),
-
-    /** "globe": a scan meridian sweeps a dotted globe. */
-    Searching("Searching…"),
-}
-
-@Composable
-fun ThinkingOrb(
-    modifier: Modifier = Modifier,
-    size: Dp = 64.dp,
-    state: ThinkingOrbState = ThinkingOrbState.Solving,
-) {
-    val dark = Vectra.colors.isDark
-    val reduced = Vectra.reduceMotion
-    val sizeValue = size.value
-    val engine = remember(state, sizeValue) { OrbEngine(state, sizeValue.toDouble()) }
-    var t by remember { mutableDoubleStateOf(0.6) }
-
-    val active = LocalPageActive.current
-    LaunchedEffect(engine, reduced, active) {
-        if (!active) return@LaunchedEffect
-        if (reduced) {
-            // Reduced motion: static representative frame (unscaled t = 0.6).
-            t = 0.6
-            return@LaunchedEffect
-        }
-        // All instances share one frame clock so they stay in phase.
-        while (true) {
-            withFrameNanos { nanos -> t = nanos / 1e9 * engine.speed }
-        }
-    }
-
-    Canvas(
-        modifier
-            .size(size)
-            .semantics { contentDescription = state.label },
-    ) {
-        engine.compute(t)
-        drawOrb(engine, center, this.size.minDimension / sizeValue, dark)
-    }
-}
 
 /** Grey of dot [i]'s ink (0..1): monochrome, mirrored on dark substrates. */
 internal fun OrbEngine.grey(i: Int, dark: Boolean): Float {
@@ -107,7 +63,7 @@ internal fun DrawScope.drawOrb(engine: OrbEngine, center: Offset, k: Float, dark
 }
 
 // ---------------------------------------------------------------------------------------------
-// Engine (rubik + globe), allocation-free per frame.
+// Engine (globe), allocation-free per frame.
 // ---------------------------------------------------------------------------------------------
 
 private fun hashD(a: Double, b: Double): Double {
@@ -124,61 +80,38 @@ private class OrbProfile(
     val lonDensity: Int,
     val rBase: Double,
     val rDepth: Double,
-    val rActive: Double,
     val rBoost: Double,
     val inkFar: Double,
     val inkSpan: Double,
     val rsPow: Double,
     val rMin: Double,
-    val moveCount: Int,
     val scanMul: Double,
     val dimBase: Double,
 )
 
-private fun resolveProfile(state: ThinkingOrbState, size: Double): OrbProfile {
+private fun resolveProfile(size: Double): OrbProfile {
     // The package only ships 20 / 32 / 64 presets; pick the nearest one.
     val key = listOf(20, 32, 64).minBy { abs(it - size) }
-    // speed, count, size (+ extra)
-    return when (state) {
-        ThinkingOrbState.Solving -> {
-            val (speed, count, sz) = when (key) {
-                20 -> Triple(1.95, 0.088, 1.9)
-                32 -> Triple(1.8964, 0.1537, 1.4951)
-                else -> Triple(1.82, 0.35, 1.05)
-            }
-            val rt = sqrt(count)
-            OrbProfile(
-                speed = speed,
-                latRings = max(2, roundHalfUpToInt(15 * rt)),
-                lonDensity = max(2, roundHalfUpToInt(40 * rt)),
-                rBase = 0.6 * sz, rDepth = 1.7 * sz, rActive = 0.3 * sz, rBoost = 0.0,
-                inkFar = 0.62, inkSpan = 0.54, rsPow = 0.6, rMin = 0.3,
-                moveCount = 14, scanMul = 1.0, dimBase = 1.0,
-            )
-        }
-        ThinkingOrbState.Searching -> {
-            val (speed, count, sz) = when (key) {
-                20 -> Triple(2.665, 0.105, 1.75)
-                32 -> Triple(2.3803, 0.1839, 1.4769)
-                else -> Triple(2.015, 0.42, 1.15)
-            }
-            val scanMul = when (key) { 20 -> 4.335; 32 -> 4.2301; else -> 4.08 }
-            val rt = sqrt(count)
-            OrbProfile(
-                speed = speed,
-                latRings = max(2, roundHalfUpToInt(17 * rt)),
-                lonDensity = max(2, roundHalfUpToInt(44 * rt)),
-                rBase = 0.6 * sz, rDepth = 1.7 * sz, rActive = 0.0, rBoost = 1.0,
-                inkFar = 0.62, inkSpan = 0.54, rsPow = 0.6, rMin = 0.3,
-                moveCount = 0, scanMul = scanMul, dimBase = 0.45,
-            )
-        }
+    val (speed, count, sz) = when (key) {
+        20 -> Triple(2.665, 0.105, 1.75)
+        32 -> Triple(2.3803, 0.1839, 1.4769)
+        else -> Triple(2.015, 0.42, 1.15)
     }
+    val scanMul = when (key) { 20 -> 4.335; 32 -> 4.2301; else -> 4.08 }
+    val rt = sqrt(count)
+    return OrbProfile(
+        speed = speed,
+        latRings = max(2, roundHalfUpToInt(17 * rt)),
+        lonDensity = max(2, roundHalfUpToInt(44 * rt)),
+        rBase = 0.6 * sz, rDepth = 1.7 * sz, rBoost = 1.0,
+        inkFar = 0.62, inkSpan = 0.54, rsPow = 0.6, rMin = 0.3,
+        scanMul = scanMul, dimBase = 0.45,
+    )
 }
 
 /** The orb's dots for a frame: positions in the orb's own [size] box (dp), radius, ink and alpha, drawn in [order]. */
-internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) {
-    private val p = resolveProfile(state, size)
+internal class OrbEngine(val size: Double) {
+    private val p = resolveProfile(size)
     val speed: Double get() = p.speed
     val rMin: Double get() = p.rMin
 
@@ -207,13 +140,6 @@ internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) 
         blon = lons.toDoubleArray()
     }
 
-    // Rubik moves (makeMoves): axis, slab [lo, lo + 0.5), ±90°.
-    private val mvAxis = IntArray(p.moveCount) { i -> min(2, floor(hashD(i.toDouble(), 2.3) * 3).toInt()) }
-    private val mvLo = DoubleArray(p.moveCount) { i -> -1 + 0.5 * min(3, floor(hashD(i.toDouble(), 5.9) * 4).toInt()) }
-    private val mvAng = DoubleArray(p.moveCount) { i -> (if (hashD(i.toDouble(), 7.7) < 0.5) 1 else -1) * PI / 2 }
-    private val amount = DoubleArray(p.moveCount)
-    private var active = -1
-
     // Per-frame output, reused.
     val x = DoubleArray(count)
     val y = DoubleArray(count)
@@ -229,10 +155,7 @@ internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) 
     fun compute(t: Double) {
         if (t == lastT) return
         lastT = t
-        when (state) {
-            ThinkingOrbState.Solving -> rubik(t)
-            ThinkingOrbState.Searching -> globe(t)
-        }
+        globe(t)
         // Stable z-sort far → near (ties keep lattice order): insertion sort from identity.
         for (i in 0 until count) order[i] = i
         for (i in 1 until count) {
@@ -263,62 +186,6 @@ internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) 
         z[i] = z2
     }
 
-    /** solveCycle(time, count, slotDur = 0.42, rest = 1.2). */
-    private fun solveCycle(time: Double) {
-        val n = p.moveCount
-        val slotDur = 0.42
-        val cyc = 2 * n * slotDur + 1.2
-        val tc = truncatedRem(time, cyc)
-        amount.fill(0.0)
-        active = -1
-        if (tc < 2 * n * slotDur) {
-            val slot = floor(tc / slotDur).toInt()
-            val pr = (tc - slot * slotDur) / slotDur
-            val cl = min(1.0, pr / 0.7)
-            val ep = 1 - (1 - cl).pow(3)
-            if (slot < n) {
-                for (i in 0 until slot) amount[i] = 1.0
-                amount[slot] = ep
-                active = slot
-            } else {
-                val u = 2 * n - 1 - slot
-                for (i in 0 until u) amount[i] = 1.0
-                amount[u] = 1 - ep
-                active = u
-            }
-        }
-    }
-
-    private fun rubik(t: Double) {
-        val c = size / 2
-        setProj(t * 0.55, 0.35 + 0.1 * sin(t * 0.9), c, c, size / 2 * 0.82)
-        solveCycle(t)
-        for (i in 0 until count) {
-            var px = bx[i]; var py = by[i]; var pz = bz[i]
-            var inActive = false
-            for (m in 0 until p.moveCount) {
-                val am = amount[m]
-                if (am <= 0) continue
-                val axis = mvAxis[m]
-                val coord = when (axis) { 0 -> px; 1 -> py; else -> pz }
-                if (coord < mvLo[m] || coord >= mvLo[m] + 0.5) continue
-                if (m == active) inActive = true
-                val ang = mvAng[m] * am
-                val ca = cos(ang); val sa = sin(ang)
-                when (axis) {
-                    0 -> { val y2 = py * ca - pz * sa; pz = py * sa + pz * ca; py = y2 }
-                    1 -> { val x2 = px * ca + pz * sa; pz = -px * sa + pz * ca; px = x2 }
-                    else -> { val x2 = px * ca - py * sa; py = px * sa + py * ca; px = x2 }
-                }
-            }
-            project(i, px, py, pz)
-            val depth = (z[i] + 1) / 2
-            r[i] = (p.rBase + p.rDepth * depth + (if (inActive) p.rActive else 0.0)) * rs
-            w[i] = p.inkFar - p.inkSpan * depth - (if (inActive) 0.14 else 0.0)
-            a[i] = 1.0
-        }
-    }
-
     private fun globe(t: Double) {
         val spin = 0.5
         val c = size / 2
@@ -336,6 +203,3 @@ internal class OrbEngine(private val state: ThinkingOrbState, val size: Double) 
         }
     }
 }
-
-/** Truncating remainder (sign follows the dividend). */
-private fun truncatedRem(a: Double, b: Double): Double = a - b * truncate(a / b)

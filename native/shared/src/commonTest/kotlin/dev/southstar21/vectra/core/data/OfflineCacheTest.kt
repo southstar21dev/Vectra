@@ -36,35 +36,6 @@ class OfflineCacheTest {
         assertNull(cache.read("u1"))
     }
 
-    @Test fun onlineFetchesAndWritesThrough() = runTest {
-        cache.write("u1", listOf(1))
-        assertEquals(listOf(2), offlineFirst(true, cache, "u1") { listOf(2) })
-        assertEquals(listOf(2), cache.read("u1"))
-    }
-
-    @Test fun aFailedFetchFallsBackToTheCache() = runTest {
-        cache.write("u1", listOf(1))
-        assertEquals(listOf(1), offlineFirst(true, cache, "u1") { error("down") })
-    }
-
-    @Test fun aFailedFetchWithNoCacheSurfaces() = runTest {
-        assertEquals("down", assertFailsWith<IllegalStateException> { offlineFirst(true, cache, "u1") { error("down") } }.message)
-    }
-
-    @Test fun offlineReadsTheCacheWithoutFetching() = runTest {
-        cache.write("u1", listOf(1))
-        assertEquals(listOf(1), offlineFirst(false, cache, "u1") { error("must not fetch") })
-    }
-
-    @Test fun offlineWithNoCacheStillTries() = runTest {
-        assertEquals(listOf(9), offlineFirst(false, cache, "u1") { listOf(9) })
-    }
-
-    @Test fun cancellationIsNotAFailedFetch() = runTest {
-        cache.write("u1", listOf(1))
-        assertFailsWith<CancellationException> { offlineFirst(true, cache, "u1") { throw CancellationException("stop") } }
-    }
-
     @Test fun everyCacheBaseIsWipedOnSignOut() = runTest {
         for (base in LargeValueKeyPrefixes) assertTrue(UserScopedKeyPrefixes.any(base::startsWith), "$base survives sign-out")
     }

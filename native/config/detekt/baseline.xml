@@ -28,7 +28,6 @@
     <ID>ComposableParamOrder:SheetForm.kt:@Composable fun FormGroup</ID>
     <ID>ComposableParamOrder:TrackerChrome.kt:@Composable internal fun DraftField</ID>
     <ID>ComposableParamOrder:TrackerParts.kt:@Composable internal fun ClippedFormGroup</ID>
-    <ID>ComposableParamOrder:TransitCard.kt:@Composable private fun MonitorGridRow</ID>
     <ID>ComposableParamOrder:TransitCommon.kt:@Composable fun BoxScope.LoadingOverlay</ID>
     <ID>CompositionLocalAllowlist:Haptics.kt:val LocalVectraHaptics = staticCompositionLocalOf { VectraHaptics(null) }</ID>
     <ID>CompositionLocalAllowlist:Misc.kt:/** True once the boot splash has cleared; reveals wait for it. */ val LocalAppPresented = staticCompositionLocalOf { true }</ID>
@@ -92,7 +91,6 @@
     <ID>CyclomaticComplexMethod:NeptunImportScreen.kt:@Composable internal fun NeptunImportScreen</ID>
     <ID>CyclomaticComplexMethod:NeptunSettings.kt:@Composable fun NeptunSettings</ID>
     <ID>CyclomaticComplexMethod:Pickers.kt:@Composable fun DatePickerSheet</ID>
-    <ID>CyclomaticComplexMethod:PinnedRows.kt:fun buildPinnedRows: List&lt;PinnedRow&gt;</ID>
     <ID>CyclomaticComplexMethod:PointsCalc.kt:fun calculatePointsSummary: PointsSummary</ID>
     <ID>CyclomaticComplexMethod:PointsTab.kt:@Composable internal fun PointsTab</ID>
     <ID>CyclomaticComplexMethod:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
@@ -116,11 +114,9 @@
     <ID>CyclomaticComplexMethod:SplashScene.kt:SplashScene$private fun drawSkyline</ID>
     <ID>CyclomaticComplexMethod:StopsProgressVisualizer.kt:@Composable fun StopsProgressVisualizer</ID>
     <ID>CyclomaticComplexMethod:Tabs.kt:@Composable fun &lt;T&gt; VTabs</ID>
-    <ID>CyclomaticComplexMethod:ThinkingOrb.kt:OrbEngine$private fun rubik</ID>
     <ID>CyclomaticComplexMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
     <ID>CyclomaticComplexMethod:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
     <ID>CyclomaticComplexMethod:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
-    <ID>CyclomaticComplexMethod:TransitCard.kt:@Composable fun TransitCard</ID>
     <ID>CyclomaticComplexMethod:TransitCommon.kt:@Composable fun RouteBadge</ID>
     <ID>CyclomaticComplexMethod:TransitMap.kt:@Composable fun TransitMap</ID>
     <ID>CyclomaticComplexMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
@@ -194,7 +190,6 @@
     <ID>LongMethod:StopsProgressVisualizer.kt:@Composable fun StopsProgressVisualizer</ID>
     <ID>LongMethod:Tabs.kt:@Composable fun &lt;T&gt; VTabs</ID>
     <ID>LongMethod:Toaster.kt:@Composable private fun ToastBanner</ID>
-    <ID>LongMethod:TransitCard.kt:@Composable fun TransitCard</ID>
     <ID>LongMethod:TransitMap.kt:@Composable fun TransitMap</ID>
     <ID>LongMethod:TransitScreen.kt:@Composable fun TransitScreen</ID>
     <ID>LongMethod:VectraApp.kt:@Composable fun VectraApp</ID>
@@ -215,7 +210,6 @@
     <ID>LoopWithTooManyJumpStatements:RouteVariants.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:ScheduleConflicts.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:ScheduleItemsSync.kt:ScheduleItemsSync$for</ID>
-    <ID>LoopWithTooManyJumpStatements:ThinkingOrb.kt:OrbEngine$for</ID>
     <ID>LoopWithTooManyJumpStatements:TransitUtils.kt:for</ID>
     <ID>MayBeConstant:WeatherCard.kt:private val Tnum = "tnum"</ID>
     <ID>ModifierComposed:Modifiers.kt:fun Modifier.pressScale: Modifier</ID>

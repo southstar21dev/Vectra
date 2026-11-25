@@ -391,34 +391,12 @@ class TransitUtilsTest {
         assertEquals(5, MaxFavoriteTrackers)
     }
 
-    @Test fun countdown() {
-        assertEquals("NOW", formatCountdown(0))
-        assertEquals("NOW", formatCountdown(-3))
-        assertEquals("3 MIN", formatCountdown(3))
-        assertEquals("59 MIN", formatCountdown(59))
-        assertEquals("60 MIN", formatCountdown(60))
-        assertEquals("65 MIN", formatCountdown(65))
-        assertEquals("120 MIN", formatCountdown(120))
-    }
-
     @Test fun primeCountdown() {
         assertEquals("NOW", formatPrimeCountdown(0))
         assertEquals("NOW", formatPrimeCountdown(-4))
         assertEquals("2'", formatPrimeCountdown(2))
         assertEquals("73'", formatPrimeCountdown(73))
         assertEquals("120'", formatPrimeCountdown(120))
-    }
-
-    @Test fun compactCountdown() {
-        assertEquals("NOW", formatCompactCountdown(0))
-        assertEquals("NOW", formatCompactCountdown(-2))
-        assertEquals("2'", formatCompactCountdown(2))
-        assertEquals("59'", formatCompactCountdown(59))
-        assertEquals("60'", formatCompactCountdown(60))
-        assertEquals("78'", formatCompactCountdown(78))
-        assertEquals("99'", formatCompactCountdown(CompactCountdownMaxMinutes))
-        assertNull(formatCompactCountdown(100))
-        assertNull(formatCompactCountdown(180))
     }
 
     @Test fun staleAfterBudget() {

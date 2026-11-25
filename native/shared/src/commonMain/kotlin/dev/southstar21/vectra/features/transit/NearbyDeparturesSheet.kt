@@ -643,46 +643,6 @@ private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, o
     }
 }
 
-/** Card layout: the large route badge, the direction and stop, then [eta] on the right. */
-@Composable
-internal fun RowScope.NearbyDepartureCardBody(
-    color: String,
-    textColor: String,
-    shortName: String,
-    headsign: String,
-    stopName: String,
-    eta: @Composable () -> Unit,
-) {
-    val c = Vectra.colors
-    Spacer(Modifier.width(12.dp))
-    // At least the badge's square, but wide names (28/28A, 240E) widen it instead of clipping.
-    Box(Modifier.widthIn(min = 48.dp).height(48.dp), contentAlignment = Alignment.Center) {
-        RouteBadge(shortName, color, textColor, size = RouteBadgeSize.Lg)
-    }
-    Spacer(Modifier.width(12.dp))
-    Column(Modifier.weight(1f).padding(vertical = 2.dp), verticalArrangement = Arrangement.Center) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
-                VIcon(RemixIcons.ArrowRightLine, size = 12.dp, tint = c.textSecondary)
-            }
-            VText(headsign.ifEmpty { "Any direction" }, style = vtext(11.sp to 16.5.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
-        }
-        Row(
-            Modifier.padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(6.dp).background(c.textSecondary.copy(alpha = 0.6f), CircleShape))
-            }
-            VText(stopName, style = vtext(TypeScale.Micro, Weight.Medium), color = c.textMuted, maxLines = 1)
-        }
-    }
-    Spacer(Modifier.width(12.dp))
-    eta()
-    Spacer(Modifier.width(12.dp))
-}
-
 /** A later departure under the first: the same mark and time, a size down and quieter. */
 @Composable
 private fun LaterEta(d: RadarDepartureItem) {

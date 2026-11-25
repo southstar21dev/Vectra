@@ -49,14 +49,6 @@ fun WidgetSnapshot?.nextUp(nowMs: Long, today: String): NextUp {
     }
 }
 
-/** The session [nextUp] leads with, if it leads with one from today. */
-val NextUp.todaySession: WidgetSession?
-    get() = when (this) {
-        is NextUp.InClass -> session
-        is NextUp.Upcoming -> session
-        else -> null
-    }
-
 /** The session to feature: today's, or else the next one on a later day (an exam close by first). */
 val NextUp.featured: WidgetSession?
     get() = when (this) {

@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.features.transit.OrbEngine
-import dev.southstar21.vectra.features.transit.ThinkingOrbState
 import dev.southstar21.vectra.features.transit.drawOrb
 import dev.southstar21.vectra.features.transit.grey
 import kotlin.math.PI
@@ -67,7 +66,7 @@ internal enum class SweepPhase { Loading, Sweeping, HandingOver, Done }
 /** The sweep's phase and frame clock. Frames are read in draw only, so they never recompose. */
 @Stable
 internal class RadarSweep(reduced: Boolean) {
-    val engine = OrbEngine(ThinkingOrbState.Searching, OrbDp.value.toDouble())
+    val engine = OrbEngine(OrbDp.value.toDouble())
     private val share = FloatArray(engine.count)
     private val delay = FloatArray(engine.count)
     private val reducedMotion = reduced
