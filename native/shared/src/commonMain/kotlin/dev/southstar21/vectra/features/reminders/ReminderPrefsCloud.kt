@@ -28,24 +28,24 @@ internal class ReminderPrefsCloud(private val crypto: CryptoClient) {
             ReminderPrefs.serializer(),
             prefs.copy(toUni = emptyList(), backHome = emptyList()),
         ) as JsonObject
-        if (prefs.toUni.isEmpty() && prefs.backHome.isEmpty()) return plain
+        val hasLegs = prefs.toUni.isNotEmpty() || prefs.backHome.isNotEmpty()
         val blob = VectraJson.encodeToString(CommuteBlob.serializer(), CommuteBlob(prefs.toUni, prefs.backHome))
-        val cipher = runCatching { crypto.encrypt(blob) }.getOrNull() ?: return plain
-        return JsonObject(plain + (CommuteKey to JsonPrimitive(cipher)))
+        val cipher = if (hasLegs) runCatching { crypto.encrypt(blob) }.getOrNull() else null
+        return if (cipher == null) plain else JsonObject(plain + (CommuteKey to JsonPrimitive(cipher)))
     }
 
     /** The settings a profile value holds, or null when it is not readable. Legacy plain legs are still read. */
     suspend fun decode(element: JsonElement): ReminderPrefs? {
-        val obj = element as? JsonObject ?: return null
-        val base = runCatching {
-            VectraJson.decodeFromJsonElement(ReminderPrefs.serializer(), JsonObject(obj - CommuteKey))
-        }.getOrNull() ?: return null
-        val cipher = (obj[CommuteKey] as? JsonPrimitive)?.contentOrNull ?: return base
-        val blob = runCatching { crypto.decrypt(cipher) }.getOrNull()
-            ?.let { runCatching { VectraJson.decodeFromString(CommuteBlob.serializer(), it) }.getOrNull() }
-            ?: return base
-        return base.copy(toUni = blob.toUni, backHome = blob.backHome)
+        val obj = element as? JsonObject
+        val base = obj?.let {
+            runCatching { VectraJson.decodeFromJsonElement(ReminderPrefs.serializer(), JsonObject(it - CommuteKey)) }.getOrNull()
+        }
+        val blob = (obj?.get(CommuteKey) as? JsonPrimitive)?.contentOrNull?.let { readBlob(it) }
+        return if (blob == null) base else base?.copy(toUni = blob.toUni, backHome = blob.backHome)
     }
+
+    private suspend fun readBlob(cipher: String): CommuteBlob? = runCatching { crypto.decrypt(cipher) }.getOrNull()
+        ?.let { runCatching { VectraJson.decodeFromString(CommuteBlob.serializer(), it) }.getOrNull() }
 
     /** True when [element] still carries the plain legs an older version wrote. */
     fun hasPlainLegs(element: JsonElement?): Boolean {
