@@ -1,13 +1,11 @@
 package dev.southstar21.vectra.core.data
 
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 

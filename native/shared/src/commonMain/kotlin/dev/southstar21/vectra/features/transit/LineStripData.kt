@@ -1,7 +1,5 @@
 package dev.southstar21.vectra.features.transit
 
-import dev.southstar21.vectra.core.maps.LatLon
-import dev.southstar21.vectra.core.maps.isValidLatLon
 
 /** Stops between the vehicle behind [p] and your stop (fractional); null when it can't be placed. */
 private fun DirectionView.stopsUntil(p: RouteProgress): Double? =

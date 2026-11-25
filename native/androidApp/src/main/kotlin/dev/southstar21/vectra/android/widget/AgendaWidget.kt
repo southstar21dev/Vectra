@@ -34,7 +34,6 @@ import dev.southstar21.vectra.features.widgets.nextDayNote
 import dev.southstar21.vectra.features.widgets.taskNote
 import dev.southstar21.vectra.features.widgets.SpineRow
 import dev.southstar21.vectra.features.widgets.WidgetGeometry
-import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.pickCut
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.agendaCuts

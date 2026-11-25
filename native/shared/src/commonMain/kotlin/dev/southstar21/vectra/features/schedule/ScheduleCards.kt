@@ -1,9 +1,7 @@
 package dev.southstar21.vectra.features.schedule
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 
 /** What a schedule card shows for a session; the course tracker maps its own status onto it. */
 enum class CardAttendance { Present, Absent, Excused, Cancelled, Unmarked }

@@ -22,7 +22,6 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.NextUp
 import dev.southstar21.vectra.features.widgets.WidgetKind
-import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
 import dev.southstar21.vectra.features.widgets.AfterRow

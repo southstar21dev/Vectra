@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.transit
 import dev.southstar21.vectra.core.designsystem.components.ToastAction
 import dev.southstar21.vectra.core.designsystem.components.Toaster
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 /** Deletes [tracker] and offers an Undo toast. Throws if the delete fails. */
 internal suspend fun removeTrackerWithUndo(repo: TransitRepository, toaster: Toaster, tracker: TransitTracker) {

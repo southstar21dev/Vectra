@@ -1,7 +1,6 @@
 package dev.southstar21.vectra.core.data
 
 import dev.southstar21.vectra.core.network.VectraJson
-import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.KSerializer
 
 /**

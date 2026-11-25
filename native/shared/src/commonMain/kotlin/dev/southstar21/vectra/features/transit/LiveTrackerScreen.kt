@@ -1,14 +1,8 @@
 package dev.southstar21.vectra.features.transit
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.data.QueryState
-import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.isValidLatLon
 import dev.southstar21.vectra.core.maps.decodePolyline

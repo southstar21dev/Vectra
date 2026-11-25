@@ -44,11 +44,9 @@ import dev.southstar21.vectra.core.maps.position
 import kotlinx.coroutines.delay
 import org.maplibre.compose.map.MapState
 import kotlin.math.PI
-import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
 
 /* A map's loading cover: the thinking orb, which melts into the map once it is ready. */

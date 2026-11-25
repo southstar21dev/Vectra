@@ -1,8 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.time.formatBudapestHm
-import kotlin.math.ceil
-import kotlin.math.max
 
 /** Directions a tracker monitor renders as columns; extra ones are counted. */
 const val MonitorMaxColumns = 3

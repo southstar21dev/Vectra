@@ -1,7 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.maps.LatLon
-import kotlin.math.ceil
 
 /**
  * One direction of the tracked route — stops, geometry, vehicles and progress.

@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import dev.southstar21.vectra.core.designsystem.theme.backOut
 import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * A route map's entrance as its loading orb melts away ([MapLoadingOrb] drives [progress]; the

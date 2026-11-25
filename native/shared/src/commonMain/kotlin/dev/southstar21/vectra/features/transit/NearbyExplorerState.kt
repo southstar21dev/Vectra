@@ -21,8 +21,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.math.ceil
-import kotlin.math.max
 
 /** Departures are not fetched below this zoom (the map is too wide to matter). */
 const val ExplorerMinArrivalsZoom = 12.0

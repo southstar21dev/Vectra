@@ -15,7 +15,6 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.backOut
 import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlinx.coroutines.delay
-import kotlin.math.pow
 
 /*
  * A tracker card's entrance (TC5 "skeleton to live"): while its first arrivals load, the strip is a

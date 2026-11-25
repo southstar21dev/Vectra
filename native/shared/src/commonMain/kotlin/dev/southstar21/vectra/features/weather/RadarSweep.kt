@@ -30,10 +30,8 @@ import dev.southstar21.vectra.core.designsystem.theme.sineHash
 import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
-import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
