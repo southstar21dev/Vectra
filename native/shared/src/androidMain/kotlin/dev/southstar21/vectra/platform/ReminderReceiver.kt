@@ -48,7 +48,7 @@ class ReminderReceiver : BroadcastReceiver() {
             ACTION_FIRE -> fire(intent, scheduler, notifier)
             ACTION_DISMISS -> intent.data?.lastPathSegment?.let(Uri::decode)?.let {
                 notifier.cancelAlarm(it)
-                notifier.cancelRefresh(it)
+                notifier.cancelAlarm(it, refresh = true)
             }
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED",

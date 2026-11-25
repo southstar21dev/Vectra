@@ -72,14 +72,14 @@ class AndroidNotifier(private val context: Context, private val smallIcon: Int, 
         val previous = store.getStringSet(KEY_IDS, emptySet()).orEmpty()
         previous.forEach(::cancelAlarm)
         // A refresh of a shown reminder survives a replan; only signing out (an empty plan) drops them.
-        if (notifications.isEmpty()) previous.forEach(::cancelRefresh)
+        if (notifications.isEmpty()) previous.forEach { cancelAlarm(it, refresh = true) }
         notifications.forEach(::setAlarm)
         store.edit().putStringSet(KEY_IDS, notifications.map { it.id }.toSet()).apply()
     }
 
     /** [refresh] > 0 re-posts an already shown commute reminder with fresh departures, quietly. */
     internal fun setAlarm(n: ScheduledNotification, refresh: Int = 0, atMs: Long = n.atMs) {
-        val intent = (if (refresh > 0) refreshIntent(n.id) else alarmIntent(n.id))
+        val intent = alarmIntent(n.id, refresh > 0)
             .putExtra(EXTRA_PAYLOAD, VectraJson.encodeToString(ScheduledNotification.serializer(), n))
             .putExtra(ReminderReceiver.EXTRA_REFRESH, refresh)
         val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -91,26 +91,20 @@ class AndroidNotifier(private val context: Context, private val smallIcon: Int, 
         }
     }
 
-    internal fun cancelAlarm(id: String) = cancel(alarmIntent(id))
-
-    /** The per-minute refresh of a shown reminder, which has its own identity so a replan can't cancel it. */
-    internal fun cancelRefresh(id: String) = cancel(refreshIntent(id))
-
-    private fun cancel(intent: Intent) {
-        PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let {
+    internal fun cancelAlarm(id: String, refresh: Boolean = false) {
+        PendingIntent.getBroadcast(context, 0, alarmIntent(id, refresh), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let {
             alarms.cancel(it)
             it.cancel()
         }
     }
 
-    private fun refreshIntent(id: String) = Intent(context, ReminderReceiver::class.java)
+    /**
+     * One intent per id: the data URI makes them distinct PendingIntents. The per-minute [refresh] of a
+     * shown reminder has its own identity, so a replan that cancels the reminder's alarm keeps it.
+     */
+    private fun alarmIntent(id: String, refresh: Boolean = false) = Intent(context, ReminderReceiver::class.java)
         .setAction(ReminderReceiver.ACTION_FIRE)
-        .setData(Uri.parse("vectra-reminder://refresh/${Uri.encode(id)}"))
-
-    /** One intent per id: the data URI makes them distinct PendingIntents. */
-    private fun alarmIntent(id: String) = Intent(context, ReminderReceiver::class.java)
-        .setAction(ReminderReceiver.ACTION_FIRE)
-        .setData(Uri.parse("vectra-reminder://fire/${Uri.encode(id)}"))
+        .setData(Uri.parse("vectra-reminder://${if (refresh) "refresh" else "fire"}/${Uri.encode(id)}"))
 
     /**
      * Posts a fired reminder. Each channel keeps one notification that the next replaces, so the

@@ -90,7 +90,7 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
                 if (exam != null) {
                     TypeWord(WidgetKind.Exam)
                     Spacer(GlanceModifier.width(6.dp))
-                    Quiet(examText, maxLines = 2, modifier = GlanceModifier.defaultWeight())
+                    Box(GlanceModifier.defaultWeight()) { Quiet(examText, maxLines = 2) }
                     Mono(clockLabel(exam.startMs), 11f, p.secondary)
                 } else {
                     Spacer(GlanceModifier.defaultWeight())

@@ -46,9 +46,9 @@ internal fun Name(text: String, size: Float = 15f, maxLines: Int = 3, dim: Boole
 }
 
 @Composable
-internal fun Quiet(text: String, size: Float = 11f, color: ColorProvider? = null, maxLines: Int = 1, modifier: GlanceModifier = GlanceModifier) {
+internal fun Quiet(text: String, size: Float = 11f, color: ColorProvider? = null, maxLines: Int = 1) {
     val p = LocalWPalette.current
-    Text(text, modifier, style = style(size.sp, FontWeight.Medium, color ?: p.secondary), maxLines = maxLines)
+    Text(text, style = style(size.sp, FontWeight.Medium, color ?: p.secondary), maxLines = maxLines)
 }
 
 /** A time. In the system sans, whose digits are already all one width (its monospace spaces out the colon). */
