@@ -148,8 +148,8 @@ internal class NeptunSyncService(
                 val text = withTimeout(ICS_FETCH_TIMEOUT_MS) {
                     val res = http.get(NEPTUN_ICS_PROXY_URL) {
                         parameter("url", clean)
-                        // A sync must see the live feed, never the HTTP cache's copy.
-                        header(HttpHeaders.CacheControl, "no-cache")
+                        // A sync must see the live feed, never the HTTP cache copy, and its URL carries the Neptun link: store nothing.
+                        header(HttpHeaders.CacheControl, "no-cache, no-store")
                     }
                     if (res.status.isSuccess()) res.bodyAsText() else null
                 }

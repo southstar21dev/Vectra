@@ -10,8 +10,10 @@ import dev.southstar21.vectra.core.util.formatCompactNumber
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -131,6 +133,7 @@ class WeatherRepository(
                 parameter("latitude", formatCompactNumber(coords.latitude))
                 parameter("longitude", formatCompactNumber(coords.longitude))
                 parameter("localityLanguage", "en")
+                header(HttpHeaders.CacheControl, "no-store")
             }
         }
         if (!res.status.isSuccess()) null else parseGeoCity(VectraJson.parseToJsonElement(res.bodyAsText()))
@@ -141,7 +144,7 @@ class WeatherRepository(
     }
 
     private fun applyPosition(fix: GeoFix) {
-        // Rounded to ~11 m so reloads reuse the same snapshot.
+        // Rounded to ~1 km: all the forecast and city name need, and all that goes to third parties.
         val coords = roundCoords(WeatherCoords(fix.lat, fix.lon))
         _location.update { it?.let { prev -> applyPositionState(prev, coords) } }
         scope.launch {

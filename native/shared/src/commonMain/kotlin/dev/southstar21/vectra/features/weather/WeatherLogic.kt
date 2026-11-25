@@ -64,13 +64,20 @@ data class WeatherSnapshot(
     val fetchedAt: Long,
 )
 
-/** Coordinates rounded to ~11 m: precise enough for a forecast, stable across reloads. */
-fun roundCoords(coords: WeatherCoords, precision: Int = 4): WeatherCoords {
+/** Decimals kept in the coordinates sent to third parties. */
+const val NetworkCoordPrecision = 2
+
+/**
+ * Coordinates rounded to 2 decimals (~1.1 km): precise enough for a forecast and a city name,
+ * stable across reloads, and all that leaves the device (the privacy policy promises an
+ * approximate location to Open-Meteo and BigDataCloud).
+ */
+fun roundCoords(coords: WeatherCoords, precision: Int = NetworkCoordPrecision): WeatherCoords {
     val factor = 10.0.pow(precision)
     return WeatherCoords(roundHalfUp(coords.latitude * factor) / factor, roundHalfUp(coords.longitude * factor) / factor)
 }
 
-fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = 4): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
+fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = NetworkCoordPrecision): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
 
 private fun JsonObject.finite(key: String): Double? =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull?.takeIf { it.isFinite() }

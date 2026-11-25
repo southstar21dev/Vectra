@@ -3,6 +3,7 @@ package dev.southstar21.vectra.features.transit
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.time.nowMs
+import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import dev.southstar21.vectra.core.util.parseLeadingNumber
 import kotlin.math.min
 
@@ -419,7 +420,7 @@ fun parseAlerts(
             id = a.id,
             header = pickText(a.header).ifEmpty { "Service alert ${a.id}" },
             description = stripHtml(pickText(a.description)),
-            url = pickText(a.url).ifEmpty { null },
+            url = pickText(a.url).takeIf(::isTrustedAlertUrl),
             effectType = a.effectType ?: a.routes?.firstOrNull()?.effectType,
             routeIds = a.routeIds ?: a.routes?.mapNotNull { it.routeId?.takeIf(String::isNotEmpty) },
             stopIds = a.stopIds,

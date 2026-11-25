@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import dev.southstar21.vectra.core.network.CryptoClient
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -45,8 +46,9 @@ class ReminderScheduler(
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
     private val updateGate: UpdateGate,
+    crypto: CryptoClient,
 ) : SessionListener {
-    private val store = ReminderPrefsStore(kv, auth, scope)
+    private val store = ReminderPrefsStore(kv, auth, scope, crypto)
     val prefs: StateFlow<ReminderPrefs> = store.prefs
 
     private val loaded = CompletableDeferred<Unit>()

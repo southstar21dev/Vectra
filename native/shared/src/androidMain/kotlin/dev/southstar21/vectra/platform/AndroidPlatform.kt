@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.BlobStore
 import dev.southstar21.vectra.core.network.createHttpClient
+import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.SecretCipher
 import dev.southstar21.vectra.features.transit.CatalogDiskCache
 import io.ktor.client.HttpClient
@@ -50,13 +51,22 @@ fun createCatalogCache(context: Context): CatalogDiskCache = CatalogDiskCache(
 
 private const val HttpCacheBytes = 50L * 1024 * 1024
 
+/** The client's disk cache, kept apart so a sign-out can empty it. */
+class AndroidHttpCache(context: Context) : HttpCache {
+    internal val cache = Cache(File(context.cacheDir, "http"), HttpCacheBytes)
+
+    override fun clear() {
+        runCatching { cache.evictAll() }
+    }
+}
+
 /** OkHttp queues beyond 5 requests per host by default, which map tiles and the cold-start burst exceed. */
-fun createAndroidHttpClient(context: Context): HttpClient = createHttpClient(
+fun createAndroidHttpClient(httpCache: AndroidHttpCache): HttpClient = createHttpClient(
     HttpClient(OkHttp) {
         engine {
             config {
                 dispatcher(Dispatcher().apply { maxRequestsPerHost = 16 })
-                cache(Cache(File(context.cacheDir, "http"), HttpCacheBytes))
+                cache(httpCache.cache)
                 // Above the 40 s Futár and 30 s ICS proxy budgets, which enforce their own limits.
                 readTimeout(60, TimeUnit.SECONDS)
             }

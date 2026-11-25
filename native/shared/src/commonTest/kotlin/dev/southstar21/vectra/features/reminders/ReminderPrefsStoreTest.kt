@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.AuthStore
+import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.network.createHttpClient
@@ -38,8 +39,9 @@ class ReminderPrefsStoreTest {
         val kv = KeyValueStore(ds)
         val authStore = AuthStore(KeyValueStore(FakeDataStore()), PlainSecretCipher)
         val engine = MockEngine { throw IOException("offline") }
-        val auth = AuthRepository(PocketBaseClient(createHttpClient(HttpClient(engine)), "https://pb.test", authStore), authStore, kv, backgroundScope, lazyOf(emptyList()))
-        val prefs = ReminderPrefsStore(kv, auth, backgroundScope)
+        val pb = PocketBaseClient(createHttpClient(HttpClient(engine)), "https://pb.test", authStore)
+        val auth = AuthRepository(pb, authStore, kv, backgroundScope, lazyOf(emptyList()))
+        val prefs = ReminderPrefsStore(kv, auth, backgroundScope, CryptoClient(pb, backgroundScope))
 
         prefs.update { it.copy(beforeClass = true) }
         prefs.update { it.copy(beforeClass = false) }

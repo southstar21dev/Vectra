@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.util.isTrustedRadarHost
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.time.Budapest
 import dev.southstar21.vectra.core.time.pad2
@@ -52,7 +53,8 @@ fun parseRainViewerResponse(json: JsonElement, nowSeconds: Long = Clock.System.n
     else root["generated"].looseNumber() ?: throw RadarShapeException("Invalid generated")
     val host = when (val h = root["host"]) {
         null -> RainViewerDefaultHost
-        is JsonPrimitive -> if (h.isString) h.content else throw RadarShapeException("Invalid host")
+        // Tiles are fetched from this host, so only RainViewer's own is accepted.
+        is JsonPrimitive -> if (h.isString) h.content.takeIf(::isTrustedRadarHost) ?: RainViewerDefaultHost else throw RadarShapeException("Invalid host")
         else -> throw RadarShapeException("Invalid host")
     }
     val radar = root["radar"]

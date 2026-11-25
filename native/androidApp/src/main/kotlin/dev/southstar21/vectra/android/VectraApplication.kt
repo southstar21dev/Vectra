@@ -13,6 +13,7 @@ import dev.southstar21.vectra.platform.AndroidLocationProvider
 import dev.southstar21.vectra.platform.AndroidPasskeyAuthenticator
 import dev.southstar21.vectra.platform.KeystoreSecretCipher
 import dev.southstar21.vectra.platform.ReminderRuntime
+import dev.southstar21.vectra.platform.AndroidHttpCache
 import dev.southstar21.vectra.platform.createAndroidHttpClient
 import dev.southstar21.vectra.platform.createBlobStore
 import dev.southstar21.vectra.platform.createCatalogCache
@@ -41,6 +42,7 @@ class VectraApplication : Application() {
     }
 
     val graph: AppGraph by lazy {
+        val httpCache = AndroidHttpCache(this)
         createGraphFactory<AppGraph.Factory>().create(
             config = VectraConfig(
                 pocketbaseUrl = BuildConfig.POCKETBASE_URL,
@@ -51,7 +53,8 @@ class VectraApplication : Application() {
             dataStore = createDataStore(this),
             blobs = createBlobStore(this),
             catalogCache = createCatalogCache(this),
-            http = createAndroidHttpClient(this),
+            http = createAndroidHttpClient(httpCache),
+            httpCache = httpCache,
             cipher = KeystoreSecretCipher(),
             connectivity = AndroidConnectivity(this),
             location = AndroidLocationProvider(this),
