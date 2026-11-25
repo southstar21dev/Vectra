@@ -132,6 +132,13 @@ const val CachedFixAgeMs = 2 * 60_000L
 fun fixTimeMs(fixTimeMs: Long, now: Long): Long =
     if (fixTimeMs > 0 && now - fixTimeMs > CachedFixAgeMs) fixTimeMs else now
 
+/**
+ * Whether a fix counts as taken now (see [fixTimeMs]). Only such fixes show the watch is
+ * producing positions: an old last-known fix must not reset the restart back-off, or the watchdog
+ * would restart the watch every tick while the provider keeps returning the same stale fix.
+ */
+internal fun isFreshFix(providerTimeMs: Long, now: Long): Boolean = fixTimeMs(providerTimeMs, now) == now
+
 /** True when the last fix is old enough that the watcher must be restarted. */
 fun isLocationStale(state: WatchLocationState, now: Long = nowMs(), maxAgeMs: Long = DeviceLocationStaleMs): Boolean {
     if (state.status != WatchLocationStatus.Tracking) return false
@@ -261,13 +268,15 @@ class DeviceLocation(
     }
 
     private fun applyFix(fix: GeoFix) {
+        val now = nowMs()
         val next = applyPositionSuccess(
             _state.value,
             PositionFix(fix.lat, fix.lon, fix.accuracy, fix.heading, fix.speed),
-            fixTimeMs(fix.timeMs, nowMs()),
+            fixTimeMs(fix.timeMs, now),
         )
         _state.value = next
-        failedRestartCount = 0
+        // A cached fix from the provider says nothing about the watch being healthy.
+        if (isFreshFix(fix.timeMs, now)) failedRestartCount = 0
         persistThrottled(next)
     }
 

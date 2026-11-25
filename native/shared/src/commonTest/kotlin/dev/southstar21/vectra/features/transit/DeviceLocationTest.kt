@@ -129,4 +129,11 @@ class DeviceLocationTest {
         assertEquals(now, fixTimeMs(0L, now))
         assertTrue(isLocationStale(applyPositionSuccess(InitialWatchLocationState, PositionFix(47.5, 19.0, 10.0), fixTimeMs(old, now)), now))
     }
+
+    @Test fun onlyAFreshFixResetsTheRestartBackoff() {
+        val now = 1_800_000_000_000L
+        assertTrue(isFreshFix(now - 5_000L, now))
+        assertTrue(isFreshFix(0L, now))
+        assertFalse(isFreshFix(now - 20 * 60_000L, now))
+    }
 }
