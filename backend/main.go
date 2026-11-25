@@ -7,6 +7,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/plugins/migratecmd"
 
+	"vectra/pb/internal/authguard"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/push"
@@ -40,6 +41,8 @@ func main() {
 	passkeys.RegisterRevokeOnCredentialChange(app)
 	// Count wrong oldPassword guesses on PATCH users/{id} against the re-auth budget.
 	reauth.RegisterPasswordChangeGuard(app)
+	// Per-identity and /64-keyed limits, and the unused email flows switched off.
+	authguard.Register(app)
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
 

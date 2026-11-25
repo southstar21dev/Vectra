@@ -11,7 +11,8 @@ import (
 // the header is trusted is now decided at runtime by the TRUSTED_PROXY
 // environment variable (internal/proxytrust), which overrides whatever this
 // migration stored on databases that already applied it. Production and dev
-// on Coolify must set TRUSTED_PROXY=1 (see backend/README.md).
+// on Coolify sit behind Cloudflare and must set TRUSTED_PROXY=cloudflare, not 1,
+// which would key every limit on Cloudflare edge addresses (see backend/README.md).
 //
 // The down step still removes the header this migration used to store.
 func init() {
