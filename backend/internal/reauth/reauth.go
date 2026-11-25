@@ -37,7 +37,8 @@ func Check(e *core.RequestEvent, currentPassword string) error {
 		return e.UnauthorizedError("Authentication required", nil)
 	}
 	now := time.Now()
-	if !IPLimiter.Allow(ratelimit.ClientIP(e), now) || !UserLimiter.Allow(e.Auth.Id, now) {
+	ip := ratelimit.ClientIP(e)
+	if Blocked(e.Auth.Id, ip, now) {
 		return e.TooManyRequestsError("Too many attempts. Please wait a while and try again.", nil)
 	}
 	user, err := e.App.FindRecordById(e.Auth.Collection(), e.Auth.Id)
@@ -45,7 +46,53 @@ func Check(e *core.RequestEvent, currentPassword string) error {
 		return e.UnauthorizedError("Authentication required", err)
 	}
 	if currentPassword == "" || !user.ValidatePassword(currentPassword) {
+		Fail(e.Auth.Id, ip, now)
 		return e.BadRequestError("Current password is incorrect", nil)
 	}
 	return nil
+}
+
+// Blocked reports whether the caller's user or IP bucket is spent. Only
+// failed password checks count against the buckets (see Fail), so successful
+// checks, such as passkey enrolment retries, never lock a user out.
+func Blocked(userID, ip string, now time.Time) bool {
+	return IPLimiter.Exhausted(ip, now) || UserLimiter.Exhausted(userID, now)
+}
+
+// Fail records one failed password check against the user and IP buckets.
+func Fail(userID, ip string, now time.Time) {
+	IPLimiter.Allow(ip, now)
+	UserLimiter.Allow(userID, now)
+}
+
+// RegisterPasswordChangeGuard puts PocketBase's own password change (PATCH
+// users/{id} with oldPassword) under the same budget as Check. That endpoint
+// is otherwise a second password-guessing oracle for a stolen session token.
+// Requests that do not touch password fields are unaffected.
+func RegisterPasswordChangeGuard(app core.App) {
+	app.OnRecordUpdateRequest("users").BindFunc(func(e *core.RecordRequestEvent) error {
+		info, err := e.RequestInfo()
+		if err != nil || !touchesPassword(info.Body) {
+			return e.Next()
+		}
+		now := time.Now()
+		ip := ratelimit.ClientIP(e.RequestEvent)
+		if Blocked(e.Record.Id, ip, now) {
+			return e.TooManyRequestsError("Too many attempts. Please wait a while and try again.", nil)
+		}
+		if err := e.Next(); err != nil {
+			Fail(e.Record.Id, ip, now)
+			return err
+		}
+		return nil
+	})
+}
+
+func touchesPassword(body map[string]any) bool {
+	for _, k := range []string{"password", "passwordConfirm", "oldPassword"} {
+		if _, ok := body[k]; ok {
+			return true
+		}
+	}
+	return false
 }

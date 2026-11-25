@@ -1,12 +1,14 @@
 package account
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
@@ -95,6 +97,34 @@ func TestChangeEmail(t *testing.T) {
 	require.NotEqual(t, oldTokenKey, updated.TokenKey())
 }
 
+// TestChangeEmailTrimsAndClassifiesErrors: surrounding whitespace is stripped
+// before saving, a malformed address is a validation error (400 in the
+// handler), and a missing user is not one (500).
+func TestChangeEmailTrimsAndClassifiesErrors(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "trim@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	require.NoError(t, ChangeEmail(app, u.Id, "password123", "  spaced@test.local \n"))
+	updated, err := app.FindRecordById("users", u.Id)
+	require.NoError(t, err)
+	require.Equal(t, "spaced@test.local", updated.Email())
+
+	err = ChangeEmail(app, u.Id, "password123", "not-an-email")
+	var invalid validation.Errors
+	require.ErrorAs(t, err, &invalid)
+
+	err = ChangeEmail(app, "missing-id", "password123", "x@test.local")
+	require.Error(t, err)
+	require.False(t, errors.As(err, &invalid))
+}
+
 func TestChangeEmailSameAddressKeepsVerified(t *testing.T) {
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
@@ -179,6 +209,26 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 
 // TestReauthBucketIsShared: wrong guesses on one re-auth route spend the same
 // per-user budget as another, so spreading guesses buys nothing.
+// TestReauthSuccessesDoNotSpendBudget: only wrong passwords count, so many
+// successful checks (passkey enrolment retries) never lock the user out.
+func TestReauthSuccessesDoNotSpendBudget(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	useLimiters(t, 2)
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "okchecks@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	for i := 0; i < 6; i++ {
+		_, err = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"password123","newEmail":"okchecks@test.local"}`, EmailHandler)
+		require.NoError(t, err, "successful check %d", i)
+	}
+}
+
 func TestReauthBucketIsShared(t *testing.T) {
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)

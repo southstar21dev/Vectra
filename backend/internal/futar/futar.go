@@ -72,6 +72,23 @@ var upstreamClient = &http.Client{
 // substitute a fresh one.
 var limiter = ratelimit.New(requestsPerWindow, requestWindow)
 
+// upstreamPerMinute is the process-wide ceiling on calls to Futár, whoever
+// asks. The per-IP limiter cannot bound the shared key against many source
+// addresses (an IPv6 /48 is 65,536 buckets), so this budget sits below the
+// key's quota and turns excess load into a 503 instead of a throttled or
+// revoked key for every user.
+const upstreamPerMinute = 1500
+
+// upstreamBudget is a var so tests can substitute a fresh one.
+var upstreamBudget = ratelimit.New(upstreamPerMinute, time.Minute)
+
+// errUpstreamBusy is the message returned when the budget is spent.
+const errUpstreamBusy = "Transit data is busy, try again shortly"
+
+func upstreamAllowed() bool {
+	return upstreamBudget.Allow("upstream", time.Now())
+}
+
 // stopIDPattern bounds stop IDs to the BKK shape (e.g. "BKK_F01234",
 // "BKK_009543") plus the separators other GTFS feeds use, so arbitrary text
 // never reaches the upstream query.
@@ -453,6 +470,9 @@ func doFetchStopArrivals(ctx context.Context, cacheKey, stopID string, minutesBe
 		return cached, ""
 	}
 
+	if !upstreamAllowed() {
+		return nil, errUpstreamBusy
+	}
 	u, err := url.Parse(futarBase + "/arrivals-and-departures-for-stop.json")
 	if err != nil {
 		return nil, "Upstream request failed"
@@ -689,6 +709,10 @@ func Handler(e *core.RequestEvent) error {
 		return e.BadRequestError(err.Error(), nil)
 	}
 
+	if !upstreamAllowed() {
+		e.Response.Header().Set("Retry-After", "10")
+		return e.Error(http.StatusServiceUnavailable, errUpstreamBusy, nil)
+	}
 	u, err := url.Parse(futarBase + "/" + b.Endpoint + ".json")
 	if err != nil {
 		return e.InternalServerError("Invalid upstream URL", err)
