@@ -110,3 +110,18 @@ one JSON snapshot.
 ## Android developer verification
 `androidApp/src/main/assets/adi-registration.properties` is the Android developer verification token for the
 app's package. Do not delete it when cleaning assets; no code references it.
+
+## Upgrading dependencies
+Dependabot raises weekly PRs for the Gradle catalog (`.github/dependabot.yml`); the notes below are what makes
+some of them more than a version bump.
+- **Kotlin, Metro and Compose Multiplatform move together.** Metro is a Kotlin compiler plugin and the Compose
+  compiler ships with Kotlin, so a Kotlin bump waits for a matching Metro and a compatible Compose Multiplatform.
+  Gradle 10 will need KGP 2.5 or later (Gradle's own deprecation message), so plan Kotlin, Metro, Compose
+  Multiplatform and probably detekt as one step ahead of the Gradle 10 wrapper bump.
+- **Pre-1.0 or pre-release pins with breaking minors**: kotlinx-datetime, kotlinx-io, maplibre-compose, detekt
+  (2.0 alpha), compose-rules, and the two single-maintainer libraries under the Liquid Glass navbar (Kyant
+  backdrop and shapes). Bump these one at a time.
+- **`work` is a forced pin.** Glance pulls WorkManager 2.7.1, whose Room database R8 strips in release builds, so
+  the catalog pins a current WorkManager. When Glance is bumped, check whether the pin is still needed and smoke
+  test a widget in a minified release build (add a widget, trigger `WidgetRefreshReceiver`); the release launch
+  check only starts the app and would not notice a widget-only R8 regression.
