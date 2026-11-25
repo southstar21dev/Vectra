@@ -226,6 +226,10 @@ class TransitRepository(
     suspend fun updateTrackerStops(id: String, stops: List<TrackerStop>) {
         requireUserId()
         val primary = stops.firstOrNull() ?: TrackerStop("", "", "")
+        val collection = pb.collection("transit_trackers")
+        // The dedupe key covers the primary stop and headsign, so it moves with them.
+        val routeId = crypto.decrypt(collection.getOne(id).string("route_id")).orEmpty()
+        val dedupe = crypto.digest(routeId, primary.stopId, primary.headsign.orEmpty())
         val body = coroutineScope {
             val encStops = async { crypto.encrypt(stopsJson(stops)) }
             val stopId = async { crypto.encrypt(primary.stopId) }
@@ -236,9 +240,10 @@ class TransitRepository(
                 put("stop_id", stopId.await().orEmpty())
                 put("stop_name", stopName.await().orEmpty())
                 put("headsign", headsign.await().orEmpty())
+                put("dedupe_key", dedupe)
             }
         }
-        pb.collection("transit_trackers").update(id, body)
+        collection.update(id, body)
         trackersQuery.invalidate(Unit)
     }
 
