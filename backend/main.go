@@ -25,6 +25,8 @@ func main() {
 	proxytrust.Register(app)
 
 	schema.RegisterTimestamps(app)
+	// Per-user row caps so a free account cannot fill the disk.
+	schema.RegisterRowQuotas(app)
 	// Reject push subscriptions whose endpoint is not a known push service, so
 	// the send path can never be aimed at an arbitrary host.
 	push.RegisterSubscriptionValidation(app)
