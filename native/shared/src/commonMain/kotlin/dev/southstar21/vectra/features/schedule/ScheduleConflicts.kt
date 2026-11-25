@@ -142,7 +142,7 @@ private const val FixedParityAnchor = "2024-01-01"
 
 private val SemesterTag = Regex("""^(\d{4})/\d{2}/([12])$""")
 
-private fun mondayOf(date: String): String? {
+internal fun mondayOf(date: String): String? {
     val ordinal = ordinalForDate(date) ?: return null
     return formatDateOrdinal(ordinal - (LocalDate.fromEpochDays(ordinal).dayOfWeek.daysSinceSunday + 6) % 7)
 }
@@ -168,6 +168,14 @@ private fun semesterWeekOneStart(event: ScheduleEvent, dateStr: String, index: S
     }
     return index.officialWeekOne(semester) ?: nominalSemesterStart(semester) ?: FixedParityAnchor
 }
+
+/**
+ * Monday of week one of [semester] as the timetable counts odd/even weeks: the official start of
+ * that semester's dated events, else the nominal start. Null when neither is known.
+ */
+internal fun semesterWeekOneMonday(semester: String, events: List<ScheduleEvent>): String? =
+    ScheduleCourses.officialSemesterStart(events.filter { it.semester == semester })?.let(::mondayOf)
+        ?: nominalSemesterStart(semester)
 
 /** Whether a weekly class meets on a candidate Budapest-local date. */
 fun classOccursOnDate(
