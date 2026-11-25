@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"ganigeorgiev.com/pocketbase/dbx"
+	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
 	"vectra/pb/internal/reauth"
@@ -86,7 +87,8 @@ func ChangeEmail(app core.App, userID, currentPassword, newEmail string) error {
 	if !user.ValidatePassword(currentPassword) {
 		return errInvalidPassword
 	}
-	if strings.EqualFold(strings.TrimSpace(newEmail), user.Email()) {
+	newEmail = strings.TrimSpace(newEmail)
+	if strings.EqualFold(newEmail, user.Email()) {
 		return nil
 	}
 	user.SetEmail(newEmail)
@@ -114,8 +116,13 @@ func EmailHandler(e *core.RequestEvent) error {
 	if errors.Is(err, errInvalidPassword) {
 		return e.BadRequestError("Current password is incorrect", nil)
 	}
-	if err != nil {
+	var invalid validation.Errors
+	if errors.As(err, &invalid) {
 		return e.BadRequestError("Could not update email", err)
+	}
+	if err != nil {
+		// Not a rejected input (for example SQLITE_BUSY): let the client retry.
+		return e.InternalServerError("Could not update email", err)
 	}
 	return e.JSON(200, map[string]any{"ok": true})
 }
