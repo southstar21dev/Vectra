@@ -280,7 +280,7 @@ class AuthRepositoryTest {
     }
 
     @Test fun aWrongCurrentPasswordChangesNothing() = runTest {
-        val r = repo { json("{}", HttpStatusCode.BadRequest) }
+        val r = repo { json("""{"data":{"oldPassword":{"message":"Invalid value."}}}""", HttpStatusCode.BadRequest) }
         signIn()
         assertEquals("Current password is incorrect", assertFailsWith<IllegalStateException> { r.changePassword("wrong", "new") }.message)
         assertNotNull(store.current)
@@ -296,10 +296,21 @@ class AuthRepositoryTest {
         signIn()
         r.changePassword("old", "new")
         assertEquals("tok2", store.token)
-        assertEquals(3, requests.size)
+        assertEquals(2, requests.size)
         // PocketBase rejects a self-service password change without the current password.
         assertTrue(update!!.contains(""""oldPassword":"old""""), update)
         assertTrue(update.contains(""""password":"new""""), update)
+    }
+
+    @Test fun aRateLimitedPasswordReauthIsRetriedOnce() = runTest {
+        var auths = 0
+        val r = repo { req ->
+            if (req.url.encodedPath.endsWith("auth-with-password") && ++auths == 1) json("{}", HttpStatusCode.TooManyRequests) else json(SessionOk)
+        }
+        signIn()
+        r.changePassword("old", "new")
+        assertEquals("tok2", store.token)
+        assertEquals(2, auths)
     }
 
     @Test fun aRateLimitedPasswordCheckIsNotCalledWrong() = runTest {
@@ -318,15 +329,25 @@ class AuthRepositoryTest {
         assertNotNull(store.current)
     }
 
+    @Test fun aSignupWhoseSignInFailsSaysTheAccountExists() = runTest {
+        val r = repo { req ->
+            if (req.url.encodedPath.endsWith("auth-with-password")) json("{}", HttpStatusCode.ServiceUnavailable) else json("{}")
+        }
+        assertFailsWith<AccountCreatedSignInFailed> { r.signup("a@b.c", "password1", "Ann") }
+        assertEquals(null, store.current)
+        assertEquals(2, requests.size)
+    }
+
     @Test fun aFailedPasswordReauthSignsOut() = runTest {
         var auths = 0
         val r = repo { req ->
-            if (req.url.encodedPath.endsWith("auth-with-password") && ++auths == 2) json("{}", HttpStatusCode.BadRequest) else json(SessionOk)
+            if (req.url.encodedPath.endsWith("auth-with-password") && ++auths == 1) json("{}", HttpStatusCode.BadRequest) else json(SessionOk)
         }
         signIn()
         seedUserData()
         val e = assertFailsWith<IllegalStateException> { r.changePassword("old", "new") }
         assertEquals("Password updated, but your session ended. Please sign in again", e.message)
+        assertEquals("Password updated. Sign in again with your new password.", r.loginNotice.value)
         assertWipedKeepingQueue()
     }
 
@@ -334,7 +355,7 @@ class AuthRepositoryTest {
         var auths = 0
         val reached = CompletableDeferred<Unit>()
         val r = repo { req ->
-            if (req.url.encodedPath.endsWith("auth-with-password") && ++auths == 2) {
+            if (req.url.encodedPath.endsWith("auth-with-password") && ++auths == 1) {
                 reached.complete(Unit)
                 CompletableDeferred<Unit>().await()
             }

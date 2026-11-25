@@ -184,6 +184,7 @@ class ScheduleRepository(
     suspend fun runSync(url: String, isAutoSync: Boolean = false): String? = neptun.runSync(url, isAutoSync)
     suspend fun savedNeptunUrl(): String = neptun.savedNeptunUrl()
     suspend fun saveNeptunUrl(url: String, claimFirstSync: Boolean = false) = neptun.saveNeptunUrl(url, claimFirstSync)
+    suspend fun verifyNeptunLink(url: String): Boolean = neptun.verifyNeptunLink(url)
     suspend fun checkSyncRateLimit(nowMs: Long = Clock.System.now().toEpochMilliseconds()): RateLimit = neptun.checkSyncRateLimit(nowMs)
 
     data class RateLimit(val allowed: Boolean, val remainingMinutes: Int)

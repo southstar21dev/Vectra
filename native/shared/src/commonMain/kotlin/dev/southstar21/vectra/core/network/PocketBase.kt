@@ -51,6 +51,12 @@ class PocketBaseException(
             ((v as? JsonObject)?.get("message") as? JsonPrimitive)?.contentOrNull?.let { field to it }
         }?.toMap().orEmpty()
 
+    /** PocketBase field-level validation error codes: field to code (such as `validation_not_unique`). */
+    val fieldCodes: Map<String, String>
+        get() = (data["data"] as? JsonObject)?.mapNotNull { (field, v) ->
+            ((v as? JsonObject)?.get("code") as? JsonPrimitive)?.contentOrNull?.let { field to it }
+        }?.toMap().orEmpty()
+
     val isNetwork get() = status == 0
     val isAuthRejection get() = status == 401 || status == 403
 
