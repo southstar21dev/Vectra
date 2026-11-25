@@ -371,6 +371,9 @@ class DeviceLocation(
     fun onResume() {
         permissionDenied = false
         if (!sessionActive) return
+        // A permission revoked in system settings does not always end a running watch (iOS just stops
+        // delivering fixes and the last one keeps reading as Tracking): restart so the denial is seen.
+        if (watchJob != null && provider.permission() == GeoPermission.Denied) stopWatch()
         if (watchJob == null) startWatch() else restartWatchIfStale()
     }
 
