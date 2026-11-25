@@ -1,8 +1,11 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.data.QueryState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NearbyLinesTest {
     private fun item(stopId: String, distance: Double, routeId: String, type: String) = RadarDepartureItem(
@@ -41,5 +44,14 @@ class NearbyLinesTest {
         assertEquals("Offline, departures unavailable", emptyNearbyMessage(NearbyLocationStatus.Tracking, offline = true))
         assertEquals("No departures near you right now", emptyNearbyMessage(NearbyLocationStatus.Tracking, offline = false))
         assertEquals("Allow location to see departures", emptyNearbyMessage(NearbyLocationStatus.Failed, offline = false))
+    }
+
+    @Test
+    fun freshlyAskedBatchCountsAsLoading() {
+        // A just-requested key is an empty state until its first fetch starts.
+        assertTrue(isBatchLoading(QueryState<Int>(), hasStops = true))
+        assertFalse(isBatchLoading(QueryState<Int>(), hasStops = false))
+        assertFalse(isBatchLoading(QueryState<Int>(isFetched = true, isError = true), hasStops = true))
+        assertFalse(isBatchLoading(QueryState(data = 1, isFetched = true), hasStops = true))
     }
 }
