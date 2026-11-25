@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.auth.AccountCreatedSignInFailed
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
@@ -82,19 +83,28 @@ enum class AuthMode { Login, Signup }
 @Composable
 fun LoginScreen(auth: AuthRepository, passkeys: PasskeyActions? = null) {
     var mode by remember { mutableStateOf(AuthMode.Login) }
+    // Set when the account was created but the sign-in after it failed: Sign in opens with this email.
+    var createdEmail by remember { mutableStateOf<String?>(null) }
     Box(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Reveal(0, Modifier.widthIn(max = LoginCardWidth).fillMaxWidth()) {
-            AuthCard(mode, { mode = it }, auth, passkeys)
+            AuthCard(mode, { createdEmail = null; mode = it }, auth, passkeys, createdEmail) { createdEmail = it; mode = AuthMode.Login }
         }
     }
 }
 
 @Composable
-private fun AuthCard(mode: AuthMode, onMode: (AuthMode) -> Unit, auth: AuthRepository, passkeys: PasskeyActions?) {
+private fun AuthCard(
+    mode: AuthMode,
+    onMode: (AuthMode) -> Unit,
+    auth: AuthRepository,
+    passkeys: PasskeyActions?,
+    createdEmail: String?,
+    onAccountCreated: (email: String) -> Unit,
+) {
     val c = Vectra.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         // Brand owl with its purple drop-shadow glow; inverted to dark in light mode.
@@ -143,7 +153,7 @@ private fun AuthCard(mode: AuthMode, onMode: (AuthMode) -> Unit, auth: AuthRepos
                 },
                 label = "authMode",
             ) { m ->
-                if (m == AuthMode.Login) LoginForm(auth, passkeys) else SignupForm(auth, passkeys)
+                if (m == AuthMode.Login) LoginForm(auth, passkeys, createdEmail) else SignupForm(auth, passkeys, onAccountCreated)
             }
         }
     }
@@ -190,10 +200,10 @@ private fun PasswordToggle(visible: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
+private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEmail: String?) {
     val c = Vectra.colors
     val scope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(createdEmail.orEmpty()) }
     var password by remember { mutableStateOf("") }
     var show by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf(false) }
@@ -218,7 +228,12 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        if (notice != null) Banner(notice, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
+        if (createdEmail != null) {
+            Banner(
+                "Your account was created, but signing in failed. Sign in with your password to continue.",
+                c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine,
+            )
+        } else if (notice != null) Banner(notice, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
         else if (sessionExpired) Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
         if (error != null) Banner(AccountLogic.loginErrorMessage(error), c.tints.red, Palette.Red500.copy(alpha = 0.1f))
         if (passkeys?.isSupported == true) {
@@ -334,7 +349,7 @@ private fun ResetPasswordForm(auth: AuthRepository, initialEmail: String, onBack
 }
 
 @Composable
-private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?) {
+private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onAccountCreated: (email: String) -> Unit) {
     val c = Vectra.colors
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
@@ -347,10 +362,9 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?) {
     val toaster = LocalToaster.current
 
     val submit = {
-        val invalid = AccountLogic.validatePassword(password)
+        val invalid = AccountLogic.validateSignup(name, email, password)
         when {
             pending -> Unit
-            name.isBlank() || email.isBlank() -> Unit
             invalid != null -> error = IllegalArgumentException(invalid)
             else -> {
                 pending = true
@@ -363,13 +377,19 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?) {
                         passkeys.registerAfterSignup(chosenPassword) { toaster.show("You can set this up later in Settings") }
                     }
                     pending = false
-                }) { pending = false; error = it }
+                }) {
+                    pending = false
+                    if (it is AccountCreatedSignInFailed) onAccountCreated(email.trim()) else error = it
+                }
             }
         }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        error?.let { Banner(AccountLogic.fieldErrorMessage(it) ?: it.message.orEmpty(), c.tints.red, Palette.Red500.copy(alpha = 0.1f)) }
+        error?.let {
+            val text = if (it is IllegalArgumentException) it.message.orEmpty() else AccountLogic.signupErrorMessage(it)
+            Banner(text, c.tints.red, Palette.Red500.copy(alpha = 0.1f))
+        }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FieldLabel("Nickname")
             VInput(name, { name = it.take(AccountLogic.FULL_NAME_MAX_LENGTH) }, placeholder = "Your nickname", icon = RemixIcons.UserLine,

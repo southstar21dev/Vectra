@@ -329,6 +329,15 @@ class AuthRepositoryTest {
         assertNotNull(store.current)
     }
 
+    @Test fun aSignupWhoseSignInFailsSaysTheAccountExists() = runTest {
+        val r = repo { req ->
+            if (req.url.encodedPath.endsWith("auth-with-password")) json("{}", HttpStatusCode.ServiceUnavailable) else json("{}")
+        }
+        assertFailsWith<AccountCreatedSignInFailed> { r.signup("a@b.c", "password1", "Ann") }
+        assertEquals(null, store.current)
+        assertEquals(2, requests.size)
+    }
+
     @Test fun aFailedPasswordReauthSignsOut() = runTest {
         var auths = 0
         val r = repo { req ->

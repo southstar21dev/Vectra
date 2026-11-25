@@ -42,6 +42,9 @@ interface SessionListener {
     suspend fun flushPendingWrites(): Boolean = true
 }
 
+/** The account exists but the sign-in that followed failed: [cause] is why. */
+class AccountCreatedSignInFailed(override val cause: Throwable) : Exception("Account created, but sign-in failed", cause)
+
 /**
  * The session, the profile, and the account
  * mutations. The profile is the users auth record itself.
@@ -90,6 +93,11 @@ class AuthRepository(
         settleKeptQueue()
     }
 
+    /**
+     * Creates the account and signs in. A sign-in failure after the account exists throws
+     * [AccountCreatedSignInFailed], so the screen can send the person to Sign in instead of
+     * leaving them on a form that would now say the email is taken.
+     */
     suspend fun signup(email: String, password: String, fullName: String) {
         pb.collection("users").create(
             buildJsonObject {
@@ -99,7 +107,13 @@ class AuthRepository(
                 put("full_name", JsonPrimitive(fullName))
             },
         )
-        pb.authWithPassword(email, password)
+        try {
+            pb.authWithPassword(email, password)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            throw AccountCreatedSignInFailed(e)
+        }
         settleKeptQueue()
     }
 
