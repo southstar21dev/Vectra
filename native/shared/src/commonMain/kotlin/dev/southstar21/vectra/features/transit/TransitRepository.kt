@@ -185,7 +185,15 @@ class TransitRepository(
                 put("user", uid)
             }
         }
-        val record = pb.collection("transit_trackers").create(body)
+        // New trackers (and restored ones) go to the end of the manual order.
+        val record = orderLock.withLock {
+            val last = pb.collection("transit_trackers").getList(1, 1, filter = "user = ${pbString(uid)}", sort = "-sort_order").items
+                .firstOrNull()?.int("sort_order")
+            pb.collection("transit_trackers").create(buildJsonObject {
+                body.forEach { (k, v) -> put(k, v) }
+                put("sort_order", (last ?: -1) + 1)
+            })
+        }
         val created = TransitTracker(
             id = record.string("id").orEmpty(),
             userId = uid,
@@ -243,16 +251,12 @@ class TransitRepository(
         val col = pb.collection("transit_trackers")
         val row = col.getOne(trackerId)
         val next = !(row.bool("is_favorite") ?: false)
-        var nextSort = row.int("sort_order") ?: 0
         if (next) {
             val favorites = col.getFullList(filter = "user = ${pbString(uid)} && is_favorite = true")
             if (favorites.size >= MaxFavoriteTrackers) error("Maximum of $MaxFavoriteTrackers favorite trackers allowed.")
-            nextSort = (favorites.maxOfOrNull { it.int("sort_order") ?: 0 } ?: -1) + 1
         }
-        val updated = col.update(trackerId, buildJsonObject {
-            put("is_favorite", next)
-            put("sort_order", nextSort)
-        })
+        // The favourites order is the All order filtered, so sort_order is left alone.
+        val updated = col.update(trackerId, buildJsonObject { put("is_favorite", next) })
         trackersQuery.invalidate(Unit)
         if ((updated.bool("is_favorite") ?: false) != next) error("Could not update favorite")
         next
