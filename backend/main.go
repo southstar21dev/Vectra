@@ -10,6 +10,7 @@ import (
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/push"
+	"vectra/pb/internal/reauth"
 	"vectra/pb/internal/routes"
 	"vectra/pb/internal/schema"
 	"vectra/pb/internal/versiongate"
@@ -35,6 +36,8 @@ func main() {
 	// Revoke passkeys when the password or email changes (tokenKey rotation),
 	// so a passkey enrolled before a password reset cannot log in after it.
 	passkeys.RegisterRevokeOnCredentialChange(app)
+	// Count wrong oldPassword guesses on PATCH users/{id} against the re-auth budget.
+	reauth.RegisterPasswordChangeGuard(app)
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
 

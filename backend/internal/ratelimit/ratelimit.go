@@ -46,6 +46,16 @@ func (l *Limiter) Allow(key string, now time.Time) bool {
 	return l.AllowN(key, 1, now)
 }
 
+// Exhausted reports whether key has already used all its slots in the current
+// window, without consuming anything. Use it with Allow to count only some
+// outcomes (for example failures) against a budget.
+func (l *Limiter) Exhausted(key string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	w, ok := l.clients[key]
+	return ok && now.Before(w.reset) && w.count >= l.max
+}
+
 // AllowN reports whether key may perform n more actions at now. It is
 // all-or-nothing: either all n slots are consumed or none are. n <= 0 always
 // succeeds without consuming anything.

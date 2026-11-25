@@ -179,6 +179,26 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 
 // TestReauthBucketIsShared: wrong guesses on one re-auth route spend the same
 // per-user budget as another, so spreading guesses buys nothing.
+// TestReauthSuccessesDoNotSpendBudget: only wrong passwords count, so many
+// successful checks (passkey enrolment retries) never lock the user out.
+func TestReauthSuccessesDoNotSpendBudget(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	useLimiters(t, 2)
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "okchecks@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	for i := 0; i < 6; i++ {
+		_, err = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"password123","newEmail":"okchecks@test.local"}`, EmailHandler)
+		require.NoError(t, err, "successful check %d", i)
+	}
+}
+
 func TestReauthBucketIsShared(t *testing.T) {
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
