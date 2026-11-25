@@ -65,6 +65,15 @@ class CourseTrackerRepository(
     private val userId: String? get() = userIdFlow.value
     private var uploadedSnapshot: CourseTrackerData? = null
 
+    // Tracker keys a schedule sync removed (stale exams, legacy keys): cloud copies of them are
+    // ignored in later merges, or a collapsed or later upload would put them back.
+    @Volatile private var droppedKeys: Set<String> = emptySet()
+
+    private fun withoutDropped(remote: CourseTrackerData): CourseTrackerData {
+        val keys = droppedKeys
+        return if (keys.isEmpty()) remote else remote.copy(trackers = remote.trackers - keys)
+    }
+
     // Signed-in edits made, and how many of them the cloud has: unequal means some exist only here.
     @Volatile private var editsMade = 0
     @Volatile private var editsUploaded = 0
@@ -74,6 +83,7 @@ class CourseTrackerRepository(
             userIdFlow.collect { uid ->
                 editsMade = 0
                 editsUploaded = 0
+                droppedKeys = emptySet()
                 _isLoading.value = true
                 _data.value = readCache(uid) ?: readCache(null) ?: createEmptyTrackerData()
                 refresh()
@@ -116,7 +126,8 @@ class CourseTrackerRepository(
         }
         gate.enqueue {
             val remote = readCloud(uid)
-            var merged = if (remote != null) mergeTrackerData(local, remote) else local
+            if (dropKeys.isNotEmpty()) droppedKeys += dropKeys
+            var merged = if (remote != null) mergeTrackerData(local, withoutDropped(remote)) else local
             if (dropKeys.isNotEmpty()) merged = merged.copy(trackers = merged.trackers - dropKeys.toSet())
             cloud.upsert(uid, cipher.encrypt(serializeTrackerData(merged)))
             uploadedSnapshot = merged
@@ -158,7 +169,7 @@ class CourseTrackerRepository(
             // Merge against the live data at return time so an edit that landed
             // during the fetch is never clobbered by the cloud snapshot.
             var reconciledNext: CourseTrackerData? = null
-            _data.update { live -> mergeTrackerData(live, parsed).also { reconciledNext = it } }
+            _data.update { live -> mergeTrackerData(live, withoutDropped(parsed)).also { reconciledNext = it } }
             val reconciled = reconciledNext ?: return@withLock
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
