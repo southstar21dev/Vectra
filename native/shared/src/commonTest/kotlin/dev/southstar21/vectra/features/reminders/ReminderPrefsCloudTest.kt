@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -27,37 +28,42 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /** The commute legs (home and campus stops) reach the profile only as ciphertext. */
 class ReminderPrefsCloudTest {
-    private val cloud = ReminderPrefsCloud(
+    private fun cloudWith(engine: MockEngine) = ReminderPrefsCloud(
         CryptoClient(
             PocketBaseClient(
-                createHttpClient(
-                    HttpClient(
-                        MockEngine { req ->
-                            val body = VectraJson.parseToJsonElement((req.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()).jsonObject
-                            val encrypt = body.getValue("op").jsonPrimitive.content == "encrypt"
-                            val out = body.getValue("values").jsonArray.map {
-                                val v = it.jsonPrimitive.content
-                                JsonPrimitive(if (encrypt) "vc3:$v" else v.removePrefix("vc3:"))
-                            }
-                            respond(
-                                JsonObject(mapOf("values" to JsonArray(out))).toString(),
-                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                            )
-                        },
-                    ),
-                ),
+                createHttpClient(HttpClient(engine)),
                 "https://pb.test",
                 AuthStore(KeyValueStore(FakeDataStore()), PlainSecretCipher),
             ),
             CoroutineScope(SupervisorJob() + Dispatchers.Default),
         ),
     )
+
+    /** A cipher that only prefixes, so the plain text stays visible inside the blob. */
+    private val cloud = cloudWith(
+        MockEngine { req ->
+            val body = VectraJson.parseToJsonElement((req.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()).jsonObject
+            val encrypt = body.getValue("op").jsonPrimitive.content == "encrypt"
+            val out = body.getValue("values").jsonArray.map {
+                val v = it.jsonPrimitive.content
+                JsonPrimitive(if (encrypt) "vc3:$v" else v.removePrefix("vc3:"))
+            }
+            respond(
+                JsonObject(mapOf("values" to JsonArray(out))).toString(),
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        },
+    )
+
+    /** The crypto route cannot be reached. */
+    private val offline = cloudWith(MockEngine { throw IOException("offline") })
 
     private val leg = CommuteLeg(trackerId = "t1", stopId = "F00123", stopName = "Home stop", routeId = "BKK_3050", routeShortName = "28A", headsign = "Hungaria")
     private val prefs = ReminderPrefs(beforeClass = true, toUni = listOf(leg), backHome = listOf(leg.copy(trackerId = "t2")))
@@ -79,6 +85,7 @@ class ReminderPrefsCloudTest {
     @Test fun noLegsMeansNoBlob() = real {
         val json = cloud.encode(ReminderPrefs(beforeClass = true))
         assertTrue("commute" !in json)
+        assertEquals(ReminderPrefs(beforeClass = true), offline.decode(offline.encode(ReminderPrefs(beforeClass = true))))
     }
 
     @Test fun legacyPlainLegsAreReadAndFlaggedForRewrite() = real {
@@ -86,5 +93,16 @@ class ReminderPrefsCloudTest {
         assertEquals(prefs, cloud.decode(legacy))
         assertTrue(cloud.hasPlainLegs(legacy))
         assertFalse(cloud.hasPlainLegs(cloud.encode(prefs)))
+    }
+
+    /** A failed encryption must not send settings without the legs: that would wipe the synced copy. */
+    @Test fun legsThatCannotBeEncryptedFailTheWrite() = real {
+        assertFailsWith<Exception> { offline.encode(prefs) }
+    }
+
+    /** A blob that cannot be decrypted now is not read as "no legs", which a new device would adopt. */
+    @Test fun anUnreadableBlobIsNotReadAsNoLegs() = real {
+        val stored = cloud.encode(prefs)
+        assertFailsWith<CommuteUnreadableException> { offline.decode(stored) }
     }
 }
