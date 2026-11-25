@@ -11,7 +11,7 @@ plugins {
 
 // The version lives in gradle.properties (CI writes the release version there); the code is derived
 // so the two can't drift. 1.2.3 -> 1020399. Prereleases sort below their release and dev below rc:
-// 1.2.3-dev.4 -> 1020304, 1.2.3-rc.2 -> 1020352. The same rule is in iosApp/project.yml.
+// 1.2.3-dev.4 -> 1020304, 1.2.3-rc.2 -> 1020352. The same rule is in iosApp/scripts/version.sh.
 // Debug builds are versioned from git instead (see the root build.gradle.kts and androidComponents below).
 val appVersionName: String = providers.gradleProperty("vectra.versionName").get()
 val appVersionCode: Int = versionCodeOf(appVersionName)

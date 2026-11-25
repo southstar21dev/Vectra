@@ -15,7 +15,7 @@ plugins {
 // vectra.versionName in gradle.properties is only current while CI builds a release (it writes it
 // then and never commits it), so a local build reading it would show a long-gone version. Release
 // builds keep using vectra.versionName; without tags (a shallow clone) debug builds fall back to it.
-// iosApp/project.yml applies the same rule to the Debug configuration's Info.plist.
+// iosApp/scripts/version.sh applies the same rule to the Debug configuration's Info.plist.
 val latestReleaseTag: Provider<String> = providers.exec {
     commandLine("git", "tag", "--list", "v*")
     isIgnoreExitValue = true
