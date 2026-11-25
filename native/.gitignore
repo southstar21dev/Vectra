@@ -10,3 +10,6 @@ captures/
 # iOS
 iosApp/build/
 xcuserdata/
+
+# Xcode Cloud manifest written by Xcode's Cloud tab; CI runs on GitHub Actions
+iosApp/iosApp.xcodeproj/xcshareddata/xcodecloud/

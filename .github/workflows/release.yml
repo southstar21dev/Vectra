@@ -142,7 +142,10 @@ jobs:
         run: |
           LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)
           RANGE=${LAST:+$LAST..}HEAD
-          TOTAL=$(git rev-list --no-merges --count "$RANGE")
+          # The daily catalog refresh commits to master as vectra-bot without a trailer; it never
+          # touches native code, so it must not defeat the shortcut.
+          BOT=$(git rev-list --no-merges --author='^vectra-bot ' --count "$RANGE")
+          TOTAL=$(( $(git rev-list --no-merges --count "$RANGE") - BOT ))
           ANDROID=$(git rev-list --no-merges --grep '^Platforms: android$' --count "$RANGE")
           if [ "$TOTAL" -gt 0 ] && [ "$TOTAL" = "$ANDROID" ]; then
             echo "ios=false" >> "$GITHUB_OUTPUT"
@@ -168,6 +171,11 @@ jobs:
     needs: plan
     if: needs.plan.outputs.version != ''
     runs-on: ubuntu-latest
+    # The signing secrets belong in the "release" environment (deployment branches: master only), so a
+    # workflow on any other ref cannot read them. Until they are moved there the repo secrets still work.
+    environment: release
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -178,7 +186,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # No build cache: the keystore is in this job, and caches are shared with every other job of a
+      # master run, so a poisoned entry would run with it.
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-disabled: true
 
       - name: Set the version
         run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
@@ -213,6 +225,17 @@ jobs:
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
           cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
+      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
+      # downloaded files against them before anything is attached to the release.
+      - id: sums
+        name: Hash the release assets
+        run: |
+          {
+            echo "sums<<SUMS_EOF"
+            (cd release-assets && sha256sum *)
+            echo "SUMS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: android
@@ -228,6 +251,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true'
     runs-on: macos-latest
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -283,6 +308,17 @@ jobs:
           codesign -d --entitlements - "$APP/PlugIns/VectraWidgets.appex" | grep -q application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
+      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
+      # downloaded files against them before anything is attached to the release.
+      - id: sums
+        name: Hash the release assets
+        run: |
+          {
+            echo "sums<<SUMS_EOF"
+            (cd release-assets && shasum -a 256 *)
+            echo "SUMS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ios
@@ -316,10 +352,27 @@ jobs:
         with:
           node-version: 22
 
+      # Only the two build jobs' artifacts: a pattern, so an artifact another job of the run uploaded
+      # (the reusable CI web job, say) is never merged into the release.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: release-assets
+          pattern: '{android,ios}'
           merge-multiple: true
+
+      # The files must be exactly the ones the build jobs hashed. SHA256SUMS is attached to the release.
+      - name: Verify the assets against the build jobs' hashes
+        env:
+          ANDROID_SUMS: ${{ needs.android.outputs.sums }}
+          IOS_SUMS: ${{ needs.ios.outputs.sums }}
+        run: |
+          cd release-assets
+          { printf '%s\n' "$ANDROID_SUMS"; [ -z "$IOS_SUMS" ] || printf '%s\n' "$IOS_SUMS"; } > "$RUNNER_TEMP/SHA256SUMS"
+          sha256sum -c "$RUNNER_TEMP/SHA256SUMS"
+          EXPECTED=$(awk '{print $2}' "$RUNNER_TEMP/SHA256SUMS" | sed 's/^\*//' | sort)
+          ACTUAL=$(ls | sort)
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::release-assets holds files the build jobs did not hash."; exit 1; }
+          cp "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
 
       # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
       # a write token, so nothing resolved fresh or run at install time may reach it.
@@ -360,16 +413,20 @@ jobs:
     needs: [plan, publish]
     if: ${{ !cancelled() && needs.publish.result == 'success' && needs.plan.outputs.ios == 'true' }}
     runs-on: macos-latest
+    environment: release
     env:
       VERSION: ${{ needs.plan.outputs.version }}
-      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-      IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
-      IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
     steps:
+      # Each secret is passed only to the step that needs it, so third-party actions and the Gradle
+      # daemon that xcodebuild starts never see the .p12, its password or the .p8 in their environment.
       - id: key
         name: Check for the App Store Connect key and CI certificate
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
           if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$IOS_DEV_P12" ] && [ -n "$IOS_DEV_P12_PASSWORD" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
@@ -387,19 +444,12 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - id: kotlin
-        if: steps.key.outputs.ok == 'true'
-        name: Read the Kotlin version
-        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
-
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
+      # No build caches here: the signing secrets are in this job, and caches are shared with every
+      # other job of a master run (a poisoned entry would run with them). Costs a longer build.
       - if: steps.key.outputs.ok == 'true'
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-disabled: true
 
       - if: steps.key.outputs.ok == 'true'
         name: Set the version
@@ -409,6 +459,9 @@ jobs:
       # finds that identity and doesn't create a new one.
       - if: steps.key.outputs.ok == 'true'
         name: Load the CI development certificate
+        env:
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           PASS=$(openssl rand -hex 24)
@@ -426,10 +479,21 @@ jobs:
             || { echo "::error::IOS_DEV_P12 holds no Apple Development identity."; exit 1; }
 
       - if: steps.key.outputs.ok == 'true'
+        name: Write the App Store Connect key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+
+      # The key is read from the file only; ASC_KEY_P8 is not in this step's environment.
+      - if: steps.key.outputs.ok == 'true'
         name: Archive and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           KEY="$RUNNER_TEMP/AuthKey.p8"
-          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           xcodebuild archive \
             -project native/iosApp/iosApp.xcodeproj \
