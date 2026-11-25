@@ -11,6 +11,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -112,6 +113,9 @@ class RadarTileRenderer(private val fetch: suspend (String) -> ByteArray?) {
         }
         out
     }
+
+    /** Forgets every cached tile (about 24 MB when full); in-flight fetches finish into nothing. */
+    fun clear() { scope.launch { lock.withLock { cache.clear() } } }
 
     /** One raw tile, fetched once however many callers want it; null where there is none. */
     private suspend fun raw(ref: RadarTileRef, z: Int, x: Int, y: Int): IntArray? {
