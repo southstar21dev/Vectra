@@ -1,5 +1,5 @@
 # Java, Gradle, the Kotlin/Native cache and the release version for the native build, shared by the
-# ci, android, ios and testflight jobs. Run actions/checkout first.
+# ci, android and ios jobs. Run actions/checkout first.
 name: Native setup
 description: Set up Java 21, Gradle and (on macOS) the Kotlin/Native cache, and optionally set the app version.
 
