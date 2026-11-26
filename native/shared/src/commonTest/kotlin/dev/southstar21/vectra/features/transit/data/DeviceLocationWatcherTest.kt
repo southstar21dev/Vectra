@@ -118,4 +118,39 @@ class DeviceLocationWatcherTest {
         assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
         release()
     }
+
+    @Test fun aStoredFixDoesNotReadAsLiveWithoutPermission() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val kv = KeyValueStore(FakeDataStore())
+        kv.set(DeviceLocationStorageKey, """{"lat":47.5,"lon":19.05,"accuracy":10,"lastUpdatedMs":${nowMs()}}""")
+        val watcher = DeviceLocation(provider, kv, CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        watcher.prompt = { }
+
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
+
+    @Test fun aLapsedPermissionFallsBackToIdleWithoutAsking() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider()
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        watcher.prompt = { asked += 1 }
+        val first = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        first()
+        runCurrent()
+
+        // An iOS "Allow Once" ran out while the app was away: back to undecided, not denied.
+        provider.permission = GeoPermission.Prompt
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(0, asked)
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
 }

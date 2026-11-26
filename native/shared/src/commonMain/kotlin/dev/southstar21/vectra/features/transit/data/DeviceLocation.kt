@@ -192,6 +192,9 @@ internal fun readStoredLocation(raw: String?, now: Long = nowMs()): WatchLocatio
     }
 }
 
+/** States that show a position (or one on its way); without permission they fall back to idle. */
+private val LiveStatuses = setOf(WatchLocationStatus.Tracking, WatchLocationStatus.Locating)
+
 private const val WatchdogIntervalMs = 10_000L
 private const val RestartCooldownMs = 4_000L
 private const val PersistIntervalMs = 60_000L
@@ -246,8 +249,9 @@ class DeviceLocation(
         initialized = true
         scope.launch(confined) {
             val stored = runSuspendCatching { readStoredLocation(kv.get(DeviceLocationStorageKey)) }.getOrNull()
-            // Only seed when nothing fresher arrived meanwhile.
-            if (stored != null && _state.value.status != WatchLocationStatus.Tracking) {
+            // Only seed when nothing fresher arrived meanwhile, and only while location is allowed: without
+            // it nothing would replace the stored fix, which would read as a live position.
+            if (stored != null && _state.value.status != WatchLocationStatus.Tracking && provider.permission() == GeoPermission.Granted) {
                 _state.value = stored.copy(isManualRefreshing = _state.value.isManualRefreshing)
             }
         }
@@ -336,6 +340,10 @@ class DeviceLocation(
                     }
                 } else if (provider.permission() == GeoPermission.Denied) {
                     applyError(1, "User denied Geolocation")
+                } else if (!prompting && _state.value.status in LiveStatuses) {
+                    // Permission gone without a denial (an iOS "Allow Once" that ran out): the last fix is
+                    // no longer live, so the views fall back to their "Allow" call to action.
+                    _state.value = _state.value.copy(status = WatchLocationStatus.Idle, isManualRefreshing = false)
                 }
                 return
             }
