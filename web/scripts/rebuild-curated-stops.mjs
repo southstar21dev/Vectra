@@ -3,8 +3,8 @@
  *
  * Stop-area ids in the BKK feed get renamed over time (e.g. the area formerly
  * labelled "Corvin-negyed" now resolves to "Kálvin tér"), so the quick-pick
- * groups are re-resolved against public/catalog/stops.json (built today by
- * build-catalog.mjs). An id is kept only when the catalog still maps it to the
+ * groups are re-resolved against public/catalog/stops.json (a frozen copy of what
+ * the backend catalog builder produced). An id is kept only when the catalog still maps it to the
  * same name; otherwise the current area for that name is used.
  *
  * Also seeds a curated POPULAR group (major interchanges + the two legacy

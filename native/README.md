@@ -50,7 +50,7 @@ That value is only current while CI builds a release (it writes it then and neve
 debug builds take their version from git instead: the newest `vX.Y.Z` tag plus the commit, e.g.
 `1.8.2+92e0b25` in Settings, with that release's version code (iOS Debug: `1.8.2` in Info.plist).
 Run `git fetch --tags` if a debug build shows an old version.
-The backend overrides (`-Pvectra.pocketbaseUrl`, `-Pvectra.catalogOrigin`) apply to both apps as well.
+The backend overrides (`-Pvectra.pocketbaseUrl`, `-Pvectra.catalogOrigin`) apply to both apps as well; the catalog origin defaults to the backend URL.
 
 Release signing: `-Pvectra.keystore=… -Pvectra.storePassword=… -Pvectra.keyAlias=… -Pvectra.keyPassword=…`.
 Without a keystore a local release build is signed with the debug key so it installs; when `CI` is set or
@@ -72,8 +72,8 @@ Backend: debug builds (app ID `dev.southstar21.vectra.debug`, named "Vectra Dev"
 the release app) talk to the dev backend `https://apivectra-dev.southstar21.dev`, release builds to
 production `https://apivectra.southstar21.dev` (iOS: Xcode's Debug and Release configurations); see
 `../backend/README.md`. `-Pvectra.pocketbaseUrl=…` overrides both, and
-`-Pvectra.catalogOrigin=…` (default `https://vectra.southstar21.dev`, where the transit
-catalog `/catalog/*.json` is served).
+`-Pvectra.catalogOrigin=…` (default: the same backend, which serves the transit catalog at
+`/catalog/*.json`).
 
 ## Stack
 Building needs any JDK to run Gradle; the modules compile with a JDK 17 toolchain, which Gradle downloads

@@ -38,7 +38,11 @@ object IosApp {
                 } else {
                     IosBuildConfig.POCKETBASE_URL
                 },
-                catalogOrigin = IosBuildConfig.CATALOG_ORIGIN,
+                catalogOrigin = if (Platform.isDebugBinary) {
+                    IosBuildConfig.DEV_CATALOG_ORIGIN
+                } else {
+                    IosBuildConfig.CATALOG_ORIGIN
+                },
                 appVersion = if (Platform.isDebugBinary) {
                     IosBuildConfig.DEBUG_VERSION_NAME
                 } else {

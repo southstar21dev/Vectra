@@ -143,8 +143,8 @@ jobs:
         run: |
           LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)
           RANGE=${LAST:+$LAST..}HEAD
-          # The daily catalog refresh commits to master as vectra-bot without a trailer; it never
-          # touches native code, so it must not defeat the shortcut.
+          # Commits by vectra-bot (the catalog refresh bot until VEC-131 moved the catalog into the
+          # backend) carry no trailer and never touch native code, so they must not defeat the shortcut.
           BOT=$(git rev-list --no-merges --author='^vectra-bot ' --count "$RANGE")
           TOTAL=$(( $(git rev-list --no-merges --count "$RANGE") - BOT ))
           ANDROID=$(git rev-list --no-merges --grep '^Platforms: android$' --count "$RANGE")

@@ -56,12 +56,6 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         manifestPlaceholders["appLabel"] = "Vectra"
-        // Where the transit catalog is served: <origin>/catalog/*.json.
-        buildConfigField(
-            "String",
-            "CATALOG_ORIGIN",
-            "\"${providers.gradleProperty("vectra.catalogOrigin").get()}\"",
-        )
     }
 
     // Release signing comes from -Pvectra.keystore=… (+ storePassword/keyAlias/keyPassword). Without one a
@@ -82,9 +76,13 @@ android {
     // PocketBase backend: debug builds use the dev backend, release builds production, so testing never
     // touches real accounts. -Pvectra.pocketbaseUrl=… overrides both. The defaults are in gradle.properties,
     // shared with iOS (shared/build.gradle.kts).
+    // The transit catalog (<origin>/catalog/*.json) is served by the same backend, so its origin follows the
+    // backend URL; -Pvectra.catalogOrigin=… overrides it on its own.
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl").orNull
-    fun pocketbaseUrl(defaultProperty: String) =
-        "\"${pocketbaseOverride ?: providers.gradleProperty(defaultProperty).get()}\""
+    val catalogOverride = providers.gradleProperty("vectra.catalogOrigin").orNull
+    fun backendUrl(defaultProperty: String) = pocketbaseOverride ?: providers.gradleProperty(defaultProperty).get()
+    fun pocketbaseUrl(defaultProperty: String) = "\"${backendUrl(defaultProperty)}\""
+    fun catalogOrigin(defaultProperty: String) = "\"${catalogOverride ?: backendUrl(defaultProperty)}\""
 
     buildTypes {
         debug {
@@ -92,9 +90,11 @@ android {
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "Vectra Dev"
             buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.debug"))
+            buildConfigField("String", "CATALOG_ORIGIN", catalogOrigin("vectra.pocketbaseUrl.debug"))
         }
         release {
             buildConfigField("String", "POCKETBASE_URL", pocketbaseUrl("vectra.pocketbaseUrl.release"))
+            buildConfigField("String", "CATALOG_ORIGIN", catalogOrigin("vectra.pocketbaseUrl.release"))
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -153,6 +153,8 @@ androidComponents {
             val url = providers.gradleProperty("vectra.pocketbaseUrl")
                 .orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug")).get()
             variant.buildConfigFields?.put("POCKETBASE_URL", BuildConfigField("String", "\"$url\"", null))
+            val catalog = providers.gradleProperty("vectra.catalogOrigin").orElse(url)
+            variant.buildConfigFields?.put("CATALOG_ORIGIN", BuildConfigField("String", "\"${catalog.get()}\"", null))
         }
     }
     // Debug: the newest release plus the commit (1.8.2+92e0b25), with that release's code, so a

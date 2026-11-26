@@ -48,14 +48,14 @@ internal data class CatalogRouteVariant(val h: String = "", val s: List<String> 
 
 /**
  * The fewest entries a downloaded catalog file may have. The live catalog has about 670
- * routes, 2,400 stop areas and 670 variant lists; the build script refuses to publish fewer
+ * routes, 2,400 stop areas and 670 variant lists; the backend builder refuses to publish fewer
  * than 100 routes or 500 stops. A smaller file is a truncated or broken build: it is neither
  * used nor cached, so the copy on disk keeps answering (audit 03 #17).
  */
 internal data class CatalogFloor(val routes: Int = 100, val stops: Int = 500, val routeVariants: Int = 100)
 
 /**
- * Runtime loaders for the daily-refreshed BKK catalog served at
+ * Runtime loaders for the daily-refreshed BKK catalog the backend serves at
  * `<catalogOrigin>/catalog/`. Each file is cached on disk: a copy younger than
  * [FreshMs] is used as-is (the catalog refreshes daily). An older one still answers at
  * once while a conditional request refreshes the disk for the next launch, since nearby

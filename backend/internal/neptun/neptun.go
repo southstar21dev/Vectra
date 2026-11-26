@@ -26,7 +26,6 @@ const (
 	// to a couple hundred rows; without a cap one request could insert an
 	// unbounded number of records inside a single write transaction.
 	maxEvents = 500
-
 )
 
 // limiter is the per-user limiter for Handler (limits.NeptunReplace: the client

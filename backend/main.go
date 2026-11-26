@@ -10,6 +10,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/plugins/migratecmd"
 
 	"vectra/pb/internal/authguard"
+	"vectra/pb/internal/catalog"
 	"vectra/pb/internal/config"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
@@ -60,6 +61,13 @@ func main() {
 		// Refuses app builds older than the minimum in app_config (426), before any route runs.
 		versiongate.Register(se)
 		routes.Register(se)
+		// The public transit catalog (/catalog/*.json): built from Futár, refreshed daily,
+		// kept under the data dir. The builder stops with the server.
+		stopCatalog := catalog.Register(se, app.DataDir())
+		app.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+			stopCatalog()
+			return e.Next()
+		})
 		return se.Next()
 	})
 

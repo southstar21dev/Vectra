@@ -156,6 +156,25 @@ func upstreamAllowed() bool {
 
 func isClientError(status int) bool { return status >= 400 && status < 500 }
 
+// WaitUpstream blocks until the shared upstream budget has room for one more
+// call (or ctx ends). The catalog builder spends the same Futár quota as the
+// proxy, so its calls are counted against the same ceiling. Waiting is not a
+// refusal, so only the granted call is recorded in the usage log.
+func WaitUpstream(ctx context.Context) error {
+	for {
+		now := time.Now()
+		if upstreamBudget.Allow("upstream", now) {
+			usage.record(now, true, budgetMax)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
 // stopIDPattern bounds stop IDs to the BKK shape (e.g. "BKK_F01234",
 // "BKK_009543") plus the separators other GTFS feeds use, so arbitrary text
 // never reaches the upstream query.

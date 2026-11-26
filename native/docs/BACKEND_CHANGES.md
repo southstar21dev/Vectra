@@ -2,7 +2,7 @@
 
 Open items only. Everything else works against the current backend. Native **push** (section 2) is
 still not implemented server-side; passkeys (section 1) need the three pieces below to be live on the
-host, and the transit catalog (section 3) needs a new home before the web host is retired.
+host; the transit catalog (section 3) already moved into the backend.
 CI for the native build already exists (`.github/workflows/ci.yml`), so it is no longer listed here.
 
 ## 1. Passkeys (Credential Manager, AuthenticationServices)
@@ -100,13 +100,20 @@ plugin + `firebase-messaging` (BoM 35.x), and replace `NoPush` in `VectraApplica
 `FirebaseMessagingService` that posts through `AndroidNotifier`. The settings toggle and the
 "Test" button switch to server push automatically once `isConfigured` is true.
 
-## 3. Transit catalog (before retiring the web host)
+## 3. Transit catalog (moved into the backend, VEC-131)
 
 The app downloads its BKK catalog (`routes.json`, `stops.json`, `route-variants.json`) from
 `<catalogOrigin>/catalog/` at runtime (`features/transit/data/Catalog.kt`) and caches it on disk.
-Today that origin is the web host, refreshed by the "refresh BKK transit catalog" workflow.
-When the web app goes away, keep serving those three files from the same path (a static
-bucket, nginx location or a PocketBase route all work) or point `-Pvectra.catalogOrigin` at
-their new home. The Digital Asset Links and apple-app-site-association files from section 1 (today in
+The backend now builds it itself and serves it at `/catalog/*.json` on the API host (see
+`../../backend/README.md`, "Transit catalog"), so `catalogOrigin` defaults to the backend URL
+(`vectra.pocketbaseUrl.debug` for debug builds, `.release` for release builds). The daily CI workflow
+and the generator in `web/scripts/` are gone.
+
+`web/public/catalog/*.json` is a frozen copy that only serves app versions released before this
+change (they read it from `https://vectra.southstar21.dev/catalog/`). It can be removed, together with
+the web host's `/catalog/` location, once the minimum supported app version is raised past the first
+release that reads the catalog from the backend.
+
+The Digital Asset Links and apple-app-site-association files from section 1 (today in
 `web/public/.well-known/`) must also stay on
 `vectra.southstar21.dev` for passkeys to keep working.
