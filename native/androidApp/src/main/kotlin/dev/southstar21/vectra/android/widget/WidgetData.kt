@@ -22,6 +22,7 @@ import dev.southstar21.vectra.android.VectraApplication
 import dev.southstar21.vectra.core.platform.WidgetHost
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.features.widgets.WidgetSnapshot
+import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.decodeWidgetSnapshot
 import dev.southstar21.vectra.features.widgets.nextBudapestMidnightMs
 import dev.southstar21.vectra.features.widgets.nextRefreshMs
@@ -36,6 +37,12 @@ import kotlin.time.Instant
 /** What every widget draws from: the snapshot and the moment it's drawn at. */
 internal class WidgetFrame(val snapshot: WidgetSnapshot?, val nowMs: Long) {
     val today: String = nowInBudapest(Instant.fromEpochMilliseconds(nowMs)).ymd
+
+    /** The app's 12-hour setting as the snapshot carries it; no snapshot reads as 24-hour. */
+    val hour12: Boolean get() = snapshot?.hour12 == true
+
+    /** A clock time in the app's format. */
+    fun clock(ms: Long): String = clockLabel(ms, hour12)
 }
 
 /** The frame, re-read from the snapshot file whenever a redraw bumps the widget's state. */

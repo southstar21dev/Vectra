@@ -7,19 +7,23 @@ struct Snapshot: Decodable {
     let version: Int
     let generatedAtMs: Double
     let signedIn: Bool
-    let sessions: [Session]
+    /// Decoded sessions, each stamped with `hour12` so their time labels follow it.
+    var sessions: [Session]
     /// The app is locked until it is updated; older snapshots don't carry the key.
     let updateRequired: Bool?
     /// Days after the generation day the sessions cover (`aheadDays`, from `SnapshotAheadDays` in
     /// WidgetSnapshot.kt). Snapshots written before the key existed covered 14.
     let aheadDays: Int?
+    /// The app's 12-hour setting; older snapshots don't carry the key and stay on 24-hour.
+    let hour12: Bool?
 
     static func load() -> Snapshot? {
         guard let url = AppGroup.snapshotURL,
               let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
+              var snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
               snapshot.version == 1
         else { return nil }
+        if snapshot.hour12 == true { snapshot.sessions = snapshot.sessions.map { var s = $0; s.hour12 = true; return s } }
         return snapshot
     }
 
@@ -68,11 +72,17 @@ struct Session: Decodable, Hashable {
     var teacherName: String? = nil
     var groupCode: String? = nil
 
+    /// Whether time labels read 12-hour. Not in the JSON: `Snapshot.load` stamps it from the snapshot.
+    var hour12 = false
+
     enum CodingKeys: String, CodingKey {
         case title, location, kind, startMs, endMs, day, color
         case teacherName = "teacher"
         case groupCode = "group"
     }
+
+    /// A clock time in the app's format ("08:05" or "8:05 AM").
+    func clock(_ date: Date) -> String { Budapest.clock(date, hour12: hour12) }
 
     var teacher: String { teacherName ?? "" }
     var group: String { groupCode ?? "" }
@@ -147,12 +157,21 @@ enum Budapest {
 
     private static let ymd = formatter("yyyy-MM-dd")
     private static let hm = formatter("HH:mm")
+    private static let hm12 = formatter("h:mm a")
     private static let weekdayShort = formatter("EEE")
     private static let heading = formatter("EEE d MMM")
 
     static func day(_ date: Date) -> String { ymd.string(from: date) }
     static func date(_ day: String) -> Date? { ymd.date(from: day) }
-    static func clock(_ date: Date) -> String { hm.string(from: date) }
+    static func clock(_ date: Date, hour12: Bool = false) -> String { (hour12 ? hm12 : hm).string(from: date) }
+
+    /// The week grid's hour axis: "08", or "8" and "2" in 12-hour mode (the column has no room for AM/PM).
+    static func hourAxis(_ hour: Int, hour12: Bool) -> String {
+        hour12 ? String(hour % 12 == 0 ? 12 : hour % 12) : String(format: "%02d", hour)
+    }
+
+    /// What a time column gains in 12-hour mode: "10:45 PM" is wider than "10:45".
+    static let hour12Extra: CGFloat = 18
     static func weekday(_ day: String) -> String { date(day).map(weekdayShort.string) ?? "" }
     static func heading(_ day: String) -> String { date(day).map(heading.string) ?? "" }
 
@@ -180,6 +199,11 @@ struct WeekDay: Identifiable {
     let isToday: Bool
     let isPast: Bool
     var id: String { date }
+}
+
+extension Optional where Wrapped == Snapshot {
+    /// The 12-hour setting the snapshot carries; no snapshot reads as 24-hour.
+    var is12Hour: Bool { self?.hour12 ?? false }
 }
 
 extension Optional where Wrapped == Snapshot {

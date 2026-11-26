@@ -81,7 +81,17 @@ struct LookOverrideKey: EnvironmentKey {
     static let defaultValue: Palette.Look? = nil
 }
 
+/// The app's 12-hour setting, for layouts whose time columns need more room.
+struct Hour12Key: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
+    var hour12: Bool {
+        get { self[Hour12Key.self] }
+        set { self[Hour12Key.self] = newValue }
+    }
+
     var palette: Palette {
         get { self[PaletteKey.self] }
         set { self[PaletteKey.self] = newValue }

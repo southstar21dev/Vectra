@@ -33,35 +33,36 @@ data class FootNote(val type: FootNoteType, val kind: WidgetKind?, val text: Str
 private fun andMore(count: Int) = if (count > 1) " and ${count - 1} more" else ""
 
 /** "Then X and N more" for the sessions a cut leaves off. */
-fun thenNote(hidden: List<WidgetSession>): FootNote? = hidden.firstOrNull()?.let {
-    FootNote(FootNoteType.Then, it.kind, "Then ${it.title}${andMore(hidden.size)}", clockLabel(it.startMs))
+fun thenNote(hidden: List<WidgetSession>, hour12: Boolean = false): FootNote? = hidden.firstOrNull()?.let {
+    FootNote(FootNoteType.Then, it.kind, "Then ${it.title}${andMore(hidden.size)}", clockLabel(it.startMs, hour12))
 }
 
 /** The first open task of [day], with how many more there are. */
 fun WidgetSnapshot.taskNote(day: String, nowMs: Long): FootNote? {
     val tasks = openTasks(day, nowMs)
-    return tasks.firstOrNull()?.let { FootNote(FootNoteType.Task, WidgetKind.Task, "${it.title}, due${andMore(tasks.size)}", clockLabel(it.endMs)) }
+    return tasks.firstOrNull()?.let { FootNote(FootNoteType.Task, WidgetKind.Task, "${it.title}, due${andMore(tasks.size)}", clockLabel(it.endMs, hour12)) }
 }
 
 /** When no later day fits on the widget itself, the footer names the next one. */
 fun WidgetSnapshot.nextDayNote(day: String, today: String): FootNote? =
     sessions.firstOrNull { it.day > day && it.kind.isTimed }?.let { n ->
         val count = sessionsOn(n.day).size
-        FootNote(FootNoteType.NextDay, null, "${dayDistanceLabel(today, n.day)}, ${n.title}${andMore(count)}", clockLabel(n.startMs))
+        FootNote(FootNoteType.NextDay, null, "${dayDistanceLabel(today, n.day)}, ${n.title}${andMore(count)}", clockLabel(n.startMs, hour12))
     }
 
 /** The footer of [cut]: what it hides, the task line, and the next-day line when nothing later shows. */
-fun footNotes(cut: AgendaCut, task: FootNote?, next: FootNote?): List<FootNote> =
-    listOfNotNull(thenNote(cut.hidden), task, next.takeIf { cut.shown.none { it is SpineRow.Day } && cut.hidden.isEmpty() })
+fun footNotes(cut: AgendaCut, task: FootNote?, next: FootNote?, hour12: Boolean = false): List<FootNote> =
+    listOfNotNull(thenNote(cut.hidden, hour12), task, next.takeIf { cut.shown.none { it is SpineRow.Day } && cut.hidden.isEmpty() })
 
 /** A row of the small widget's list: a time, a title, a type dot. */
 data class AfterRow(val time: String, val title: String, val kind: WidgetKind?)
 
 /** The small widget's rows after [s]: the rest of its day, then the next days' first sessions with their weekday. */
 fun WidgetSnapshot?.afterRows(s: WidgetSession, nowMs: Long, limit: Int = 4): List<AfterRow> {
-    val sameDay = laterOn(s.day, nowMs, s).map { AfterRow(clockLabel(it.listedMs), it.title, it.kind) }
+    val hour12 = this?.hour12 == true
+    val sameDay = laterOn(s.day, nowMs, s).map { AfterRow(clockLabel(it.listedMs, hour12), it.title, it.kind) }
     val later = this?.sessions.orEmpty().filter { it.day > s.day }.take(limit).map {
-        AfterRow("${weekdayLabel(it.day)} ${clockLabel(it.listedMs)}", it.title, it.kind)
+        AfterRow("${weekdayLabel(it.day)} ${clockLabel(it.listedMs, hour12)}", it.title, it.kind)
     }
     return (sameDay + later).take(limit)
 }

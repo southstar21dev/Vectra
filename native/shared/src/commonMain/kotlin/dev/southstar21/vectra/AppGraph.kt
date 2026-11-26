@@ -215,7 +215,8 @@ interface AppGraph {
         host: WidgetHost,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate)
+        appearance: AppearanceRepository,
+    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate, appearance)
 
     @SingleIn(AppScope::class)
     @Provides

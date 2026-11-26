@@ -53,8 +53,23 @@ object WidgetGeometry {
     /** Where a later day's label starts: at the node gap, left of the names (60 dp, as on iOS). */
     const val TodayDayLabelOffset = TodayTimeColumn + TodayTimeGap + TodayNodeColumn
 
+    /** What a time column gains in 12-hour mode: "10:45 PM" is wider than "10:45", and a time is never clipped. */
+    const val Hour12TimeExtra = 18f
+
+    fun timeExtra(hour12: Boolean): Float = if (hour12) Hour12TimeExtra else 0f
+
+    /** The Today time column's width. */
+    fun todayTimeColumn(hour12: Boolean): Float = TodayTimeColumn + timeExtra(hour12)
+
+    /** The Agenda time column's width. */
+    fun agendaTimeColumn(hour12: Boolean): Float = AgendaTimeColumn + timeExtra(hour12)
+
+    /** Where a later day's label starts in Today. */
+    fun todayDayLabelOffset(hour12: Boolean): Float = TodayDayLabelOffset + timeExtra(hour12)
+
     /** The room a name has in a Today widget [width] dp wide. */
-    fun todayNameWidth(width: Float): Float = width - TodayPadStart - TodayPadEnd - TodayNameOffset
+    fun todayNameWidth(width: Float, hour12: Boolean = false): Float =
+        width - TodayPadStart - TodayPadEnd - TodayNameOffset - timeExtra(hour12)
 
     /** The height rows can fill in a Today widget [height] dp tall. */
     fun todayRowSpace(height: Float): Float = height - TodayPadTop - TodayPadBottom
@@ -79,7 +94,7 @@ object WidgetGeometry {
     fun agendaRowWidth(width: Float): Float = width - AgendaPadStart - AgendaPadEnd
 
     /** The room a name has in an Agenda row [rowWidth] dp wide. */
-    fun agendaNameWidth(rowWidth: Float): Float = rowWidth - AgendaNameOffset
+    fun agendaNameWidth(rowWidth: Float, hour12: Boolean = false): Float = rowWidth - AgendaNameOffset - timeExtra(hour12)
 }
 
 /** A Today row's height: the type and name beside the times, whichever is taller. */

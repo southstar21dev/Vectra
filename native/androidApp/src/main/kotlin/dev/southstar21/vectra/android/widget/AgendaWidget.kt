@@ -37,7 +37,6 @@ import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.pickCut
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.agendaCuts
-import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
 import dev.southstar21.vectra.features.widgets.dayMonthLabel
 import dev.southstar21.vectra.features.widgets.dayShown
@@ -81,7 +80,7 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val b = budgetFor(context)
     val width = WidgetGeometry.agendaRowWidth(size.width.value)
     val space = size.height.value - WidgetGeometry.AgendaPadTop - WidgetGeometry.AgendaPadBottom - (b.line(11f) + b.line(24f)) - 9f
-    val pick = pickCut(agendaCuts(rows), taskLine, nextLine, b, width, space)
+    val pick = pickCut(agendaCuts(rows), taskLine, nextLine, b, width, space, frame.hour12)
     WidgetSurface(context, padding = 0.dp) {
         Column(GlanceModifier.fillMaxSize().padding(
             start = WidgetGeometry.AgendaPadStart.dp, top = WidgetGeometry.AgendaPadTop.dp, end = WidgetGeometry.AgendaPadEnd.dp, bottom = WidgetGeometry.AgendaPadBottom.dp,
@@ -96,12 +95,12 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
                     if (row is SpineRow.Day) {
                         DayLabel("${dayDistanceLabel(frame.today, row.day)}, ${dayHeading(row.day)}", pick.heights[i])
                     } else {
-                        AgendaRow(row, frame.nowMs, pick.heights[i], last, pick.compact, width)
+                        AgendaRow(row, frame, pick.heights[i], last, pick.compact, width)
                     }
                 }
             }
             Spacer(GlanceModifier.defaultWeight())
-            val lines = footNotes(pick.cut, taskLine, nextLine)
+            val lines = footNotes(pick.cut, taskLine, nextLine, frame.hour12)
             if (lines.isNotEmpty()) Footer(lines)
         }
     }
@@ -136,21 +135,21 @@ private fun Header(day: String, today: String, done: Int, total: Int) {
 }
 
 @Composable
-private fun AgendaRow(row: SpineRow, nowMs: Long, height: Float, last: Boolean, compact: Boolean, width: Float) {
+private fun AgendaRow(row: SpineRow, frame: WidgetFrame, height: Float, last: Boolean, compact: Boolean, width: Float) {
     when (row) {
-        is SpineRow.Break -> BreakRow(row.minutes, height)
-        is SpineRow.Past -> SessionRow(row.session, nowMs, height, last, compact, width, done = true)
-        is SpineRow.Now -> SessionRow(row.session, nowMs, height, last, compact, width, live = true)
-        is SpineRow.Next -> SessionRow(row.session, nowMs, height, last, compact, width)
+        is SpineRow.Break -> BreakRow(row.minutes, height, frame.hour12)
+        is SpineRow.Past -> SessionRow(row.session, frame, height, last, compact, width, done = true)
+        is SpineRow.Now -> SessionRow(row.session, frame, height, last, compact, width, live = true)
+        is SpineRow.Next -> SessionRow(row.session, frame, height, last, compact, width)
         is SpineRow.Day -> Unit
     }
 }
 
 @Composable
-private fun BreakRow(minutes: Int, height: Float) {
+private fun BreakRow(minutes: Int, height: Float, hour12: Boolean) {
     val p = LocalWPalette.current
     Row(GlanceModifier.fillMaxWidth().height(height.dp), verticalAlignment = Alignment.Top) {
-        Spacer(GlanceModifier.width(50.dp))
+        Spacer(GlanceModifier.width((WidgetGeometry.AgendaTimeColumn + WidgetGeometry.AgendaTimeGap + WidgetGeometry.timeExtra(hour12)).dp))
         Column(GlanceModifier.width(12.dp), horizontalAlignment = Alignment.CenterHorizontally) { SpineLine(height.dp, dashed = true) }
         Spacer(GlanceModifier.width(10.dp))
         Quiet("Break, ${spanOf(minutes)}", 11f, p.muted)
@@ -158,15 +157,15 @@ private fun BreakRow(minutes: Int, height: Float) {
 }
 
 @Composable
-private fun SessionRow(s: WidgetSession, nowMs: Long, height: Float, last: Boolean, compact: Boolean, width: Float, done: Boolean = false, live: Boolean = false) {
+private fun SessionRow(s: WidgetSession, frame: WidgetFrame, height: Float, last: Boolean, compact: Boolean, width: Float, done: Boolean = false, live: Boolean = false) {
     val p = LocalWPalette.current
-    val nameLines = budgetFor(LocalContext.current).lines(s.title, 14f, WidgetGeometry.agendaNameWidth(width), max = 2)
+    val nameLines = budgetFor(LocalContext.current).lines(s.title, 14f, WidgetGeometry.agendaNameWidth(width, frame.hour12), max = 2)
     // Compact cuts leave the rooms out, except the class on now's.
     val showRoom = !done && (live || !compact) && s.place.isNotBlank()
     Row(GlanceModifier.fillMaxWidth().height(height.dp)) {
-        Column(GlanceModifier.width(WidgetGeometry.AgendaTimeColumn.dp), horizontalAlignment = Alignment.End) {
-            Mono(clockLabel(s.startMs), color = if (done) p.muted else null)
-            if (!done) Mono(clockLabel(s.endMs), 11f, p.muted, FontWeight.Medium)
+        Column(GlanceModifier.width(WidgetGeometry.agendaTimeColumn(frame.hour12).dp), horizontalAlignment = Alignment.End) {
+            Mono(frame.clock(s.startMs), color = if (done) p.muted else null)
+            if (!done) Mono(frame.clock(s.endMs), 11f, p.muted, FontWeight.Medium)
         }
         Spacer(GlanceModifier.width(WidgetGeometry.AgendaTimeGap.dp))
         Column(GlanceModifier.width(WidgetGeometry.AgendaNodeColumn.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -180,14 +179,14 @@ private fun SessionRow(s: WidgetSession, nowMs: Long, height: Float, last: Boole
                 TypeWord(s.kind)
                 if (live) {
                     Spacer(GlanceModifier.width(8.dp))
-                    Text(remainingLabel(nowMs, s.endMs), style = style(11.sp, FontWeight.Bold, p.tone(s.kind)), maxLines = 1)
+                    Text(remainingLabel(frame.nowMs, s.endMs), style = style(11.sp, FontWeight.Bold, p.tone(s.kind)), maxLines = 1)
                 }
             }
             Name(s.title, 14f, nameLines, dim = done)
             if (showRoom) RoomLine(s.location, s.group)
             if (live) {
                 Spacer(GlanceModifier.height(5.dp))
-                Bar(progress(s, nowMs), s.kind)
+                Bar(progress(s, frame.nowMs), s.kind)
             }
         }
     }

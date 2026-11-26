@@ -26,7 +26,6 @@ import dev.southstar21.vectra.features.widgets.TodayEntry
 import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.WidgetSession
-import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.listedMs
 import dev.southstar21.vectra.features.widgets.fitRows
@@ -59,7 +58,7 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
     val items = snap.todayEntries(frame.today, frame.nowMs)
     val size = LocalSize.current
     val b = budgetFor(context)
-    val nameWidth = WidgetGeometry.todayNameWidth(size.width.value)
+    val nameWidth = WidgetGeometry.todayNameWidth(size.width.value, frame.hour12)
     val heights = items.map { item ->
         when (item) {
             is TodayEntry.Day -> b.line(10f) + 2f
@@ -77,13 +76,13 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
                 when (item) {
                     // One child per item: Glance draws at most ten per column.
                     is TodayEntry.Day -> Column {
-                        Row(GlanceModifier.padding(start = WidgetGeometry.TodayDayLabelOffset.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
+                        Row(GlanceModifier.padding(start = WidgetGeometry.todayDayLabelOffset(frame.hour12).dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
                         Spacer(GlanceModifier.height(WidgetGeometry.TodayRowGap.dp))
                     }
                     is TodayEntry.Session -> {
                         val last = i == shown.lastIndex || shown[i + 1] is TodayEntry.Day
                         // The gap below belongs to the row, so the time line runs on through it.
-                        CompactRow(item.session, frame.nowMs, heights[i] + WidgetGeometry.TodayRowGap, last, b.lines(item.session.title, 14f, nameWidth, max = 2))
+                        CompactRow(item.session, frame, heights[i] + WidgetGeometry.TodayRowGap, last, b.lines(item.session.title, 14f, nameWidth, max = 2))
                     }
                 }
             }
@@ -93,13 +92,14 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
 
 /** One row: start over end, a node on the line, the type and room over the name. */
 @Composable
-private fun CompactRow(s: WidgetSession, nowMs: Long, height: Float, last: Boolean, nameLines: Int) {
+private fun CompactRow(s: WidgetSession, frame: WidgetFrame, height: Float, last: Boolean, nameLines: Int) {
     val p = LocalWPalette.current
+    val nowMs = frame.nowMs
     val live = s.kind.isTimed && s.startMs <= nowMs && nowMs < s.endMs
     Row(GlanceModifier.fillMaxWidth().height(height.dp)) {
-        Column(GlanceModifier.width(WidgetGeometry.TodayTimeColumn.dp), horizontalAlignment = Alignment.End) {
-            Mono(clockLabel(s.listedMs))
-            if (s.kind.isTimed) Mono(clockLabel(s.endMs), 10f, p.muted, FontWeight.Medium)
+        Column(GlanceModifier.width(WidgetGeometry.todayTimeColumn(frame.hour12).dp), horizontalAlignment = Alignment.End) {
+            Mono(frame.clock(s.listedMs))
+            if (s.kind.isTimed) Mono(frame.clock(s.endMs), 10f, p.muted, FontWeight.Medium)
         }
         Spacer(GlanceModifier.width(WidgetGeometry.TodayTimeGap.dp))
         Column(GlanceModifier.width(WidgetGeometry.TodayNodeColumn.dp), horizontalAlignment = Alignment.CenterHorizontally) {

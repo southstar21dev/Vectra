@@ -6,7 +6,7 @@ import WidgetKit
 struct TodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Today", provider: Provider()) { entry in
-            WidgetBox(padding: EdgeInsets(top: 11, leading: 12, bottom: 10, trailing: 15)) { TodayView(entry: entry) }
+            WidgetBox(padding: EdgeInsets(top: 11, leading: 12, bottom: 10, trailing: 15)) { TodayView(entry: entry) }.environment(\.hour12, entry.snapshot.is12Hour)
         }
         .configurationDisplayName("Now and later today")
         .description("The class on now and what comes after it, on one time line.")
@@ -66,6 +66,7 @@ enum CompactItem: Hashable {
 
 /// Rows on a thin time line: start over end on the left, a node, the type and room over the name.
 struct CompactSpine: View {
+    @Environment(\.hour12) private var hour12
     @Environment(\.palette) private var p
     let items: [CompactItem]
     let now: Date
@@ -74,7 +75,7 @@ struct CompactSpine: View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(items.enumerated()), id: \.offset) { i, item in
                 switch item {
-                case .day(let label): Micro(text: label).padding(.leading, 60).padding(.top, i == 0 ? 0 : 2)
+                case .day(let label): Micro(text: label).padding(.leading, 60 + (hour12 ? Budapest.hour12Extra : 0)).padding(.top, i == 0 ? 0 : 2)
                 case .session(let s): row(s, last: i == items.count - 1 || { if case .day = items[i + 1] { true } else { false } }())
                 }
             }
@@ -85,10 +86,10 @@ struct CompactSpine: View {
         let live = s.isLive(at: now)
         return HStack(alignment: .top, spacing: 9) {
             VStack(alignment: .trailing, spacing: 1) {
-                Mono(text: Budapest.clock(s.when))
-                if s.kind.isTimed { Mono(text: Budapest.clock(s.end), size: 10, weight: 600, color: p.muted) }
+                Mono(text: s.clock(s.when))
+                if s.kind.isTimed { Mono(text: s.clock(s.end), size: 10, weight: 600, color: p.muted) }
             }
-            .frame(width: 40, alignment: .trailing)
+            .frame(width: 40 + (hour12 ? Budapest.hour12Extra : 0), alignment: .trailing)
             Node(kind: s.kind, live: live, done: false)
                 .frame(width: 11)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -158,7 +159,7 @@ struct SpineLine: View {
 struct WeekWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Week", provider: Provider()) { entry in
-            WidgetBox(padding: EdgeInsets(top: 11, leading: 10, bottom: 10, trailing: 13)) { WeekView(entry: entry) }
+            WidgetBox(padding: EdgeInsets(top: 11, leading: 10, bottom: 10, trailing: 13)) { WeekView(entry: entry) }.environment(\.hour12, entry.snapshot.is12Hour)
         }
         .configurationDisplayName("This week")
         .description("Your week as a small timetable, with the next exam.")
@@ -190,7 +191,7 @@ struct WeekView: View {
                     if let exam {
                         TypeWord(kind: .exam)
                         Text("\(exam.title), \(Budapest.weekday(exam.day))").font(VFont.inter(11, 600)).foregroundStyle(p.secondary).lineLimit(1).minimumScaleFactor(0.7)
-                        Mono(text: Budapest.clock(exam.start), size: 11, color: p.secondary)
+                        Mono(text: exam.clock(exam.start), size: 11, color: p.secondary)
                     } else if week.title == "Next week" {
                         Quiet(text: "Next week")
                     }
@@ -203,6 +204,7 @@ struct WeekView: View {
 /// Mon to Fri (plus a weekend day with something on) as columns, classes as blocks placed by time.
 struct Timetable: View {
     @Environment(\.palette) private var p
+    @Environment(\.hour12) private var hour12
     let grid: WeekGrid
     let now: Date
 
@@ -211,7 +213,7 @@ struct Timetable: View {
         HStack(alignment: .top, spacing: 3) {
             GeometryReader { g in
                 ForEach(hours, id: \.self) { h in
-                    Text(String(format: "%02d", h)).font(VFont.mono(9, 700)).foregroundStyle(p.muted)
+                    Text(Budapest.hourAxis(h, hour12: hour12)).font(VFont.mono(9, 700)).foregroundStyle(p.muted)
                         .position(x: g.size.width / 2, y: y(h * 60, g.size.height))
                 }
             }
@@ -284,7 +286,7 @@ private struct DayHead: View {
 struct AgendaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Agenda", provider: Provider()) { entry in
-            WidgetBox(padding: EdgeInsets(top: 14, leading: 16, bottom: 13, trailing: 18)) { AgendaView(entry: entry) }
+            WidgetBox(padding: EdgeInsets(top: 14, leading: 16, bottom: 13, trailing: 18)) { AgendaView(entry: entry) }.environment(\.hour12, entry.snapshot.is12Hour)
         }
         .configurationDisplayName("Today")
         .description("Your whole day on one time line, with breaks and what's due.")
@@ -333,7 +335,7 @@ struct AgendaView: View {
     private func taskLine(_ tasks: [Session]) -> AgendaFooter.Line? {
         guard let t = tasks.first else { return nil }
         let more = tasks.count > 1 ? " and \(tasks.count - 1) more" : ""
-        return .init(icon: "RiTask", kind: .task, text: "\(t.title), due\(more)", time: Budapest.clock(t.end))
+        return .init(icon: "RiTask", kind: .task, text: "\(t.title), due\(more)", time: t.clock(t.end))
     }
 
     /// The next day's first class, for when no later day fits on the line itself.
@@ -341,7 +343,7 @@ struct AgendaView: View {
         guard let next = entry.snapshot.firstTimed(after: day) else { return nil }
         let count = entry.snapshot.sessions(on: next.day).count
         let more = count > 1 ? " and \(count - 1) more" : ""
-        return .init(icon: "RiCalendar", kind: nil, text: "\(Budapest.distance(from: today, to: next.day)), \(next.title)\(more)", time: Budapest.clock(next.start))
+        return .init(icon: "RiCalendar", kind: nil, text: "\(Budapest.distance(from: today, to: next.day)), \(next.title)\(more)", time: next.clock(next.start))
     }
 }
 
@@ -377,6 +379,7 @@ private struct AgendaHeader: View {
 /// One way to fit the day. The candidates go from every row to fewer: finished classes leave
 /// first, oldest first, then the last ones, which the footer names instead.
 struct AgendaFit: View {
+    @Environment(\.hour12) private var hour12
     let shown: [SpineRow]
     let hidden: [Session]
     /// Rooms left out under every class but the one on now, before a whole class has to go.
@@ -391,7 +394,7 @@ struct AgendaFit: View {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(shown.enumerated()), id: \.offset) { i, row in
                     if case .day(let d) = row {
-                        Micro(text: "\(Budapest.distance(from: today, to: d)), \(Budapest.heading(d))").padding(.leading, 62).padding(.top, 2)
+                        Micro(text: "\(Budapest.distance(from: today, to: d)), \(Budapest.heading(d))").padding(.leading, 62 + (hour12 ? Budapest.hour12Extra : 0)).padding(.top, 2)
                     } else {
                         AgendaRow(row: row, now: now, last: i == shown.count - 1 || shown[i + 1].isDay, compact: compact)
                     }
@@ -399,7 +402,7 @@ struct AgendaFit: View {
             }
             let then = hidden.first.map { s -> AgendaFooter.Line in
                 let more = hidden.count > 1 ? " and \(hidden.count - 1) more" : ""
-                return .init(icon: nil, kind: s.kind, text: "Then \(s.title)\(more)", time: Budapest.clock(s.start))
+                return .init(icon: nil, kind: s.kind, text: "Then \(s.title)\(more)", time: s.clock(s.start))
             }
             let showsLaterDays = shown.contains { $0.isDay }
             let lines = [then, task, showsLaterDays || !hidden.isEmpty ? nil : next].compactMap { $0 }
@@ -438,6 +441,7 @@ struct AgendaFit: View {
 
 private struct AgendaRow: View {
     @Environment(\.palette) private var p
+    @Environment(\.hour12) private var hour12
     let row: SpineRow
     let now: Date
     let last: Bool
@@ -447,7 +451,7 @@ private struct AgendaRow: View {
         switch row {
         case .gap(let minutes):
             HStack(spacing: 10) {
-                Color.clear.frame(width: 40, height: 1)
+                Color.clear.frame(width: 40 + (hour12 ? Budapest.hour12Extra : 0), height: 1)
                 SpineLine(dashed: true).frame(width: 12, height: 16)
                 Text("Break, \(durationLabel(Double(minutes) * 60))").font(VFont.inter(11, 600)).foregroundStyle(p.muted).lineLimit(1)
             }
@@ -461,10 +465,10 @@ private struct AgendaRow: View {
     private func session(_ s: Session, done: Bool, live: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .trailing, spacing: 1) {
-                Mono(text: Budapest.clock(s.start), color: done ? p.muted : p.text)
-                if !done { Mono(text: Budapest.clock(s.end), size: 11, weight: 600, color: p.muted) }
+                Mono(text: s.clock(s.start), color: done ? p.muted : p.text)
+                if !done { Mono(text: s.clock(s.end), size: 11, weight: 600, color: p.muted) }
             }
-            .frame(width: 40, alignment: .trailing)
+            .frame(width: 40 + (hour12 ? Budapest.hour12Extra : 0), alignment: .trailing)
             Node(kind: s.kind, live: live, done: done)
                 .frame(width: 12)
                 .frame(maxHeight: .infinity, alignment: .top)

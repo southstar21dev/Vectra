@@ -20,6 +20,8 @@ data class WidgetSnapshot(
     val updateRequired: Boolean = false,
     /** Days after [generatedAtMs]'s day the sessions cover; iOS asks for the app once past it. */
     val aheadDays: Int = SnapshotAheadDays,
+    /** The app's 12-hour clock setting; snapshots written before the key existed stay on 24-hour. */
+    val hour12: Boolean = false,
 )
 
 @Serializable
@@ -76,20 +78,22 @@ internal fun ReminderSession.widgetKind(): WidgetKind = when (kind) {
     SessionKind.Other -> WidgetKind.Other
 }
 
-fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long): WidgetSnapshot =
+fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long, hour12: Boolean = false): WidgetSnapshot =
     WidgetSnapshot(
         generatedAtMs = nowMs,
         signedIn = true,
+        hour12 = hour12,
         sessions = sessions.map {
             WidgetSession(it.title, it.location, it.widgetKind(), it.startMs, it.endMs, it.day, it.color, it.teacher, it.group)
         },
     )
 
-fun signedOutSnapshot(nowMs: Long) = WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList())
+fun signedOutSnapshot(nowMs: Long, hour12: Boolean = false) =
+    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), hour12 = hour12)
 
 /** What the widgets hold while the app is locked: nothing from the timetable, only the update prompt. */
-fun updateRequiredSnapshot(nowMs: Long) =
-    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true)
+fun updateRequiredSnapshot(nowMs: Long, hour12: Boolean = false) =
+    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true, hour12 = hour12)
 
 const val UpdateRequiredWidgetMessage = "Update Vectra to keep using it."
 
