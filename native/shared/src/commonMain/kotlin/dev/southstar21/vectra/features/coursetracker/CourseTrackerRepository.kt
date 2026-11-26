@@ -132,13 +132,15 @@ class CourseTrackerRepository(
      * serialised queue, so another device's newer trackers survive.
      */
     suspend fun upload(uid: String, local: CourseTrackerData, dropKeys: List<String> = emptyList()): TrackerUploadResult {
+        // Remembered before queueing: a refresh merge, or an upload this one collapses into, must
+        // already leave the removed trackers out, even when this run never executes itself.
+        if (dropKeys.isNotEmpty()) droppedKeys += dropKeys
         if (!gate.isReadable(uid)) {
             gate.noteHeldBack(uid)
             return TrackerUploadResult.HeldBack
         }
         gate.enqueue {
             val remote = readCloud(uid)
-            if (dropKeys.isNotEmpty()) droppedKeys += dropKeys
             var merged = if (remote != null) mergeTrackerData(local, withoutDropped(remote)) else local
             if (dropKeys.isNotEmpty()) merged = merged.copy(trackers = merged.trackers - dropKeys.toSet())
             cloud.upsert(uid, cipher.encrypt(serializeTrackerData(merged)))
