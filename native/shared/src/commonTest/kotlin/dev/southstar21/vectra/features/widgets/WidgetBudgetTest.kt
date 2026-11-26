@@ -42,6 +42,8 @@ class WidgetBudgetTest {
         // 12 + 15 padding, then 40 + 9 + 11 + 9 of columns and gaps.
         assertEquals(360f - 27f - 69f, WidgetGeometry.todayNameWidth(360f))
         assertEquals(170f - 21f, WidgetGeometry.todayRowSpace(170f))
+        // A later day's label sits at the node gap, as on iOS (DayWidgets.swift pads it 60).
+        assertEquals(60f, WidgetGeometry.TodayDayLabelOffset)
         // 16 + 18 padding; a row spends 72 before its name.
         assertEquals(360f - 34f, WidgetGeometry.agendaRowWidth(360f))
         assertEquals(360f - 34f - 72f, WidgetGeometry.agendaNameWidth(WidgetGeometry.agendaRowWidth(360f)))

@@ -77,7 +77,7 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
                 when (item) {
                     // One child per item: Glance draws at most ten per column.
                     is TodayEntry.Day -> Column {
-                        Row(GlanceModifier.padding(start = WidgetGeometry.TodayNameOffset.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
+                        Row(GlanceModifier.padding(start = WidgetGeometry.TodayDayLabelOffset.dp, top = if (i == 0) 0.dp else 2.dp)) { Micro(item.label) }
                         Spacer(GlanceModifier.height(WidgetGeometry.TodayRowGap.dp))
                     }
                     is TodayEntry.Session -> {

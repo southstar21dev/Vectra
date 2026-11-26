@@ -47,8 +47,11 @@ object WidgetGeometry {
     /** The gap under each row, which belongs to the row so the time line runs through it. */
     const val TodayRowGap = 5f
 
-    /** Where the name column starts, measured from the padding: the day labels line up with it. */
+    /** Where the name column starts, measured from the padding. */
     const val TodayNameOffset = TodayTimeColumn + TodayTimeGap + TodayNodeColumn + TodayNodeGap
+
+    /** Where a later day's label starts: at the node gap, left of the names (60 dp, as on iOS). */
+    const val TodayDayLabelOffset = TodayTimeColumn + TodayTimeGap + TodayNodeColumn
 
     /** The room a name has in a Today widget [width] dp wide. */
     fun todayNameWidth(width: Float): Float = width - TodayPadStart - TodayPadEnd - TodayNameOffset
