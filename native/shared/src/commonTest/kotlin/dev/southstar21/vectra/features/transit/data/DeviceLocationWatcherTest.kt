@@ -82,4 +82,40 @@ class DeviceLocationWatcherTest {
         assertEquals(0, provider.watching)
         release()
     }
+
+    @Test fun withoutPermissionNothingAsksOnItsOwn() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        watcher.prompt = { asked += 1 }
+
+        val release = watcher.acquire()
+        watcher.onResume()
+        runCurrent()
+        assertEquals(0, asked)
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
+
+    @Test fun aUserActionAsksAndTrackingStartsOnceGranted() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        watcher.prompt = { onResult ->
+            asked += 1
+            provider.permission = GeoPermission.Granted
+            onResult(true)
+        }
+
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(0, asked)
+        watcher.refreshLocation()
+        runCurrent()
+        assertEquals(1, asked)
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        release()
+    }
 }

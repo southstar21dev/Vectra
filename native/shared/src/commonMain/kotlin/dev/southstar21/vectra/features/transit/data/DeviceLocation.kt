@@ -239,8 +239,6 @@ class DeviceLocation(
 
     /** The OS permission prompt (registered by the composable consumers). */
     internal var prompt: ((onResult: (Boolean) -> Unit) -> Unit)? = null
-    /** Android would re-prompt on every start, so ask once per process. */
-    private var prompted = false
     private var prompting = false
 
     private fun ensureInitialized() {
@@ -323,16 +321,20 @@ class DeviceLocation(
                 return
             }
             else -> {
+                // The OS prompt only follows a user action (a location button or a screen that needs it).
+                // A start nobody asked for never asks: with nothing decided yet it stays idle, so the
+                // views show their "Allow" call to action; after a denial it reports the denial.
                 val ask = prompt
-                if (ask != null && (userInitiated || !prompted) && !prompting) {
-                    prompted = true
-                    prompting = true
-                    if (_state.value.status != WatchLocationStatus.Tracking) _state.value = _state.value.copy(status = WatchLocationStatus.Locating)
-                    ask { granted ->
-                        prompting = false
-                        if (granted) startWatch() else applyError(1, "User denied Geolocation")
+                if (ask != null && userInitiated) {
+                    if (!prompting) {
+                        prompting = true
+                        if (_state.value.status != WatchLocationStatus.Tracking) _state.value = _state.value.copy(status = WatchLocationStatus.Locating)
+                        ask { granted ->
+                            prompting = false
+                            if (granted) startWatch() else applyError(1, "User denied Geolocation")
+                        }
                     }
-                } else if (!prompting) {
+                } else if (provider.permission() == GeoPermission.Denied) {
                     applyError(1, "User denied Geolocation")
                 }
                 return
