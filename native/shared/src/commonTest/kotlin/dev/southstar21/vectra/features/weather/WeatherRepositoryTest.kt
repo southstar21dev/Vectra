@@ -35,8 +35,9 @@ private const val ForecastBody =
        "daily":{"time":["2026-08-09"],"temperature_2m_max":[24.1],"temperature_2m_min":[13.7]},
        "utc_offset_seconds":7200}"""
 
+/** Starts like a fresh install: the OS permission has not been asked for yet. */
 private class FakeLocation(
-    @Volatile var permission: GeoPermission = GeoPermission.Granted,
+    @Volatile var permission: GeoPermission = GeoPermission.Prompt,
     @Volatile var fix: GeoFix? = GeoFix(46.2531, 20.1484, 50.0, timeMs = Now),
     @Volatile var failure: Throwable? = null,
 ) : LocationProvider {
@@ -160,6 +161,53 @@ class WeatherRepositoryTest {
         kv.set(LocationModeKey, "auto")
         val repo = repo()
         until { repo.location.value?.status == WeatherLocationStatus.Fallback }
+    }
+
+    // ---- following a grant made outside Settings -------------------------------------------
+
+    @Test fun aGrantedPermissionWithNoChoiceInSettingsTurnsTheSettingOn() = scenario(FakeLocation(permission = GeoPermission.Granted)) {
+        val repo = repo()
+        until { repo.location.value?.status == WeatherLocationStatus.Located }
+        assertEquals(WeatherLocationMode.Auto, repo.location.value?.mode)
+        assertEquals("auto", storedMode())
+    }
+
+    @Test fun anExplicitOffInSettingsStaysOffWhenThePermissionIsGranted() = scenario(FakeLocation(permission = GeoPermission.Granted)) {
+        kv.set(LocationModeKey, "budapest")
+        val repo = repo()
+        until { repo.location.value != null }
+        repo.onForeground()
+        delay(100)
+        assertEquals(WeatherLocationMode.Budapest, repo.location.value?.mode)
+        assertEquals("budapest", storedMode())
+    }
+
+    @Test fun aGrantFromTheNearbyPromptTurnsTheSettingOn() = scenario {
+        kv.set(LocationModeKey, "budapest")
+        val repo = repo()
+        until { repo.location.value != null }
+        location.permission = GeoPermission.Granted
+        repo.adoptDeviceGrant()
+        until { repo.location.value?.status == WeatherLocationStatus.Located }
+        assertEquals(WeatherLocationMode.Auto, repo.location.value?.mode)
+        assertEquals("auto", storedMode())
+    }
+
+    @Test fun aGrantInSystemSettingsIsPickedUpOnTheNextResume() = scenario {
+        val repo = repo()
+        until { repo.location.value != null }
+        assertEquals(WeatherLocationMode.Budapest, repo.location.value?.mode)
+        location.permission = GeoPermission.Granted
+        repo.onForeground()
+        until { repo.location.value?.status == WeatherLocationStatus.Located }
+        assertEquals("auto", storedMode())
+    }
+
+    @Test fun theStoredChoiceWinsOverThePermission() {
+        assertEquals(WeatherLocationMode.Auto, effectiveLocationMode(null, GeoPermission.Granted))
+        assertEquals(WeatherLocationMode.Budapest, effectiveLocationMode(null, GeoPermission.Prompt))
+        assertEquals(WeatherLocationMode.Budapest, effectiveLocationMode("budapest", GeoPermission.Granted))
+        assertEquals(WeatherLocationMode.Auto, effectiveLocationMode("auto", GeoPermission.Denied))
     }
 
     // ---- fetching ----------------------------------------------------------------------------

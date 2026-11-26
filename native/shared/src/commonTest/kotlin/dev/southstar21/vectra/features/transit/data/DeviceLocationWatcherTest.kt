@@ -103,6 +103,8 @@ class DeviceLocationWatcherTest {
         val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
         val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
         var asked = 0
+        var grants = 0
+        watcher.onUserGrant = { grants += 1 }
         watcher.prompt = { onResult ->
             asked += 1
             provider.permission = GeoPermission.Granted
@@ -116,6 +118,8 @@ class DeviceLocationWatcherTest {
         runCurrent()
         assertEquals(1, asked)
         assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        // The grant reaches the weather setting, so Settings shows location on.
+        assertEquals(1, grants)
         release()
     }
 

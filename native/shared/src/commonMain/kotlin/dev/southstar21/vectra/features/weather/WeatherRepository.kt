@@ -188,11 +188,19 @@ class WeatherRepository(
         }
     }
 
+    private suspend fun currentPermission(): GeoPermission =
+        runSuspendCatching { locationProvider.permission() }.getOrDefault(GeoPermission.Unsupported)
+
     /** Passive check — never prompts. Runs at start and whenever the app returns to the foreground. */
     private suspend fun probePermission() {
-        val mode = parseLocationMode(kv.get(LocationModeKey))
+        val stored = kv.get(LocationModeKey)
+        val permission = currentPermission()
+        val mode = effectiveLocationMode(stored, permission)
         if (mode == WeatherLocationMode.Budapest) return
-        when (runSuspendCatching { locationProvider.permission() }.getOrDefault(GeoPermission.Unsupported)) {
+        // Never chosen in Settings, but location was granted (from a feature's prompt or in system
+        // settings): remember it, so the Settings switch shows on.
+        if (stored == null) runSuspendCatching { kv.set(LocationModeKey, mode.stored) }
+        when (permission) {
             GeoPermission.Granted -> {
                 _location.update { it?.copy(mode = mode, status = WeatherLocationStatus.Locating) }
                 readPosition()
@@ -207,7 +215,7 @@ class WeatherRepository(
     fun onForeground() {
         scope.launch {
             if (_location.value == null) return@launch
-            val mode = parseLocationMode(kv.get(LocationModeKey))
+            val mode = effectiveLocationMode(kv.get(LocationModeKey), currentPermission())
             if (mode == WeatherLocationMode.Budapest) {
                 _location.value = WeatherLocationState(mode, null, null, WeatherLocationStatus.Budapest)
             } else {
@@ -215,6 +223,15 @@ class WeatherRepository(
             }
             refreshWeather(currentCoords)
         }
+    }
+
+    /**
+     * The user granted location from another feature's prompt (the Nearby map, its "Allow" button):
+     * that turns this setting on too, as granting it in Settings would.
+     */
+    fun adoptDeviceGrant() {
+        if (_location.value?.mode == WeatherLocationMode.Auto) return
+        setMode(WeatherLocationMode.Auto)
     }
 
     /**

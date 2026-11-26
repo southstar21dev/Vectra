@@ -282,7 +282,11 @@ interface AppGraph {
         kv: KeyValueStore,
         pb: PocketBaseClient,
         scope: CoroutineScope,
-    ): DeviceLocation = DeviceLocation(transit.location, kv, scope, canPersist = { pb.auth.current != null })
+        weather: WeatherRepository,
+    ): DeviceLocation = DeviceLocation(transit.location, kv, scope, canPersist = { pb.auth.current != null }).apply {
+        // A grant from the Nearby map or its "Allow" button turns the Settings location switch on too.
+        onUserGrant = weather::adoptDeviceGrant
+    }
 
     @SingleIn(AppScope::class)
     @Provides

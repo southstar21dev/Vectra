@@ -242,6 +242,9 @@ class DeviceLocation(
 
     /** The OS permission prompt (registered by the composable consumers). */
     internal var prompt: ((onResult: (Boolean) -> Unit) -> Unit)? = null
+
+    /** Called when the user grants location from one of these prompts (the weather setting follows it). */
+    var onUserGrant: (() -> Unit)? = null
     private var prompting = false
 
     private fun ensureInitialized() {
@@ -335,7 +338,12 @@ class DeviceLocation(
                         if (_state.value.status != WatchLocationStatus.Tracking) _state.value = _state.value.copy(status = WatchLocationStatus.Locating)
                         ask { granted ->
                             prompting = false
-                            if (granted) startWatch() else applyError(1, "User denied Geolocation")
+                            if (granted) {
+                                onUserGrant?.invoke()
+                                startWatch()
+                            } else {
+                                applyError(1, "User denied Geolocation")
+                            }
                         }
                     }
                 } else if (provider.permission() == GeoPermission.Denied) {

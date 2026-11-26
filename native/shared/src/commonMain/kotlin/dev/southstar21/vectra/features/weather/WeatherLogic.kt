@@ -2,6 +2,7 @@ package dev.southstar21.vectra.features.weather
 
 import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.core.platform.GeoPermission
 import dev.southstar21.vectra.core.util.roundHalfUp
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -134,6 +135,13 @@ enum class WeatherLocationMode(val stored: String) { Auto("auto"), Budapest("bud
 const val LocationModeKey = "vectra.weather.locationMode"
 
 fun parseLocationMode(raw: String?): WeatherLocationMode = if (raw == "auto") WeatherLocationMode.Auto else WeatherLocationMode.Budapest
+
+/**
+ * The mode in effect: the stored choice, or, when the user never chose in Settings, the device
+ * location as soon as the OS permission is granted. An explicit "off" ([raw] "budapest") always wins.
+ */
+fun effectiveLocationMode(raw: String?, permission: GeoPermission): WeatherLocationMode =
+    if (raw == null && permission == GeoPermission.Granted) WeatherLocationMode.Auto else parseLocationMode(raw)
 
 enum class WeatherLocationStatus {
     /** Initial, before the first permission check. */
