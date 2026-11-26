@@ -31,12 +31,13 @@ var Vars = []Var{
 	{"WEBAUTHN_RP_ID", true, "passkeys"},
 	{"WEBAUTHN_RP_ORIGINS", true, "passkeys (comma-separated)"},
 	{"WEBAUTHN_RP_DISPLAY_NAME", true, "passkeys"},
+	{"CATALOG_BUILD", false, "/catalog/*.json builder (0 turns the daily build off; needs FUTAR_API_KEY otherwise)"},
 	{"TRUSTED_PROXY", false, "client IP for rate limits (cloudflare, 1, or unset)"},
 }
 
 // watchedPrefixes are the prefixes of our own variables; a variable with one of
 // them that is not in Vars is almost certainly a typo.
-var watchedPrefixes = []string{"NEPTUN_", "FUTAR_", "VAPID_", "WEBAUTHN_", "TRUSTED_PROXY"}
+var watchedPrefixes = []string{"NEPTUN_", "FUTAR_", "VAPID_", "WEBAUTHN_", "TRUSTED_PROXY", "CATALOG_"}
 
 // Problem is one finding of Check.
 type Problem struct {
