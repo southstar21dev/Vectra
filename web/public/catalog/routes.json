@@ -34,7 +34,7 @@
   {
     "id": "BKK_F3020",
     "shortName": "2❆",
-    "description": "Közvágóhíd H | Jászai Mari tér",
+    "description": "Jászai Mari tér | Közvágóhíd H",
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
@@ -70,14 +70,6 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
-  },
-  {
-    "id": "BKK_VP04",
-    "shortName": "4",
-    "description": "Corvin-negyed M | Újbuda-központ M",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
   },
   {
     "id": "volan_4",
@@ -230,6 +222,14 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
+  },
+  {
+    "id": "BKK_OP12",
+    "shortName": "12",
+    "description": "Rákospalota, Kossuth utca | Angyalföld kocsiszín",
+    "type": "BUS",
+    "color": "009EE3",
+    "textColor": "FFFFFF"
   },
   {
     "id": "volan_12",
@@ -524,8 +524,8 @@
     "shortName": "32❆",
     "description": "Örs vezér tere M+H | Göncz Árpád városközpont M",
     "type": "BUS",
-    "color": "FFAA00",
-    "textColor": "000000"
+    "color": "009EE3",
+    "textColor": "FFFFFF"
   },
   {
     "id": "BKK_0330",
@@ -562,7 +562,7 @@
   {
     "id": "BKK_F0340",
     "shortName": "34❆",
-    "description": "Békásmegyer, Újmegyeri tér | Göncz Árpád városközpont M",
+    "description": "B.megyer, Újmegyeri tér | Göncz Árpád városkp. M",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -966,22 +966,6 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
-  },
-  {
-    "id": "BKK_3611",
-    "shortName": "61",
-    "description": "Hűvösvölgy | Budagyöngye",
-    "type": "TRAM",
-    "color": "FFD800",
-    "textColor": "000000"
-  },
-  {
-    "id": "BKK_VP61",
-    "shortName": "61",
-    "description": "Hűvösvölgy | Széll Kálmán tér M",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
   },
   {
     "id": "BKK_3620",
@@ -1690,7 +1674,7 @@
   {
     "id": "BKK_1282",
     "shortName": "128B",
-    "description": "Szent János Kórház | Szent János Kórház",
+    "description": "Szent János Kórház | Orgonás (Rőzse utca)",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -1763,14 +1747,6 @@
     "id": "BKK_1350",
     "shortName": "135",
     "description": "Soroksár, IKEA áruház | Millenniumtelep H",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
-  },
-  {
-    "id": "BKK_1351",
-    "shortName": "135A",
-    "description": "Szentlőrinci úti lakótelep | Pesterzsébeti temető",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -2274,7 +2250,7 @@
   {
     "id": "BKK_F1960",
     "shortName": "196❆",
-    "description": "Káposztásmegyer, Szilas-patak | Újpalota, Szentmihályi út",
+    "description": "Újpalota, Szentmihályi út | Káp.megyer, Szilas-patak",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -2786,7 +2762,7 @@
   {
     "id": "BKK_2810",
     "shortName": "281",
-    "description": "Ferencvárosi rendelőint. | Aszódi utca",
+    "description": "Haller utca / Mester utca | Haller utca / Mester utca",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -4770,7 +4746,7 @@
   {
     "id": "BKK_9081",
     "shortName": "908A",
-    "description": "Astoria M | Kelenföld vasútállomás M",
+    "description": "Cinkotai autóbuszgarázs | Kelenföld vasútállomás M",
     "type": "BUS",
     "color": "000000",
     "textColor": "FFFFFF"
@@ -5461,6 +5437,14 @@
     "description": "Kelenföld vasútállomás | Keleti pályaudvar",
     "type": "SUBWAY",
     "color": "4CA22F",
+    "textColor": "FFFFFF"
+  },
+  {
+    "id": "BKK_MOZG",
+    "shortName": "MOZG",
+    "description": "Különjárat | Különjárat",
+    "type": "BUS",
+    "color": "009EE3",
     "textColor": "FFFFFF"
   },
   {
