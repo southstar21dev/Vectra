@@ -168,7 +168,8 @@ internal fun SettingsTab(
     // a blank or partial entry waits for [commitTotal] to settle it.
     fun applyTotalWhileTyping(text: String) {
         totalInput = text
-        val value = parseFiniteNumber(text)?.let { clampNumber(round(it), 1.0, 10000.0) } ?: return
+        // Only an in-range value: a clamped one ("0" on the way to "05") would rewrite the field mid-typing.
+        val value = parseFiniteNumber(text)?.let(::round)?.takeIf { it in 1.0..10000.0 } ?: return
         if (value == (tracker.points.totalPoints.takeIf { it > 0 } ?: DefaultCourseTotalPoints)) return
         totalAppliedLive = true
         onUpdateLimits(TrackerLimits(tracker.attendance.maxAbsencesAllowed, tracker.attendance.minAttendancePercent, totalPoints = value))
