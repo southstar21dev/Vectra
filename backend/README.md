@@ -60,7 +60,10 @@ and `web/scripts/build-catalog.mjs`.
   rebuilds every 24 hours after the last success. A failed build keeps serving the last good copy and
   is retried after 5 minutes, doubling up to 2 hours. A degraded result (fewer than 100 routes or 500
   stop areas, or more than 5% below the current copy) is refused; routes or circles that fail are
-  filled in from the current copy.
+  filled in from the current copy. If BKK really drops more than 5% of its lines or stops, every
+  build is refused (the log says "more than 5% below the current catalog"); to accept the smaller
+  network, delete `<pb_data>/catalog/` and restart, which serves 503 for the few minutes of the
+  next build.
 - **Data dir:** `<pb_data>/catalog/`. Each build is written to `set-<unix time>/` and then made live by
   atomically replacing `current`, so a restart serves the last good copy immediately and a crash
   mid-write cannot leave a mixed set. In Coolify `/app/pb_data` is already the persistent volume, so

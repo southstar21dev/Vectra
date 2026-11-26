@@ -24,7 +24,7 @@ type Var struct {
 // Vars is every variable the backend reads. Add a new setting here first.
 var Vars = []Var{
 	{"NEPTUN_ENCRYPTION_KEY", true, "/crypto, /neptun/replace, legacy vc2 upgrade"},
-	{"FUTAR_API_KEY", true, "/futar"},
+	{"FUTAR_API_KEY", true, "/futar and the /catalog/*.json builder"},
 	{"VAPID_PUBLIC_KEY", true, "/push/send"},
 	{"VAPID_PRIVATE_KEY", true, "/push/send"},
 	{"VAPID_SUBJECT", false, "/push/send (defaults to a placeholder address)"},
