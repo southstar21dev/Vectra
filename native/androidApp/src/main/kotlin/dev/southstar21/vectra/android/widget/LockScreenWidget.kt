@@ -25,7 +25,6 @@ import androidx.glance.unit.ColorProvider
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.NextUp
 import dev.southstar21.vectra.features.widgets.WidgetSession
-import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.countdownLabel
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
 import dev.southstar21.vectra.features.widgets.nextUp
@@ -77,7 +76,7 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
                 Detail(if (up.hadToday) "Done for today" else "No classes today")
                 up.next?.let {
                     Headline(it.title)
-                    Clock("${dayDistanceLabel(frame.today, it.day)} ${clockLabel(it.startMs)}")
+                    Clock("${dayDistanceLabel(frame.today, it.day)} ${frame.clock(it.startMs)}")
                 }
             }
             NextUp.NoData -> {
@@ -93,8 +92,8 @@ private fun Coming(s: WidgetSession, frame: WidgetFrame) {
     Detail(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "))
     Headline(s.title)
     Clock(
-        if (s.day == frame.today) "${clockLabel(s.startMs)}, ${countdownLabel(frame.nowMs, s.startMs)}"
-        else "${dayDistanceLabel(frame.today, s.day)} ${clockLabel(s.startMs)}",
+        if (s.day == frame.today) "${frame.clock(s.startMs)}, ${countdownLabel(frame.nowMs, s.startMs)}"
+        else "${dayDistanceLabel(frame.today, s.day)} ${frame.clock(s.startMs)}",
     )
 }
 

@@ -3,6 +3,7 @@ package dev.southstar21.vectra.features.widgets
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.SessionListener
 import dev.southstar21.vectra.core.platform.WidgetHost
+import dev.southstar21.vectra.core.preferences.TimeFormat
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
@@ -10,6 +11,7 @@ import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.reminders.budapestMs
 import dev.southstar21.vectra.features.reminders.expandSessions
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
+import dev.southstar21.vectra.features.settings.AppearanceRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +43,7 @@ class WidgetPublisher(
     private val host: WidgetHost,
     private val scope: CoroutineScope,
     private val updateGate: UpdateGate,
+    private val appearance: AppearanceRepository,
 ) : SessionListener {
     private val lock = Mutex()
     private var started = false
@@ -58,7 +61,7 @@ class WidgetPublisher(
                 schedule.localReady,
                 auth.session.map { it?.userId },
             ) { _, _, _, _, _ -> }
-            combine(inputs, updateGate.state) { _, _ -> }
+            combine(inputs, updateGate.state, appearance.prefs.map { it.timeFormat }) { _, _, _ -> }
                 .debounce(1_000)
                 .collect { runSuspendCatching { publish() } }
         }
@@ -77,15 +80,18 @@ class WidgetPublisher(
         auth.restore()
         // Without a screen nothing has read a stored lock either.
         updateGate.loadStored()
+        // Same for the stored time format: the default would put 24-hour times on a 12-hour phone.
+        if (!appearance.loaded.value) appearance.loadStored()
+        val hour12 = appearance.prefs.value.timeFormat == TimeFormat.H12
         if (updateGate.state.value != null) {
-            host.publish(encodeWidgetSnapshot(updateRequiredSnapshot(nowMs())))
+            host.publish(encodeWidgetSnapshot(updateRequiredSnapshot(nowMs(), hour12)))
             return@withLock true
         }
         val today = nowInBudapest().date
         // From Monday, so the week view has the days already gone.
         val monday = mondayOf(today)
         if (auth.session.value == null) {
-            host.publish(encodeWidgetSnapshot(signedOutSnapshot(nowMs())))
+            host.publish(encodeWidgetSnapshot(signedOutSnapshot(nowMs(), hour12)))
             return@withLock true
         }
         // Before the cached schedule is in memory an empty list means "not read yet", not "no classes".
@@ -97,14 +103,14 @@ class WidgetPublisher(
             val sessions = expandSessions(events, items, includeItems = true, from = monday, days = days) { e, ymd ->
                 courseTracker.isSessionHoliday(e.courseName, e.courseCode, e.semester, ymd, e.startTime)
             }
-            encodeWidgetSnapshot(buildWidgetSnapshot(sessions, nowMs()))
+            encodeWidgetSnapshot(buildWidgetSnapshot(sessions, nowMs(), hour12))
         }
         host.publish(snapshot)
         true
     }
 
     override suspend fun onSessionCleared() {
-        host.publish(encodeWidgetSnapshot(signedOutSnapshot(nowMs())))
+        host.publish(encodeWidgetSnapshot(signedOutSnapshot(nowMs(), appearance.prefs.value.timeFormat == TimeFormat.H12)))
     }
 }
 

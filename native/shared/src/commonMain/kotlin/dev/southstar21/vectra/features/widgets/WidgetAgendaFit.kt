@@ -6,12 +6,12 @@ package dev.southstar21.vectra.features.widgets
 class Pick(val cut: AgendaCut, val compact: Boolean, val heights: List<Float>)
 
 /** The first cut (with rooms, then without) whose rows and footer fit in [space]; [width] is the row width. */
-fun pickCut(cuts: List<AgendaCut>, task: FootNote?, next: FootNote?, b: Budget, width: Float, space: Float): Pick {
-    val nameWidth = WidgetGeometry.agendaNameWidth(width)
+fun pickCut(cuts: List<AgendaCut>, task: FootNote?, next: FootNote?, b: Budget, width: Float, space: Float, hour12: Boolean = false): Pick {
+    val nameWidth = WidgetGeometry.agendaNameWidth(width, hour12)
     for (cut in cuts) {
         for (compact in listOf(false, true)) {
             val heights = cut.shown.map { agendaRowHeight(it, b, nameWidth, compact) }
-            val foot = footNotes(cut, task, next).sumOf { b.height(it.text, 12f, width - 70f, bold = false, max = 2).toDouble() + 5.0 }.toFloat()
+            val foot = footNotes(cut, task, next).sumOf { b.height(it.text, 12f, width - 70f - WidgetGeometry.timeExtra(hour12), bold = false, max = 2).toDouble() + 5.0 }.toFloat()
             val footer = if (foot > 0f) foot + 11f else 0f
             if (cut.shown.size <= 10 && heights.sum() + footer <= space) return Pick(cut, compact, heights)
         }
