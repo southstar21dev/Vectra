@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.core.data
 
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.time.nowMs
 import kotlinx.coroutines.CancellationException
@@ -75,6 +76,8 @@ class LiveQuery<K, T>(
     private val clock: () -> Long = ::nowMs,
     private val online: StateFlow<Boolean>? = null,
     private val maxIdleEntries: Int? = null,
+    /** False for a failure another try cannot fix (a 4xx, a rate limit): it settles at once and backs off. */
+    private val shouldRetry: (Throwable) -> Boolean = { true },
     private val fetcher: suspend (K) -> T,
 ) {
     private val confined = Dispatchers.Default.limitedParallelism(1)
@@ -85,6 +88,8 @@ class LiveQuery<K, T>(
         var poll: Job? = null
         var inflight: Deferred<T>? = null
         var invalidated = false
+        /** Bumped by every invalidate, so a fetch that began before one cannot clear its flag. */
+        var invalidations = 0
         var failures = 0
         var lastSettledAt = 0L
         var lastUsed = 0L
@@ -220,11 +225,13 @@ class LiveQuery<K, T>(
 
     private suspend fun fetchWithRetry(key: K, e: Entry): T {
         e.state.update { it.copy(isFetching = true, isLoading = it.data == null) }
+        val invalidationsAtStart = e.invalidations
         var attempt = 0
         while (true) {
             try {
                 val value = fetcher(key)
-                e.invalidated = false
+                // An invalidate that arrived mid-flight is newer than this response.
+                e.invalidated = e.invalidations != invalidationsAtStart
                 e.failures = 0
                 e.lastSettledAt = clock()
                 e.state.value = QueryState(data = value, dataUpdatedAt = e.lastSettledAt, isFetched = true)
@@ -232,13 +239,13 @@ class LiveQuery<K, T>(
             } catch (c: CancellationException) {
                 throw c
             } catch (t: Throwable) {
-                if (attempt >= retry) {
+                if (attempt >= retry || !shouldRetry(t)) {
                     e.failures++
                     e.lastSettledAt = clock()
                     e.state.update { it.copy(isFetching = false, isLoading = false, isError = true, error = t, isFetched = true) }
                     throw t
                 }
-                delay(min(1000.0 * 2.0.pow(attempt), 30_000.0).toLong())
+                delay(exponentialBackoffMs(attempt, 1000L, 30_000L))
                 attempt++
             }
         }
@@ -276,7 +283,13 @@ class LiveQuery<K, T>(
         scope.launch(confined) {
             val e = entries[key] ?: return@launch
             e.invalidated = true
-            if (e.observers > 0) runSuspendCatching { fetchEntry(key, e) }
+            e.invalidations++
+            if (e.observers > 0) {
+                // A fetch already running may have read the server before the change that
+                // caused this invalidate: let it finish, then fetch again.
+                e.inflight?.let { runSuspendCatching { it.await() } }
+                if (e.invalidated && e.observers > 0) runSuspendCatching { fetchEntry(key, e) }
+            }
         }
     }
 

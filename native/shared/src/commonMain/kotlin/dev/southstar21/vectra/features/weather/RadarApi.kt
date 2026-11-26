@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.util.isTrustedRadarHost
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.time.Budapest
 import dev.southstar21.vectra.core.time.pad2
@@ -52,7 +53,8 @@ fun parseRainViewerResponse(json: JsonElement, nowSeconds: Long = Clock.System.n
     else root["generated"].looseNumber() ?: throw RadarShapeException("Invalid generated")
     val host = when (val h = root["host"]) {
         null -> RainViewerDefaultHost
-        is JsonPrimitive -> if (h.isString) h.content else throw RadarShapeException("Invalid host")
+        // Tiles are fetched from this host, so only RainViewer's own is accepted.
+        is JsonPrimitive -> if (h.isString) h.content.takeIf(::isTrustedRadarHost) ?: RainViewerDefaultHost else throw RadarShapeException("Invalid host")
         else -> throw RadarShapeException("Invalid host")
     }
     val radar = root["radar"]
@@ -99,7 +101,7 @@ fun formatRadarFrameLabel(
     val t = Instant.fromEpochSeconds(frame.time).toLocalDateTime(zone)
     val timeStr = if (hour12) {
         val h = (t.hour % 12).let { if (it == 0) 12 else it }
-        "${pad2(h)}:${pad2(t.minute)} ${if (t.hour >= 12) "PM" else "AM"}"
+        "$h:${pad2(t.minute)} ${if (t.hour >= 12) "PM" else "AM"}"
     } else "${pad2(t.hour)}:${pad2(t.minute)}"
     val diffMinutes = floor((frame.time - referenceTime) / 60.0 + 0.5).toLong()
     val relative = if (diffMinutes <= -5) "-${abs(diffMinutes)}m" else "Now"

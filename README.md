@@ -201,15 +201,14 @@ make -C backend run
 ```
 
 See [`native/README.md`](native/README.md) and [`native/docs/CONTRIBUTING.md`](native/docs/CONTRIBUTING.md)
-for how the app is put together, and [`web/README.md`](web/README.md) for the PWA and the backend's
-environment variables.
+for how the app is put together, and [`backend/README.md`](backend/README.md) for the backend's environment variables and rate limits, and [`web/README.md`](web/README.md) for the PWA.
 
 ### Branches and releases
 
 | Branch | Purpose | Releases |
 |---|---|---|
 | `dev` | Day-to-day work; feature branches and Dependabot PRs merge here. | none (CI only) |
-| `master` | Production; the backend and web deploy from here. | `1.4.0` |
+| `master` | Production; the backend and web deploy from here. | a version tag (`vX.Y.Z`) |
 
 [semantic-release](https://semantic-release.gitbook.io/) runs on every push to `master` once
 CI passes, and versions from [Conventional Commits](https://www.conventionalcommits.org/):

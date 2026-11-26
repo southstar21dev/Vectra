@@ -48,10 +48,15 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.time.nowMs
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.StopArrivalsEntry
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.toEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -60,21 +65,9 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 // ---- colours ---------------------------------------------------------------
 
-/** `#rrggbb` / `rrggbb` / `rrggbbaa` (with or without hash) → Color; null when unparsable. */
-fun parseHexColor(hex: String?): Color? {
-    val h = hex?.trim()?.removePrefix("#") ?: return null
-    val v = when (h.length) {
-        6 -> h.toLongOrNull(16)?.let { 0xFF000000 or it }
-        8 -> h.toLongOrNull(16)?.let { ((it and 0xFF) shl 24) or (it shr 8) }
-        3 -> h.map { "$it$it" }.joinToString("").toLongOrNull(16)?.let { 0xFF000000 or it }
-        else -> null
-    } ?: return null
-    return Color(v)
-}
-
 /** Departure-board display ink: bright amber = live, dim amber = timetable. */
 @Immutable
-data class MonitorInk(
+internal data class MonitorInk(
     val live: Color,
     val sched: Color,
     val text: Color,
@@ -84,7 +77,7 @@ data class MonitorInk(
     val chip: Color,
 )
 
-fun monitorInk(c: VectraColors) = MonitorInk(
+internal fun monitorInk(c: VectraColors) = MonitorInk(
     live = if (c.isDark) Color(0xFFFFD24A) else Palette.Amber700,
     sched = if (c.isDark) Color(0xFFA08A4A) else Color(0xFF8A6D3B),
     text = c.textPrimary,
@@ -94,28 +87,28 @@ fun monitorInk(c: VectraColors) = MonitorInk(
     chip = c.surfaceOverlay,
 )
 
-val Vectra.monitor: MonitorInk
+internal val Vectra.monitor: MonitorInk
     @Composable get() = monitorInk(colors)
 
 // ---- clocks & queries -------------------------------------------------------
 
 /** The current epoch-millis time, re-read every [intervalMs] (the holidays card has an [Instant] variant). */
 @Composable
-fun rememberNowMillis(intervalMs: Long = 1000): Long = rememberPageClock(intervalMs, ::nowMs)
+internal fun rememberNowMillis(intervalMs: Long = 1000): Long = rememberPageClock(intervalMs, ::nowMs)
 
 @Composable
-fun rememberOnline(connectivity: Connectivity): Boolean = connectivity.online.collectAsStateWithLifecycle().value
+internal fun rememberOnline(connectivity: Connectivity): Boolean = connectivity.online.collectAsStateWithLifecycle().value
 
 /** Observe one query key (null = disabled). */
 @Composable
-fun <K, T> LiveQuery<K, T>.collect(key: K?): QueryState<T> {
+internal fun <K, T> LiveQuery<K, T>.collect(key: K?): QueryState<T> {
     val flow = remember(this, key) { if (key == null) flowOf(QueryState()) else observe(key) }
     return flow.collectAsStateWithLifecycle(initialValue = if (key == null) QueryState() else peek(key)).value
 }
 
 /** Arrivals for several stops: one shared entry per stop; the network side batches. */
 @Composable
-fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<String?>, limit: Int? = null, enabled: Boolean = true): Map<String, StopArrivalsEntry> {
+internal fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<String?>, limit: Int? = null, enabled: Boolean = true): Map<String, StopArrivalsEntry> {
     val ids = remember(stopIds) { stopIds.filterNotNull().filter { it.isNotEmpty() }.distinct() }
     val flow: Flow<Map<String, QueryState<FutarArrivalsResponse>>> = remember(repo, ids, limit, enabled) {
         if (!enabled) flowOf(emptyMap())
@@ -135,13 +128,13 @@ fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<String?>, l
  * still in view don't blank out and pop back.
  */
 @Composable
-fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): Map<String, StopArrivalsEntry> {
+internal fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): Map<String, StopArrivalsEntry> {
     val ids = remember(stopIds) { stopIds.filterNotNull().filter { it.isNotEmpty() }.distinct() }
     val key = remember(ids) { ids.sorted().joinToString(",") }
     val q = repo.batchArrivals.collect(key.ifEmpty { null })
     val last = remember { LastArrivals() }
     return remember(ids, q) {
-        val loading = q.isLoading || q.isFetching
+        val loading = isBatchLoading(q, ids.isNotEmpty())
         q.data?.responses?.forEach { (id, data) -> last.put(id, data, q.dataUpdatedAt) }
         ids.associateWith { id ->
             val fresh = q.data?.responses?.get(id)
@@ -155,6 +148,14 @@ fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): 
         }
     }
 }
+
+/**
+ * Whether a batch is still on its way. A key that was just asked for starts as an empty
+ * [QueryState] (not loading, not fetching) until its first fetch begins, and without this
+ * the lists read that gap as "nothing is running" and flash their empty state (audit A-20).
+ */
+internal fun isBatchLoading(q: QueryState<*>, hasStops: Boolean): Boolean =
+    q.isLoading || q.isFetching || (hasStops && !q.isFetched && q.data == null && !q.isError)
 
 /** The last arrivals seen per stop (with when they landed), the oldest dropped past [MaxKeptStops]. */
 private class LastArrivals {
@@ -176,14 +177,14 @@ private val SpacedSlash = Regex("""\s*/\s*""")
 // ---- route badge -------------------------------------------------------------
 
 /** [Xs2] and [Xs] are round (the strips' vehicle-sized marks); [Tag] and [TagMd] are the same heights as rounded rectangles. */
-enum class RouteBadgeSize { Xs2, Xs, Tag, TagMd, Sm, Md, Lg }
+internal enum class RouteBadgeSize { Xs2, Xs, Tag, TagMd, Sm, Md, Lg }
 
 /**
  * Route chip with adaptive sizing — long names shrink their
  * font and truncate so they never overflow the badge box.
  */
 @Composable
-fun RouteBadge(
+internal fun RouteBadge(
     name: String,
     color: String?,
     textColor: String?,
@@ -256,7 +257,7 @@ private val WifiStroke = Stroke(2f, cap = StrokeCap.Round, join = StrokeJoin.Rou
  * (wifi-streak 1.8s, staggered .15/.45/.75s). Static under reduced motion.
  */
 @Composable
-fun LiveSignalIcon(modifier: Modifier = Modifier, size: Dp = 12.dp, tint: Color = LocalContentColor.current, animate: Boolean = true) {
+internal fun LiveSignalIcon(modifier: Modifier = Modifier, size: Dp = 12.dp, tint: Color = LocalContentColor.current, animate: Boolean = true) {
     val paths = remember { WifiPaths.map { PathParser().parsePathString(it).toPath() } }
     val reduce = Vectra.reduceMotion
     val onScreen = rememberOnScreen()
@@ -292,7 +293,7 @@ fun LiveSignalIcon(modifier: Modifier = Modifier, size: Dp = 12.dp, tint: Color 
  * render with a bidirectional arrow between the parts.
  */
 @Composable
-fun FormattedRouteTitle(
+internal fun FormattedRouteTitle(
     title: String?,
     modifier: Modifier = Modifier,
     style: TextStyle = vtext(TypeScale.Body),
@@ -315,7 +316,7 @@ fun FormattedRouteTitle(
 }
 
 /** The transit card surface: glass, 14dp radius. */
-val MonitorShape = Radius.Row
+internal val MonitorShape = Radius.Row
 
 @Composable
-fun Modifier.monitorSurface(): Modifier = glass(MonitorShape)
+internal fun Modifier.monitorSurface(): Modifier = glass(MonitorShape)

@@ -1,0 +1,7 @@
+# Run by the per-module type-resolved detekt tasks (:androidApp:detektDebug, :shared:detektMainAndroid,
+# :shared:detektHostTestAndroid), which the root detekt task depends on. Only rules that need type
+# information live here; everything else runs from detekt.yml in the root task.
+# detekt 2.0 skips UnusedImport in the root task because it has no classpath.
+style:
+  UnusedImport:
+    active: true

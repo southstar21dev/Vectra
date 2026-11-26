@@ -14,6 +14,7 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.platform.PermissionKind
+import dev.southstar21.vectra.features.auth.BiometricCopy
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
 import dev.southstar21.vectra.features.reminders.rememberEnabler
 import dev.southstar21.vectra.features.settings.SettingsAnchor
@@ -61,7 +62,7 @@ fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): Lis
             done = prefs.toUni.isNotEmpty() || prefs.backHome.isNotEmpty(), actionLabel = "Pick",
         ) { scrollTo(SettingsAnchor.Commute) },
         SetupItem(
-            RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey sign-in", "Your fingerprint or face instead of a password",
+            RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey sign-in", BiometricCopy.setupSubtitle(),
             done = passkeys?.isNotEmpty(), actionLabel = "Set up",
         ) { scrollTo(SettingsAnchor.Account) }.takeIf { graph.passkeyRepository.isSupported },
     )

@@ -148,8 +148,9 @@ class WeatherSnapshotTest {
         assertNull(parseWeatherSnapshot("""{"coords":{"latitude":1,"longitude":2},"data":{"temperature":"hot"},"fetchedAt":1}"""))
     }
 
-    @Test fun roundsCoordsTo4Places() {
-        assertEquals(WeatherCoords(47.4979, 19.0403), roundCoords(WeatherCoords(47.497912, 19.040256)))
+    @Test fun roundsCoordsToAboutAKilometre() {
+        assertEquals(WeatherCoords(47.5, 19.04), roundCoords(WeatherCoords(47.497912, 19.040256)))
+        assertEquals(WeatherCoords(47.4979, 19.0403), roundCoords(WeatherCoords(47.497912, 19.040256), 4))
         assertEquals(true, coordsMatch(WeatherCoords(47.49791, 19.04031), WeatherCoords(47.49789, 19.04034)))
         assertEquals(false, coordsMatch(WeatherCoords(47.5, 19.0), WeatherCoords(47.6, 19.0)))
     }
@@ -184,7 +185,7 @@ class WeatherLocationTest {
 
     @Test fun seedsFromFreshAutoSnapshot() {
         assertEquals(
-            WeatherLocationState(WeatherLocationMode.Auto, WeatherCoords(47.4979, 19.0403), "Budapest", WeatherLocationStatus.Located),
+            WeatherLocationState(WeatherLocationMode.Auto, WeatherCoords(47.5, 19.04), "Budapest", WeatherLocationStatus.Located),
             resolveInitialWeatherLocation(WeatherLocationMode.Auto, snapshot(), 1_000 + 60_000),
         )
     }
@@ -208,7 +209,7 @@ class WeatherLocationTest {
         val s = snapshot(coords = WeatherCoords(2.1111, 3.2222), city = null)
         val r = resolveInitialWeatherLocation(WeatherLocationMode.Auto, s, 1_000)
         assertNull(r.city)
-        assertEquals(WeatherCoords(2.1111, 3.2222), r.coords)
+        assertEquals(WeatherCoords(2.11, 3.22), r.coords)
     }
 
     @Test fun parsesGeoCity() {
@@ -303,6 +304,7 @@ class RadarApiTest {
         assertEquals("Now", formatRadarFrameLabel(RadarFrame(1725576000 - 240, "/n"), latest).relative)
         // 2024-09-05T22:40Z is 00:40 in Budapest.
         assertEquals("00:40", formatRadarFrameLabel(RadarFrame(1725576000, "/n"), latest).timeStr)
+        assertEquals("12:40 AM", formatRadarFrameLabel(RadarFrame(1725576000, "/n"), latest, hour12 = true).timeStr)
     }
 }
 

@@ -16,6 +16,7 @@ import dev.southstar21.vectra.features.navbar.NavbarActions
 import dev.southstar21.vectra.features.navbar.SystemNavbar
 import dev.southstar21.vectra.features.navbar.SystemNavbarAction
 import dev.southstar21.vectra.features.navbar.SystemNavbarState
+import dev.southstar21.vectra.features.navbar.SystemNavbarTab
 import dev.southstar21.vectra.navigation.ActionRoutes
 import dev.southstar21.vectra.navigation.AppNavigator
 import dev.southstar21.vectra.navigation.PrimaryNavItems
@@ -41,6 +42,7 @@ internal fun SystemNavbarBridge(
     val current = navigator.current
     val config = actions.config
     val state = SystemNavbarState(
+        tabs = PrimaryNavItems.map { SystemNavbarTab(it.label, it.sfSymbol, it.holdable) },
         selectedIndex = PrimaryNavItems.indexOfFirst { it.route == current }.coerceAtLeast(0),
         actions = if (current in ActionRoutes && config != null) {
             config.actions.map { SystemNavbarAction(it.id, it.label, it.disabled) }

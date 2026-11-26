@@ -1,13 +1,17 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.maps.LatLon
-import kotlin.math.ceil
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.FutarTripStopTime
+import dev.southstar21.vectra.features.transit.live.RouteProgress
+import dev.southstar21.vectra.features.transit.route.RouteMapStop
+import dev.southstar21.vectra.features.transit.route.RouteMapVehicle
 
 /**
  * One direction of the tracked route — stops, geometry, vehicles and progress.
  * An all-directions tracker yields up to three of these; a direction tracker one.
  */
-data class DirectionView(
+internal data class DirectionView(
     val tripId: String?,
     val stops: List<RouteMapStop>,
     val polyline: List<LatLon>,
@@ -23,5 +27,3 @@ data class DirectionView(
     val approxVehicle: RouteMapVehicle? = null,
 )
 
-/** Whole minutes until [ms], rounded up; 0 once it is due. */
-internal fun etaMinutes(ms: Long, now: Long): Int = maxOf(0, ceil((ms - now) / 60_000.0).toInt())

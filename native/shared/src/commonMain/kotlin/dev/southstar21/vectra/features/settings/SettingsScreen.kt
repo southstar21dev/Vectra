@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.settings
 
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,13 +32,14 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
-import dev.southstar21.vectra.core.time.formatDDMMYYYY
+import dev.southstar21.vectra.core.time.formatLocalDate
 import dev.southstar21.vectra.core.util.runSuspendCatching
+import dev.southstar21.vectra.features.auth.BiometricCopy
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.classReminderRows
@@ -109,7 +111,7 @@ fun SettingsScreen(
                 SettingsSection(
                     "Permissions",
                     tilt = StampTilt.Left,
-                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository),
+                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository, graph.launcher),
                     footer = { TestNotificationLink(graph.notificationsRepository) },
                 )
             }
@@ -185,7 +187,7 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
             list == null -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Checking your passkeys…")
             list.isNotEmpty() -> {
                 list.forEach { p ->
-                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatDDMMYYYY(p.createdAt.take(10))}") {
+                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatLocalDate(p.createdAt)}") {
                         VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting, contentDescription = "Delete passkey ${p.friendlyName ?: ""}".trim()) {
                             if (deleting) InlineLoader(tint = c.textMuted) else VIcon(RemixIcons.DeleteBinLine, tint = c.textMuted)
                         }
@@ -193,7 +195,7 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
                 }
                 SettingsRow(RemixIcons.AddLine, c.textSecondary, "Add another passkey", "Register this device too", enabled = !registering, onClick = register)
             }
-            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Use your fingerprint or face instead of a password") {
+            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", BiometricCopy.useInstead()) {
                 SettingsLink("Set up", register, enabled = !registering)
             }
         }
@@ -201,10 +203,10 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
 }
 
 /** The push-notifications toggle for the Permissions group. */
-private fun pushRow(repo: NotificationsRepository): @Composable () -> Unit = { PushNotificationsRow(repo) }
+private fun pushRow(repo: NotificationsRepository, launcher: Launcher): @Composable () -> Unit = { PushNotificationsRow(repo, launcher) }
 
 @Composable
-private fun PushNotificationsRow(repo: NotificationsRepository) {
+private fun PushNotificationsRow(repo: NotificationsRepository, launcher: Launcher) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -212,6 +214,11 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
     var busy by remember { mutableStateOf(false) }
     var granted by remember { mutableStateOf(repo.permissionGranted()) }
     LaunchedEffect(repo) { repo.check() }
+    // Settings stays composed in its tab, so re-read the OS permission when the app returns.
+    LifecycleResumeEffect(repo) {
+        granted = repo.permissionGranted()
+        onPauseOrDispose { }
+    }
     val requester = rememberPermissionRequester(PermissionKind.Notifications)
     val on = if (repo.pushAvailable) subscribed else granted
     SettingsRow(
@@ -234,6 +241,10 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
                     else if (!repo.pushAvailable) busy = false
                     else scope.launchCatching({ repo.subscribe(); busy = false; toaster.success("Push notifications enabled and synced") }) { busy = false; toaster.error(it.message ?: "Failed to toggle push notifications") }
                 }
+            } else if (!repo.pushAvailable) {
+                // Without push the switch mirrors the system permission, which only system settings can revoke.
+                busy = false
+                launcher.openAppSettings()
             } else {
                 scope.launchCatching({ repo.unsubscribe(); busy = false; toaster.show("Push notifications disabled") }) { busy = false }
             }
@@ -253,7 +264,7 @@ private fun TestNotificationLink(repo: NotificationsRepository) {
         if (subscribed) {
             scope.launchCatching({ val n = repo.sendServerTest(); sending = false; toaster.success("Server test push delivered to $n device(s)!") }) { sending = false; toaster.error(it.message ?: "Test failed") }
         } else {
-            val shown = repo.showLocal("Vectra Local Alert 🚀", "Local notifications are active. Turn on push notifications above for background alerts.")
+            val shown = repo.showLocal("Vectra Local Alert 🚀", if (repo.pushAvailable) "Local notifications are active. Enable push notifications above for alerts while Vectra is closed." else "Notifications are working on this device.")
             sending = false
             if (!shown) toaster.error("Notifications are blocked. Allow them for Vectra in system settings.")
         }

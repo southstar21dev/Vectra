@@ -4,13 +4,17 @@ import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.platform.GeoFix
 import dev.southstar21.vectra.core.platform.GeoPermission
+import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.LocationProvider
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +61,7 @@ class WeatherRepository(
     private val kv: KeyValueStore,
     private val locationProvider: LocationProvider,
     private val scope: CoroutineScope,
+    private val connectivity: Connectivity? = null,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val _location = MutableStateFlow<WeatherLocationState?>(null)
@@ -92,6 +97,16 @@ class WeatherRepository(
         scope.launch {
             _location.filterNotNull().map { it.coords ?: BudapestCoords }.distinctUntilChanged().collect { refreshWeather(it) }
         }
+        // Gave up while offline (or the data went stale): try again as soon as the network is back.
+        connectivity?.let { net ->
+            scope.launch {
+                var wasOnline = net.online.value
+                net.online.collect { online ->
+                    if (online && !wasOnline && _location.value != null) refreshWeather(currentCoords)
+                    wasOnline = online
+                }
+            }
+        }
     }
 
     /** The shared client (the radar map fetches its basemap style with it). */
@@ -119,6 +134,7 @@ class WeatherRepository(
                 parameter("latitude", formatCompactNumber(coords.latitude))
                 parameter("longitude", formatCompactNumber(coords.longitude))
                 parameter("localityLanguage", "en")
+                header(HttpHeaders.CacheControl, "no-store")
             }
         }
         if (!res.status.isSuccess()) null else parseGeoCity(VectraJson.parseToJsonElement(res.bodyAsText()))
@@ -129,7 +145,7 @@ class WeatherRepository(
     }
 
     private fun applyPosition(fix: GeoFix) {
-        // Rounded to ~11 m so reloads reuse the same snapshot.
+        // Rounded to ~1 km: all the forecast and city name need, and all that goes to third parties.
         val coords = roundCoords(WeatherCoords(fix.lat, fix.lon))
         _location.update { it?.let { prev -> applyPositionState(prev, coords) } }
         scope.launch {
@@ -253,7 +269,7 @@ class WeatherRepository(
                     if (attempt++ >= 3) { fail(e); return@launch }
                 }
                 // Exponential backoff: 1s, 2s, 4s.
-                delay(1000L shl (attempt - 1))
+                delay(exponentialBackoffMs(attempt - 1, 1000L))
             }
         }
     }

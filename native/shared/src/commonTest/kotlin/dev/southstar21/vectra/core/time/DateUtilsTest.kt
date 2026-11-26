@@ -2,6 +2,7 @@ package dev.southstar21.vectra.core.time
 
 import dev.southstar21.vectra.core.preferences.TimeFormat
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -95,6 +96,15 @@ class DateUtilsTest {
     }
 
     @Test fun ymdZeroPads() = assertEquals("2026-01-05", LocalDate(2026, 1, 5).ymd())
+
+    @Test fun formatLocalDateUsesTheGivenZoneNotUtc() {
+        val stamp = "2026-11-24 23:51:00.000Z"
+        assertEquals("25/11/2026", formatLocalDate(stamp, TimeZone.of("Europe/Budapest")))
+        assertEquals("24/11/2026", formatLocalDate(stamp, TimeZone.UTC))
+        assertEquals("25/11/2026", formatLocalDate("2026-11-24T23:51:00Z", TimeZone.of("Europe/Budapest")))
+        assertEquals("", formatLocalDate(null))
+        assertEquals("05/01/2026", formatLocalDate("2026-01-05", TimeZone.UTC))
+    }
 
     @Test fun formatDDMMYYYYFormats() {
         assertEquals("05/01/2026", formatDDMMYYYY("2026-01-05"))

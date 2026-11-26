@@ -148,11 +148,11 @@ class DayPlanTest {
     }
 
     @Test fun statusCycleWrapsAround() {
-        var s = AttendanceStatus.Unmarked
-        val seen = mutableListOf<AttendanceStatus>()
+        var s = CardAttendance.Unmarked
+        val seen = mutableListOf<CardAttendance>()
         repeat(5) { s = nextStatus(s); seen += s }
         assertEquals(
-            listOf(AttendanceStatus.Present, AttendanceStatus.Absent, AttendanceStatus.Excused, AttendanceStatus.Cancelled, AttendanceStatus.Unmarked),
+            listOf(CardAttendance.Present, CardAttendance.Absent, CardAttendance.Excused, CardAttendance.Cancelled, CardAttendance.Unmarked),
             seen,
         )
     }

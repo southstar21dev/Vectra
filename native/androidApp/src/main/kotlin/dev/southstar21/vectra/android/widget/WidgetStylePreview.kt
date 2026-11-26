@@ -23,8 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VText
+import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.preferences.AccentKey
 
 // The style screen's pictures, drawn in Compose: a home-screen wallpaper with the widget on it in
 // the picked look, and the small tiles for each look.
@@ -34,6 +36,9 @@ private val Wallpaper = Brush.linearGradient(listOf(Color(0xFF3B4C8F), Color(0xF
 /** The colours a look draws in, for these pictures. */
 private class Ink(val plate: Brush, val rim: Color, val text: Color, val soft: Color, val line: Color, val tones: List<Color>)
 
+private val Dark = VectraColors.dark(AccentKey.Blue)
+private val Light = VectraColors.light(AccentKey.Blue)
+
 private fun ink(look: WidgetLook, systemDark: Boolean): Ink {
     val dark = look == WidgetLook.Dark || (look == WidgetLook.System && systemDark)
     return when {
@@ -42,12 +47,12 @@ private fun ink(look: WidgetLook, systemDark: Boolean): Ink {
             List(3) { Color.White },
         )
         dark -> Ink(
-            Brush.verticalGradient(listOf(Color(0xFF14151C), Color(0xFF0D0E13))), Color(0x12FFFFFF), Color(0xFFF8FAFC), Color(0xFF94A3B8), Color(0x29FFFFFF),
-            listOf(Color(0xFF38BDF8), Color(0xFF34D399), Color(0xFFC084FC)),
+            Brush.verticalGradient(listOf(WidgetPlate.DarkTop, WidgetPlate.DarkBottom)), Color(0x12FFFFFF), Dark.textPrimary, Dark.textSecondary, Color(0x29FFFFFF),
+            listOf(Dark.tints.sky.text, Dark.tints.emerald.text, Dark.tints.purple.text),
         )
         else -> Ink(
-            Brush.verticalGradient(listOf(Color.White, Color(0xFFF4F6FA))), Color(0x0F0F172A), Color(0xFF0F172A), Color(0xFF334155), Color(0x240F172A),
-            listOf(Color(0xFF0284C7), Color(0xFF059669), Color(0xFF7C3AED)),
+            Brush.verticalGradient(listOf(WidgetPlate.LightTop, WidgetPlate.LightBottom)), Color(0x0F0F172A), Light.textPrimary, Light.textSecondary, Color(0x240F172A),
+            listOf(Light.tints.sky.text, Light.tints.emerald.text, Light.tints.purple.text),
         )
     }
 }
@@ -85,23 +90,23 @@ internal fun StylePreview(look: WidgetLook) {
 /** A look tile's little sketch: a card with a node and two lines. */
 @Composable
 internal fun LookSketch(look: WidgetLook) {
-    val systemPlate = Brush.linearGradient(0.5f to Color(0xFF14151C), 0.5f to Color.White)
+    val systemPlate = Brush.linearGradient(0.5f to WidgetPlate.DarkTop, 0.5f to Color.White)
     val i = ink(look, true)
-    val bg = if (look == WidgetLook.Clear) Wallpaper else Brush.linearGradient(listOf(Color(0xFF0F1015), Color(0xFF0F1015)))
+    val bg = if (look == WidgetLook.Clear) Wallpaper else Brush.linearGradient(listOf(Dark.surfaceSecondary, Dark.surfaceSecondary))
     Box(Modifier.fillMaxSize().background(bg).padding(horizontal = 7.dp, vertical = 8.dp)) {
         val plate = when (look) {
             WidgetLook.System -> systemPlate
             WidgetLook.Light -> ink(WidgetLook.Light, false).plate
             else -> i.plate
         }
-        val text = if (look == WidgetLook.Light) Color(0xFF0F172A) else i.text
+        val text = if (look == WidgetLook.Light) Light.textPrimary else i.text
         Column(
             Modifier.fillMaxSize().clip(RoundedCornerShape(9.dp)).background(plate).border(1.dp, i.rim, RoundedCornerShape(9.dp)).padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box(Modifier.size(5.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
-                Box(Modifier.width(24.dp).height(4.dp).clip(CircleShape).background(if (look == WidgetLook.System) Color(0xFF94A3B8) else text))
+                Box(Modifier.size(5.dp).clip(CircleShape).background(Dark.tints.sky.text))
+                Box(Modifier.width(24.dp).height(4.dp).clip(CircleShape).background(if (look == WidgetLook.System) Dark.textSecondary else text))
             }
             Box(Modifier.padding(start = 9.dp).width(30.dp).height(3.dp).clip(CircleShape).background(text.copy(alpha = 0.5f)))
             Box(Modifier.padding(start = 9.dp).width(20.dp).height(3.dp).clip(CircleShape).background(text.copy(alpha = 0.5f)))

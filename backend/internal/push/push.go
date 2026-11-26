@@ -19,6 +19,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/types"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -48,19 +49,14 @@ const (
 
 	// sendConcurrency bounds the in-flight Web Push requests per Handler call.
 	sendConcurrency = 8
-
-	// sendsPerWindow caps /push/send calls per (non-superuser) caller per
-	// sendWindow. Users only trigger their own test notifications; superuser
-	// service callers (cron fan-out) are exempt.
-	sendsPerWindow = 20
-	sendWindow     = time.Minute
 )
 
-// sendLimiter is the per-user limiter for Handler. It is a var so tests can
-// substitute a fresh one.
-var sendLimiter = ratelimit.New(sendsPerWindow, sendWindow)
+// sendLimiter is the per-user limiter for Handler (limits.PushSend: users only
+// trigger their own test notifications; superuser service callers such as a
+// cron fan-out are exempt). It is a var so tests can substitute a fresh one.
+var sendLimiter = ratelimit.New(limits.PushSend.Max, limits.PushSend.Window)
 
-// request mirrors the Deno PushPayload interface.
+// request is the /push/send body.
 type request struct {
 	UserID     string   `json:"user_id"`
 	Title      string   `json:"title"`
@@ -71,8 +67,8 @@ type request struct {
 	Transports []string `json:"transports"`
 }
 
-// Handler implements POST /api/vectra/push/send (JWT-gated). It mirrors the
-// Deno function's response body {sent, total, results}.
+// Handler implements POST /api/vectra/push/send (JWT-gated). Its
+// response body is {sent, total, results}.
 func Handler(e *core.RequestEvent) error {
 	var body request
 	if err := e.BindBody(&body); err != nil {
@@ -96,7 +92,7 @@ func Handler(e *core.RequestEvent) error {
 	vapidPrivate := os.Getenv("VAPID_PRIVATE_KEY")
 	if vapidPublic == "" || vapidPrivate == "" {
 		return e.InternalServerError(
-			"VAPID keys not configured. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the function secrets.", nil)
+			"VAPID keys not configured. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the server environment.", nil)
 	}
 	// webpush-go prepends "mailto:" to anything that isn't an https: URL, so a
 	// "mailto:" prefix here would produce "mailto:mailto:..." and Apple answers
@@ -147,7 +143,7 @@ func Handler(e *core.RequestEvent) error {
 		unique = append(unique, rec)
 	}
 	for _, rec := range discard {
-		_ = e.App.Delete(rec) // best-effort, like the Deno void-delete
+		_ = e.App.Delete(rec) // best-effort
 	}
 	if len(unique) == 0 {
 		return e.JSON(http.StatusOK, map[string]any{
@@ -218,8 +214,8 @@ func Handler(e *core.RequestEvent) error {
 }
 
 // sendAll delivers to every record through at most sendConcurrency concurrent
-// sends. AllSettled envelope, mirroring Promise.allSettled in the Deno
-// function: every branch catches its own errors, so all entries are
+// sends. Each result is an AllSettled-style envelope:
+// every branch catches its own errors, so all entries are
 // "fulfilled". Index assignment preserves result order.
 func (d *delivery) sendAll(records []*core.Record) []settledResult {
 	results := make([]settledResult, len(records))
@@ -260,7 +256,7 @@ type delivery struct {
 }
 
 // send dispatches one subscription row and returns the result value object,
-// mirroring the object each Deno map callback returns.
+// returning the per-subscription result object.
 func (d *delivery) send(rec *core.Record) map[string]any {
 	return d.sendWebPush(rec)
 }

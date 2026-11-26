@@ -116,13 +116,13 @@ fun isConflictRelevantClass(event: ScheduleEvent, intensive: Boolean = false): B
  */
 internal class ScheduleEventIndex(private val events: List<ScheduleEvent>) {
     private val validDates = HashMap<String, Boolean>()
-    private val exams = HashMap<Pair<String, String>, Boolean>()
+    private val exams = HashMap<Triple<String, String, String?>, Boolean>()
     private val weekOnes = HashMap<String, String?>()
 
     fun isValid(date: String): Boolean = validDates.getOrPut(date) { isValidCalendarDate(date) }
 
     fun isExam(event: ScheduleEvent): Boolean =
-        exams.getOrPut(event.eventType to event.courseName) { event.isExam() }
+        exams.getOrPut(Triple(event.eventType, event.courseName, event.source)) { event.isExam() }
 
     /**
      * The Monday of week one of [semester] as the schedule's week header counts it
@@ -142,7 +142,7 @@ private const val FixedParityAnchor = "2024-01-01"
 
 private val SemesterTag = Regex("""^(\d{4})/\d{2}/([12])$""")
 
-private fun mondayOf(date: String): String? {
+internal fun mondayOf(date: String): String? {
     val ordinal = ordinalForDate(date) ?: return null
     return formatDateOrdinal(ordinal - (LocalDate.fromEpochDays(ordinal).dayOfWeek.daysSinceSunday + 6) % 7)
 }
@@ -168,6 +168,14 @@ private fun semesterWeekOneStart(event: ScheduleEvent, dateStr: String, index: S
     }
     return index.officialWeekOne(semester) ?: nominalSemesterStart(semester) ?: FixedParityAnchor
 }
+
+/**
+ * Monday of week one of [semester] as the timetable counts odd/even weeks: the official start of
+ * that semester's dated events, else the nominal start. Null when neither is known.
+ */
+internal fun semesterWeekOneMonday(semester: String, events: List<ScheduleEvent>): String? =
+    ScheduleCourses.officialSemesterStart(events.filter { it.semester == semester })?.let(::mondayOf)
+        ?: nominalSemesterStart(semester)
 
 /** Whether a weekly class meets on a candidate Budapest-local date. */
 fun classOccursOnDate(

@@ -17,6 +17,34 @@ func OwnerRules(c *core.Collection) {
 	c.DeleteRule = types.Pointer("user = @request.auth.id")
 }
 
+// OwnerCollections returns every non-system base collection that has a `user`
+// relation to the users collection: the data a user owns. Derive the set from
+// the live schema with it (account deletion relies on the relations' cascade,
+// rule migrations and tests iterate it) instead of keeping another hand-made
+// list. It includes server-managed collections such as passkeys, whose rules
+// differ from OwnerRules; callers that set rules must skip those.
+func OwnerCollections(app core.App) ([]*core.Collection, error) {
+	users, err := app.FindCollectionByNameOrId("users")
+	if err != nil {
+		return nil, err
+	}
+	var all []*core.Collection
+	if err := app.CollectionQuery().OrderBy("name").All(&all); err != nil {
+		return nil, err
+	}
+	var owned []*core.Collection
+	for _, c := range all {
+		if c.System || !c.IsBase() {
+			continue
+		}
+		rel, ok := c.Fields.GetByName("user").(*core.RelationField)
+		if ok && rel.CollectionId == users.Id {
+			owned = append(owned, c)
+		}
+	}
+	return owned, nil
+}
+
 // SelfRules applies user-record rules: a user may read/update only themselves.
 //
 // legacy_id is server-owned on both create and update: it is the Supabase UUID

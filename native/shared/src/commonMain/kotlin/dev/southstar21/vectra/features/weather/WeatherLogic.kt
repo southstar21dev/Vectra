@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.roundHalfUp
 import kotlinx.serialization.Serializable
@@ -40,10 +41,21 @@ fun weatherAlertItems(weather: WeatherData): List<WeatherAlertItem> = buildList 
 // immediately on app open instead of flashing its skeleton.
 // ---------------------------------------------------------------------------
 
-const val WeatherSnapshotKey = "vectra.weather.snapshot"
+const val WeatherSnapshotKey = UserKeys.WEATHER_SNAPSHOT
 
 /** Weather older than this is not worth showing — a fresh fetch is awaited. */
 const val WeatherSnapshotMaxAgeMs = 24 * 60 * 60_000L
+
+/** Past this age the live data is no longer worth showing, same as a stored snapshot. */
+fun isWeatherTooOld(fetchedAt: Long, now: Long): Boolean = now - fetchedAt >= WeatherSnapshotMaxAgeMs
+
+/** "Updated 25 min ago" once the conditions are older than the ~15 min refresh window; null while fresh. */
+fun weatherAgeLabel(fetchedAt: Long, now: Long, staleMs: Long = WeatherRepository.StaleMs): String? {
+    val age = now - fetchedAt
+    if (age < staleMs) return null
+    val minutes = age / 60_000
+    return if (minutes < 60) "Updated $minutes min ago" else "Updated ${minutes / 60} h ago"
+}
 
 @Serializable
 data class WeatherSnapshot(
@@ -53,13 +65,20 @@ data class WeatherSnapshot(
     val fetchedAt: Long,
 )
 
-/** Coordinates rounded to ~11 m: precise enough for a forecast, stable across reloads. */
-fun roundCoords(coords: WeatherCoords, precision: Int = 4): WeatherCoords {
+/** Decimals kept in the coordinates sent to third parties. */
+const val NetworkCoordPrecision = 2
+
+/**
+ * Coordinates rounded to 2 decimals (~1.1 km): precise enough for a forecast and a city name,
+ * stable across reloads, and all that leaves the device (the privacy policy promises an
+ * approximate location to Open-Meteo and BigDataCloud).
+ */
+fun roundCoords(coords: WeatherCoords, precision: Int = NetworkCoordPrecision): WeatherCoords {
     val factor = 10.0.pow(precision)
     return WeatherCoords(roundHalfUp(coords.latitude * factor) / factor, roundHalfUp(coords.longitude * factor) / factor)
 }
 
-fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = 4): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
+fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = NetworkCoordPrecision): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
 
 private fun JsonObject.finite(key: String): Double? =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull?.takeIf { it.isFinite() }

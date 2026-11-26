@@ -21,15 +21,20 @@ import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.NextUp
+import dev.southstar21.vectra.features.widgets.Budget
+import dev.southstar21.vectra.features.widgets.WidgetGeometry
+import dev.southstar21.vectra.features.widgets.stackedSideTime
 import dev.southstar21.vectra.features.widgets.WidgetKind
-import dev.southstar21.vectra.features.widgets.WidgetSession
-import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
+import dev.southstar21.vectra.features.widgets.AfterRow
+import dev.southstar21.vectra.features.widgets.ExamHeadsUpMs
+import dev.southstar21.vectra.features.widgets.HourMs
+import dev.southstar21.vectra.features.widgets.fitRows
+import dev.southstar21.vectra.features.widgets.afterRows
 import dev.southstar21.vectra.features.widgets.dayMonthLabel
 import dev.southstar21.vectra.features.widgets.doneOf
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.examsAfter
-import dev.southstar21.vectra.features.widgets.laterOn
 import dev.southstar21.vectra.features.widgets.listedMs
 import dev.southstar21.vectra.features.widgets.nextUp
 import dev.southstar21.vectra.features.widgets.openTasks
@@ -46,30 +51,13 @@ class NextClassWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { WidgetTheme { NextClassContent(context, frame) } }
+        provideContent { WidgetTheme { NextClassContent(context, rememberFrame(context)) } }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
         provideContent { PreviewTheme(170.dp, 170.dp) { NextClassContent(context, sampleFrame()) } }
     }
 }
-
-private class MiniItem(val time: String, val title: String, val kind: WidgetKind?)
-
-private fun WidgetSession.mini() = MiniItem(clockLabel(listedMs), title, kind)
-
-/** What comes after [s]: the rest of its day, then the next days' first classes with their weekday. */
-private fun WidgetFrame.afterRows(s: WidgetSession): List<MiniItem> {
-    val sameDay = snapshot.laterOn(s.day, nowMs, s).map { it.mini() }
-    val later = snapshot?.sessions.orEmpty().filter { it.day > s.day }.take(4).map {
-        MiniItem("${weekdayLabel(it.day)} ${clockLabel(it.listedMs)}", it.title, it.kind)
-    }
-    return (sameDay + later).take(4)
-}
-
-private const val HourMs = 3_600_000L
-private const val WeekMs = 7 * 24 * HourMs
 
 @Composable
 private fun NextClassContent(context: Context, frame: WidgetFrame) {
@@ -79,22 +67,22 @@ private fun NextClassContent(context: Context, frame: WidgetFrame) {
         is NextUp.InClass -> {
             val s = up.session
             val (value, unit) = ringLabel(s.endMs - now, "LEFT")
-            Small(context, RingSpec(progress(s, now), s.kind, value, unit), listOf(s.kind.label.uppercase(), "till ${clockLabel(s.endMs)}", s.location), s.title,
-                s.teacher.ifBlank { s.group }, frame.afterRows(s), "Nothing else coming up")
+            Small(context, RingSpec(progress(s, now), s.kind, value, unit), listOf(s.kind.label.uppercase(), "till ${frame.clock(s.endMs)}", s.location), s.title,
+                s.teacher.ifBlank { s.group }, frame.snapshot.afterRows(s, now), "Nothing else coming up")
         }
         is NextUp.Upcoming -> {
             val s = up.session
             val (value, unit) = ringLabel(s.startMs - now, "TO GO")
             Small(context, RingSpec((1f - (s.startMs - now).toFloat() / HourMs).coerceIn(0f, 1f), s.kind, value, unit),
-                listOf(s.kind.label.uppercase(), "${clockLabel(s.startMs)}–${clockLabel(s.endMs)}", s.place), s.title, s.teacher,
-                frame.afterRows(s), "Nothing else coming up")
+                listOf(s.kind.label.uppercase(), "${frame.clock(s.startMs)}–${frame.clock(s.endMs)}", s.place), s.title, s.teacher,
+                frame.snapshot.afterRows(s, now), "Nothing else coming up")
         }
         is NextUp.ExamSoon -> {
             val e = up.exam
             val (value, unit) = ringLabel(e.startMs - now, "TO GO")
-            Small(context, RingSpec((1f - (e.startMs - now).toFloat() / WeekMs).coerceIn(0f, 1f), WidgetKind.Exam, value, unit),
-                listOf("EXAM", "${weekdayLabel(e.day)} ${clockLabel(e.startMs)}", e.location), e.title, "Lasts ${spanLabel(e.endMs - e.startMs)}",
-                frame.snapshot.examsAfter(e, 3).map { MiniItem(dayMonthLabel(it.day), it.title, WidgetKind.Exam) }, "No more exams soon")
+            Small(context, RingSpec((1f - (e.startMs - now).toFloat() / ExamHeadsUpMs).coerceIn(0f, 1f), WidgetKind.Exam, value, unit),
+                listOf("EXAM", "${weekdayLabel(e.day)} ${frame.clock(e.startMs)}", e.location), e.title, "Lasts ${spanLabel(e.endMs - e.startMs)}",
+                frame.snapshot.examsAfter(e, 3).map { AfterRow(dayMonthLabel(it.day), it.title, WidgetKind.Exam) }, "No more exams soon")
         }
         is NextUp.DayDone -> DayDone(context, frame, up)
     }
@@ -104,14 +92,14 @@ private class RingSpec(val fraction: Float, val kind: WidgetKind, val value: Str
 
 /** The small widgets' shape: the ring head, the name and a quiet line, then as many rows as fit. */
 @Composable
-private fun Small(context: Context, ring: RingSpec, side: List<String>, title: String, sub: String, rows: List<MiniItem>, fallback: String) {
+private fun Small(context: Context, ring: RingSpec, side: List<String>, title: String, sub: String, rows: List<AfterRow>, fallback: String) {
     val size = LocalSize.current
-    val b = Budget(context)
+    val b = budgetFor(context)
     val inner = DpSize(size.width - 26.dp, size.height - 26.dp)
     val nameLines = b.lines(title, 15f, inner.width.value, max = 2)
     val used = 50f + 7f + b.line(15f) * nameLines + (if (sub.isBlank()) 0f else b.line(11f)) + 12f
     // The name's room: the width less the time beside it ("12:30", or "Thu 08:00").
-    fun nameWidth(item: MiniItem) = inner.width.value - item.time.length * 6.5f - 8f
+    fun nameWidth(item: AfterRow) = inner.width.value - item.time.length * 6.5f - 8f
     val fit = fitRows(rows.map { b.height(it.title, 12f, nameWidth(it), max = 2) + 4f }, inner.height.value - used)
     WidgetSurface(context) {
         Column(GlanceModifier.fillMaxSize()) {
@@ -134,28 +122,31 @@ private fun Small(context: Context, ring: RingSpec, side: List<String>, title: S
     }
 }
 
-/** How many of the rows, at these heights, fit in [space]. */
-internal fun fitRows(heights: List<Float>, space: Float): Int {
-    var left = space
-    heights.forEachIndexed { i, h ->
-        left -= h
-        if (left < 0) return i
-    }
-    return heights.size
-}
-
 @Composable
 private fun RingHead(context: Context, ring: RingSpec, side: List<String>) {
     val p = LocalWPalette.current
+    // The room beside the ring; the time line shrinks before it would be cut (12-hour times are wider).
+    val room = LocalSize.current.width.value - 26f - 50f - 10f
+    val b = budgetFor(context)
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Ring(context, ring.fraction, ring.kind, ring.value, ring.unit, ring.icon)
         Spacer(GlanceModifier.width(10.dp))
         Column {
             side.getOrNull(0)?.let { Mono(it, 10f, p.tone(ring.kind)) }
-            side.getOrNull(1)?.let { Mono(it, 11f) }
+            side.getOrNull(1)?.let { SideTime(it, room, b) }
             side.getOrNull(2)?.takeIf { it.isNotBlank() }?.let { RoomLine(it) }
         }
     }
+}
+
+/** The time beside the ring: one line at 11, 10 or 9 sp, else its parts stacked (12-hour ranges), never cut. */
+@Composable
+private fun SideTime(text: String, room: Float, b: Budget) {
+    fun fit(t: String) = listOf(11f, 10f, 9f).firstOrNull { b.lines(t, it, room, max = 2) == 1 }
+    val one = fit(text)
+    val parts = if (one != null) listOf(text) else stackedSideTime(text)
+    val size = one ?: parts.minOf { fit(it) ?: 9f }
+    parts.forEach { Mono(it, size) }
 }
 
 @Composable
@@ -167,8 +158,8 @@ private fun DayDone(context: Context, frame: WidgetFrame, up: NextUp.DayDone) {
     // The next day first, then the days after it, so the widget stays full.
     val upcoming = next?.let { n -> frame.snapshot?.sessions.orEmpty().filter { it.day >= n.day } }.orEmpty().take(6)
     val size = LocalSize.current
-    val b = Budget(context)
-    val rowWidth = size.width.value - 26f - 40f
+    val b = budgetFor(context)
+    val rowWidth = size.width.value - 26f - 40f - WidgetGeometry.timeExtra(frame.hour12)
     val fit = fitRows(upcoming.map { b.height(it.title, 12f, rowWidth - if (it.day != next?.day) 26f else 0f, max = 2) + 4f }, size.height.value - 26f - 50f - 12f - 1f - b.line(10f) - 10f)
     WidgetSurface(context) {
         Column(GlanceModifier.fillMaxSize()) {
@@ -195,7 +186,7 @@ private fun DayDone(context: Context, frame: WidgetFrame, up: NextUp.DayDone) {
                 Spacer(GlanceModifier.height(4.dp))
                 Column {
                     upcoming.take(fit.coerceAtMost(5)).forEachIndexed { i, s ->
-                        val time = if (s.day == next.day) clockLabel(s.listedMs) else "${weekdayLabel(s.day)} ${clockLabel(s.listedMs)}"
+                        val time = if (s.day == next.day) frame.clock(s.listedMs) else "${weekdayLabel(s.day)} ${frame.clock(s.listedMs)}"
                         MiniRow(time, s.title, s.kind, strong = i == 0, lines = b.lines(s.title, 12f, rowWidth - if (s.day != next.day) 26f else 0f, max = 2))
                         Spacer(GlanceModifier.height(4.dp))
                     }

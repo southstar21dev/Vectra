@@ -15,6 +15,13 @@ style:
   # Tokens and constants are PascalCase here (Kotlin's Compose convention).
   MagicNumber:
     active: false
+  # Guard-clause style is deliberate here, so early returns that guard are not counted.
+  ReturnCount:
+    max: 4
+    excludeGuardClauses: true
+  # Parsers and sync loops use continue/break as guards.
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
   MaxLineLength:
     active: false
   UnusedImport:
@@ -23,8 +30,45 @@ style:
 naming:
   FunctionNaming:
     ignoreAnnotated: ['Composable']
+  # Tokens are PascalCase; private tuning constants may also be SCREAMING_SNAKE.
   TopLevelPropertyNaming:
-    constantPattern: '[A-Z][A-Za-z0-9]*'
+    constantPattern: '[A-Z][A-Za-z0-9_]*'
     propertyPattern: '[A-Za-z][A-Za-z0-9]*'
   MatchingDeclarationName:
     active: false
+
+complexity:
+  # Long declarative bodies are normal in composables; non-composable code is still checked.
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  CyclomaticComplexMethod:
+    ignoreAnnotated: ['Composable']
+
+Compose:
+  # Callback parameters read as events (onExited, onSaved, onLoaded); the rule wants present tense.
+  ParameterNaming:
+    active: false
+  # The app's intentional CompositionLocals (design system, shell, navigation, maps).
+  CompositionLocalAllowlist:
+    allowedCompositionLocals:
+      - LocalMapEnvironment
+      - LocalSurfaceEdgeToEdge
+      - LocalScreenInCard
+      - LocalPageActive
+      - LocalMapLifecycleOwner
+      - LocalOverlayHost
+      - LocalAppPresented
+      - LocalToaster
+      - LocalVectraColors
+      - LocalVectraFonts
+      - LocalAppearance
+      - LocalReduceMotion
+      - LocalContentColor
+      - LocalTextStyle
+      - LocalVectraHaptics
+      - LocalWideLayout
+      - LocalNavbarActions
+      - LocalShellState
+      - LocalTabSelected
+      - LocalNavigator
+      - LocalWPalette

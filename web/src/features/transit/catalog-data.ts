@@ -1,7 +1,8 @@
 import type { CatalogRoute, CatalogRouteVariant, CatalogStop } from './catalog-types';
 
 /**
- * Runtime loaders for the daily-refreshed BKK catalog JSON (public/catalog/*.json).
+ * Runtime loaders for the BKK catalog JSON (public/catalog/*.json, a frozen copy since the
+ * backend took over the daily refresh).
  *
  * The catalog deliberately lives outside the JS bundle: shipping it as hashed
  * chunks changed the service-worker precache manifest on every daily refresh,

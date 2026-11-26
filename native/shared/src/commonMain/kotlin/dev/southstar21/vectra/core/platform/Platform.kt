@@ -1,6 +1,6 @@
 package dev.southstar21.vectra.core.platform
 
-/** Encrypts the auth token at rest (Android Keystore; iOS Keychain later). */
+/** Encrypts the auth token at rest (Android Keystore, iOS Keychain). */
 interface SecretCipher {
     fun encrypt(plain: String): String
     fun decrypt(cipher: String): String?

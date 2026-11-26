@@ -3,7 +3,6 @@ package dev.southstar21.vectra.core.designsystem.components
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,21 +18,6 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.Radius
-
-/** Neutral chip. */
-@Composable
-fun Badge(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
-    val c = Vectra.colors
-    val shape = Radius.Tag
-    Row(
-        modifier.background(c.surfaceOverlay, shape).border(1.dp, c.borderSubtle, shape).padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) VIcon(icon, size = 12.dp, tint = c.textSecondary)
-        VText(text, style = vtext(TypeScale.Micro, Weight.Bold), color = c.textSecondary, maxLines = 1)
-    }
-}
 
 enum class StatusTone { Amber, Blue, Emerald, Green, Purple, Red, Sky, Violet, Neutral }
 

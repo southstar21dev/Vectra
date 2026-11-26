@@ -6,11 +6,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
 import androidx.glance.appwidget.LinearProgressIndicator
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -20,7 +16,6 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -46,9 +41,9 @@ internal fun Name(text: String, size: Float = 15f, maxLines: Int = 3, dim: Boole
 }
 
 @Composable
-internal fun Quiet(text: String, size: Float = 11f, color: ColorProvider? = null) {
+internal fun Quiet(text: String, size: Float = 11f, color: ColorProvider? = null, maxLines: Int = 1) {
     val p = LocalWPalette.current
-    Text(text, style = style(size.sp, FontWeight.Medium, color ?: p.secondary), maxLines = 1)
+    Text(text, style = style(size.sp, FontWeight.Medium, color ?: p.secondary), maxLines = maxLines)
 }
 
 /** A time. In the system sans, whose digits are already all one width (its monospace spaces out the colon). */

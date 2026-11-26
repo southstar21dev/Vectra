@@ -13,6 +13,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Looper
 import android.provider.Settings
@@ -100,15 +101,22 @@ class AndroidLocationProvider(private val context: Context) : LocationProvider {
         val fix = withTimeoutOrNull(10_000) {
             suspendCancellableCoroutine { cont ->
                 val signal = CancellationSignal()
-                cont.invokeOnCancellation { signal.cancel() }
+                // Pre-Android-11 single updates have no signal: keep the listeners so none outlives the call.
+                val legacy = mutableListOf<LocationListener>()
+                fun release() = legacy.forEach { runCatching { lm.removeUpdates(it) } }
+                cont.invokeOnCancellation { signal.cancel(); release() }
                 providers.forEach { p ->
                     if (Build.VERSION.SDK_INT >= 30) {
                         lm.getCurrentLocation(p, signal, context.mainExecutor) { loc ->
                             if (loc != null && cont.isActive) { signal.cancel(); cont.resume(loc.toFix()) }
                         }
                     } else {
+                        val listener = FixListener { loc ->
+                            if (cont.isActive) { cont.resume(loc.toFix()); release() }
+                        }
+                        legacy += listener
                         @Suppress("DEPRECATION")
-                        lm.requestSingleUpdate(p, { loc -> if (cont.isActive) cont.resume(loc.toFix()) }, Looper.getMainLooper())
+                        lm.requestSingleUpdate(p, listener, Looper.getMainLooper())
                     }
                 }
             }
@@ -122,11 +130,28 @@ class AndroidLocationProvider(private val context: Context) : LocationProvider {
             close(SecurityException("User denied Geolocation"))
             return@callbackFlow
         }
-        val listener = LocationListener { trySend(it.toFix()) }
+        val listener = FixListener { trySend(it.toFix()) }
         // No distance filter: a stationary phone must keep reporting, or the watchdog sees a lost fix.
         lm.requestLocationUpdates(watchProvider(), 5_000L, 0f, listener, Looper.getMainLooper())
         awaitClose { lm.removeUpdates(listener) }
     }
+}
+
+/**
+ * A [LocationListener] with every callback implemented. Before Android 11 the status and provider
+ * callbacks are abstract in the framework, so a lambda listener crashes with AbstractMethodError
+ * as soon as the user switches a provider off while a request is running.
+ */
+private class FixListener(private val onFix: (Location) -> Unit) : LocationListener {
+    override fun onLocationChanged(location: Location) = onFix(location)
+
+    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION")
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+
+    override fun onProviderEnabled(provider: String) = Unit
+
+    override fun onProviderDisabled(provider: String) = Unit
 }
 
 class AndroidLauncher(private val context: Context) : Launcher {

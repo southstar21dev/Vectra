@@ -24,6 +24,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
  */
 @Composable
 fun WeatherRadarScreen(repo: WeatherRepository, onBack: () -> Unit) {
+    ReleaseRadarTilesOnExit()
     RadarView(repo, grow = { 1f }, opened = true, orbFrom = null, onClose = onBack)
 }
 

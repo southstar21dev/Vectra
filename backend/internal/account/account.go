@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"ganigeorgiev.com/pocketbase/dbx"
+	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
 	"vectra/pb/internal/reauth"
@@ -14,30 +14,12 @@ import (
 // match the stored hash.
 var errInvalidPassword = errors.New("current password is incorrect")
 
-var ownedCollections = []string{
-	"schedule_events", "neptun_schedule_events", "schedule_items",
-	"transit_trackers", "course_tracker_data", "trip_plans",
-	"push_subscriptions", "passkeys", "passkey_challenges",
-}
-
-// deleteAccount removes all of userID's owned records across the cascade
-// collections, then the auth record itself. It must be called with an app
-// scoped to a transaction so every delete commits or rolls back together.
+// deleteAccount removes the auth record; every collection that owns data holds
+// a `user` relation with CascadeDelete (see schema.OwnerCollections), so
+// PocketBase deletes the owned records in the same call. It must be called
+// with an app scoped to a transaction so everything commits or rolls back
+// together. A test asserts that no owned record survives.
 func deleteAccount(app core.App, userID string) error {
-	for _, name := range ownedCollections {
-		if _, err := app.FindCollectionByNameOrId(name); err != nil {
-			continue // collection may not exist in a partial schema
-		}
-		records, err := app.FindRecordsByFilter(name, "user = {:u}", "", 0, 0, dbx.Params{"u": userID})
-		if err != nil {
-			return err
-		}
-		for _, r := range records {
-			if err := app.Delete(r); err != nil {
-				return err
-			}
-		}
-	}
 	user, err := app.FindRecordById("users", userID)
 	if err != nil {
 		return err
@@ -86,7 +68,8 @@ func ChangeEmail(app core.App, userID, currentPassword, newEmail string) error {
 	if !user.ValidatePassword(currentPassword) {
 		return errInvalidPassword
 	}
-	if strings.EqualFold(strings.TrimSpace(newEmail), user.Email()) {
+	newEmail = strings.TrimSpace(newEmail)
+	if strings.EqualFold(newEmail, user.Email()) {
 		return nil
 	}
 	user.SetEmail(newEmail)
@@ -114,8 +97,13 @@ func EmailHandler(e *core.RequestEvent) error {
 	if errors.Is(err, errInvalidPassword) {
 		return e.BadRequestError("Current password is incorrect", nil)
 	}
-	if err != nil {
+	var invalid validation.Errors
+	if errors.As(err, &invalid) {
 		return e.BadRequestError("Could not update email", err)
+	}
+	if err != nil {
+		// Not a rejected input (for example SQLITE_BUSY): let the client retry.
+		return e.InternalServerError("Could not update email", err)
 	}
 	return e.JSON(200, map[string]any{"ok": true})
 }

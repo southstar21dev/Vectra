@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
+import dev.southstar21.vectra.core.designsystem.components.Toaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
@@ -96,6 +97,41 @@ internal fun isCalendarLink(text: String): Boolean {
     return host != null && lower.none(Char::isWhitespace) && '.' in host && !host.startsWith('.') && !host.endsWith('.')
 }
 
+/**
+ * Checks [link] really serves a calendar, then saves it (encrypted). True when it was saved; a link that
+ * fails the check is never stored, so the row cannot claim "Connected" for something that cannot sync.
+ */
+private suspend fun connectNeptunLink(repo: ScheduleRepository, toaster: Toaster, link: String): Boolean {
+    val problem = linkProblem(repo, link)
+    if (problem != null) {
+        toaster.error(problem.first, problem.second)
+        return false
+    }
+    return try {
+        repo.saveNeptunUrl(link)
+        toaster.success("Neptun URL saved successfully")
+        true
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        toaster.error("Failed to save Neptun URL", "The encryption service is unavailable. Please try again.")
+        false
+    }
+}
+
+/** Title and detail of what is wrong with [link], or null when it serves a calendar with classes. */
+private suspend fun linkProblem(repo: ScheduleRepository, link: String): Pair<String, String>? = when {
+    !isCalendarLink(link) -> "That isn't a calendar link" to "Copy the full https:// link from Neptun's calendar export."
+    else -> try {
+        if (repo.verifyNeptunLink(link)) null else "That isn't a Neptun calendar" to
+            "The link opened, but it has no classes in it. Copy the link from Neptun's calendar export."
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        "Couldn't load a calendar from that link" to "Check the link and your connection, then try again. Nothing was saved."
+    }
+}
+
 /** A glass panel titled with a tilted postage stamp. */
 @Composable
 private fun SettingsSectionBox(title: String, tiltLeft: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
@@ -138,6 +174,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     var savedUrl by remember { mutableStateOf("") }
     var rateLimited by remember { mutableStateOf(false) }
     var syncing by remember { mutableStateOf(false) }
+    var connecting by remember { mutableStateOf(false) }
 
     // Tick every 30s so "Synced X ago" moves.
     var now by remember { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
@@ -226,29 +263,21 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                     VButton(
                         onClick = {
                             scope.launch {
-                                val trimmed = urlInput.trim()
-                                // Nothing is connected while this field shows, so there is nothing to remove.
-                                if (!isCalendarLink(trimmed)) {
-                                    toaster.error("That isn't a calendar link", "Copy the full https:// link from Neptun's calendar export.")
-                                    return@launch
-                                }
+                                connecting = true
                                 try {
-                                    repo.saveNeptunUrl(trimmed)
-                                    savedUrl = trimmed
-                                    urlInput = ""
-                                    toaster.success("Neptun URL saved successfully")
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: Throwable) {
-                                    toaster.error("Failed to save Neptun URL", "The encryption service is unavailable. Please try again.")
+                                    // Nothing is connected while this field shows, so there is nothing to remove.
+                                    if (connectNeptunLink(repo, toaster, urlInput.trim())) { savedUrl = urlInput.trim(); urlInput = "" }
+                                } finally {
+                                    connecting = false
                                 }
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(36.dp),
                         size = ButtonSize.Sm,
+                        enabled = !connecting,
                     ) {
                         VIcon(RemixIcons.CheckLine, size = 14.dp)
-                        VText("Connect", style = vtext(TypeScale.Caption, Weight.Bold))
+                        VText(if (connecting) "Checking the link..." else "Connect", style = vtext(TypeScale.Caption, Weight.Bold))
                     }
                 }
             }

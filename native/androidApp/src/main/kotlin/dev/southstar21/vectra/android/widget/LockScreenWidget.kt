@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -22,17 +24,10 @@ import androidx.glance.text.Text
 import androidx.glance.unit.ColorProvider
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.NextUp
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.WidgetSession
-import dev.southstar21.vectra.features.widgets.emptyMessage
-import dev.southstar21.vectra.features.widgets.clockLabel
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.countdownLabel
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.nextUp
-import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.progress
 
 /**
@@ -43,8 +38,7 @@ class LockScreenWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { LockScreenContent(context, frame) }
+        provideContent { LockScreenContent(context, rememberFrame(context)) }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
@@ -82,7 +76,7 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
                 Detail(if (up.hadToday) "Done for today" else "No classes today")
                 up.next?.let {
                     Headline(it.title)
-                    Clock("${dayDistanceLabel(frame.today, it.day)} ${clockLabel(it.startMs)}")
+                    Clock("${dayDistanceLabel(frame.today, it.day)} ${frame.clock(it.startMs)}")
                 }
             }
             NextUp.NoData -> {
@@ -98,8 +92,8 @@ private fun Coming(s: WidgetSession, frame: WidgetFrame) {
     Detail(listOf(s.kind.label, s.location).filter { it.isNotBlank() }.joinToString(", "))
     Headline(s.title)
     Clock(
-        if (s.day == frame.today) "${clockLabel(s.startMs)}, ${countdownLabel(frame.nowMs, s.startMs)}"
-        else "${dayDistanceLabel(frame.today, s.day)} ${clockLabel(s.startMs)}",
+        if (s.day == frame.today) "${frame.clock(s.startMs)}, ${countdownLabel(frame.nowMs, s.startMs)}"
+        else "${dayDistanceLabel(frame.today, s.day)} ${frame.clock(s.startMs)}",
     )
 }
 
@@ -107,7 +101,13 @@ private fun Coming(s: WidgetSession, frame: WidgetFrame) {
 private fun Detail(text: String) = Text(text, style = style(13.sp, FontWeight.Medium, Dim), maxLines = 1)
 
 @Composable
-private fun Headline(text: String) = Text(text, style = style(17.sp, FontWeight.Bold, Primary), maxLines = 1)
+private fun Headline(text: String) {
+    // Shrink before wrapping, and wrap before cutting: a long course title must stay whole.
+    val b = budgetFor(LocalContext.current)
+    val width = LocalSize.current.width.value
+    val size = listOf(17f, 15f, 13f).firstOrNull { b.lines(text, it, width, max = 2) == 1 }
+    Text(text, style = style((size ?: 12f).sp, FontWeight.Bold, Primary), maxLines = if (size == null) 2 else 1)
+}
 
 @Composable
 private fun Clock(text: String) = Text(text, style = style(13.sp, FontWeight.Bold, Primary), maxLines = 1)

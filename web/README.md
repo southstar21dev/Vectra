@@ -94,13 +94,9 @@ The backend is a single Go binary in `backend/` that embeds PocketBase and regis
 
 ## Transit catalog
 
-The full BKK line/stop catalog lives in `public/catalog/*.json`
-(`routes.json`, `stops.json`, `route-variants.json`), generated from the BKK
-Futár feed by `scripts/build-catalog.mjs` and refreshed daily by
-`.github/workflows/refresh-catalog.yml` (on master and dev). The app fetches it at runtime (it is
-not bundled and not precached), so daily data refreshes never change the JS
-bundle or the service worker — installed PWAs pick up the current catalog
-without an update reload. Do not hand-edit the JSON. Regenerate locally with
-`FUTAR_API_KEY=… node scripts/build-catalog.mjs`; the workflow keeps the
-previous catalog when the upstream feed degrades.
-
+The BKK line/stop catalog files in `public/catalog/*.json` (`routes.json`, `stops.json`,
+`route-variants.json`) are a frozen copy: the backend now builds and serves the live
+catalog (`backend/internal/catalog`, `GET /catalog/*.json`, see `backend/README.md`) and nothing
+refreshes these files any more. The web app still fetches them from its own host at runtime (not
+bundled, not precached), so it keeps working with aging data. Do not hand-edit the JSON. They can
+be deleted together with the web app once the app versions that still read them are retired.

@@ -62,8 +62,11 @@ private fun Density.release(down: PointerInputChange, up: PointerInputChange): I
     return swipeStep(down.position, up.position)
 }
 
-/** The day step of a swipe from [start] to [end] (pixels). */
-private fun Density.swipeStep(start: Offset, end: Offset): Int = NavGestures.swipeStep(
+/**
+ * The day step of a swipe from [start] to [end] (pixels). Paging convention: the finger moving left
+ * brings the next day, so this is the opposite sign of [NavGestures.swipeStep] (which is +1 for right).
+ */
+private fun Density.swipeStep(start: Offset, end: Offset): Int = -NavGestures.swipeStep(
     NavGestures.Point(start.x / density, start.y / density),
     NavGestures.Point(end.x / density, end.y / density),
 )

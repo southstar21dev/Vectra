@@ -7,27 +7,35 @@ struct Snapshot: Decodable {
     let version: Int
     let generatedAtMs: Double
     let signedIn: Bool
-    let sessions: [Session]
+    /// Decoded sessions, each stamped with `hour12` so their time labels follow it.
+    var sessions: [Session]
     /// The app is locked until it is updated; older snapshots don't carry the key.
     let updateRequired: Bool?
+    /// Days after the generation day the sessions cover (`aheadDays`, from `SnapshotAheadDays` in
+    /// WidgetSnapshot.kt). Snapshots written before the key existed covered 14.
+    let aheadDays: Int?
+    /// The app's 12-hour setting; older snapshots don't carry the key and stay on 24-hour.
+    let hour12: Bool?
 
     static func load() -> Snapshot? {
         guard let url = AppGroup.snapshotURL,
               let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
+              var snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
               snapshot.version == 1
         else { return nil }
+        if snapshot.hour12 == true { snapshot.sessions = snapshot.sessions.map { var s = $0; s.hour12 = true; return s } }
         return snapshot
     }
 
-    /// Days after its generation day the snapshot covers (`AheadDays` in WidgetPublisher.kt).
-    static let aheadDays = 14
+    /// An exam this close gets the "next class" widgets once the day's classes are over
+    /// (`ExamHeadsUpMs` in WidgetModel.kt).
+    static let examHeadsUp: TimeInterval = 7 * 86_400
 
     /// False once `now` is past the last day the snapshot covers. It can no longer tell an empty
     /// day from one it never saw, so the widgets ask for the app instead of saying "No classes".
     func covers(_ now: Date) -> Bool {
         let generated = Date(timeIntervalSince1970: generatedAtMs / 1000)
-        guard let last = Budapest.calendar.date(byAdding: .day, value: Snapshot.aheadDays, to: generated) else { return true }
+        guard let last = Budapest.calendar.date(byAdding: .day, value: aheadDays ?? 14, to: generated) else { return true }
         return Budapest.day(now) <= Budapest.day(last)
     }
 }
@@ -64,11 +72,17 @@ struct Session: Decodable, Hashable {
     var teacherName: String? = nil
     var groupCode: String? = nil
 
+    /// Whether time labels read 12-hour. Not in the JSON: `Snapshot.load` stamps it from the snapshot.
+    var hour12 = false
+
     enum CodingKeys: String, CodingKey {
         case title, location, kind, startMs, endMs, day, color
         case teacherName = "teacher"
         case groupCode = "group"
     }
+
+    /// A clock time in the app's format ("08:05" or "8:05 AM").
+    func clock(_ date: Date) -> String { Budapest.clock(date, hour12: hour12) }
 
     var teacher: String { teacherName ?? "" }
     var group: String { groupCode ?? "" }
@@ -143,12 +157,21 @@ enum Budapest {
 
     private static let ymd = formatter("yyyy-MM-dd")
     private static let hm = formatter("HH:mm")
+    private static let hm12 = formatter("h:mm a")
     private static let weekdayShort = formatter("EEE")
     private static let heading = formatter("EEE d MMM")
 
     static func day(_ date: Date) -> String { ymd.string(from: date) }
     static func date(_ day: String) -> Date? { ymd.date(from: day) }
-    static func clock(_ date: Date) -> String { hm.string(from: date) }
+    static func clock(_ date: Date, hour12: Bool = false) -> String { (hour12 ? hm12 : hm).string(from: date) }
+
+    /// The week grid's hour axis: "08", or "8" and "2" in 12-hour mode (the column has no room for AM/PM).
+    static func hourAxis(_ hour: Int, hour12: Bool) -> String {
+        hour12 ? String(hour % 12 == 0 ? 12 : hour % 12) : String(format: "%02d", hour)
+    }
+
+    /// What a time column gains in 12-hour mode: "10:45 PM" is wider than "10:45".
+    static let hour12Extra: CGFloat = 18
     static func weekday(_ day: String) -> String { date(day).map(weekdayShort.string) ?? "" }
     static func heading(_ day: String) -> String { date(day).map(heading.string) ?? "" }
 
@@ -179,6 +202,11 @@ struct WeekDay: Identifiable {
 }
 
 extension Optional where Wrapped == Snapshot {
+    /// The 12-hour setting the snapshot carries; no snapshot reads as 24-hour.
+    var is12Hour: Bool { self?.hour12 ?? false }
+}
+
+extension Optional where Wrapped == Snapshot {
     private var live: [Session] { (self?.signedIn ?? false) ? self!.sessions : [] }
 
     /// Signed in, but the snapshot no longer reaches `now`.
@@ -192,7 +220,7 @@ extension Optional where Wrapped == Snapshot {
         if let s = timed.first(where: { $0.day == today && $0.start <= now && now < $0.end }) { return .inClass(s) }
         if let s = timed.first(where: { $0.day == today && $0.start > now }) { return .upcoming(s) }
         let later = timed.filter { $0.day > today }
-        if let exam = later.first(where: { $0.kind == .exam && $0.start.timeIntervalSince(now) <= 7 * 86_400 }) { return .examSoon(exam) }
+        if let exam = later.first(where: { $0.kind == .exam && $0.start.timeIntervalSince(now) <= Snapshot.examHeadsUp }) { return .examSoon(exam) }
         return .dayDone(hadToday: timed.contains { $0.day == today }, next: later.first)
     }
 
@@ -240,7 +268,10 @@ extension Optional where Wrapped == Snapshot {
         let counting = live.contains { $0.kind.isTimed && $0.end > now && $0.start.timeIntervalSince(now) < 86_400 }
         let minute = Budapest.calendar.dateInterval(of: .minute, for: now)?.end ?? now.addingTimeInterval(60)
         let ticks = counting ? (0..<180).map { minute.addingTimeInterval(Double($0) * 60) } : []
-        return Array(Set(edges.filter { $0 <= horizon } + ticks + [Budapest.midnight(after: now)])).sorted()
+        // While counting, the timeline ends at the last tick so `.after(dates.last)` makes WidgetKit
+        // ask for a fresh one; otherwise the static ring labels would freeze until a far-off edge.
+        let end = counting ? (ticks.last ?? horizon) : horizon
+        return Array(Set(edges.filter { $0 <= end } + ticks + [Budapest.midnight(after: now)].filter { $0 <= end || !counting })).sorted()
     }
 }
 

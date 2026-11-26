@@ -27,8 +27,8 @@ export interface StopPair {
  * Normalized stop name for matching: accent-folded, parenthesized notes and
  * station suffixes dropped ("II. János Pál pápa tér M" → "ii. janos pal papa
  * ter"). Deliberately lenient so catalog names match route-details names.
- * Must stay in sync with the build script's normalizer
- * (scripts/build-catalog.mjs) that produced public/catalog/route-variants.json.
+ * Must stay in sync with the normalizer of the catalog generator
+ * (NormalizeStopName in backend/internal/catalog) that produced route-variants.json.
  */
 export function normalizeStopName(s: string): string {
   return normalizeSearchText(s)

@@ -6,6 +6,7 @@ import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
@@ -89,7 +90,9 @@ class CloudWriteGate {
     private val queue = Mutex()
     private val readable = mutableSetOf<String>()
     private val heldBack = mutableSetOf<String>()
-    private var latestPending: (suspend () -> Unit)? = null
+    private class Pending(var run: suspend () -> Unit, val waiters: MutableList<CompletableDeferred<Unit>>)
+
+    private var latestPending: Pending? = null
 
     suspend fun markReadable(userId: String) = state.withLock { readable += userId }
     suspend fun isReadable(userId: String): Boolean = state.withLock { userId in readable }
@@ -100,12 +103,38 @@ class CloudWriteGate {
     /** Returns (and clears) whether a write was held back. */
     suspend fun takeHeldBack(userId: String): Boolean = state.withLock { heldBack.remove(userId) }
 
-    /** Runs [run] after every earlier upload; uploads queued meanwhile collapse to the newest. */
+    /**
+     * Runs [run] after every earlier upload; uploads queued meanwhile collapse to the newest.
+     * Every caller whose upload was collapsed waits for the run that replaced it and sees its
+     * outcome, so a failure reaches all of them and none reports success for an upload that failed.
+     */
     suspend fun enqueue(run: suspend () -> Unit) {
-        state.withLock { latestPending = run }
+        val mine = CompletableDeferred<Unit>()
+        state.withLock {
+            val pending = latestPending
+            if (pending == null) latestPending = Pending(run, mutableListOf(mine))
+            else {
+                pending.run = run
+                pending.waiters += mine
+            }
+        }
         queue.withLock {
-            val pending = state.withLock { latestPending.also { latestPending = null } } ?: return
-            pending()
+            val pending = state.withLock { latestPending.also { latestPending = null } }
+            if (pending != null) runPending(pending)
+        }
+        mine.await()
+    }
+
+    private suspend fun runPending(pending: Pending) {
+        val failure = runCatching { pending.run() }.exceptionOrNull()
+        when (failure) {
+            null -> pending.waiters.forEach { it.complete(Unit) }
+            is CancellationException -> {
+                // The runner was cancelled: the callers it carried must not wait forever or take the cancellation as their own.
+                pending.waiters.forEach { it.completeExceptionally(IllegalStateException("Upload cancelled", failure)) }
+                throw failure
+            }
+            else -> pending.waiters.forEach { it.completeExceptionally(failure) }
         }
     }
 }

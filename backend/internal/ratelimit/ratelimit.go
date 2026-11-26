@@ -1,6 +1,6 @@
 // Package ratelimit holds the tiny in-process fixed-window limiter shared by
 // the public / abuse-prone vectra routes (passkey login start, the Futár proxy,
-// the email change endpoint, Neptun replace, push send, the crypto route).
+// Neptun replace, push send, the crypto route).
 package ratelimit
 
 import (
@@ -44,6 +44,16 @@ func New(max int, window time.Duration) *Limiter {
 // slot when it can.
 func (l *Limiter) Allow(key string, now time.Time) bool {
 	return l.AllowN(key, 1, now)
+}
+
+// Exhausted reports whether key has already used all its slots in the current
+// window, without consuming anything. Use it with Allow to count only some
+// outcomes (for example failures) against a budget.
+func (l *Limiter) Exhausted(key string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	w, ok := l.clients[key]
+	return ok && now.Before(w.reset) && w.count >= l.max
 }
 
 // AllowN reports whether key may perform n more actions at now. It is

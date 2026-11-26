@@ -22,6 +22,7 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
 
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -136,8 +137,7 @@ func encryptValue(key []byte, plain string) (string, error) {
 }
 
 // decryptValue opens a `vc2:` ciphertext (no AAD). Only the one-off vc2 to vc3
-// upgrade (internal/legacyvc2) and the importer's verifier use it, through
-// DecryptValue; the route never does.
+// upgrade (internal/legacyvc2) uses it, through DecryptValue; the route never does.
 func decryptValue(key []byte, value string) (string, error) {
 	return unseal(key, value[len(v2Prefix):], nil)
 }
@@ -212,9 +212,9 @@ func bindDigest(dkey []byte, userID, inner string) string {
 // Exported helpers
 //
 // The /api/vectra/crypto route is the only place these primitives are used at
-// runtime, but the migration verifier (internal/migrate) needs to decrypt
-// stored ciphertext through the *exact* same code path. These thin wrappers
-// expose that path without changing the route's behaviour.
+// runtime, but the one-off upgrades (internal/legacyvc2, internal/dedupekey)
+// and their tests need the *exact* same code path. These thin wrappers expose
+// that path without changing the route's behaviour.
 // ---------------------------------------------------------------------------
 
 // V2Prefix marks a legacy, unbound AES-256-GCM ciphertext (the format the
@@ -232,8 +232,7 @@ func EncryptionKeyFromEnv() ([]byte, error) {
 
 // DecryptValue decrypts a single legacy `vc2:` ciphertext with key. A value
 // without the `vc2:` prefix is rejected rather than mis-sliced. The route no
-// longer opens vc2; this stays for the vc2 to vc3 upgrade (internal/legacyvc2)
-// and the importer's verifier.
+// longer opens vc2; this stays for the vc2 to vc3 upgrade (internal/legacyvc2).
 func DecryptValue(key []byte, value string) (string, error) {
 	if len(value) < len(V2Prefix) || value[:len(V2Prefix)] != V2Prefix {
 		return "", fmt.Errorf("crypto: value is not a %q ciphertext", V2Prefix)
@@ -286,8 +285,9 @@ type request struct {
 	Parts  [][]string `json:"parts"`
 }
 
-// Batch limits. Older app versions send a whole collection in one decrypt
-// (decryptAll), so the per-request caps sit far above any real account's data;
+// Batch limits. Older clients (the deprecated web client and older app
+// versions: shrink these caps once both are retired) send a whole collection in
+// one decrypt (decryptAll), so the per-request caps sit far above any real account's data;
 // current clients split their batches well below them. Every value or part
 // list costs one unit of the caller's budget.
 const (
@@ -295,13 +295,11 @@ const (
 	MaxPartLists    = 2_000
 	MaxPartsPerList = 16
 	MaxBatchBytes   = 16 << 20
-	UserBudget      = 200_000
-	UserWindow      = 10 * time.Minute
 )
 
-// UserLimiter holds each user's budget of values per UserWindow. It is a var
-// so tests can substitute a fresh one.
-var UserLimiter = ratelimit.New(UserBudget, UserWindow)
+// UserLimiter holds each user's budget of values per window
+// (limits.CryptoValues). It is a var so tests can substitute a fresh one.
+var UserLimiter = ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window)
 
 // batchCost checks body against the caps and returns its cost in budget
 // units, or a non-empty reason when it is too large.

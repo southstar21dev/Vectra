@@ -50,6 +50,8 @@ func init() {
 			),
 			base("schedule_items", &core.TextField{Name: "payload", Required: true}),
 			base("course_tracker_data", &core.TextField{Name: "data", Required: true}),
+			// web-only: remove with web/ (native never reads or writes trip_plans;
+			// export existing rows first, and drop it from schema.RowQuotas too).
 			base("trip_plans",
 				&core.TextField{Name: "name"}, &core.JSONField{Name: "legs", MaxSize: 1048576},
 				&core.NumberField{Name: "sort_order", OnlyInt: true}, &core.TextField{Name: "direction"},

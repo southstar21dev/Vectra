@@ -19,3 +19,12 @@ suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> = try {
 } catch (e: Throwable) {
     Result.failure(e)
 }
+
+/**
+ * Exponential backoff: [baseMs] doubled [attempt] times (attempt 0 waits [baseMs]), never above [capMs].
+ * The one curve behind the retry loops; callers pick the base and the cap.
+ */
+fun exponentialBackoffMs(attempt: Int, baseMs: Long, capMs: Long = Long.MAX_VALUE): Long =
+    minOf(capMs, baseMs shl attempt.coerceIn(0, MaxBackoffShift))
+
+private const val MaxBackoffShift = 30

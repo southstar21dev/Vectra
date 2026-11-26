@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import dev.southstar21.vectra.core.platform.SystemBarsAppearance
 import dev.southstar21.vectra.core.preferences.AppearancePrefs
+import dev.southstar21.vectra.core.preferences.ThemeMode
 import dev.southstar21.vectra.core.preferences.isDark
 
 val LocalVectraColors = staticCompositionLocalOf { VectraColors.dark(AppearancePrefs.Default.accent) }
@@ -54,7 +55,7 @@ fun VectraTheme(
     val fonts = rememberVectraFonts()
     val hapticFeedback = LocalHapticFeedback.current
     val haptics = remember(hapticFeedback) { VectraHaptics(hapticFeedback) }
-    SystemBarsAppearance(darkTheme = dark)
+    SystemBarsAppearance(darkTheme = dark, followSystem = appearance.theme == ThemeMode.System)
     CompositionLocalProvider(
         LocalVectraColors provides colors,
         LocalVectraFonts provides fonts,

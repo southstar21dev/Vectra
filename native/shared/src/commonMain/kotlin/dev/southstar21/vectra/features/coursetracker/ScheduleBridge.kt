@@ -6,9 +6,8 @@ import androidx.compose.runtime.getValue
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
-import dev.southstar21.vectra.features.schedule.AttendanceStatus as CardStatus
+import dev.southstar21.vectra.features.schedule.CardAttendance
 import dev.southstar21.vectra.features.schedule.normalizeTime
-import dev.southstar21.vectra.core.time.nowInBudapest
 
 /**
  * The course tracker's side of the schedule: the class card's check-in button and
@@ -35,28 +34,28 @@ class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : Sched
     }
 
     @Composable
-    override fun attendanceStatus(event: ScheduleEvent, date: String): CardStatus {
+    override fun attendanceStatus(event: ScheduleEvent, date: String): CardAttendance {
         val data by repo.data.collectAsStateWithLifecycle()
         return cardStatus(data, event, date)
     }
 
-    private fun cardStatus(data: CourseTrackerData, event: ScheduleEvent, date: String): CardStatus =
+    private fun cardStatus(data: CourseTrackerData, event: ScheduleEvent, date: String): CardAttendance =
         when (activeSession(data, event, date)?.status) {
-            AttendanceStatus.Present -> CardStatus.Present
-            AttendanceStatus.Absent -> CardStatus.Absent
-            AttendanceStatus.Excused -> CardStatus.Excused
-            AttendanceStatus.Cancelled -> CardStatus.Cancelled
-            else -> CardStatus.Unmarked
+            AttendanceStatus.Present -> CardAttendance.Present
+            AttendanceStatus.Absent -> CardAttendance.Absent
+            AttendanceStatus.Excused -> CardAttendance.Excused
+            AttendanceStatus.Cancelled -> CardAttendance.Cancelled
+            AttendanceStatus.Unmarked, null -> CardAttendance.Unmarked
         }
 
-    override fun setAttendanceStatus(event: ScheduleEvent, date: String, status: CardStatus) {
+    override fun setAttendanceStatus(event: ScheduleEvent, date: String, status: CardAttendance) {
         val session = activeSession(repo.data.value, event, date)
         val mapped = when (status) {
-            CardStatus.Present -> AttendanceStatus.Present
-            CardStatus.Absent -> AttendanceStatus.Absent
-            CardStatus.Excused -> AttendanceStatus.Excused
-            CardStatus.Cancelled -> AttendanceStatus.Cancelled
-            CardStatus.Unmarked -> AttendanceStatus.Unmarked
+            CardAttendance.Present -> AttendanceStatus.Present
+            CardAttendance.Absent -> AttendanceStatus.Absent
+            CardAttendance.Excused -> AttendanceStatus.Excused
+            CardAttendance.Cancelled -> AttendanceStatus.Cancelled
+            CardAttendance.Unmarked -> AttendanceStatus.Unmarked
         }
         repo.setAttendanceStatus(
             identity(event),

@@ -64,6 +64,25 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.route.RoutePreviewMap
+import dev.southstar21.vectra.features.transit.route.RoutePreviewStop
+import dev.southstar21.vectra.features.transit.route.RoutePreviewVehicle
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormRow
+import dev.southstar21.vectra.features.transit.trackers.DirectionSelect
+import dev.southstar21.vectra.features.transit.trackers.ListRow
+import dev.southstar21.vectra.features.transit.trackers.ListStatus
+import dev.southstar21.vectra.features.transit.trackers.MapBottomFade
+import dev.southstar21.vectra.features.transit.trackers.RouteTypeFilters
+import dev.southstar21.vectra.features.transit.trackers.SheetFootnote
+import dev.southstar21.vectra.features.transit.trackers.SheetListSpinner
+import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
+import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
+import dev.southstar21.vectra.features.transit.trackers.StopCountPill
+import dev.southstar21.vectra.features.transit.trackers.TrackedChip
 
 /** Let a row run past the sheet gutter on both sides (negative margin, with the gutter added back as padding). */
 internal fun Modifier.bleedHorizontally(gutter: Dp): Modifier = layout { measurable, constraints ->
@@ -119,16 +138,32 @@ internal fun searchableRoutes(catalog: List<FutarRoute>): List<SearchableRoute> 
         )
     }
 
+/**
+ * The catalog narrowed to [query] and [typeFilter]. A typed query ranks the line numbers it
+ * names first (exact, then starting with it, then containing it), then matches on the
+ * description, so "7" leads with bus 7 instead of the trams and trolleys that merely contain a 7
+ * in their route. The display order holds within each rank.
+ */
 internal fun filterRoutes(routes: List<SearchableRoute>, query: String, typeFilter: String): List<FutarRoute> {
     val q = normalizeSearchText(query.trim())
-    return routes
-        .filter { r -> (typeFilter == "ALL" || r.typeGroup == typeFilter) && (q.isEmpty() || r.searchText.any { it.contains(q) }) }
+    val byType = routes.filter { r -> typeFilter == "ALL" || r.typeGroup == typeFilter }
+    if (q.isEmpty()) return byType.map { it.route }
+    return byType.filter { r -> r.searchText.any { it.contains(q) } }
+        .sortedBy { r ->
+            val name = r.searchText[0]
+            when {
+                name == q -> 0
+                name.startsWith(q) -> 1
+                name.contains(q) -> 2
+                else -> 3
+            }
+        }
         .map { it.route }
 }
 
 /** Root of By line: a type filter strip and the catalog as one list. */
 @Composable
-fun ColumnScope.LineBrowser(
+internal fun ColumnScope.LineBrowser(
     routeTypeFilter: String,
     setRouteTypeFilter: (String) -> Unit,
     catalogLoaded: Boolean,
@@ -241,7 +276,7 @@ private val MapHeight = 208.dp
 
 /** After a line is picked: the route on the map, then its stops to tick. */
 @Composable
-fun ColumnScope.LineStopPicker(
+internal fun ColumnScope.LineStopPicker(
     browseRoute: FutarRoute,
     selectedLineStops: List<TrackerStop>,
     routePolylines: List<List<LatLon>>,

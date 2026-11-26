@@ -33,6 +33,9 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import dev.southstar21.vectra.android.MainActivity
 import dev.southstar21.vectra.android.R
+import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.VectraColors
+import dev.southstar21.vectra.core.preferences.AccentKey
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.platform.AndroidNotifier
 import androidx.glance.color.ColorProvider as DayNight
@@ -52,7 +55,7 @@ enum class WidgetLook(val label: String, val detail: String) {
     }
 }
 
-/** The app's tokens (VectraColors) for one look. */
+/** The app's tokens (VectraColors, Palette) for one look. */
 internal class WPalette(
     val look: WidgetLook,
     val text: ColorProvider,
@@ -74,27 +77,36 @@ internal class WPalette(
     fun tone(kind: WidgetKind): ColorProvider = tones.getValue(kind)
 
     companion object {
-        private class Pair2(val day: Long, val night: Long)
+        private class Pair2(val day: Color, val night: Color)
 
-        private val Text = Pair2(0xFF0F172A, 0xFFF8FAFC)
-        private val Secondary = Pair2(0xFF334155, 0xFF94A3B8)
-        private val Muted = Pair2(0xFF64748B, 0xFF7C8AA0)
-        private val Soft = Pair2(0xFF334155, 0xFFCBD5E1)
-        private val Hairline = Pair2(0x140F172A, 0x14FFFFFF)
-        private val Line = Pair2(0x240F172A, 0x29FFFFFF)
-        private val Track = Pair2(0x140F172A, 0x14FFFFFF)
-        private val Pill = Pair2(0xFF0274B3, 0xFF38BDF8)
-        private val OnPill = Pair2(0xFFFFFFFF, 0xFF04121B)
-        private val Check = Pair2(0xFF059669, 0xFF34D399)
-        private val OnCheck = Pair2(0xFFFFFFFF, 0xFF052E1F)
+        private fun argb(day: Long, night: Long) = Pair2(Color(day), Color(night))
+
+        // The app's tokens: the dark and light sets every screen reads. Only what the tokens lack
+        // (alpha lines, the pill) is written here.
+        private val Dark = VectraColors.dark(AccentKey.Blue)
+        private val Light = VectraColors.light(AccentKey.Blue)
+
+        private fun token(pick: (VectraColors) -> Color) = Pair2(pick(Light), pick(Dark))
+
+        private val Text = token { it.textPrimary }
+        private val Secondary = token { it.textSecondary }
+        private val Muted = token { it.textMuted }
+        private val Soft = Pair2(Palette.Slate700, Palette.Slate300)
+        private val Hairline = argb(0x140F172A, 0x14FFFFFF)
+        private val Line = argb(0x240F172A, 0x29FFFFFF)
+        private val Track = argb(0x140F172A, 0x14FFFFFF)
+        private val Pill = Pair2(Color(0xFF0274B3), Palette.Sky400)
+        private val OnPill = argb(0xFFFFFFFF, 0xFF04121B)
+        private val Check = Pair2(Palette.Emerald600, Palette.Emerald400)
+        private val OnCheck = argb(0xFFFFFFFF, 0xFF052E1F)
         private val Tones = mapOf(
-            WidgetKind.Lecture to Pair2(0xFF0284C7, 0xFF38BDF8),
-            WidgetKind.Other to Pair2(0xFF0284C7, 0xFF38BDF8),
-            WidgetKind.Seminar to Pair2(0xFF059669, 0xFF34D399),
-            WidgetKind.Lab to Pair2(0xFF7C3AED, 0xFFC084FC),
-            WidgetKind.Shift to Pair2(0xFF7C3AED, 0xFFC084FC),
-            WidgetKind.Exam to Pair2(0xFF6D28D9, 0xFFC4B5FD),
-            WidgetKind.Task to Pair2(0xFFB45309, 0xFFFBBF24),
+            WidgetKind.Lecture to token { it.tints.sky.text },
+            WidgetKind.Other to token { it.tints.sky.text },
+            WidgetKind.Seminar to token { it.tints.emerald.text },
+            WidgetKind.Lab to token { it.tints.purple.text },
+            WidgetKind.Shift to token { it.tints.purple.text },
+            WidgetKind.Exam to token { it.tints.violet.text },
+            WidgetKind.Task to token { it.tints.amber.text },
         )
 
         fun of(look: WidgetLook): WPalette {
@@ -103,9 +115,9 @@ internal class WPalette(
                 else -> {
                     // System follows the launcher's day/night; Dark and Light are fixed.
                     val pick: (Pair2) -> ColorProvider = when (look) {
-                        WidgetLook.System -> { p -> DayNight(day = Color(p.day), night = Color(p.night)) }
-                        WidgetLook.Dark -> { p -> ColorProvider(Color(p.night)) }
-                        else -> { p -> ColorProvider(Color(p.day)) }
+                        WidgetLook.System -> { p -> DayNight(day = p.day, night = p.night) }
+                        WidgetLook.Dark -> { p -> ColorProvider(p.night) }
+                        else -> { p -> ColorProvider(p.day) }
                     }
                     WPalette(
                         look, pick(Text), pick(Secondary), pick(Muted), pick(Soft), pick(Hairline), pick(Line), pick(Track),
@@ -182,4 +194,16 @@ internal fun WidgetSurface(context: Context, padding: Dp = 13.dp, content: @Comp
 @Composable
 internal fun Tinted(@DrawableRes res: Int, tint: ColorProvider, size: Dp) {
     Image(ImageProvider(res), contentDescription = null, colorFilter = ColorFilter.tint(tint), modifier = GlanceModifier.size(size))
+}
+
+/**
+ * The card's gradient for the style screen's pictures. The placed widget's plates are the
+ * drawables widget_plate_dark.xml and widget_plate_light.xml, which hold the same four colours:
+ * change them together.
+ */
+internal object WidgetPlate {
+    val DarkTop = Color(0xFF14151C)
+    val DarkBottom = Color(0xFF0D0E13)
+    val LightTop = Color.White
+    val LightBottom = Color(0xFFF4F6FA)
 }

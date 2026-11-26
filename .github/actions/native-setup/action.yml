@@ -1,0 +1,47 @@
+# Java, Gradle, the Kotlin/Native cache and the release version for the native build, shared by the
+# ci, android and ios jobs. Run actions/checkout first.
+name: Native setup
+description: Set up Java 21, Gradle and (on macOS) the Kotlin/Native cache, and optionally set the app version.
+
+inputs:
+  caches:
+    description: >-
+      Use the Gradle and Kotlin/Native caches. Pass false in jobs that hold signing secrets: caches
+      are shared with every other job of a master run, so a poisoned entry would run with them.
+    default: 'true'
+  version:
+    description: Release version to write to native/gradle.properties. Empty leaves it as committed.
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      with:
+        distribution: temurin
+        java-version: 21
+
+    # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
+    # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
+    - id: kotlin
+      if: runner.os == 'macOS' && inputs.caches == 'true'
+      name: Read the Kotlin version
+      shell: bash
+      run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+    - if: runner.os == 'macOS' && inputs.caches == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.konan
+        key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+    - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      with:
+        cache-disabled: ${{ inputs.caches != 'true' }}
+
+    - if: inputs.version != ''
+      name: Set the version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties

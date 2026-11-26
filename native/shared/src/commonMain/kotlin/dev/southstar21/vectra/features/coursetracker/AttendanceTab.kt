@@ -51,7 +51,7 @@ private val SessionTypes = mapOf(
     SessionType.Lab to TypeInfo("Lab", "Labs", StatusTone.Purple),
     SessionType.Consultation to TypeInfo("Consultation", "Consultations", StatusTone.Amber),
     SessionType.Exam to TypeInfo("Exam", "Exams", StatusTone.Violet),
-    SessionType.Other to TypeInfo("Session", "Other", StatusTone.Neutral),
+    SessionType.Other to TypeInfo("Other", "Other", StatusTone.Neutral),
 )
 
 /** Ledger order of the type filter and the semester rows. */
@@ -117,13 +117,19 @@ internal fun AttendanceTab(
     fun typeInfo(type: SessionType) = if (isIntensive && type == SessionType.Seminar) IntensiveInfo else SessionTypes.getValue(type)
 
     // Generic "Week N" titles get the academic week label (a mid-week start can
-    // shift them); intensive pre-semester sessions read "Intensive Week".
+    // shift them); intensive pre-semester sessions read "Intensive Week". Any other title is
+    // the student's or the course's own words and is shown as written, even when it ends in a
+    // type word ("iOS Lecture", "Exam Consultation").
     fun displayTitle(s: AttendanceSession): String {
         val clean = s.title.replace(Regex("\\s+(lecture|seminar|lab|practice|exam|session|consultation)$", RegexOption.IGNORE_CASE), "")
         val week = getAcademicWeekInfo(s.date, semesterStart)
-        return if (week != null && Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())) {
-            if (isIntensive && week.weekNumber == 0) "Intensive Week" else week.label
-        } else clean
+        val generic = Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())
+        return when {
+            !generic -> s.title.trim()
+            week == null -> clean
+            isIntensive && week.weekNumber == 0 -> "Intensive Week"
+            else -> week.label
+        }
     }
 
     fun describe(s: AttendanceSession): String {

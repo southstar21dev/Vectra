@@ -23,9 +23,28 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatClock
 import dev.southstar21.vectra.core.preferences.TimeFormat
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.CatalogStop
+import dev.southstar21.vectra.features.transit.data.CuratedStops
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormGroup
+import dev.southstar21.vectra.features.transit.trackers.GroupLineColors
+import dev.southstar21.vectra.features.transit.trackers.ListRow
+import dev.southstar21.vectra.features.transit.trackers.ListStatus
+import dev.southstar21.vectra.features.transit.trackers.MetroFallbackColorsByLine
+import dev.southstar21.vectra.features.transit.trackers.MetroView
+import dev.southstar21.vectra.features.transit.trackers.SheetFootnote
+import dev.southstar21.vectra.features.transit.trackers.SheetListSpinner
+import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
+import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
+import dev.southstar21.vectra.features.transit.trackers.TrackedChip
+import dev.southstar21.vectra.features.transit.trackers.metroViewLabel
 
 private val QuickPickGroups = listOf(MetroView.M1, MetroView.M2, MetroView.M3, MetroView.M4, MetroView.POPULAR)
 
@@ -55,7 +74,7 @@ private fun StopPin() = VIcon(RemixIcons.MapPinLine, tint = Vectra.colors.tints.
 
 /** Root of By stop: search results when typing, otherwise the curated groups. */
 @Composable
-fun StopBrowser(
+internal fun StopBrowser(
     searchQuery: String,
     filteredStops: List<CatalogStop>,
     catalogLoaded: Boolean,
@@ -106,7 +125,7 @@ fun StopBrowser(
 
 /** The stops of one curated group (a metro line or the popular set). */
 @Composable
-fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
+internal fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
     ClippedFormGroup(
         rows = CuratedStops.filter { it.group == group.key }.map { stop ->
             @Composable { ListRow(stop.name, onClick = { onSelectStop(stop.id) }, leading = { StopPin() }, navigates = true) }
@@ -115,11 +134,11 @@ fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
 }
 
 /** One direction at a stop with its upcoming departures. */
-data class StopDirection(val headSign: String, val times: List<Arrival>)
+internal data class StopDirection(val headSign: String, val times: List<Arrival>)
 
 /** After a stop is picked: the lines serving it, then the direction. */
 @Composable
-fun StopRoutePicker(
+internal fun StopRoutePicker(
     loadingRoutes: Boolean,
     routesError: String?,
     onRetry: () -> Unit,
@@ -239,7 +258,7 @@ private fun DepartureChip(t: Arrival, timeFormat: TimeFormat) {
         else VIcon(RemixIcons.TimeLine, size = 10.dp, tint = c.textMuted)
         VText(
             formatClock(t.arrivalMs, timeFormat),
-            style = vtext(11.sp to 16.sp, Weight.Semibold).copy(fontFeatureSettings = "tnum"),
+            style = vtext(11.sp to 16.sp, Weight.Semibold).tnum(),
             color = c.textSecondary,
             maxLines = 1,
         )

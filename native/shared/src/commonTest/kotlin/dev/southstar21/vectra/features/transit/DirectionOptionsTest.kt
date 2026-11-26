@@ -1,6 +1,17 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
+import dev.southstar21.vectra.features.transit.data.FutarAlert
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsData
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsEntry
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.FutarReferences
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarRouteVariant
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.FutarStopTime
+import dev.southstar21.vectra.features.transit.data.FutarTranslations
+import dev.southstar21.vectra.features.transit.data.FutarTripRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

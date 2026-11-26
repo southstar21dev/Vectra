@@ -1,5 +1,7 @@
 # The Xcode project is generated from this file: `cd native/iosApp && xcodegen`.
 # Edit this, not iosApp.xcodeproj.
+# .github/scripts/altstore-source.mjs reads options.deploymentTarget.iOS below (the AltStore minimum
+# OS) and repeats the version-to-build-number rule of scripts/version.sh, the build number phase.
 name: iosApp
 options:
   bundleIdPrefix: dev.southstar21
@@ -8,7 +10,11 @@ options:
   createIntermediateGroups: true
 settings:
   base:
+    # Swift 5 mode with the Swift 6 data-race checks on as warnings. The sources already build clean in Swift 6
+    # mode with Xcode 27; flip this to "6.0" once the hosts' main-thread callbacks have been checked on a device
+    # (Swift 6 turns the isolation of those callbacks into runtime checks).
     SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
     # The Gradle phase reads the repo and writes the framework outside the sandbox's declared outputs.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 targets:
@@ -97,28 +103,7 @@ targets:
         basedOnDependencyAnalysis: false
         shell: /bin/sh
         outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        script: |
-          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
-          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
-          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
-          # gradle.properties only holds the real version while CI builds a release.
-          set -e
-          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
-          if [ "$CONFIGURATION" = "Debug" ]; then
-            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-            [ -n "$TAG" ] && FULL=$TAG
-          fi
-          NAME=${FULL%%-*}
-          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
-          CODE=$(echo "$FULL" | awk -F'[.-]' '{
-            b = 99
-            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
-            if ($4 == "dev") b = $5
-            if ($4 == "rc") b = 50 + $5
-            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
-          }')
-          mkdir -p "$DERIVED_FILE_DIR"
-          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"
+        path: scripts/version.sh
       - name: Compile Kotlin framework
         basedOnDependencyAnalysis: false
         shell: /bin/sh
@@ -179,25 +164,4 @@ targets:
         basedOnDependencyAnalysis: false
         shell: /bin/sh
         outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        script: |
-          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
-          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
-          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
-          # gradle.properties only holds the real version while CI builds a release.
-          set -e
-          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
-          if [ "$CONFIGURATION" = "Debug" ]; then
-            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-            [ -n "$TAG" ] && FULL=$TAG
-          fi
-          NAME=${FULL%%-*}
-          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
-          CODE=$(echo "$FULL" | awk -F'[.-]' '{
-            b = 99
-            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
-            if ($4 == "dev") b = $5
-            if ($4 == "rc") b = 50 + $5
-            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
-          }')
-          mkdir -p "$DERIVED_FILE_DIR"
-          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"
+        path: scripts/version.sh

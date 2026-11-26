@@ -9,6 +9,10 @@ import dev.southstar21.vectra.features.holidays.isHungarianPublicHoliday
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.TrackerCourses
 import dev.southstar21.vectra.features.schedule.getEventFrequency
+import dev.southstar21.vectra.features.schedule.getSemesterFromYearMonth
+import dev.southstar21.vectra.features.schedule.mondayOf
+import dev.southstar21.vectra.features.schedule.semesterWeekOneMonday
+import kotlinx.datetime.number
 import dev.southstar21.vectra.features.schedule.isExam
 import dev.southstar21.vectra.features.schedule.normalizeTime
 import kotlinx.datetime.DatePeriod
@@ -209,7 +213,7 @@ fun generateSessionsFromScheduleEvents(
                     startTime = sTime.nonEmpty(),
                     endTime = eTime.nonEmpty(),
                     sessionType = type,
-                    frequency = getEventFrequency(evt.csvMetadata, acceptJsonString = true).key,
+                    frequency = getEventFrequency(evt.csvMetadata).key,
                     startDate = sDate.nonEmpty() ?: semesterStart.nonEmpty(),
                     endDate = eDate.nonEmpty() ?: semesterEnd.nonEmpty(),
                     skipHolidays = evt.source != "neptun",
@@ -239,7 +243,17 @@ fun generateSessionsFromScheduleEvents(
         .mapNotNull { it.nonEmpty() }
         .filter { YmdPattern.matches(it) }
         .sorted()
-    val start: LocalDate = validStarts.firstOrNull()?.let(::parseIsoDate) ?: LocalDate(today.year, today.month, 1)
+    // Week one is the Monday the timetable counts odd/even parity from, so tracker weeks match the
+    // schedule. Manual classes carry no dates, so without this the anchor would drift with "today".
+    val explicitSemester = semester.orEmpty().trim().ifEmpty { matching.firstOrNull { it.semester.isNotBlank() }?.semester?.trim().orEmpty() }
+    val earliest = validStarts.firstOrNull()
+    val weekOne = semesterStart.nonEmpty()?.trim()?.takeIf { YmdPattern.matches(it) }?.let(::mondayOf)
+        ?: semesterWeekOneMonday(explicitSemester, scheduleEvents)
+        // A class with neither dates nor a semester counts in the semester today falls in.
+        ?: if (earliest == null) semesterWeekOneMonday(getSemesterFromYearMonth(today.year, today.month.number), scheduleEvents) else null
+    // An intensive slot starting before week one keeps generating from its own start.
+    val start: LocalDate = (if (weekOne != null && (earliest == null || earliest >= weekOne)) weekOne else earliest)
+        ?.let(::parseIsoDate) ?: LocalDate(today.year, today.month, 1)
 
     // Existing lookup: id, date+time+type, date+time, and — for untimed
     // sessions only — date+type / date. Loose keys must never match a timed
@@ -288,6 +302,7 @@ fun generateSessionsFromScheduleEvents(
                 status = existing?.status ?: AttendanceStatus.Unmarked,
                 notes = existing?.notes,
                 isCustom = existing?.isCustom,
+                markedAt = existing?.markedAt,
             )
         }
     }

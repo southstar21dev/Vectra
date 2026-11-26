@@ -1,6 +1,10 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.features.transit.data.FutarReferences
+import dev.southstar21.vectra.features.transit.data.FutarStopArrivalsBatchResponse
+import dev.southstar21.vectra.features.transit.data.StopArrivalsBatch
+import dev.southstar21.vectra.features.transit.data.expandStopArrivalsBatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

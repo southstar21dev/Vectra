@@ -7,11 +7,11 @@ import dev.southstar21.vectra.features.schedule.NeptunSettings
 import dev.southstar21.vectra.features.schedule.neptunDangerRows
 import dev.southstar21.vectra.features.schedule.ScheduleScreen
 import dev.southstar21.vectra.features.settings.SettingsScreen
-import dev.southstar21.vectra.features.transit.AddTrackerScreen
-import dev.southstar21.vectra.features.transit.EditTrackerScreen
-import dev.southstar21.vectra.features.transit.ManageTrackersScreen
-import dev.southstar21.vectra.features.transit.NearbyExplorerScreen
 import dev.southstar21.vectra.features.transit.TransitScreen
+import dev.southstar21.vectra.features.transit.nearby.NearbyExplorerScreen
+import dev.southstar21.vectra.features.transit.trackers.AddTrackerScreen
+import dev.southstar21.vectra.features.transit.trackers.EditTrackerScreen
+import dev.southstar21.vectra.features.transit.trackers.ManageTrackersScreen
 import dev.southstar21.vectra.features.weather.LocationSettingRow
 import dev.southstar21.vectra.features.weather.WeatherRadarScreen
 // Schedule & course hub

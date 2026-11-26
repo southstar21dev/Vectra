@@ -25,7 +25,7 @@ import org.maplibre.compose.resource.MapResourceRequest
  * left every basemap blank; the platform TLS stack accepts them.
  */
 private class KtorMapResources(private val http: HttpClient) : MapResourceProvider {
-    private val radar = radarTileRenderer(http)
+    private val radar = radarTileRenderer(http).also { mapRadarRenderer = it }
 
     override fun accepts(request: MapResourceRequest): Boolean =
         request.url.startsWith("https://") || request.url.startsWith("http://") || request.url.startsWith(DopplerScheme)
@@ -64,6 +64,14 @@ private class KtorMapResources(private val http: HttpClient) : MapResourceProvid
 }
 
 private val configured = MutableStateFlow(false)
+
+/** The process-wide renderer behind the radar map layer, so its tile cache can be released. */
+private var mapRadarRenderer: RadarTileRenderer? = null
+
+/** Drop the radar's cached raw tiles; call when the radar closes so they don't stay on the heap. */
+fun releaseRadarTileCache() {
+    mapRadarRenderer?.clear()
+}
 
 /** Install once, before the first map composes. */
 fun configureMapNetworking(http: HttpClient) {

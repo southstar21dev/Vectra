@@ -57,13 +57,24 @@ val Screen.opensAsCard: Boolean
         else -> true
     }
 
-data class NavItem(val route: Route, val label: String, val icon: ImageVector, val activeIcon: ImageVector)
+/**
+ * One primary tab. [sfSymbol] is the SF Symbol the iOS system tab bar draws; [holdable] tabs open something when
+ * held (the iOS bar then swallows the selection the lift of the finger would deliver).
+ */
+data class NavItem(
+    val route: Route,
+    val label: String,
+    val icon: ImageVector,
+    val activeIcon: ImageVector,
+    val sfSymbol: String,
+    val holdable: Boolean = false,
+)
 
 val PrimaryNavItems: List<NavItem> = listOf(
-    NavItem(Route.Dashboard, "Dashboard", RemixIcons.DashboardLine, RemixIcons.DashboardFill),
-    NavItem(Route.Schedule, "Schedule", RemixIcons.Calendar2Line, RemixIcons.Calendar2Fill),
-    NavItem(Route.Transit, "Transit", RemixIcons.TrainLine, RemixIcons.TrainFill),
-    NavItem(Route.Settings, "Settings", RemixIcons.Settings3Line, RemixIcons.Settings3Fill),
+    NavItem(Route.Dashboard, "Dashboard", RemixIcons.DashboardLine, RemixIcons.DashboardFill, "square.grid.2x2"),
+    NavItem(Route.Schedule, "Schedule", RemixIcons.Calendar2Line, RemixIcons.Calendar2Fill, "calendar"),
+    NavItem(Route.Transit, "Transit", RemixIcons.TrainLine, RemixIcons.TrainFill, "tram", holdable = true),
+    NavItem(Route.Settings, "Settings", RemixIcons.Settings3Line, RemixIcons.Settings3Fill, "gearshape"),
 )
 
 val PrimaryRoutes: List<Route> = PrimaryNavItems.map { it.route }

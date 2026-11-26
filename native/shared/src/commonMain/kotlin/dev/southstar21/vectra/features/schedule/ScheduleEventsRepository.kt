@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.OfflineCache
 import dev.southstar21.vectra.core.network.CryptoClient
@@ -33,7 +34,7 @@ import kotlin.time.Clock
 
 /** Who the schedule belongs to right now and whether the network is reachable. */
 internal class ScheduleSession(private val auth: AuthRepository, private val connectivity: Connectivity) {
-    val userId: String? get() = auth.session.value?.userId?.ifEmpty { null }
+    val userId: String? get() = auth.userId
     val online: Boolean get() = connectivity.online.value
     fun requireUserId(): String = userId ?: error("Not authenticated")
 }
@@ -66,7 +67,7 @@ internal class ScheduleEventsRepository(
     private val session: ScheduleSession,
     private val scope: CoroutineScope,
 ) {
-    private val eventsCache = OfflineCache(kv, "vectra_schedule_cache_events", ListSerializer(ScheduleEvent.serializer()))
+    private val eventsCache = OfflineCache(kv, UserKeys.SCHEDULE_EVENTS, ListSerializer(ScheduleEvent.serializer()))
 
     private val userId: String? get() = session.userId
     private val online: Boolean get() = session.online
@@ -86,15 +87,21 @@ internal class ScheduleEventsRepository(
     // Written from whichever Default thread a coroutine lands on.
     @Volatile private var eventsFetchedAt = 0L
     private val eventsJobLock = Mutex()
-    private var eventsJob: Deferred<Unit>? = null
+    private var eventsJob: Pair<Int, Deferred<Unit>>? = null
     private val eventsFetchLock = Mutex()
-    private var eventsFetch: Pair<String, Deferred<List<ScheduleEvent>>>? = null
+    private var eventsFetch: Triple<String, Int, Deferred<List<ScheduleEvent>>>? = null
+
+    /**
+     * Bumped by every write. A load or fetch that started before a write may have read the
+     * collection without it, so it is never joined or published after the bump.
+     */
+    @Volatile private var writeEpoch = 0
 
     /** Forget the previous account; a new one paints its cached classes first. */
     suspend fun onUserChanged(uid: String?) {
         eventsFetchedAt = 0L
         // The previous account's load must not run on, or be joined by, the next one.
-        eventsJobLock.withLock { eventsJob?.cancel() }
+        eventsJobLock.withLock { eventsJob?.second?.cancel() }
         _eventsError.value = null
         if (uid == null) {
             _events.value = emptyList()
@@ -128,9 +135,10 @@ internal class ScheduleEventsRepository(
     /** The fetch: cache offline; cloud otherwise, falling back to a non-empty cache. */
     suspend fun refreshEvents(force: Boolean = false) {
         val job = eventsJobLock.withLock {
-            val running = eventsJob?.takeIf { it.isActive }
+            val epoch = writeEpoch
+            val running = eventsJob?.takeIf { (startedAt, job) -> job.isActive && startedAt == epoch }?.second
             if (running == null && !force && Clock.System.now().toEpochMilliseconds() - eventsFetchedAt < EVENTS_STALE_MS) return
-            running ?: scope.async { loadEvents() }.also { eventsJob = it }
+            running ?: scope.async { loadEvents() }.also { eventsJob = epoch to it }
         }
         job.await()
     }
@@ -143,8 +151,11 @@ internal class ScheduleEventsRepository(
                 return
             }
             try {
+                val epoch = writeEpoch
                 val fresh = fetchShared(uid)
                 if (userId != uid) return
+                // A write landed meanwhile: its own reload publishes the newer list.
+                if (writeEpoch != epoch) return
                 _events.value = fresh
                 _eventsError.value = null
                 eventsFetchedAt = Clock.System.now().toEpochMilliseconds()
@@ -166,8 +177,9 @@ internal class ScheduleEventsRepository(
      */
     internal suspend fun fetchShared(uid: String): List<ScheduleEvent> {
         val job = eventsFetchLock.withLock {
-            eventsFetch?.takeIf { (owner, job) -> owner == uid && job.isActive }?.second
-                ?: scope.async { fetchEventsFromCloud(uid) }.also { eventsFetch = uid to it }
+            val epoch = writeEpoch
+            eventsFetch?.takeIf { (owner, startedAt, job) -> owner == uid && startedAt == epoch && job.isActive }?.third
+                ?: scope.async { fetchEventsFromCloud(uid) }.also { eventsFetch = Triple(uid, epoch, it) }
         }
         return job.await()
     }
@@ -182,7 +194,7 @@ internal class ScheduleEventsRepository(
         }
         val clear = crypto.decryptAll(
             manualRows.flatMap { row -> ManualEncryptedFields.map { row.string(it) } } +
-                neptunRows.flatMap { row -> NeptunEncryptedFields.map { row.string(it) } },
+                neptunRows.flatMap { row -> NeptunColumns.ciphertexts(row) },
         )
         val manualFieldCount = manualRows.size * ManualEncryptedFields.size
         val manual = manualRows.mapIndexed { i, row ->
@@ -190,33 +202,11 @@ internal class ScheduleEventsRepository(
             if (listOf(name, instructor, location).any(::isCiphertext)) error("Could not decrypt the latest class schedule.")
             adaptManualRow(row, name, instructor, location)
         }
+        val neptunClear = clear.drop(manualFieldCount)
         val neptun = neptunRows.mapIndexed { i, row ->
-            val start = manualFieldCount + i * NeptunEncryptedFields.size
-            val v = clear.subList(start, start + NeptunEncryptedFields.size)
-            if (v.any(::isCiphertext)) error("Could not decrypt the latest Neptun schedule.")
-            val day = v[4]
-            ScheduleEvent(
-                id = row.string("id").orEmpty(),
-                userId = row.string("user").orEmpty(),
-                courseName = v[0].orEmpty(),
-                courseCode = v[1].orEmpty(),
-                instructor = v[2].orEmpty(),
-                location = v[3].orEmpty(),
-                // A missing weekday must not become 0 (Sunday); -1 lists it on no day.
-                dayOfWeek = day?.trim()?.toIntOrNull() ?: -1,
-                startTime = v[5].orEmpty(),
-                endTime = v[6].orEmpty(),
-                color = row.string("color").orEmpty(),
-                semester = v[7].orEmpty(),
-                semesterStart = v[8]?.ifEmpty { null },
-                semesterEnd = v[9]?.ifEmpty { null },
-                eventType = v[10]?.ifEmpty { null } ?: "class",
-                attendanceType = null,
-                csvMetadata = null,
-                createdAt = row.string("created_at").orEmpty(),
-                updatedAt = row.string("updated_at").orEmpty(),
-                source = "neptun",
-            )
+            val c = NeptunColumns.clear(neptunClear, i)
+            if (c.hasCiphertext) error("Could not decrypt the latest Neptun schedule.")
+            adaptNeptunRow(row, c)
         }
         val all = (manual + neptun).sortedWith(compareBy<ScheduleEvent> { it.dayOfWeek }.thenBy { it.startTime })
         eventsCache.write(uid, all)
@@ -323,6 +313,7 @@ internal class ScheduleEventsRepository(
     }
 
     suspend fun invalidateEvents() {
+        writeEpoch++
         eventsFetchedAt = 0L
         runSuspendCatching { refreshEvents(force = true) }
     }
@@ -331,9 +322,5 @@ internal class ScheduleEventsRepository(
         const val EVENTS_STALE_MS = 15L * 60 * 1000
         const val EVENTS_LOAD_FAILED = "Could not load your classes. Pull down to try again."
         val ManualEncryptedFields = listOf("course_name", "instructor", "location")
-        val NeptunEncryptedFields = listOf(
-            "course_name", "course_code", "instructor", "location", "day_of_week", "start_time", "end_time",
-            "semester", "semester_start", "semester_end", "event_type",
-        )
     }
 }

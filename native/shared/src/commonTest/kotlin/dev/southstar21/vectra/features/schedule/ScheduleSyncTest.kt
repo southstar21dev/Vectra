@@ -265,6 +265,7 @@ private class Harness(val backend: FakeBackend, online: Boolean = true) {
         kv.set(getScheduleItemsStorageKey(UserId), encodeScheduleItemsState(local))
         store.save(AuthState("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId)))))
         repo = ScheduleRepository(pb, CryptoClient(pb, scope), kv, connectivity, auth, http, scope, neptunListener)
+        repo.onForeground()
         until { repo.localReady.value }
     }
 

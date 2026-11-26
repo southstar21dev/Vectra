@@ -1,29 +1,26 @@
 package account
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
+	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
 	"github.com/stretchr/testify/require"
 
-	"vectra/pb/internal/ratelimit"
-	"vectra/pb/internal/reauth"
+	"vectra/pb/internal/reauth/reauthtest"
 	_ "vectra/pb/migrations"
 )
 
 // useLimiters swaps in fresh re-auth limiters allowing perUser checks per user.
 func useLimiters(t *testing.T, perUser int) {
 	t.Helper()
-	prevUser, prevIP := reauth.UserLimiter, reauth.IPLimiter
-	reauth.UserLimiter = ratelimit.New(perUser, time.Minute)
-	reauth.IPLimiter = ratelimit.New(100, time.Minute)
-	t.Cleanup(func() { reauth.UserLimiter, reauth.IPLimiter = prevUser, prevIP })
+	reauthtest.Use(t, perUser, 100)
 }
 
 func postAs(app *tests.TestApp, auth *core.Record, target, body string, handler func(*core.RequestEvent) error) (*httptest.ResponseRecorder, error) {
@@ -93,6 +90,34 @@ func TestChangeEmail(t *testing.T) {
 	// PocketBase regenerates the auth token key on an email change, which
 	// invalidates the caller's current token — the client re-authenticates.
 	require.NotEqual(t, oldTokenKey, updated.TokenKey())
+}
+
+// TestChangeEmailTrimsAndClassifiesErrors: surrounding whitespace is stripped
+// before saving, a malformed address is a validation error (400 in the
+// handler), and a missing user is not one (500).
+func TestChangeEmailTrimsAndClassifiesErrors(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "trim@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	require.NoError(t, ChangeEmail(app, u.Id, "password123", "  spaced@test.local \n"))
+	updated, err := app.FindRecordById("users", u.Id)
+	require.NoError(t, err)
+	require.Equal(t, "spaced@test.local", updated.Email())
+
+	err = ChangeEmail(app, u.Id, "password123", "not-an-email")
+	var invalid validation.Errors
+	require.ErrorAs(t, err, &invalid)
+
+	err = ChangeEmail(app, "missing-id", "password123", "x@test.local")
+	require.Error(t, err)
+	require.False(t, errors.As(err, &invalid))
 }
 
 func TestChangeEmailSameAddressKeepsVerified(t *testing.T) {
@@ -179,6 +204,26 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 
 // TestReauthBucketIsShared: wrong guesses on one re-auth route spend the same
 // per-user budget as another, so spreading guesses buys nothing.
+// TestReauthSuccessesDoNotSpendBudget: only wrong passwords count, so many
+// successful checks (passkey enrolment retries) never lock the user out.
+func TestReauthSuccessesDoNotSpendBudget(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+	useLimiters(t, 2)
+
+	users, _ := app.FindCollectionByNameOrId("users")
+	u := core.NewRecord(users)
+	u.Set("email", "okchecks@test.local")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	for i := 0; i < 6; i++ {
+		_, err = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"password123","newEmail":"okchecks@test.local"}`, EmailHandler)
+		require.NoError(t, err, "successful check %d", i)
+	}
+}
+
 func TestReauthBucketIsShared(t *testing.T) {
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)

@@ -13,6 +13,7 @@ import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.platform.Connectivity
+import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.Notifier
@@ -29,14 +30,14 @@ import dev.southstar21.vectra.features.coursetracker.CryptoTrackerCipher
 import dev.southstar21.vectra.features.coursetracker.PocketBaseTrackerCloud
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.ReminderScheduler
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.widgets.WidgetPublisher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.settings.AppearanceRepository
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
-import dev.southstar21.vectra.features.transit.DeviceLocation
-import dev.southstar21.vectra.features.transit.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import dev.southstar21.vectra.features.weather.WeatherRepository
 import dev.zacsweers.metro.AppScope
@@ -47,8 +48,6 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * The app's object graph (Metro, compile-time). Platform pieces come in through the factory;
@@ -138,6 +137,7 @@ interface AppGraph {
     @Provides
     fun provideSessionListeners(
         crypto: CryptoClient,
+        httpCache: HttpCache,
         transit: TransitRepository,
         notifications: NotificationsRepository,
         reminders: ReminderScheduler,
@@ -148,6 +148,10 @@ interface AppGraph {
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
+        },
+        // Cached responses hold the previous account's proxy, weather and map requests.
+        object : SessionListener {
+            override suspend fun onSessionCleared() = httpCache.clear()
         },
         // Both react to the session themselves; here they only get to upload before an explicit sign-out.
         object : SessionListener {
@@ -199,7 +203,8 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate)
+        crypto: CryptoClient,
+    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate, crypto)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -210,7 +215,8 @@ interface AppGraph {
         host: WidgetHost,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate)
+        appearance: AppearanceRepository,
+    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate, appearance)
 
     @SingleIn(AppScope::class)
     @Provides
@@ -235,15 +241,14 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
     ): CourseTrackerRepository {
-        val uid = MutableStateFlow(auth.session.value?.userId)
-        scope.launch { auth.session.collect { uid.value = it?.userId } }
         return CourseTrackerRepository(
             cloud = PocketBaseTrackerCloud(pb),
             cipher = CryptoTrackerCipher(crypto),
             kv = kv,
             scope = scope,
-            userIdFlow = uid,
+            userIdFlow = auth.currentUserId,
             isOnline = { connectivity.online.value },
+            onlineChanges = connectivity.online,
         )
     }
 
@@ -281,8 +286,13 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideWeather(http: HttpClient, kv: KeyValueStore, location: LocationProvider, scope: CoroutineScope): WeatherRepository =
-        WeatherRepository(http, kv, location, scope)
+    fun provideWeather(
+        http: HttpClient,
+        kv: KeyValueStore,
+        location: LocationProvider,
+        scope: CoroutineScope,
+        connectivity: Connectivity,
+    ): WeatherRepository = WeatherRepository(http, kv, location, scope, connectivity)
 
     @DependencyGraph.Factory
     fun interface Factory {
@@ -292,6 +302,7 @@ interface AppGraph {
             @Provides blobs: BlobStore,
             @Provides catalogCache: CatalogDiskCache,
             @Provides http: HttpClient,
+            @Provides httpCache: HttpCache,
             @Provides cipher: SecretCipher,
             @Provides connectivity: Connectivity,
             @Provides location: LocationProvider,

@@ -13,7 +13,7 @@ import kotlinx.datetime.plus
 // directly; iOS mirrors it in Swift (iosApp/VectraWidgets/Model.swift).
 
 internal const val MinuteMs = 60_000L
-private const val HourMs = 60 * MinuteMs
+const val HourMs = 60 * MinuteMs
 private const val DayMs = 24 * HourMs
 
 /** An exam this close gets the "next class" widgets once the day's classes are over. */
@@ -48,14 +48,6 @@ fun WidgetSnapshot?.nextUp(nowMs: Long, today: String): NextUp {
         else -> NextUp.DayDone(hadToday = timed.any { it.day == today }, next = later.firstOrNull())
     }
 }
-
-/** The session [nextUp] leads with, if it leads with one from today. */
-val NextUp.todaySession: WidgetSession?
-    get() = when (this) {
-        is NextUp.InClass -> session
-        is NextUp.Upcoming -> session
-        else -> null
-    }
 
 /** The session to feature: today's, or else the next one on a later day (an exam close by first). */
 val NextUp.featured: WidgetSession?

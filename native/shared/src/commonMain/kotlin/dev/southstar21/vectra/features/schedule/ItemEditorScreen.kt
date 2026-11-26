@@ -240,7 +240,7 @@ private fun ItemEditorContent(
                 if (currentConflicts.isNotEmpty()) {
                     SheetSection {
                         SectionTitle(
-                            if (currentConflicts.size == 1) "Clashes with a class" else "Clashes with ${currentConflicts.size} classes",
+                            conflictHeading(currentConflicts),
                             color = c.tints.red.text,
                             icon = RemixIcons.AlertLine,
                         )

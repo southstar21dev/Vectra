@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -33,6 +34,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.features.transit.data.TransitAlert
 
 private val AlertShape = Radius.Panel
 
@@ -64,7 +66,7 @@ private fun AlertCard(alert: TransitAlert) {
         ) {
             VIcon(RemixIcons.AlertLine, tint = amber)
             VText(
-                alert.header,
+                alert.header.replaceFirstChar { it.uppercase() },
                 Modifier.weight(1f),
                 vtext(TypeScale.Body, Weight.Bold, lineHeight = 17.5.sp),
                 amber,
@@ -75,10 +77,10 @@ private fun AlertCard(alert: TransitAlert) {
         if (expanded) {
             Column(Modifier.padding(start = 44.dp, end = 16.dp, bottom = 14.dp)) {
                 if (alert.description.isNotEmpty()) {
-                    VText(alert.description, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = amber.copy(alpha = 0.7f))
+                    VText(alert.description.replaceFirstChar { it.uppercase() }, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = amber.copy(alpha = 0.7f))
                 }
                 val url = alert.url
-                if (!url.isNullOrEmpty()) {
+                if (url != null && isTrustedAlertUrl(url)) {
                     Row(
                         Modifier
                             .padding(top = 8.dp)
@@ -107,7 +109,7 @@ private fun AlertCard(alert: TransitAlert) {
  * the amber rows are self-evidently alerts.
  */
 @Composable
-fun AlertsSection(alerts: List<TransitAlert>, modifier: Modifier = Modifier) {
+internal fun AlertsSection(alerts: List<TransitAlert>, modifier: Modifier = Modifier) {
     if (alerts.isEmpty()) return
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         alerts.forEach { a -> key(a.id) { AlertCard(a) } }

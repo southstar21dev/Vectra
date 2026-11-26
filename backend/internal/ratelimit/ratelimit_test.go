@@ -17,6 +17,18 @@ func TestLimiterResets(t *testing.T) {
 	require.True(t, l.Allow("other-ip", now), "limits are per key")
 }
 
+func TestExhaustedDoesNotConsume(t *testing.T) {
+	l := New(2, time.Minute)
+	now := time.Now()
+	require.False(t, l.Exhausted("k", now))
+	require.False(t, l.Exhausted("k", now))
+	require.True(t, l.Allow("k", now))
+	require.False(t, l.Exhausted("k", now))
+	require.True(t, l.Allow("k", now))
+	require.True(t, l.Exhausted("k", now))
+	require.False(t, l.Exhausted("k", now.Add(time.Minute)), "window expired")
+}
+
 func TestAllowNIsAllOrNothing(t *testing.T) {
 	l := New(10, time.Minute)
 	now := time.Now()

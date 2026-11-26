@@ -1,7 +1,6 @@
 package dev.southstar21.vectra.core.data
 
 import dev.southstar21.vectra.core.network.VectraJson
-import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.KSerializer
 
 /**
@@ -25,46 +24,15 @@ class OfflineCache<T>(
 }
 
 /** Offline cache bases and other per-user keys: removed on sign-out. */
-val UserScopedKeyPrefixes = arrayOf(
-    "vectra_schedule_cache_events",
-    "vectra_schedule_items",
-    "vectra_transit_trackers_cache",
-    "vectra_course_tracker_cache",
-    "vectra_trip_plans_cache",
-    "vectra_neptun",
-    "vectra.weather.snapshot",
-    "vectra.deviceLocation",
-)
+val UserScopedKeyPrefixes: Array<String> = UserKeys.all.map { it.base }.toTypedArray()
 
 /**
  * Bases of the keys that hold writes only this device has (the schedule items queue and the
  * course tracker's not yet uploaded data), as `<base>_<userId>`. An involuntary sign-out keeps
  * them so the same account can replay them after signing back in; see AuthRepository.
  */
-val OfflineQueueKeyPrefixes = arrayOf(
-    "vectra_schedule_items",
-    "vectra_course_tracker_cache",
-)
+val OfflineQueueKeyPrefixes: Array<String> =
+    UserKeys.all.filter { it.keepOnInvoluntarySignOut }.map { it.base }.toTypedArray()
 
 /** This user's [OfflineQueueKeyPrefixes] keys. */
 fun offlineQueueKeys(userId: String): Set<String> = OfflineQueueKeyPrefixes.mapTo(LinkedHashSet()) { "${it}_$userId" }
-
-/**
- * Offline-first read: cache when offline; otherwise fetch → write cache, and
- * fall back to the cache when the fetch fails (no cache → rethrow).
- */
-suspend fun <T> offlineFirst(
-    online: Boolean,
-    cache: OfflineCache<T>,
-    userId: String,
-    fetch: suspend () -> T,
-): T {
-    if (!online) return cache.read(userId) ?: fetch()
-    return try {
-        fetch().also { cache.write(userId, it) }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        cache.read(userId) ?: throw e
-    }
-}
