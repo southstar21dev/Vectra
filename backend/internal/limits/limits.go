@@ -48,7 +48,8 @@ var (
 	PushSend = Limit{Max: 20, Window: time.Minute}
 
 	// FutarPerIP caps Futár proxy calls per client IP; FutarUpstream is the
-	// process-wide ceiling on calls to the Futár API, whoever asks.
+	// process-wide ceiling on calls to the Futár API, whoever asks
+	// (600 a minute; FUTAR_UPSTREAM_PER_MINUTE overrides it).
 	FutarPerIP    = Limit{Max: 300, Window: time.Minute}
-	FutarUpstream = Limit{Max: 1500, Window: time.Minute}
+	FutarUpstream = Limit{Max: 600, Window: time.Minute}
 )
