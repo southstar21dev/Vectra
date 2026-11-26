@@ -25,6 +25,7 @@ type Var struct {
 var Vars = []Var{
 	{"NEPTUN_ENCRYPTION_KEY", true, "/crypto, /neptun/replace, legacy vc2 upgrade"},
 	{"FUTAR_API_KEY", true, "/futar"},
+	{"FUTAR_UPSTREAM_PER_MINUTE", false, "/futar (process-wide upstream calls per minute, default 600)"},
 	{"VAPID_PUBLIC_KEY", true, "/push/send"},
 	{"VAPID_PRIVATE_KEY", true, "/push/send"},
 	{"VAPID_SUBJECT", false, "/push/send (defaults to a placeholder address)"},

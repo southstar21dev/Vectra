@@ -29,6 +29,7 @@ needs it answers 500 and `/api/health` stays green.
 |---|---|---|---|---|
 | `NEPTUN_ENCRYPTION_KEY` | yes | `/crypto`, `/neptun/replace`, old `vc2:` data upgrade | the production secret (`openssl rand -hex 32`) | a new random value, never production's |
 | `FUTAR_API_KEY` | yes | `/futar` | the BKK Futár key | production's key is fine |
+| `FUTAR_UPSTREAM_PER_MINUTE` | no | `/futar` | process-wide ceiling on calls to BKK per minute, default `600` (BKK documents no limit); over it the route answers 503 with `Retry-After`; the log gets one `futar: N of M upstream calls used` line per minute when more than half was used | unset |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | yes | `/push/send` | the production pair | a new pair |
 | `VAPID_SUBJECT` | no | `/push/send` | a `mailto:` address; defaults to a placeholder | `mailto:support@southstar21.dev` |
 | `WEBAUTHN_RP_ID` | yes | passkeys | `vectra.southstar21.dev` | `vectra.southstar21.dev` |
