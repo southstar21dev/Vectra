@@ -70,6 +70,11 @@ internal fun NearbyExplorerScreen(
     showMap: Boolean = true,
 ) {
     val explorer = rememberNearbyExplorer(repo, deviceLocation, auth)
+    // Opening the map is the ask: with nothing decided yet this shows the system prompt (a decided
+    // permission answers silently, and a denial is not asked again here).
+    LaunchedEffect(opened) {
+        if (opened && explorer.geoState.status == WatchLocationStatus.Idle) explorer.refreshLocation()
+    }
     var cameraRequest by remember { mutableStateOf<ExplorerCameraRequest?>(null) }
     // Settled coverage goes through state (re-queries the map); per-frame coverage
     // is read only at layout time so a drag never recomposes the map or the feed.
