@@ -164,6 +164,26 @@ class CatalogDataTest {
         assertEquals(listOf("BKK_5400", "BKK_3280"), catalog(http) { time }.routes().map { it.id })
     }
 
+    @Test fun aBackendStillBuildingItsCatalogKeepsTheOldCopyAnswering() = runTest {
+        // The backend answers 503 with Retry-After until its first build has finished.
+        var time = 0L
+        var building = false
+        val http = createHttpClient(
+            HttpClient(
+                MockEngine {
+                    if (building) respond("building", HttpStatusCode.ServiceUnavailable, headersOf(HttpHeaders.RetryAfter, "120"))
+                    else respond("[$route]", HttpStatusCode.OK)
+                },
+            ),
+        )
+        catalog(http) { time }.routes()
+        time = 8 * 24 * 3_600_000L
+        building = true
+        assertEquals("BKK_5400", catalog(http) { time }.routes().single().id)
+        // The 503 body is never cached over the good copy.
+        assertEquals("[$route]", disk().read("routes.json")?.second)
+    }
+
     @Test fun aTruncatedDownloadIsNeitherUsedNorCached() = runTest {
         var time = 0L
         var body = "[$route,$route2]"

@@ -1,6 +1,7 @@
 /**
  * Shapes of the daily-refreshed BKK catalog files in public/catalog/.
- * scripts/build-catalog.mjs is the only writer; keep these in sync with it.
+ * The backend (backend/internal/catalog) writes the live files; keep these in sync with it.
+ * The copy under public/catalog/ is a frozen snapshot (see backend/README.md).
  */
 
 /** A BKK route (line) — public/catalog/routes.json. */

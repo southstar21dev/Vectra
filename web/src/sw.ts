@@ -49,7 +49,7 @@ registerRoute(
   })
 );
 
-// The BKK catalog JSON (public/catalog/*.json) is regenerated daily but is
+// The BKK catalog JSON (public/catalog/*.json) is a frozen copy (the live catalog moved to the backend) and is
 // deliberately excluded from the precache manifest (see vite.config.ts), so a
 // data refresh never forces an app/service-worker update. Network-first with
 // an offline fallback: online sessions read the current feed; the last copy

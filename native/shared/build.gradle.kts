@@ -20,12 +20,17 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl")
     val pocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.release"))
     val devPocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug"))
-    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin")
+    // The transit catalog is served by the same backend as the API, so its origin follows the backend URL
+    // unless -Pvectra.catalogOrigin=… overrides it.
+    val catalogOverride = providers.gradleProperty("vectra.catalogOrigin")
+    val catalogOrigin = catalogOverride.orElse(pocketbaseUrl)
+    val devCatalogOrigin = catalogOverride.orElse(devPocketbaseUrl)
     inputs.property("versionName", versionName)
     inputs.property("debugVersionName", debugVersionName)
     inputs.property("pocketbaseUrl", pocketbaseUrl)
     inputs.property("devPocketbaseUrl", devPocketbaseUrl)
     inputs.property("catalogOrigin", catalogOrigin)
+    inputs.property("devCatalogOrigin", devCatalogOrigin)
     val out = layout.buildDirectory.dir("generated/iosBuildConfig")
     outputs.dir(out)
     doLast {
@@ -42,6 +47,7 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
             |    const val POCKETBASE_URL = "${pocketbaseUrl.get()}"
             |    const val DEV_POCKETBASE_URL = "${devPocketbaseUrl.get()}"
             |    const val CATALOG_ORIGIN = "${catalogOrigin.get()}"
+            |    const val DEV_CATALOG_ORIGIN = "${devCatalogOrigin.get()}"
             |}
             |""".trimMargin(),
         )
