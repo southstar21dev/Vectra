@@ -1,6 +1,8 @@
 package dev.southstar21.vectra.android
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ReportDrawnWhen
@@ -16,6 +18,7 @@ class MainActivity : ComponentActivity() {
         val splash = installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        lockPortraitOnPhones()
         val app = application as VectraApplication
         app.passkeys.attach(this)
         val graph = app.graph
@@ -34,6 +37,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        lockPortraitOnPhones()
+    }
+
+    /**
+     * Portrait on phones only: tablets, unfolded foldables and Chromebooks (smallest width 600 dp or more)
+     * rotate freely. Decided at runtime so a foldable that unfolds is unlocked; the manifest sets no lock.
+     */
+    private fun lockPortraitOnPhones() {
+        val phone = resources.configuration.smallestScreenWidthDp < TABLET_MIN_WIDTH_DP
+        requestedOrientation = if (phone) {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handle(intent)
@@ -43,5 +64,9 @@ class MainActivity : ComponentActivity() {
         intent?.getStringExtra(AndroidNotifier.EXTRA_URL)?.let { DeepLinks.pending.value = it }
         // Consumed: the activity keeps this intent, so nothing may read the link from it again.
         intent?.removeExtra(AndroidNotifier.EXTRA_URL)
+    }
+
+    private companion object {
+        const val TABLET_MIN_WIDTH_DP = 600
     }
 }
