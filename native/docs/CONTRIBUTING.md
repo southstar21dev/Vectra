@@ -16,7 +16,7 @@ Material components; build on the primitives below.
   - `core/designsystem/components/`: primitives (see "Surfaces" below).
   - `core/network/`: `PocketBaseClient`, `CryptoClient` (field encryption), the stored session.
   - `core/auth/`: `AuthRepository`, `SessionListener`, `SessionWatchdog`, `Profile`.
-  - `core/data/`: `KeyValueStore` (large values go to `BlobStore`, one file each), `OfflineCache` + `offlineFirst(...)`, `LiveQuery`.
+  - `core/data/`: `KeyValueStore` (large values go to `BlobStore`, one file each), `OfflineCache`, `LiveQuery`.
   - `core/maps/`: the basemap (`TransitMap`), camera, GeoJSON and route geometry, radar tile recolouring.
   - `core/preferences/`: `AppearancePrefs` and the keys it holds (accent, background, time format).
   - `core/time/`: Budapest wall-clock helpers. Always use `nowInBudapest()`, never device-local time.
