@@ -262,6 +262,9 @@ jobs:
       && ((needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true')
           || (github.event_name == 'workflow_dispatch' && inputs.ios_dry_run)) }}
     runs-on: macos-26
+    # A hung xcodebuild would otherwise hold the release concurrency group for six hours. The archive
+    # without caches takes about 30 minutes.
+    timeout-minutes: 90
     environment: release
     outputs:
       sums: ${{ steps.sums.outputs.sums }}
@@ -390,8 +393,9 @@ jobs:
       # Tarred because upload-artifact keeps neither symlinks nor file modes, and an archive's
       # frameworks and dSYMs need both. The tarball holds no secret: the app is signed with the CI
       # development certificate's public part. A different artifact name than "ios", so publish never
-      # attaches it to the release. Kept briefly so a failed upload can be retried by re-running only
-      # the testflight job.
+      # attaches it to the release. Kept for a week so a failed upload (an Apple outage, an agreement
+      # to accept) can be retried by re-running only the testflight job; once it expires, that
+      # release can no longer reach TestFlight from this run.
       - name: Tar the archive
         run: |
           tar -czf "$RUNNER_TEMP/Vectra.xcarchive.tar.gz" -C "$RUNNER_TEMP" Vectra.xcarchive
@@ -400,7 +404,7 @@ jobs:
         with:
           name: ios-archive
           path: ${{ runner.temp }}/Vectra.xcarchive.tar.gz
-          retention-days: 3
+          retention-days: 7
           compression-level: 0
           if-no-files-found: error
 
@@ -521,8 +525,8 @@ jobs:
   # The export is signed with the cloud-managed distribution certificate, which xcodebuild fetches with
   # the App Store Connect API key. The CI development certificate is loaded here too, so xcodebuild
   # never creates a "Created via API" one if the export wants a development identity.
-  # A failed upload can be retried by re-running just this job: the ios-archive artifact (3 days)
-  # is still there.
+  # A failed upload can be retried by re-running just this job while the ios-archive artifact
+  # (7 days) is still there.
   # Needs these secrets (the job fails when one is missing):
   #   ASC_KEY_ID             the key's ID
   #   ASC_ISSUER_ID          the issuer ID shown above the keys list
@@ -536,6 +540,7 @@ jobs:
     needs: [plan, ios, publish]
     if: ${{ !cancelled() && needs.publish.result == 'success' && needs.ios.result == 'success' && needs.plan.outputs.ios == 'true' }}
     runs-on: macos-26
+    timeout-minutes: 45
     environment: release
     env:
       VERSION: ${{ needs.plan.outputs.version }}

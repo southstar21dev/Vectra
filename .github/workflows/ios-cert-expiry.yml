@@ -1,5 +1,5 @@
 # Warns before the iOS CI development certificate (the IOS_DEV_P12 secret) expires, which would make
-# every TestFlight archive fail after the GitHub release is already published. Renew it with
+# the release workflow's iOS archive fail, so no release with iOS changes is published. Renew it with
 # scripts/renew-ci-cert.sh. A weekly run opens one issue when the certificate has under 30 days left
 # (or when the secret is missing or unreadable), and does nothing while an issue is still open.
 name: iOS CI certificate expiry
@@ -16,7 +16,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # The secrets live in (or are readable from) the release environment, like the testflight job.
+    # The secrets live in (or are readable from) the release environment, like the ios and testflight jobs.
     environment: release
     permissions:
       contents: read
@@ -61,5 +61,5 @@ jobs:
           fi
           gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$PROBLEM
 
-          Without a valid certificate every TestFlight upload fails at archive time, after the GitHub release is published, in every app repo that uses it. Make a new one with \`scripts/renew-ci-cert.sh\` (csr, upload the CSR to Apple, then install) and set IOS_DEV_P12 and IOS_DEV_P12_PASSWORD in each repo."
+          Without a valid certificate every iOS archive fails in every app repo that uses it (in Vectra before the GitHub release is published, so the release stops). Make a new one with \`scripts/renew-ci-cert.sh\` (csr, upload the CSR to Apple, then install) and set IOS_DEV_P12 and IOS_DEV_P12_PASSWORD in each repo."
           echo "Opened an issue: $PROBLEM" >> "$GITHUB_STEP_SUMMARY"
