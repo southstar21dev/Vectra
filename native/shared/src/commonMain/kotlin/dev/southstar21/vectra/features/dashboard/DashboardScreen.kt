@@ -37,7 +37,7 @@ import dev.southstar21.vectra.features.schedule.ScheduleDayList
 import dev.southstar21.vectra.features.schedule.ScheduleItemConflictException
 import dev.southstar21.vectra.features.schedule.ScheduleCourses
 import dev.southstar21.vectra.features.schedule.getScheduleItemOccurrencesForDate
-import dev.southstar21.vectra.features.schedule.isExamEvent
+import dev.southstar21.vectra.features.schedule.isExam
 import dev.southstar21.vectra.features.schedule.rememberMinuteClock
 import dev.southstar21.vectra.features.schedule.nextScheduledStart
 import dev.southstar21.vectra.features.schedule.scheduleTodayEvents
@@ -148,7 +148,7 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
             tracker = graph.courseTrackerHooks,
             dateStr = todayStr,
             items = remember(plainItems, todayStr) { getScheduleItemOccurrencesForDate(plainItems, todayStr) },
-            onEventClick = { e -> if (!isExamEvent(e.eventType, e.courseName)) navigator.openCourseHub(graph.courseTrackerHooks.courseKey(e)) },
+            onEventClick = { e -> if (!e.isExam()) navigator.openCourseHub(graph.courseTrackerHooks.courseKey(e)) },
             onItemClick = { item -> items.firstOrNull { it.id == item.id }?.let { navigator.push(Screen.ItemEditor(it.id, it.type)) } },
             onToggleTaskComplete = { item ->
                 scope.launch {

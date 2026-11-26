@@ -107,6 +107,10 @@ class ReminderScheduler(
     suspend fun reschedule() = lock.withLock {
         loaded.await()
         val prefs = prefs.value
+        // A process started by an alarm or a widget has not read the stored session yet. The first plan
+        // of a process is always applied, so "no session" must mean signed out, not "not read yet", or
+        // that empty first plan would cancel every pending reminder.
+        auth.restore()
         // A cold start (boot, background refresh) hasn't read a stored lock yet.
         updateGate.loadStored()
         // Locked for an update: nothing fires until the new version replans. Forced, because alarms

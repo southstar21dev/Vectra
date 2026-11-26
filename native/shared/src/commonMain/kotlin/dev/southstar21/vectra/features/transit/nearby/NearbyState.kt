@@ -154,10 +154,11 @@ internal fun rememberNearbyStops(repo: TransitRepository, deviceLocation: Device
 }
 
 /**
- * Cap on the dashboard feed. It is sorted by mode and line rather than distance, so a tight cap
- * could cut the nearest stop's lines before the dashboard picks its lead stop.
+ * No cap on the dashboard feed. It is sorted by mode and line rather than distance, so any cap
+ * could cut the nearest stop's lines (a bus stop behind many tram and metro departures) before the
+ * dashboard picks its lead stop. The list is a few hundred rows at most.
  */
-private const val DashboardRadarItems = 200
+private const val DashboardRadarItems = Int.MAX_VALUE
 
 @Immutable
 internal data class NearbyDataState(

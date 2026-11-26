@@ -42,7 +42,8 @@ import dev.southstar21.vectra.core.time.parseIsoDate
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.schedule.TrackerCourses
-import dev.southstar21.vectra.features.schedule.isExamEvent
+import dev.southstar21.vectra.features.schedule.getCurrentSemester
+import dev.southstar21.vectra.features.schedule.isExam
 import dev.southstar21.vectra.features.schedule.normalizeTime
 import dev.southstar21.vectra.features.schedule.rememberExitOnce
 import androidx.compose.animation.animateColorAsState
@@ -183,7 +184,7 @@ private fun CourseHubFor(
 
     val course = remember(events, data, courseKey) {
         val matching = events.filter { resolveCourseKey(it) == courseKey }
-        val event = matching.firstOrNull { !isExamEvent(it.eventType, it.courseName) } ?: matching.firstOrNull()
+        val event = matching.firstOrNull { !it.isExam() } ?: matching.firstOrNull()
         event?.let(CourseTrackerCourse::from) ?: data.trackers[courseKey]?.let(CourseTrackerCourse::from)
     }
     val missing = course == null || course.courseName.isEmpty()
@@ -231,10 +232,11 @@ private fun CourseHub(
     val tracker = remember(data, identity) { findOrCreateTracker(data, identity) }
 
     // Academic week numbers count from the official semester start of this
-    // course's semester (an intensive week before it is not Week 1).
+    // course's semester (an intensive week before it is not Week 1). A manual class has no
+    // semester; the timetable and the sync count it in the semester in session, so this does too.
     val semesterStart = remember(events, course.semester) {
-        val sem = course.semester.lowercase().trim()
-        TrackerCourses.officialSemesterStart(if (sem.isNotEmpty()) events.filter { it.semester.lowercase().trim() == sem } else events)
+        val sem = course.semester.lowercase().trim().ifEmpty { getCurrentSemester().lowercase() }
+        TrackerCourses.officialSemesterStart(events.filter { it.semester.lowercase().trim() == sem })
     }
 
     // Reconcile the sessions with the timetable whenever the generated list

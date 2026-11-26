@@ -250,7 +250,7 @@ fun generateSessionsFromScheduleEvents(
     val weekOne = semesterStart.nonEmpty()?.trim()?.takeIf { YmdPattern.matches(it) }?.let(::mondayOf)
         ?: semesterWeekOneMonday(explicitSemester, scheduleEvents)
         // A class with neither dates nor a semester counts in the semester today falls in.
-        ?: if (earliest == null) semesterWeekOneMonday(getSemesterFromYearMonth(today.year, today.month.number), emptyList()) else null
+        ?: if (earliest == null) semesterWeekOneMonday(getSemesterFromYearMonth(today.year, today.month.number), scheduleEvents) else null
     // An intensive slot starting before week one keeps generating from its own start.
     val start: LocalDate = (if (weekOne != null && (earliest == null || earliest >= weekOne)) weekOne else earliest)
         ?.let(::parseIsoDate) ?: LocalDate(today.year, today.month, 1)

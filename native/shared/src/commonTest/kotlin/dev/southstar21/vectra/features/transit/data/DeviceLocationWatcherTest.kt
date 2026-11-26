@@ -17,14 +17,16 @@ import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /** The watcher keeps its state on one thread (audit 03 #14). */
 class DeviceLocationWatcherTest {
     private class RecordingProvider : LocationProvider {
         val ranOn = mutableListOf<Pair<String, ContinuationInterceptor?>>()
         var watching = 0
+        var permission = GeoPermission.Granted
 
-        override fun permission() = GeoPermission.Granted
+        override fun permission() = permission
 
         override suspend fun current(): GeoFix {
             ranOn += "current" to currentCoroutineContext()[ContinuationInterceptor]
@@ -62,5 +64,22 @@ class DeviceLocationWatcherTest {
         release()
         runCurrent()
         assertEquals(0, provider.watching)
+    }
+
+    @Test fun aPermissionRevokedWhileAwayEndsTrackingOnResume() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider()
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+
+        // Revoked in system settings: the platform watch just goes quiet, the last fix still looks live.
+        provider.permission = GeoPermission.Denied
+        watcher.onResume()
+        runCurrent()
+        assertNotEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        assertEquals(0, provider.watching)
+        release()
     }
 }
