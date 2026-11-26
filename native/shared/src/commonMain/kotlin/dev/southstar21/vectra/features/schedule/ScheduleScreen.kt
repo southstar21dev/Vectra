@@ -246,8 +246,9 @@ fun ScheduleScreen(
         open = showNeptunNotice,
         onClose = { showNeptunNotice = false },
         onConfirm = { showNeptunNotice = false },
-        title = "Uneditable Class",
-        description = "This class was automatically fetched from Neptun and cannot be manually edited or deleted. It will be updated automatically when you sync your calendar.",
+        // Only a Neptun exam opens this (Neptun classes open their Course Hub), so it names the exam.
+        title = "Uneditable exam",
+        description = "This exam was automatically fetched from Neptun and cannot be manually edited or deleted. It will be updated automatically when you sync your calendar.",
         confirmText = "Okay",
         hideCancel = true,
         destructive = false,
