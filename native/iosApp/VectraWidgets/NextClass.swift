@@ -295,15 +295,15 @@ struct RectangularAccessory: View {
                 Text(s.detail).font(VFont.inter(12, 600)).foregroundStyle(.secondary).lineLimit(1)
                 Text(s.title).font(VFont.inter(15, 800)).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
                 if s.day == Budapest.day(now) {
-                    (Text(s.clock(s.start) + ", in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700))
+                    (Text(s.clock(s.start) + ", in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 } else {
-                    Text(Budapest.distance(from: Budapest.day(now), to: s.day) + " " + s.clock(s.start)).font(VFont.mono(12, 700))
+                    Text(Budapest.distance(from: Budapest.day(now), to: s.day) + " " + s.clock(s.start)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 }
             case .dayDone(let hadToday, let next):
                 Text(hadToday ? "Done for today" : "No classes today").font(VFont.inter(12, 600)).foregroundStyle(.secondary)
                 if let next {
                     Text(next.title).font(VFont.inter(15, 800)).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
-                    Text(Budapest.distance(from: Budapest.day(now), to: next.day) + " " + next.clock(next.start)).font(VFont.mono(12, 700))
+                    Text(Budapest.distance(from: Budapest.day(now), to: next.day) + " " + next.clock(next.start)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 }
             case .noData:
                 Text("Vectra").font(VFont.inter(15, 800))

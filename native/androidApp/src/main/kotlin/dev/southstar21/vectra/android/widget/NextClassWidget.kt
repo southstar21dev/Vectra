@@ -21,7 +21,9 @@ import androidx.glance.layout.width
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.NextUp
+import dev.southstar21.vectra.features.widgets.Budget
 import dev.southstar21.vectra.features.widgets.WidgetGeometry
+import dev.southstar21.vectra.features.widgets.stackedSideTime
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.dayDistanceLabel
 import dev.southstar21.vectra.features.widgets.AfterRow
@@ -131,10 +133,20 @@ private fun RingHead(context: Context, ring: RingSpec, side: List<String>) {
         Spacer(GlanceModifier.width(10.dp))
         Column {
             side.getOrNull(0)?.let { Mono(it, 10f, p.tone(ring.kind)) }
-            side.getOrNull(1)?.let { t -> Mono(t, listOf(11f, 10f, 9f).firstOrNull { b.lines(t, it, room, max = 2) == 1 } ?: 9f) }
+            side.getOrNull(1)?.let { SideTime(it, room, b) }
             side.getOrNull(2)?.takeIf { it.isNotBlank() }?.let { RoomLine(it) }
         }
     }
+}
+
+/** The time beside the ring: one line at 11, 10 or 9 sp, else its parts stacked (12-hour ranges), never cut. */
+@Composable
+private fun SideTime(text: String, room: Float, b: Budget) {
+    fun fit(t: String) = listOf(11f, 10f, 9f).firstOrNull { b.lines(t, it, room, max = 2) == 1 }
+    val one = fit(text)
+    val parts = if (one != null) listOf(text) else stackedSideTime(text)
+    val size = one ?: parts.minOf { fit(it) ?: 9f }
+    parts.forEach { Mono(it, size) }
 }
 
 @Composable

@@ -64,6 +64,14 @@ class WidgetClockTest {
     }
 
     @Test
+    fun aSideTimeThatDoesNotFitStacksAtItsDashOrFirstWord() {
+        assertEquals(listOf("10:00 AM", "–11:30 AM"), stackedSideTime("10:00 AM–11:30 AM"))
+        assertEquals(listOf("till", "10:45 PM"), stackedSideTime("till 10:45 PM"))
+        assertEquals(listOf("Thu", "8:00 AM"), stackedSideTime("Thu 8:00 AM"))
+        assertEquals(listOf("08:00"), stackedSideTime("08:00"))
+    }
+
+    @Test
     fun twelveHourTimeColumnsGainRoom() {
         assertEquals(40f, WidgetGeometry.todayTimeColumn(false))
         assertTrue(WidgetGeometry.todayTimeColumn(true) > 40f)
