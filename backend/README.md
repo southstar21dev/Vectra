@@ -44,7 +44,7 @@ needs it answers 500 and `/api/health` stays green.
 ## Transit catalog (`/catalog/*.json`)
 
 The backend builds and serves the BKK line and stop catalog itself (`internal/catalog`); there is no CI
-job and nothing is committed to git. Since VEC-131 this replaces the daily `refresh-catalog` workflow
+job and nothing is committed to git. This replaces the old daily `refresh-catalog` workflow
 and `web/scripts/build-catalog.mjs`.
 
 - **Files:** `GET /catalog/routes.json`, `/catalog/stops.json`, `/catalog/route-variants.json`
@@ -78,7 +78,7 @@ and `web/scripts/build-catalog.mjs`.
   in `native/gradle.properties`: debug builds dev, release builds production);
   `-Pvectra.catalogOrigin=…` overrides it.
 - **Frozen copy:** `web/public/catalog/*.json` is no longer refreshed. It stays only so app versions
-  released before VEC-131, which download the catalog from `https://vectra.southstar21.dev/catalog/`,
+  released before the backend took over the catalog, which download the catalog from `https://vectra.southstar21.dev/catalog/`,
   and the web PWA keep working (with aging data). Delete the three files, the `/catalog/` location in
   `web/nginx.conf` and the web catalog loaders once the minimum app version in `app_config` (see
   "Forcing an update") is raised past the first release that reads the catalog from the backend, and

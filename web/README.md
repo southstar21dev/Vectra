@@ -95,7 +95,7 @@ The backend is a single Go binary in `backend/` that embeds PocketBase and regis
 ## Transit catalog
 
 The BKK line/stop catalog files in `public/catalog/*.json` (`routes.json`, `stops.json`,
-`route-variants.json`) are a frozen copy: since VEC-131 the backend builds and serves the live
+`route-variants.json`) are a frozen copy: the backend now builds and serves the live
 catalog (`backend/internal/catalog`, `GET /catalog/*.json`, see `backend/README.md`) and nothing
 refreshes these files any more. The web app still fetches them from its own host at runtime (not
 bundled, not precached), so it keeps working with aging data. Do not hand-edit the JSON. They can

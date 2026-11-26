@@ -18,7 +18,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** The cold-start health check and the stored-refusal read run together (VEC-87). */
+/** The cold-start health check and the stored-refusal read run together. */
 class UpdateGateTest {
     private val kv = KeyValueStore(FakeDataStore())
 

@@ -100,7 +100,7 @@ plugin + `firebase-messaging` (BoM 35.x), and replace `NoPush` in `VectraApplica
 `FirebaseMessagingService` that posts through `AndroidNotifier`. The settings toggle and the
 "Test" button switch to server push automatically once `isConfigured` is true.
 
-## 3. Transit catalog (moved into the backend, VEC-131)
+## 3. Transit catalog (moved into the backend)
 
 The app downloads its BKK catalog (`routes.json`, `stops.json`, `route-variants.json`) from
 `<catalogOrigin>/catalog/` at runtime (`features/transit/data/Catalog.kt`) and caches it on disk.
