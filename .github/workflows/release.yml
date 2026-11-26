@@ -213,15 +213,12 @@ jobs:
           cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
       # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
-      # downloaded files against them before anything is attached to the release.
+      # downloaded files against them before anything is attached to the release. Base64, because
+      # the runner drops an output that contains a secret's value, and a plain list holds the file
+      # names (a key alias such as "Vectra" would match them).
       - id: sums
         name: Hash the release assets
-        run: |
-          {
-            echo "sums<<SUMS_EOF"
-            (cd release-assets && sha256sum -- *)
-            echo "SUMS_EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: echo "sums=$(cd release-assets && sha256sum -- * | base64 -w0)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -278,16 +275,10 @@ jobs:
           codesign -d --entitlements - "$APP/PlugIns/VectraWidgets.appex" | grep -q application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
 
-      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
-      # downloaded files against them before anything is attached to the release.
+      # Same as the android job; macOS base64 writes a single line by default.
       - id: sums
         name: Hash the release assets
-        run: |
-          {
-            echo "sums<<SUMS_EOF"
-            (cd release-assets && shasum -a 256 -- *)
-            echo "SUMS_EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: echo "sums=$(cd release-assets && shasum -a 256 -- * | base64)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -335,9 +326,14 @@ jobs:
         env:
           ANDROID_SUMS: ${{ needs.android.outputs.sums }}
           IOS_SUMS: ${{ needs.ios.outputs.sums }}
+          IOS_BUILT: ${{ needs.ios.result == 'success' }}
         run: |
+          if [ -z "$ANDROID_SUMS" ] || { [ "$IOS_BUILT" = true ] && [ -z "$IOS_SUMS" ]; }; then
+            echo "::error::A build job published no hashes (its sums output is empty or was dropped)."
+            exit 1
+          fi
           cd release-assets
-          { printf '%s\n' "$ANDROID_SUMS"; [ -z "$IOS_SUMS" ] || printf '%s\n' "$IOS_SUMS"; } > "$RUNNER_TEMP/SHA256SUMS"
+          { printf '%s' "$ANDROID_SUMS" | base64 --decode; [ -z "$IOS_SUMS" ] || printf '%s' "$IOS_SUMS" | base64 --decode; } > "$RUNNER_TEMP/SHA256SUMS"
           sha256sum -c "$RUNNER_TEMP/SHA256SUMS"
           EXPECTED=$(awk '{print $2}' "$RUNNER_TEMP/SHA256SUMS" | sed 's/^\*//' | sort)
           ACTUAL=$(printf '%s\n' * | sort)

@@ -137,8 +137,7 @@ func encryptValue(key []byte, plain string) (string, error) {
 }
 
 // decryptValue opens a `vc2:` ciphertext (no AAD). Only the one-off vc2 to vc3
-// upgrade (internal/legacyvc2) and the importer's verifier use it, through
-// DecryptValue; the route never does.
+// upgrade (internal/legacyvc2) uses it, through DecryptValue; the route never does.
 func decryptValue(key []byte, value string) (string, error) {
 	return unseal(key, value[len(v2Prefix):], nil)
 }
@@ -213,9 +212,9 @@ func bindDigest(dkey []byte, userID, inner string) string {
 // Exported helpers
 //
 // The /api/vectra/crypto route is the only place these primitives are used at
-// runtime, but the migration verifier (internal/migrate) needs to decrypt
-// stored ciphertext through the *exact* same code path. These thin wrappers
-// expose that path without changing the route's behaviour.
+// runtime, but the one-off upgrades (internal/legacyvc2, internal/dedupekey)
+// and their tests need the *exact* same code path. These thin wrappers expose
+// that path without changing the route's behaviour.
 // ---------------------------------------------------------------------------
 
 // V2Prefix marks a legacy, unbound AES-256-GCM ciphertext (the format the
@@ -233,8 +232,7 @@ func EncryptionKeyFromEnv() ([]byte, error) {
 
 // DecryptValue decrypts a single legacy `vc2:` ciphertext with key. A value
 // without the `vc2:` prefix is rejected rather than mis-sliced. The route no
-// longer opens vc2; this stays for the vc2 to vc3 upgrade (internal/legacyvc2)
-// and the importer's verifier.
+// longer opens vc2; this stays for the vc2 to vc3 upgrade (internal/legacyvc2).
 func DecryptValue(key []byte, value string) (string, error) {
 	if len(value) < len(V2Prefix) || value[:len(V2Prefix)] != V2Prefix {
 		return "", fmt.Errorf("crypto: value is not a %q ciphertext", V2Prefix)

@@ -1,7 +1,7 @@
 # The Xcode project is generated from this file: `cd native/iosApp && xcodegen`.
 # Edit this, not iosApp.xcodeproj.
 # .github/scripts/altstore-source.mjs reads options.deploymentTarget.iOS below (the AltStore minimum
-# OS) and repeats the version-to-build-number rule of the build number scripts further down.
+# OS) and repeats the version-to-build-number rule of scripts/version.sh, the build number phase.
 name: iosApp
 options:
   bundleIdPrefix: dev.southstar21

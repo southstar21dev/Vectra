@@ -3,7 +3,7 @@
 // vc2 values are AES-256-GCM under the shared server key with no additional
 // data, so anyone who obtains one can have the crypto route open it from any
 // account. vc3 is the same scheme with the owning user's id as GCM additional
-// data. The Supabase importer (internal/migrate) stored vc2 blobs verbatim, and
+// data. The Supabase importer (removed since) stored vc2 blobs verbatim, and
 // the route emitted vc2 before vc3 existed, so production rows can still hold
 // them. Upgrade rewrites each one as vc3 bound to the record's owner, which lets
 // the route stop accepting vc2.

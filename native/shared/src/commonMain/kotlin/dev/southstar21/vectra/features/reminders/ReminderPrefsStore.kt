@@ -58,12 +58,16 @@ internal class ReminderPrefsStore(
         store(ReminderPrefs())
     }
 
-    /** Once per account and process: take the profile's settings on a fresh device, otherwise push ours if they differ. */
+    /**
+     * Once per account and process: take the profile's settings on a fresh device, otherwise push
+     * ours if they differ. A commute blob that cannot be decrypted right now throws before anything
+     * is decided, so a later profile update tries again instead of adopting settings without legs.
+     */
     private suspend fun syncWith(profile: Profile) {
         if (syncedFor == profile.id) return
-        syncedFor = profile.id
         val remoteJson = profile.preferences?.get(ProfileKey)
         val remote = remoteJson?.let { cloud.decode(it) }
+        syncedFor = profile.id
         val owner = kv.get(OwnerKey)
         if (owner != profile.id) {
             kv.set(OwnerKey, profile.id)
@@ -96,9 +100,12 @@ internal class ReminderPrefsStore(
         runSuspendCatching {
             val remoteJson = auth.profile.value?.preferences?.get(ProfileKey)
             // The ciphertext differs on every encryption, so compare the settings, not the JSON.
-            val inSync = remoteJson != null && !cloud.hasPlainLegs(remoteJson) && cloud.decode(remoteJson) == _prefs.value
+            // A remote copy that cannot be decrypted now counts as out of date: this device's copy wins.
+            val inSync = remoteJson != null && !cloud.hasPlainLegs(remoteJson) &&
+                runSuspendCatching { cloud.decode(remoteJson) }.getOrNull() == _prefs.value
             if (inSync) return@runSuspendCatching
             // setPreference refetches the record and merges this one key, so other preference keys are not overwritten.
+            // encode throws when the legs cannot be encrypted, which skips this write until the next change or sync.
             auth.setPreference(ProfileKey, cloud.encode(_prefs.value))
         }
     }

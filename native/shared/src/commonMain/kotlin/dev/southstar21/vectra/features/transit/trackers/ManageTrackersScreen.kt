@@ -180,7 +180,7 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
             try {
                 repo.reorderTrackers(ids)
                 isPending = false
-                toaster.success(if (favTab) "Favorites order updated" else "Transit trackers order updated")
+                toaster.success(if (favTab) "Favourites order updated" else "Transit trackers order updated")
                 haptics.confirm()
                 onBack()
             } catch (e: CancellationException) {

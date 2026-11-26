@@ -1,6 +1,7 @@
 #!/bin/sh
 # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
 # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
+# .github/scripts/altstore-source.mjs (bundleVersions) repeats the rule for the AltStore source.
 # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
 # gradle.properties only holds the real version while CI builds a release.
 set -e
