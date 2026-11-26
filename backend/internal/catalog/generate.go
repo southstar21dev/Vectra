@@ -28,7 +28,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -282,7 +281,11 @@ type areaStop struct {
 var (
 	reParens = regexp.MustCompile(`\([^)]*\)`)
 	reWords  = regexp.MustCompile(`\b(m|h|pu|vasutallomas|allomas)\b`)
-	reSpace  = regexp.MustCompile(`[\s\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
+	// jsSpaceClass is JavaScript's \s (and what String.prototype.trim strips), which the old
+	// generator used. Go's \s and unicode.IsSpace differ from it (\v, U+0085).
+	jsSpaceClass = `\t\n\x{000b}\f\r \x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+	reSpace      = regexp.MustCompile(`[` + jsSpaceClass + `]+`)
+	reTrim       = regexp.MustCompile(`^[` + jsSpaceClass + `]+|[` + jsSpaceClass + `]+$`)
 )
 
 // NormalizeStopName is the offline direction-matching form of a stop name. It
@@ -299,7 +302,7 @@ func NormalizeStopName(s string) string {
 	s = reParens.ReplaceAllString(s, "")
 	s = reWords.ReplaceAllString(s, "")
 	s = reSpace.ReplaceAllString(s, " ")
-	return strings.TrimFunc(s, func(r rune) bool { return unicode.IsSpace(r) || r == 0xfeff })
+	return reTrim.ReplaceAllString(s, "")
 }
 
 type routeResult struct {

@@ -113,6 +113,11 @@ func TestNormalizeStopName(t *testing.T) {
 		"Móricz Zsigmond körtér (Gellért) H": "moricz zsigmond korter",
 		"  a   b  ":                          "a b",
 		"Örs vezér tere":                     "ors vezer tere",
+		// JavaScript's \s and trim(), as in the old generator: \v and NBSP are spaces, U+0085 is not.
+		"X\vY":            "x y",
+		"A\u00a0B ":       "a b",
+		"\u0085G\u0085":   "\u0085g\u0085",
+		"\ufeffBOM\u3000": "bom",
 	} {
 		require.Equal(t, want, NormalizeStopName(in), in)
 	}
