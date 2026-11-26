@@ -108,3 +108,27 @@ func TestUsageLoggedOnlyAboveHalf(t *testing.T) {
 	require.Len(t, lines, 1)
 	require.Contains(t, lines[0], "7 of 10")
 }
+
+func TestEachStopKeepsItsOwnCachedAnswer(t *testing.T) {
+	t.Setenv("FUTAR_API_KEY", sentinelKey)
+	resetStopArrivalsCache()
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"status":"OK","data":{"stop":"`+r.URL.Query().Get("stopId")+`"}}`)
+	}))
+	t.Cleanup(srv.Close)
+	useFutarBase(t, srv.URL)
+	for _, id := range []string{"BKK_A1", "BKK_B2", "BKK_A1", "BKK_B2"} {
+		rec := runHandler(t, `{"endpoint":"arrivals-and-departures-for-stop","params":{"stopId":"`+id+`"}}`)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Contains(t, rec.Body.String(), `"stop":"`+id+`"`)
+	}
+	require.Equal(t, int32(2), hits.Load())
+}
+
+func TestVehiclesStayFresherThanTheAppPoll(t *testing.T) {
+	require.Less(t, proxyTTL("vehicles-for-route"), 10*time.Second)
+	require.LessOrEqual(t, proxyTTL("arrivals-and-departures-for-stop"), stopArrivalsTTL)
+}

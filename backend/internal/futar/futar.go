@@ -41,6 +41,10 @@ const (
 	stopArrivalsTTL  = 15 * time.Second
 	// tripDetailsTTL matches arrivals: both move with the live feed.
 	tripDetailsTTL = stopArrivalsTTL
+	// vehiclesTTL stays under the app's 10 s vehicle poll, so one viewer
+	// still gets a fresh position on every poll while viewers of the same
+	// route at the same moment share one upstream call.
+	vehiclesTTL = 5 * time.Second
 	// routeDetailsTTL: a route's stops and polyline change with timetable
 	// updates, not minute to minute.
 	routeDetailsTTL = 6 * time.Hour
@@ -87,7 +91,7 @@ var limiter = ratelimit.New(limits.FutarPerIP.Max, limits.FutarPerIP.Window)
 // turns excess load into a 503 instead of a throttled or revoked key for
 // every user.
 // upstreamBudget is a var so tests can substitute a fresh one.
-var upstreamBudget = ratelimit.New(upstreamBudgetMax(os.Getenv("FUTAR_UPSTREAM_PER_MINUTE")), limits.FutarUpstream.Window)
+var upstreamBudget = ratelimit.New(budgetMax, limits.FutarUpstream.Window)
 
 // upstreamBudgetMax parses the env override; empty or invalid means the default.
 func upstreamBudgetMax(raw string) int {
@@ -103,7 +107,7 @@ func upstreamBudgetMax(raw string) int {
 	return n
 }
 
-// budgetMax is the ceiling the usage line is measured against.
+// budgetMax is the budget's ceiling, read once (an invalid value logs once).
 var budgetMax = upstreamBudgetMax(os.Getenv("FUTAR_UPSTREAM_PER_MINUTE"))
 
 // errUpstreamBusy is the message returned when the budget is spent.
@@ -827,6 +831,8 @@ func proxyTTL(endpoint string) time.Duration {
 		return routeDetailsTTL
 	case "trip-details":
 		return tripDetailsTTL
+	case "vehicles-for-route":
+		return vehiclesTTL
 	}
 	return stopArrivalsTTL
 }
@@ -893,9 +899,14 @@ func doFetchProxied(ctx context.Context, key, endpoint string, params map[string
 		return proxied{failed: true}
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamBody))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamBody+1))
 	if err != nil {
 		return proxied{failed: true}
+	}
+	if len(body) > maxUpstreamBody {
+		// Cut at the cap as before, but never cached: a truncated route-details
+		// would otherwise be replayed for hours.
+		return proxied{status: resp.StatusCode, body: body[:maxUpstreamBody]}
 	}
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
