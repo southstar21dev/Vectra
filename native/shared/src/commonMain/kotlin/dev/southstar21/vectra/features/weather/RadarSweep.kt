@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.CoverClock
 import dev.southstar21.vectra.core.designsystem.components.OrbEngine
 import dev.southstar21.vectra.core.designsystem.components.drawOrb
 import dev.southstar21.vectra.core.designsystem.components.grey
@@ -73,8 +74,7 @@ internal class RadarSweep(reduced: Boolean) {
     private val reducedMotion = reduced
     var phase by mutableStateOf(SweepPhase.Loading)
         private set
-    private var frame by mutableLongStateOf(0L)
-    private var start = 0L
+    private val clock = CoverClock(engine)
 
     /** The drawn rain's opacity: dropped once the map's layer shows the same pixels. */
     var overlay by mutableFloatStateOf(1f)
@@ -86,7 +86,7 @@ internal class RadarSweep(reduced: Boolean) {
      */
     suspend fun run(isReady: () -> Boolean, hasRain: () -> Boolean, handOver: suspend () -> Unit) {
         if (phase == SweepPhase.Done) return
-        while (!isReady()) withFrameNanos { if (!reducedMotion) frame = it }
+        while (!isReady()) withFrameNanos { if (!reducedMotion) clock.tick(it) }
         // No rain in view: nothing to sweep over, so the orb just fades away.
         plain = reducedMotion || !hasRain()
         phase = SweepPhase.Sweeping
@@ -94,9 +94,9 @@ internal class RadarSweep(reduced: Boolean) {
         var done = false
         while (!done) {
             withFrameNanos { n ->
-                if (start == 0L) { start = n; prepare() }
-                frame = n
-                done = (n - start) / 1e6f >= span
+                clock.tick(n)
+                if (clock.begin(n)) prepare()
+                done = clock.elapsedNanos() / 1e6f >= span
             }
         }
         phase = SweepPhase.HandingOver
@@ -112,9 +112,9 @@ internal class RadarSweep(reduced: Boolean) {
     }
 
     /** Milliseconds into the sweep (0 before it starts). */
-    fun elapsed(): Float = if (start == 0L) 0f else (frame - start) / 1e6f
+    fun elapsed(): Float = clock.elapsedNanos() / 1e6f
 
-    fun orbTime(): Double = if (reducedMotion || frame == 0L) 0.6 else frame / 1e9 * engine.speed
+    fun orbTime(): Double = clock.orbTime(reducedMotion)
 
     /** Dots nearest the orb's top go furthest out along the line. */
     private fun prepare() {
