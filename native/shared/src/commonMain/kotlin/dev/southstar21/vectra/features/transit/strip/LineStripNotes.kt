@@ -24,14 +24,12 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.transit.data.TransitAlert
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
 import dev.southstar21.vectra.features.transit.isReplacementAlert
-import dev.southstar21.vectra.features.transit.monitor
 import kotlinx.coroutines.launch
 
 /**
@@ -49,15 +47,6 @@ internal fun StripStatus(repo: TransitRepository, tracker: TransitTracker, s: St
         }
         if (s.divertedTo != null) {
             Banner(BannerTone.Amber, RemixIcons.AlertLine, "Diverted, terminating at ${s.divertedTo}", Modifier.padding(top = 6.dp))
-        }
-        for (d in s.extra) {
-            val a = d.arrival ?: continue
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                VText("Also", style = vtext(12.sp to 16.sp, Weight.Medium), color = c.textMuted)
-                VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
-                VText(d.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 1)
-                VText(stripTimeLabel(a.arrivalMs, s.now), style = vtext(13.sp to 16.sp, Weight.Extrabold, mono = true).tnum(), color = Vectra.monitor.live, maxLines = 1)
-            }
         }
         AlertNote(s.alerts)
     }

@@ -39,6 +39,27 @@ internal fun extraDirections(directions: List<StripDirection>): List<StripDirect
     return undrawn(directions).filter { it.destination != forked }
 }
 
+/** A direction past the strip's two, drawn like the rows above it: its headsign and next departures. */
+internal data class StripExtraRow(
+    val destination: String,
+    /** The soonest departure, for its colour and label. */
+    val vehicle: StripVehicle,
+    /** The two after it; fewer leave their columns empty. */
+    val later: List<StripTime>,
+)
+
+/** [extra] as rows: each with its soonest departure and up to two more, timed like the rest. */
+internal fun extraRows(extra: List<StripDirection>, now: Long, metro: Boolean, frozen: Boolean): List<StripExtraRow> =
+    extra.mapNotNull { d ->
+        val times = endTimes(d, now, metro, frozen)
+        val first = times.firstOrNull() ?: return@mapNotNull null
+        val vehicle = StripVehicle(
+            position = 0f, heading = 1, label = first.label, kind = first.kind,
+            arriving = first.label == "NOW", faded = frozen, replacement = d.replacement,
+        )
+        StripExtraRow(d.destination, vehicle, times.drop(1).take(2))
+    }
+
 /**
  * With a fork two directions share one side, and a strip shows one vehicle each way: on that side
  * the sooner of the two stays, named after where it goes ("Újbuda", "Móricz") so the branch reads.

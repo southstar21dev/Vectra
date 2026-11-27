@@ -199,4 +199,41 @@ class LineStripModelTest {
         assertTrue(v.faded)
         assertEquals(StripTimeKind.Scheduled, v.kind)
     }
+
+    @Test
+    fun anExtraHeadingIsARowLikeTheOthersWithItsOwnTimes() {
+        val dirs = listOf(dir("Újbuda", 4, 1.0), dir("Móricz", 9, 2.0), dir("Széll Kálmán tér", 1, 1.5).copy(later = listOf(arrival(14, true, "S"))))
+        val m = buildStripModel(dirs, now, metro = false, frozen = false)
+        val extra = extraRows(extraDirections(dirs), now, metro = false, frozen = false)
+        val rows = slimDirectionEntries(m, extra, showNext = true)
+        assertEquals(3, rows.size)
+        val last = rows.last()
+        assertEquals(extra.single().destination, last.destination)
+        assertEquals("9'", last.vehicle.label)
+        // A row with fewer departures leaves its later columns empty.
+        assertTrue(last.nextTimes.size <= SlimLaterColumns)
+        assertEquals(StripTimeKind.Live, last.vehicle.kind)
+    }
+
+    @Test
+    fun extraRowsKeepTheirLaterTimesInOrder() {
+        val d = dir("Móricz", 9, 2.0).copy(later = listOf(arrival(20, false, "M"), arrival(30, false, "M"), arrival(40, false, "M")))
+        val row = extraRows(listOf(d), now, metro = false, frozen = false).single()
+        assertEquals(listOf("20'", "30'"), row.later.map { it.label })
+        assertEquals(StripTimeKind.Live, row.vehicle.kind)
+        assertEquals(StripTimeKind.Scheduled, row.later[0].kind)
+    }
+
+    @Test
+    fun anExtraRowOfAFrozenFeedIsScheduledAndFaded() {
+        val row = extraRows(listOf(dir("Móricz", 9, 2.0)), now, metro = false, frozen = true).single()
+        assertEquals(StripTimeKind.Scheduled, row.vehicle.kind)
+        assertTrue(row.vehicle.faded)
+    }
+
+    @Test
+    fun nothingIsAddedWithoutShowNext() {
+        val m = buildStripModel(listOf(dir("A", 4, 1.0).copy(later = listOf(arrival(10, true, "A")))), now, metro = false, frozen = false)
+        assertTrue(slimDirectionEntries(m, showNext = false).all { it.nextTimes.isEmpty() })
+    }
 }

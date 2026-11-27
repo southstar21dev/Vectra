@@ -82,7 +82,7 @@ internal class StopStrip(
     val noDepartures: Boolean,
     val alerts: List<TransitAlert>,
     /** Directions past the two the strip draws (a line that forks). */
-    val extra: List<StripDirection>,
+    val extra: List<StripExtraRow>,
     /** Waiting for times it can stand behind (not while offline). */
     val pending: Boolean,
     val now: Long,
@@ -130,7 +130,7 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
         error = !loaded && q.isError,
         noDepartures = loaded && live.arrivals.isEmpty(),
         alerts = alerts,
-        extra = remember(dirs) { extraDirections(dirs) },
+        extra = remember(dirs, now, metro, frozen) { extraRows(extraDirections(dirs), now, metro, frozen) },
         pending = !offline && !q.isError && (!loaded || isArrivalsStale(updatedAt, now, false)),
         now = now,
         divertedTo = divertedTo,
@@ -230,13 +230,13 @@ private fun SingleStopBody(repo: TransitRepository, tracker: TransitTracker, s: 
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    VText(title, Modifier.weight(1f), vtext(14.sp to 18.sp, Weight.Bold), if (s.noDepartures) c.textSecondary else c.textPrimary, maxLines = 1)
+                    VText(title, Modifier.weight(1f), vtext(14.sp to 18.sp, Weight.Bold), if (s.noDepartures) c.textSecondary else c.textPrimary, maxLines = 2)
                     if (s.replaced) VIcon(RemixIcons.BusLine, size = 16.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
                     else if (s.alerts.isNotEmpty()) VIcon(RemixIcons.AlertLine, size = 16.dp, tint = c.tints.amber.text, contentDescription = "Service alert")
                     else if (s.noDepartures) SleepingIcon(size = 16.dp, tint = c.textMuted)
                 }
                 LineStrip(s.model, colors, Modifier.clipToBounds().semantics { contentDescription = description }, labels = false, entrance = entrance, skeletonColors = skeleton)
-                SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), showNext = true)
+                SlimDirectionRows(s.model, modifier = Modifier.padding(horizontal = 1.dp), showNext = true, extra = s.extra)
             }
         }
         StripStatus(repo, tracker, s)
