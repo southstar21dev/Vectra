@@ -68,8 +68,6 @@
     <ID>LoopWithTooManyJumpStatements:IcsParser.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:NearbyStops.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:ScheduleItemsSync.kt:ScheduleItemsSync$for</ID>
-    <ID>ModifierComposed:Modifiers.kt:fun Modifier.pressScale: Modifier</ID>
-    <ID>ModifierComposed:Modifiers.kt:fun Modifier.tappable: Modifier</ID>
     <ID>ModifierMissing:ActionSheet.kt:@Composable fun ActionSheet</ID>
     <ID>ModifierMissing:AppShell.kt:@Composable fun AppShell</ID>
     <ID>ModifierMissing:AppSplash.kt:@Composable fun AppSplash</ID>
