@@ -33,6 +33,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DeleteRow
@@ -305,14 +307,18 @@ internal fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBac
                             )
                             when {
                                 loadingRoute -> ListStatus(Modifier.edgeStatus()) { SheetListSpinner() }
-                                routeError != null -> ListStatus(Modifier.edgeStatus()) {
-                                    SheetMutedText(routeError!!, Modifier.padding(horizontal = 8.dp), c.tints.red.text)
-                                    SheetRetryButton {
-                                        routeError = null
-                                        loadingRoute = true
-                                        reloadNonce++
-                                    }
-                                }
+                                routeError != null -> Banner(
+                                    BannerTone.Red,
+                                    RemixIcons.ErrorWarningLine,
+                                    routeError!!,
+                                    trailing = {
+                                        SheetRetryButton {
+                                            routeError = null
+                                            loadingRoute = true
+                                            reloadNonce++
+                                        }
+                                    },
+                                )
                                 availableStops.isNotEmpty() -> ClippedFormGroup(
                                     rows = availableStops.take(20).map { stop ->
                                         @Composable {

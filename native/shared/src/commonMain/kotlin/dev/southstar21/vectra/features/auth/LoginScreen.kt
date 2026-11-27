@@ -40,7 +40,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.ImeAction
@@ -50,6 +49,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.auth.AccountCreatedSignInFailed
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
@@ -64,8 +65,6 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.icons.VectraLogo
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
-import dev.southstar21.vectra.core.designsystem.theme.Tint
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.Weight
@@ -179,19 +178,6 @@ interface PasskeyActions {
 }
 
 @Composable
-private fun Banner(text: String, tint: Tint, fill: Color, icon: ImageVector = RemixIcons.ErrorWarningLine) {
-    val shape = Radius.Control
-    Row(
-        Modifier.fillMaxWidth().background(fill, shape).border(1.dp, tint.border, shape).padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(icon, tint = tint.text)
-        VText(text, style = vtext(TypeScale.Caption), color = tint.text)
-    }
-}
-
-@Composable
 private fun FieldLabel(text: String) =
     VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = Vectra.colors.textSecondary)
 
@@ -235,7 +221,7 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         LoginNotice(createdEmail != null, notice, sessionExpired)
-        if (error != null) Banner(AccountLogic.loginErrorMessage(error), c.tints.red, Palette.Red500.copy(alpha = 0.1f))
+        if (error != null) Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, AccountLogic.loginErrorMessage(error))
         if (passkeys?.isSupported == true) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 VButton(
@@ -253,7 +239,7 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
                         VText("Continue with biometrics", style = vtext(TypeScale.Caption, Weight.Bold))
                     }
                 }
-                passkeyError?.let { Banner(it, c.tints.red, Palette.Red500.copy(alpha = 0.1f)) }
+                passkeyError?.let { Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, it) }
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -291,8 +277,8 @@ private fun LoginNotice(accountCreated: Boolean, notice: String?, sessionExpired
     val c = Vectra.colors
     val message = if (accountCreated) "Your account was created, but signing in failed. Sign in with your password to continue." else notice
     when {
-        message != null -> Banner(message, c.tints.emerald, Palette.Emerald500.copy(alpha = 0.1f), RemixIcons.CheckboxCircleLine)
-        sessionExpired -> Banner("Your session expired. Sign in again to continue.", c.tints.amber, Palette.Amber500.copy(alpha = 0.1f))
+        message != null -> Banner(BannerTone.Green, RemixIcons.CheckboxCircleLine, message)
+        sessionExpired -> Banner(BannerTone.Amber, RemixIcons.ErrorWarningLine, "Your session expired. Sign in again to continue.")
     }
 }
 
@@ -334,13 +320,12 @@ private fun ResetPasswordForm(auth: AuthRepository, initialEmail: String, onBack
         }
         sentTo?.let {
             Banner(
-                "If $it has a Vectra account, a reset link is on its way. Check your spam folder too.",
-                c.tints.emerald,
-                Palette.Emerald500.copy(alpha = 0.1f),
+                BannerTone.Green,
                 RemixIcons.CheckboxCircleLine,
+                "If $it has a Vectra account, a reset link is on its way. Check your spam folder too.",
             )
         }
-        error?.let { Banner(it, c.tints.red, Palette.Red500.copy(alpha = 0.1f)) }
+        error?.let { Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, it) }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FieldLabel("Email address")
             VInput(
@@ -399,7 +384,7 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onSwitch
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         error?.let {
             val text = if (it is IllegalArgumentException) it.message.orEmpty() else AccountLogic.signupErrorMessage(it)
-            Banner(text, c.tints.red, Palette.Red500.copy(alpha = 0.1f))
+            Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, text)
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FieldLabel("Nickname")

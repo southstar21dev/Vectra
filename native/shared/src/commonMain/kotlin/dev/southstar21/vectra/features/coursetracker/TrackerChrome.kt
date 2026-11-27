@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,16 +38,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
-import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.Palette
-import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
-import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.mix
@@ -62,7 +61,6 @@ import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.designsystem.theme.resolve
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
-import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
@@ -127,32 +125,10 @@ internal fun Divided(items: List<@Composable () -> Unit>) {
     }
 }
 
-/** The outline "Add" pill in section headers. */
+/** The outline "Add" button in section headers. */
 @Composable
 internal fun AddPill(label: String = "Add", onClick: () -> Unit) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    val shape = CircleShape
-    val shadows = listOf(
-        BoxShadow(y = 2f, blur = 8f, color = rgba(0, 0, 0, 0.08f)),
-        BoxShadow(y = 1f, color = rgba(255, 255, 255, 0.15f), inset = true),
-    )
-    Row(
-        Modifier
-            .pressScale(interaction)
-            .boxShadow(shape, shadows)
-            .background(c.glassBg, shape)
-            .insetShadow(shape, shadows)
-            .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
-            .tappable(role = null, highlight = false, interactionSource = interaction, onClick = onClick)
-            .padding(horizontal = 14.dp)
-            .defaultMinSize(minHeight = 36.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(RemixIcons.AddLine, size = 14.dp, tint = c.textPrimary)
-        VText(label, style = vtext(TypeScale.Meta13, Weight.Bold), color = c.textPrimary)
-    }
+    VButton(label, onClick, variant = ButtonVariant.Outline, size = ButtonSize.Sm, icon = RemixIcons.AddLine)
 }
 
 /**

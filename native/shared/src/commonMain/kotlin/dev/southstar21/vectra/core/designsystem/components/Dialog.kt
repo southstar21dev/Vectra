@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.LocalContentColor
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
@@ -164,7 +163,7 @@ fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope
 
 @Composable
 fun DialogTitle(text: String, modifier: Modifier = Modifier) =
-    VText(text, modifier.semantics { heading() }, vtext(TypeScale.Body, Weight.Bold, lineHeight = 21.sp), Vectra.colors.textPrimary)
+    VText(text, modifier.semantics { heading() }, vtext(TypeScale.Title17, Weight.Bold), Vectra.colors.textPrimary)
 
 @Composable
 fun DialogDescription(text: String, modifier: Modifier = Modifier) =
@@ -200,24 +199,12 @@ fun ConfirmDialog(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (destructive) IconChip(RemixIcons.AlertLine, c.tints.red, size = 32, iconSize = 16)
+                if (destructive) VIcon(RemixIcons.AlertLine, size = 20.dp, tint = c.tints.red.text)
                 DialogTitle(title)
             }
             DialogDescription(description, Modifier.padding(top = 2.dp))
         }
-        if (error != null) {
-            val shape = Radius.Control
-            Row(
-                Modifier.padding(top = 12.dp).fillMaxWidth()
-                    .background(Palette.Red500.copy(alpha = 0.1f), shape)
-                    .border(1.dp, c.tints.red.border, shape).padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VIcon(RemixIcons.ErrorWarningLine, tint = c.tints.red.text)
-                VText(error!!, style = vtext(TypeScale.Caption), color = c.tints.red.text)
-            }
-        }
+        if (error != null) Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, error!!, Modifier.padding(top = 12.dp))
         DialogFooter(Modifier.padding(top = 16.dp)) {
             VButton(
                 onClick = {

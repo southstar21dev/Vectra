@@ -126,7 +126,7 @@ fun DeleteRow(
             armed = false
         }
     }
-    val shape = Radius.Card
+    val shape = Radius.Control
     val interaction = remember { MutableInteractionSource() }
     val bg by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.15f) else c.surfaceOverlay, tween(150), label = "deleteRowBg")
     val border by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.5f) else c.borderSubtle, tween(150), label = "deleteRowBorder")

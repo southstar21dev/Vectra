@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.features.schedule
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DateField
@@ -43,7 +44,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -239,51 +239,44 @@ private fun ItemEditorContent(
                 }
                 if (currentConflicts.isNotEmpty()) {
                     SheetSection {
-                        SectionTitle(
-                            conflictHeading(currentConflicts),
-                            color = c.tints.red.text,
-                            icon = RemixIcons.AlertLine,
-                        )
-                        val shape = Radius.Card
-                        Column(Modifier.border(1.dp, Palette.Rose500.copy(alpha = 0.3f), shape)) {
-                            FormGroup(rows = listOf(
-                                {
-                                    Column {
-                                        currentConflicts.forEachIndexed { i, cf ->
-                                            if (i > 0) HairlineDivider()
-                                            Row(
-                                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                VText(cf.otherTitle, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
-                                                VText(
-                                                    "${formatTime(formatMinuteOfDay(cf.startMinute), timeFormat)}–${formatTime(formatMinuteOfDay(cf.endMinute), timeFormat)}",
-                                                    style = vtext(TypeScale.Caption),
-                                                    color = c.textSecondary,
-                                                    maxLines = 1,
-                                                )
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    Box(
-                                        Modifier.tappable(Radius.Card, role = null, haptic = { toggle(hasUnacknowledged) }) {
-                                            form.acknowledgedSignature = if (hasUnacknowledged) signature else null
-                                        },
-                                    ) {
-                                        SwitchRow("I know, save it anyway", description = "Saving stays off until you acknowledge the clash.") {
-                                            VToggle(
-                                                checked = !hasUnacknowledged,
-                                                onCheckedChange = { checked -> form.acknowledgedSignature = if (checked) signature else null },
-                                                label = "I understand and acknowledge these schedule clashes",
+                        Banner(BannerTone.Red, RemixIcons.AlertLine, conflictHeading(currentConflicts))
+                        FormGroup(rows = listOf(
+                            {
+                                Column {
+                                    currentConflicts.forEachIndexed { i, cf ->
+                                        if (i > 0) HairlineDivider()
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            VText(cf.otherTitle, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
+                                            VText(
+                                                "${formatTime(formatMinuteOfDay(cf.startMinute), timeFormat)}–${formatTime(formatMinuteOfDay(cf.endMinute), timeFormat)}",
+                                                style = vtext(TypeScale.Caption),
+                                                color = c.textSecondary,
+                                                maxLines = 1,
                                             )
                                         }
                                     }
-                                },
-                            ))
-                        }
+                                }
+                            },
+                            {
+                                Box(
+                                    Modifier.tappable(Radius.Card, role = null, haptic = { toggle(hasUnacknowledged) }) {
+                                        form.acknowledgedSignature = if (hasUnacknowledged) signature else null
+                                    },
+                                ) {
+                                    SwitchRow("I know, save it anyway", description = "Saving stays off until you acknowledge the clash.") {
+                                        VToggle(
+                                            checked = !hasUnacknowledged,
+                                            onCheckedChange = { checked -> form.acknowledgedSignature = if (checked) signature else null },
+                                            label = "I understand and acknowledge these schedule clashes",
+                                        )
+                                    }
+                                }
+                            },
+                        ))
                     }
                 }
                 if (item != null) {

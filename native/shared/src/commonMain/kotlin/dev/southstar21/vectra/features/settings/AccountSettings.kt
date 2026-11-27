@@ -1,9 +1,9 @@
 package dev.southstar21.vectra.features.settings
 
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.SettingsLink
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +41,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -50,21 +49,11 @@ import dev.southstar21.vectra.features.auth.AccountLogic
 import dev.southstar21.vectra.features.auth.PasskeyResetNote
 import dev.southstar21.vectra.features.auth.PasskeyResetNotes
 import kotlinx.serialization.json.JsonPrimitive
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 @Composable
 internal fun FieldError(message: String?) {
     if (message == null) return
-    val c = Vectra.colors
-    val shape = Radius.Control
-    Row(
-        Modifier.fillMaxWidth().background(Palette.Red500.copy(alpha = 0.1f), shape).border(1.dp, c.tints.red.border, shape).padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(RemixIcons.ErrorWarningLine, tint = c.tints.red.text)
-        VText(message, style = vtext(TypeScale.Caption), color = c.tints.red.text)
-    }
+    Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, message)
 }
 
 @Composable
