@@ -1,30 +1,13 @@
 package dev.southstar21.vectra.core.maps
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.southstar21.vectra.core.designsystem.components.VIcon
-import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
-import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -38,8 +21,6 @@ import org.maplibre.compose.map.MapState
 import org.maplibre.compose.util.DpPadding
 import org.maplibre.spatialk.geojson.BoundingBox
 import kotlin.time.Duration.Companion.milliseconds
-import dev.southstar21.vectra.core.designsystem.theme.tappable
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 
 /* Camera helpers (fits, jumps, the programmatic-move guard) and the map control column. */
 
@@ -167,7 +148,7 @@ fun MapState.boundsContain(p: LatLon): Boolean {
         p.lat >= b.southwest.latitude && p.lat <= b.northeast.latitude
 }
 
-/** One round button in [MapControls]. */
+/** One button in [GlassMapControls]. */
 data class MapControlButton(
     val id: String,
     val title: String,
@@ -175,42 +156,3 @@ data class MapControlButton(
     val onClick: () -> Unit,
     val active: Boolean = false,
 )
-
-/** The shared top-right control column (32dp round buttons, gap 6dp). */
-@Composable
-fun MapControls(buttons: List<MapControlButton>, modifier: Modifier = Modifier) {
-    val dark = Vectra.colors.isDark
-    Column(modifier.padding(top = 8.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (b in buttons) {
-            val bg = when {
-                b.active -> if (dark) Palette.Blue950 else Palette.Blue100
-                else -> if (dark) Palette.Zinc800 else Color.White
-            }
-            val border = when {
-                b.active -> Palette.Blue500
-                else -> if (dark) Palette.Zinc700 else Palette.Zinc200
-            }
-            val ink = when {
-                b.active -> if (dark) Palette.Blue400 else Palette.Blue600
-                else -> if (dark) Palette.Zinc200 else Palette.Zinc700
-            }
-            Box(
-                Modifier
-                    .size(32.dp)
-                    // Medium drop shadow.
-                    .boxShadow(
-                        CircleShape,
-                        listOf(
-                            BoxShadow(y = 4f, blur = 6f, spread = -1f, color = Color.Black.copy(alpha = 0.1f)),
-                            BoxShadow(y = 2f, blur = 4f, spread = -2f, color = Color.Black.copy(alpha = 0.1f)),
-                        ),
-                    )
-                    .background(bg, CircleShape)
-                    .border(1.dp, border, CircleShape)
-                    .tappable(CircleShape, role = Role.Button, onClick = b.onClick)
-                    .semantics { contentDescription = b.title },
-                contentAlignment = Alignment.Center,
-            ) { VIcon(b.icon, tint = ink) }
-        }
-    }
-}

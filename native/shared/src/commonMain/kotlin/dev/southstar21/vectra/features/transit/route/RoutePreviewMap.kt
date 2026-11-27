@@ -29,7 +29,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.maps.GeoJson
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.MapControlButton
-import dev.southstar21.vectra.core.maps.MapControls
+import dev.southstar21.vectra.core.maps.GlassMapControls
 import dev.southstar21.vectra.core.maps.TransitMap
 import dev.southstar21.vectra.core.maps.boundsOf
 import dev.southstar21.vectra.core.maps.fitBounds
@@ -189,7 +189,7 @@ internal fun RoutePreviewMap(
                 }
             },
         ) {
-            MapControls(controls, Modifier.align(Alignment.TopEnd))
+            GlassMapControls(controls, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
         }
         MapAttribution(Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 8.dp, bottom = 6.dp), align = TextAlign.Center)
     }

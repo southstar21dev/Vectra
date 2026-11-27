@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -22,6 +23,19 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
 import dev.southstar21.vectra.core.designsystem.theme.tappable
+
+/**
+ * Glass over a map that stays solid: the elevated glass colour at 94%, so the map's labels do not read
+ * through a panel the way they do through plain [glass].
+ */
+@Composable
+fun Modifier.solidMapGlass(shape: Shape): Modifier {
+    val c = Vectra.colors
+    return this
+        .boxShadow(shape, c.glassShadow.filter { !it.inset })
+        .background(c.glassBgElevated.copy(alpha = 0.94f), shape)
+        .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
+}
 
 /** One glass column of map buttons (44dp each, hairlines between), like the map apps' control stacks. */
 @Composable

@@ -51,6 +51,7 @@ import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.maps.solidMapGlass
 import kotlin.math.floor
 
 private val ChromeShape = RoundedCornerShape(24.dp)
@@ -156,7 +157,8 @@ internal class TimelineState(
 @Composable
 internal fun RadarTimeline(state: TimelineState, onTogglePlay: () -> Unit, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = Vectra.colors
-    Column(modifier.fillMaxWidth().glass(ChromeShape).consumeTouches().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
+    // Solid enough that the map's labels do not read through the card.
+    Column(modifier.fillMaxWidth().solidMapGlass(ChromeShape).consumeTouches().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
