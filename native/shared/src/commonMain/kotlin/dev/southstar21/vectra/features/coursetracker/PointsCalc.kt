@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.coursetracker
 import dev.southstar21.vectra.core.time.parseIsoDate
 import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 

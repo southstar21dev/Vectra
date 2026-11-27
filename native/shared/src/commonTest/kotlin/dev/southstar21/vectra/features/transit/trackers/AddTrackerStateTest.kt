@@ -105,22 +105,27 @@ private class Backend {
             }
             path == "/catalog/stops.json" -> if (catalogDown) json("{}", HttpStatusCode.InternalServerError) else json(stopsJson)
             path == "/catalog/routes.json" -> if (catalogDown) json("{}", HttpStatusCode.InternalServerError) else json(routesJson)
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Post -> {
-                if (saveFails) return@with json("{}", HttpStatusCode.InternalServerError)
+            path.startsWith("/api/collections/transit_trackers/") -> trackers(this, req, path)
+            path.startsWith("/api/collections/") -> json("""{"items":[]}""")
+            else -> json("{}")
+        }
+    }
+
+    private fun trackers(scope: MockRequestHandleScope, req: HttpRequestData, path: String): HttpResponseData = with(scope) {
+        val id = path.substringAfter("/records").trim('/')
+        when {
+            saveFails && req.method != HttpMethod.Get -> json("{}", HttpStatusCode.InternalServerError)
+            req.method == HttpMethod.Post -> {
                 val row = JsonObject(body(req) + ("id" to JsonPrimitive("t${saved.size + 1}")))
                 saved += row
                 json(row.toString())
             }
-            path.startsWith("/api/collections/transit_trackers/") && req.method == HttpMethod.Patch -> {
-                if (saveFails) return@with json("{}", HttpStatusCode.InternalServerError)
-                val id = path.substringAfterLast('/')
+            req.method == HttpMethod.Patch -> {
                 patched += id to body(req)
                 json(JsonObject(body(req) + ("id" to JsonPrimitive(id))).toString())
             }
-            path.startsWith("/api/collections/transit_trackers/") && path.substringAfter("/records").trim('/').isNotEmpty() ->
-                json(JsonObject(mapOf("id" to JsonPrimitive(path.substringAfterLast('/')), "route_id" to JsonPrimitive("vc3:BKK_3060"))).toString())
-            path.startsWith("/api/collections/") -> json("""{"items":[]}""")
-            else -> json("{}")
+            id.isNotEmpty() -> json(JsonObject(mapOf("id" to JsonPrimitive(id), "route_id" to JsonPrimitive("vc3:BKK_3060"))).toString())
+            else -> json("""{"items":[]}""")
         }
     }
 
@@ -164,7 +169,7 @@ private class Fixture {
 
 private suspend fun until(condition: () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
 
-private val M1Stop = "BKK_CSF01076"
+private const val M1Stop = "BKK_CSF01076"
 
 class AddTrackerStateTest {
     private fun scenario(test: suspend Fixture.() -> Unit) = runTest {

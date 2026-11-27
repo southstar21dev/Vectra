@@ -31,7 +31,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonArray
@@ -373,8 +372,7 @@ internal class NeptunSyncService(
             try {
                 val url = crypto.decryptUrl(raw)
                 if (url.isNullOrEmpty() || autoSyncAttempted) return@launchFor
-                val last = profile.neptunLastSync?.let { runCatching { Instant.parse(it).toEpochMilliseconds() }.getOrNull() }
-                    ?: profile.neptunLastSync?.let { runCatching { Instant.parse(it.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull() }
+                val last = parseLastSyncMs(profile.neptunLastSync)
                 val now = clockMs()
                 if (last == null || now - last > 24 * ONE_HOUR_MS) {
                     autoSyncAttempted = true
@@ -386,6 +384,13 @@ internal class NeptunSyncService(
                 // The auto-sync check is best-effort.
             }
         }.invokeOnCompletion { autoSyncCheckRunning.value = false }
+    }
+
+    /** The profile's last-sync stamp as epoch ms; PocketBase writes it with a space, the app with a T. */
+    private fun parseLastSyncMs(stamp: String?): Long? {
+        stamp ?: return null
+        return runCatching { Instant.parse(stamp).toEpochMilliseconds() }.getOrNull()
+            ?: runCatching { Instant.parse(stamp.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull()
     }
 
     companion object {

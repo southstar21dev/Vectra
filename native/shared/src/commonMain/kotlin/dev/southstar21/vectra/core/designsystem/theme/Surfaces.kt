@@ -44,7 +44,10 @@ object PlannerSurface {
     fun borderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.2f) else rgba(15, 23, 42, 0.1f)
     fun shadow(dark: Boolean): List<BoxShadow> =
         listOf(BoxShadow(y = 16f, blur = 36f, spread = -8f, color = if (dark) rgba(0, 0, 0, 0.5f) else rgba(15, 23, 42, 0.12f)))
+}
 
+/** The planner's flatter pieces: the strip between cards, the small card, the card pile and the loading strip. */
+object PlannerParts {
     /** A cancelled card: darker than a card, still flat (never carved in). */
     fun cancelledFill(dark: Boolean): Color = if (dark) Color(0xFF08090B) else Color(0xFFE2E8F0)
 

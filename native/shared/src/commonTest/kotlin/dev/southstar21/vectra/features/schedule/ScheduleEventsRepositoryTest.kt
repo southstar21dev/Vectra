@@ -117,7 +117,8 @@ private class EventsHarness(online: Boolean = true) {
                     backend.patches += b
                     val id = path.substringAfterLast('/')
                     val row = JsonObject(b + ("id" to JsonPrimitive(id)))
-                    backend.rows.replaceAll { if (it.string("id") == id) row else it }
+                    val at = backend.rows.indexOfFirst { it.string("id") == id }
+                    if (at >= 0) backend.rows[at] = row
                     json(row.toString())
                 }
                 path.startsWith("/api/collections/schedule_events/") && req.method == HttpMethod.Delete -> {

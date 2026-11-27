@@ -4,7 +4,6 @@ import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.auth.SessionScope
 import dev.southstar21.vectra.core.network.isCiphertext
-import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import kotlinx.coroutines.CancellationException
@@ -174,18 +173,20 @@ class CourseTrackerRepository(
     }
 
     private suspend fun refreshFor(uid: String) {
-        try {
+        // A failure keeps the offline cache. The write gate hands every waiter the outcome of the run that
+        // replaced its own, so a cancelled one is a failure here too (runSuspendCatching).
+        runSuspendCatching {
             val encrypted = cloud.fetch(uid)
             if (encrypted == null) {
                 // No cloud record yet: seed it from local data if there is any.
                 gate.markReadable(uid)
                 gate.takeHeldBack(uid)
                 seedCloud(uid, _data.value)
-                return
+                return@runSuspendCatching
             }
             val decrypted = cipher.decrypt(encrypted)
             // Unreadable (e.g. a newer client): keep the gate closed so the local copy never replaces it.
-            val parsed = (if (isCiphertext(decrypted)) null else parseTrackerData(decrypted)) ?: return
+            val parsed = (if (isCiphertext(decrypted)) null else parseTrackerData(decrypted)) ?: return@runSuspendCatching
             gate.markReadable(uid)
             // The fetch was awaited in the session, so a sign-out ended it; this only guards the first write.
             currentCoroutineContext().ensureActive()
@@ -193,15 +194,11 @@ class CourseTrackerRepository(
             // during the fetch is never clobbered by the cloud snapshot.
             var reconciledNext: CourseTrackerData? = null
             _data.update { live -> mergeTrackerData(live, withoutDropped(parsed)).also { reconciledNext = it } }
-            val reconciled = reconciledNext ?: return
+            val reconciled = reconciledNext ?: return@runSuspendCatching
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
             if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) pushMerged(uid, reconciled)
-        } catch (e: Throwable) {
-            // The write gate hands every waiter the outcome of the run that replaced its own.
-            rethrowIfOwnCancellation(e)
-            // Keep the offline cache.
         }
     }
 
@@ -214,13 +211,10 @@ class CourseTrackerRepository(
     }
 
     private suspend fun pushMerged(uid: String, reconciled: CourseTrackerData) {
-        try {
+        runSuspendCatching {
             val enc = cipher.encrypt(serializeTrackerData(reconciled))
             gate.enqueue { cloud.upsert(uid, enc) }
-        } catch (e: Throwable) {
-            rethrowIfOwnCancellation(e)
-            gate.noteHeldBack(uid)
-        }
+        }.onFailure { gate.noteHeldBack(uid) }
     }
 
     // ---- writes ----------------------------------------------------------------------
@@ -249,27 +243,26 @@ class CourseTrackerRepository(
         _isSaving.value = true
         val edits = editsMade
         try {
-            if (upload(uid, _data.value) == TrackerUploadResult.HeldBack) {
-                refresh()
-            } else {
-                // Kept: both writes below touch the next user's counters and data, with no suspension before them.
-                if (userId == uid) {
-                    editsUploaded = maxOf(editsUploaded, edits)
-                    // The upload just merged the cloud copy, so another device's trackers are in hand.
-                    uploadedSnapshot?.let { merged ->
-                        uploadedSnapshot = null
-                        var next: CourseTrackerData? = null
-                        _data.update { live -> mergeTrackerData(live, merged).also { next = it } }
-                        next?.let { writeCache(it, uid) }
-                    }
-                }
+            // A failure stays in the offline cache; the next save or refresh carries it.
+            runSuspendCatching {
+                if (upload(uid, _data.value) == TrackerUploadResult.HeldBack) refresh() else adoptUploaded(uid, edits)
             }
-        } catch (e: Throwable) {
-            rethrowIfOwnCancellation(e)
-            // Stays in the offline cache; the next save or refresh carries it.
         } finally {
             _isSaving.value = false
         }
+    }
+
+    /** After an upload that went through: counts it and takes in the cloud copy it merged. */
+    private suspend fun adoptUploaded(uid: String, edits: Int) {
+        // Kept: both writes below touch the next user's counters and data, with no suspension before them.
+        if (userId != uid) return
+        editsUploaded = maxOf(editsUploaded, edits)
+        // The upload just merged the cloud copy, so another device's trackers are in hand.
+        val merged = uploadedSnapshot ?: return
+        uploadedSnapshot = null
+        var next: CourseTrackerData? = null
+        _data.update { live -> mergeTrackerData(live, merged).also { next = it } }
+        next?.let { writeCache(it, uid) }
     }
 
     /**
@@ -395,12 +388,8 @@ class CourseTrackerRepository(
         if (result.data !== base && userId == uid) {
             writeCache(result.data, uid)
             if (uid != null && result.changed) {
-                try {
-                    upload(uid, result.data, result.dropKeys)
-                } catch (e: Throwable) {
-                    // The upload shares the write gate's outcome; a failure stays in the cache for the next one.
-                    rethrowIfOwnCancellation(e)
-                }
+                // The upload shares the write gate's outcome; a failure stays in the cache for the next one.
+                runSuspendCatching { upload(uid, result.data, result.dropKeys) }
             }
         }
         return result.data

@@ -267,7 +267,8 @@ class WeatherRepository(
     fun refreshWeather(coords: WeatherCoords = currentCoords, force: Boolean = false) {
         val s = _weather.value
         val sameCoords = s.dataCoords?.let { coordsMatch(it, coords) } == true
-        if (!force && sameCoords && s.data != null && !weatherStale.isStale(s.fetchedAt)) return
+        val fresh = sameCoords && s.data != null && !weatherStale.isStale(s.fetchedAt)
+        if (!force && fresh) return
         // A fetch for the same place already runs: refreshNow joins it. Another place replaces it.
         weatherFlight.join(cityKey(coords), scope, cancelReplaced = true) {
             _weather.update { it.copy(isFetching = true) }

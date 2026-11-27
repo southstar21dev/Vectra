@@ -8,10 +8,8 @@ import dev.southstar21.vectra.core.util.roundHalfUp
 import dev.southstar21.vectra.core.util.toFixed
 import dev.southstar21.vectra.features.transit.data.Arrival
 import dev.southstar21.vectra.features.transit.data.CatalogRoute
-import dev.southstar21.vectra.features.transit.data.CatalogRouteVariant
 import dev.southstar21.vectra.features.transit.data.CatalogStop
 import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
-import dev.southstar21.vectra.features.transit.data.TransitCatalog
 import dev.southstar21.vectra.features.transit.etaMinutes
 import dev.southstar21.vectra.features.transit.localeCompare
 import dev.southstar21.vectra.features.transit.normalizeSearchText

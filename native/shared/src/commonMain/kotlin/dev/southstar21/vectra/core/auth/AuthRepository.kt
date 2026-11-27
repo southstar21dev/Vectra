@@ -7,7 +7,6 @@ import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.network.PocketBaseException
-import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
@@ -260,12 +259,8 @@ class AuthRepository(
      * first and warn when it returns false.
      */
     suspend fun signOut() {
-        try {
-            withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } }
-        } catch (e: Throwable) {
-            // Cleanup is best-effort: a timeout or a listener's own failure still signs out.
-            rethrowIfOwnCancellation(e)
-        }
+        // Cleanup is best-effort: a timeout or a listener's own failure still signs out.
+        runSuspendCatching { withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } } }
         clear()
     }
 

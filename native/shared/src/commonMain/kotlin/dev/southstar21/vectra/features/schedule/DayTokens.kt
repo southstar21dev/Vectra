@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import dev.southstar21.vectra.core.designsystem.theme.PlannerParts
 import dev.southstar21.vectra.core.designsystem.theme.PlannerSurface
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
@@ -19,14 +20,14 @@ import dev.southstar21.vectra.core.time.formatTime
 internal class DayColors(val isDark: Boolean) {
     val card = PlannerSurface.fill(isDark)
     /** A cancelled class: darker than a card, still flat (never carved in). */
-    val cancelledCard = PlannerSurface.cancelledFill(isDark)
-    val strip = PlannerSurface.stripFill(isDark)
+    val cancelledCard = PlannerParts.cancelledFill(isDark)
+    val strip = PlannerParts.stripFill(isDark)
     val border = PlannerSurface.border(isDark)
     val borderTop = PlannerSurface.borderTop(isDark)
-    val smallBorderTop = PlannerSurface.smallBorderTop(isDark)
+    val smallBorderTop = PlannerParts.smallBorderTop(isDark)
     val cardShadow = PlannerSurface.shadow(isDark)
-    val stripShadow = PlannerSurface.stripShadow(isDark)
-    val smallShadow = PlannerSurface.smallShadow(isDark)
+    val stripShadow = PlannerParts.stripShadow(isDark)
+    val smallShadow = PlannerParts.smallShadow(isDark)
     val text = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val secondary = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
     val muted = if (isDark) Color(0xFF7C8AA0) else Color(0xFF64748B)
@@ -37,10 +38,10 @@ internal class DayColors(val isDark: Boolean) {
     val nowFill = if (isDark) rgba(255, 255, 255, 0.06f) else rgba(15, 23, 42, 0.05f)
     val nowEdge = if (isDark) rgba(255, 255, 255, 0.12f) else rgba(15, 23, 42, 0.12f)
     val nowBorder = if (isDark) rgba(255, 255, 255, 0.14f) else rgba(15, 23, 42, 0.14f)
-    val edgeNear = PlannerSurface.edgeNear(isDark)
-    val edgeFar = PlannerSurface.edgeFar(isDark)
+    val edgeNear = PlannerParts.edgeNear(isDark)
+    val edgeFar = PlannerParts.edgeFar(isDark)
     val placeholder = if (isDark) rgba(255, 255, 255, 0.07f) else rgba(15, 23, 42, 0.07f)
-    val placeholderStrip = PlannerSurface.placeholderStripFill(isDark)
+    val placeholderStrip = PlannerParts.placeholderStripFill(isDark)
     /** The class open in the wide Schedule tab's side pane: a brighter neutral edge, no colour. */
     val selectedBorder = if (isDark) rgba(255, 255, 255, 0.42f) else rgba(15, 23, 42, 0.38f)
     val clashBorder = rgba(248, 113, 113, 0.45f)

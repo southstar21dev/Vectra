@@ -16,7 +16,6 @@ import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.SessionScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
