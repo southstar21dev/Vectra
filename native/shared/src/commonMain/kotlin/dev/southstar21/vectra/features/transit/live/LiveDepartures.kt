@@ -108,6 +108,7 @@ private fun DepartureRow(a: Arrival, next: Boolean, now: Long, side: Alignment.H
         VText(formatBudapestHm(a.arrivalMs), style = vtext(20.sp to 24.sp, Weight.Extrabold, mono = true).tnum(), color = color, maxLines = 1)
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
             if (a.isPredicted) LiveSignalIcon(size = 11.dp, tint = Vectra.monitor.live)
+            else VIcon(RemixIcons.TimeLine, size = 11.dp, tint = Vectra.monitor.sched)
             VText(if (minutes <= 0) "now" else "in $minutes min", style = vtext(12.sp to 16.sp, Weight.Medium), color = c.textMuted, maxLines = 1)
         }
     }

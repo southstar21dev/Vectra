@@ -48,7 +48,6 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.solidMapGlass
@@ -74,7 +73,7 @@ internal fun RadarHeader(weather: WeatherData?, frame: RadarFrameLabel?, onClose
             Box(
                 Modifier
                     .size(PillHeight)
-                    .glass(CircleShape)
+                    .solidMapGlass(CircleShape)
                     .tappable(CircleShape, role = Role.Button, onClickLabel = "Close radar", onClick = onClose),
                 contentAlignment = Alignment.Center,
             ) { VIcon(RemixIcons.CloseLine, size = 20.dp, tint = c.textPrimary, contentDescription = "Close radar") }
@@ -89,7 +88,7 @@ private fun NowPill(weather: WeatherData) {
     val meta = weatherCodeMeta(weather.weatherCode)
     val (tint, alpha) = skyTone(meta.sky, c)
     Row(
-        Modifier.height(PillHeight).glass(CircleShape).consumeTouches().padding(start = 12.dp, end = 14.dp)
+        Modifier.height(PillHeight).solidMapGlass(CircleShape).consumeTouches().padding(start = 12.dp, end = 14.dp)
             .semantics { contentDescription = "${roundHalfUpToInt(weather.temperature)} degrees, ${meta.label}" },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -123,7 +122,7 @@ private fun LiveChip(frame: RadarFrameLabel?) {
     val c = Vectra.colors
     val live = frame == null || frame.relative == "Now"
     Row(
-        Modifier.height(PillHeight).glass(CircleShape).padding(horizontal = 14.dp).animateContentSize(),
+        Modifier.height(PillHeight).solidMapGlass(CircleShape).padding(horizontal = 14.dp).animateContentSize(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
