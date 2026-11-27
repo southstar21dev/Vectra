@@ -26,7 +26,7 @@ actual fun rememberSystemReduceMotion(): Boolean {
  * chrome such as the keyboard and system sheets match it rather than the system setting.
  */
 @Composable
-actual fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean) {
+internal actual fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean) {
     SideEffect {
         // Pinning the window in System mode would hide OS appearance changes from isSystemInDarkTheme().
         keyWindow()?.overrideUserInterfaceStyle = when {

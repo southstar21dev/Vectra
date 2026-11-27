@@ -35,7 +35,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 /** A comet-tail ring in the accent, spinning once a second. */
 @Composable
-fun Spinner(modifier: Modifier = Modifier, size: Dp = 32.dp, color: Color = Vectra.colors.accentPrimary, thickness: Dp = 3.dp) {
+internal fun Spinner(modifier: Modifier = Modifier, size: Dp = 32.dp, color: Color = Vectra.colors.accentPrimary, thickness: Dp = 3.dp) {
     // Reduced motion slows the spinner rather than freezing the only sign of loading.
     val spin = rememberLoop(if (Vectra.reduceMotion) 2400 else 1000)
     Canvas(modifier.size(size).graphicsLayer { rotationZ = spin.value * 360f }) {
@@ -60,7 +60,7 @@ fun Spinner(modifier: Modifier = Modifier, size: Dp = 32.dp, color: Color = Vect
  * the loading screen).
  */
 @Composable
-fun RingSpinner(modifier: Modifier = Modifier, size: Dp = 12.dp, color: Color = Vectra.colors.borderSubtle, thickness: Dp = 1.dp) {
+internal fun RingSpinner(modifier: Modifier = Modifier, size: Dp = 12.dp, color: Color = Vectra.colors.borderSubtle, thickness: Dp = 1.dp) {
     val spin = rememberLoop(1000)
     Canvas(modifier.size(size).graphicsLayer { rotationZ = spin.value * 360f }) {
         val stroke = thickness.toPx()
@@ -80,21 +80,21 @@ fun RingSpinner(modifier: Modifier = Modifier, size: Dp = 12.dp, color: Color = 
 
 /** Small inline loader: the Loader4 icon spinning once a second. */
 @Composable
-fun InlineLoader(modifier: Modifier = Modifier, size: Dp = 16.dp, tint: Color = LocalContentColor.current) {
+internal fun InlineLoader(modifier: Modifier = Modifier, size: Dp = 16.dp, tint: Color = LocalContentColor.current) {
     val spin = rememberLoop(1000)
     VIcon(RemixIcons.Loader4Line, modifier.graphicsLayer { rotationZ = spin.value * 360f }, size, tint)
 }
 
 /** Skeleton pulse: opacity 1 → .5 → 1 over 2s. */
 @Composable
-fun Modifier.pulse(): Modifier {
+internal fun Modifier.pulse(): Modifier {
     if (Vectra.reduceMotion) return this
     val t = rememberLoop(1000, CubicBezierEasing(0.4f, 0f, 0.6f, 1f), reverse = true)
     return graphicsLayer { alpha = 1f - 0.5f * t.value }
 }
 
 @Composable
-fun Skeleton(modifier: Modifier = Modifier, shape: Shape = Radius.Control) {
+internal fun Skeleton(modifier: Modifier = Modifier, shape: Shape = Radius.Control) {
     Box(modifier.pulse().background(Vectra.colors.surfaceOverlay, shape))
 }
 
@@ -102,7 +102,7 @@ private val ZzzLetters = listOf("M3 15h6l-6 6h6", "M11.5 9.5h4.5l-4.5 4.5h4.5", 
 
 /** Zzz letters drifting up in sequence (2.4s, staggered 0.3s). */
 @Composable
-fun SleepingIcon(modifier: Modifier = Modifier, size: Dp = 24.dp, tint: Color = LocalContentColor.current) {
+internal fun SleepingIcon(modifier: Modifier = Modifier, size: Dp = 24.dp, tint: Color = LocalContentColor.current) {
     val paths = remember { ZzzLetters.map { PathParser().parsePathString(it).toPath() } }
     val reduce = Vectra.reduceMotion
     val onScreen = rememberOnScreen()

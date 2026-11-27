@@ -41,7 +41,7 @@ private const val MinGlideVelocity = 300f
  *
  * Goes right before the container's `verticalScroll` / `LazyColumn` modifier, with the same [state].
  */
-fun Modifier.trackpadMomentum(state: ScrollableState, orientation: Orientation = Orientation.Vertical): Modifier =
+internal fun Modifier.trackpadMomentum(state: ScrollableState, orientation: Orientation = Orientation.Vertical): Modifier =
     if (trackpadScrollStopsDead) this then TrackpadMomentumElement(state, orientation) else this
 
 private data class TrackpadMomentumElement(

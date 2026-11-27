@@ -13,7 +13,7 @@ import kotlinx.coroutines.withTimeout
  * cancelled `Deferred` being awaited, a timeout that ran out inside [block]), so it is an
  * ordinary failure: rethrowing it would quietly end a coroutine nobody cancelled.
  */
-suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> = try {
+internal suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> = try {
     Result.success(block())
 } catch (e: CancellationException) {
     currentCoroutineContext().ensureActive()
@@ -26,7 +26,7 @@ suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> = try {
  * Exponential backoff: [baseMs] doubled [attempt] times (attempt 0 waits [baseMs]), never above [capMs].
  * The one curve behind the retry loops; callers pick the base and the cap.
  */
-fun exponentialBackoffMs(attempt: Int, baseMs: Long, capMs: Long = Long.MAX_VALUE): Long =
+internal fun exponentialBackoffMs(attempt: Int, baseMs: Long, capMs: Long = Long.MAX_VALUE): Long =
     minOf(capMs, baseMs shl attempt.coerceIn(0, MaxBackoffShift))
 
 /**
@@ -34,7 +34,7 @@ fun exponentialBackoffMs(attempt: Int, baseMs: Long, capMs: Long = Long.MAX_VALU
  * that must not turn a cancellation nobody asked for (a cancelled shared `Deferred`, a timeout)
  * into the end of the caller; with `runSuspendCatching` it is the same rule.
  */
-suspend fun rethrowIfOwnCancellation(e: Throwable) {
+internal suspend fun rethrowIfOwnCancellation(e: Throwable) {
     if (e is CancellationException) currentCoroutineContext().ensureActive()
 }
 
@@ -42,7 +42,7 @@ suspend fun rethrowIfOwnCancellation(e: Throwable) {
  * The one retry policy: [attempts] tries in all, [wait] ms between them (given how many have failed
  * so far, from 1), each try ended after [attemptTimeoutMs] when set. A timeout is a failure like any other.
  */
-class BackoffPolicy private constructor(
+internal class BackoffPolicy private constructor(
     val attempts: Int,
     val attemptTimeoutMs: Long?,
     private val wait: (failures: Int) -> Long,
@@ -66,7 +66,7 @@ class BackoffPolicy private constructor(
  * After the last try, or when [retryIf] says a failure cannot be cured by trying again, it throws that failure.
  * The caller's own cancellation is never retried.
  */
-suspend fun <T> retrying(
+internal suspend fun <T> retrying(
     policy: BackoffPolicy,
     retryIf: (Throwable) -> Boolean = { true },
     block: suspend (attempt: Int) -> T,

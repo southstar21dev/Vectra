@@ -1,7 +1,7 @@
 package dev.southstar21.vectra.core.maps
 
 /** Stop marker kind; [value] is the string written into GeoJSON `kind` properties. */
-enum class MapStopKind(val value: String) {
+internal enum class MapStopKind(val value: String) {
     Regular("regular"),
     Terminus("terminus"),
     Tracked("tracked"),
@@ -14,7 +14,7 @@ enum class MapStopKind(val value: String) {
     }
 }
 
-data class MapStop(
+internal data class MapStop(
     val id: String? = null,
     val name: String,
     val lat: Double,
@@ -23,7 +23,7 @@ data class MapStop(
 )
 
 /** Label collision priority: selected > tracked > terminus > regular > secondary. */
-fun labelPriority(kind: MapStopKind?): Int = when (kind) {
+internal fun labelPriority(kind: MapStopKind?): Int = when (kind) {
     MapStopKind.Selected -> 4
     MapStopKind.Tracked -> 3
     MapStopKind.Terminus -> 2

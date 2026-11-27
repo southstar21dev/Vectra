@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 /** The server refused this build; [minVersion] is the oldest it still serves, when it said. */
-data class UpdateRequired(val minVersion: String?)
+internal data class UpdateRequired(val minVersion: String?)
 
 /** What is kept on disk: the refusal, and which build it was for. */
 @Serializable
@@ -27,7 +27,7 @@ private data class StoredRefusal(val version: String, val minVersion: String? = 
  * restarts and offline launches until it is updated (a new version ignores and drops it) or the
  * server lowers its minimum (a successful [check] clears it).
  */
-class UpdateGate(
+internal class UpdateGate(
     private val kv: KeyValueStore,
     private val scope: CoroutineScope,
     private val appVersion: String,

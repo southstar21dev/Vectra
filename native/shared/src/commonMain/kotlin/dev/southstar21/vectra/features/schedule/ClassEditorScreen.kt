@@ -100,7 +100,7 @@ private val GeneratedColors = listOf(
     "#85C1E9", "#82E0AA", "#F8C471", "#D98880", "#AED6F1",
 )
 
-fun generateEventColor(): String = GeneratedColors.random()
+internal fun generateEventColor(): String = GeneratedColors.random()
 
 /** A class's `HH:mm` times are real clock times and it ends later the same day (classes never cross midnight). */
 internal fun classTimesValid(start: String, end: String): Boolean {

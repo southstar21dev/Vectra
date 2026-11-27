@@ -21,13 +21,13 @@ internal const val Tnum = "tnum"
 internal fun TextStyle.tnum() = copy(fontFeatureSettings = Tnum)
 
 @Immutable
-data class VectraFonts(val sans: FontFamily, val mono: FontFamily)
+internal data class VectraFonts(val sans: FontFamily, val mono: FontFamily)
 
 private val Weights = listOf(400, 500, 600, 700, 800, 900)
 
 /** Inter Variable + JetBrains Mono Variable, one instance per weight the app uses. */
 @Composable
-fun rememberVectraFonts(): VectraFonts {
+internal fun rememberVectraFonts(): VectraFonts {
     val sans = FontFamily(
         Weights.map { w ->
             Font(
@@ -105,7 +105,7 @@ object Tracking {
 }
 
 /** Named styles for the app's text hierarchy, which leans on weight more than size. */
-object VType {
+internal object VType {
     val Body = vtext(TypeScale.Body)
     val Caption = vtext(TypeScale.Caption)
     val Label = vtext(TypeScale.Caption, Weight.Semibold)

@@ -11,7 +11,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /** One cached query's state. */
-data class QueryState<T>(
+internal data class QueryState<T>(
     val data: T? = null,
     /** First load with no data yet. */
     val isLoading: Boolean = false,
@@ -46,7 +46,7 @@ internal fun <T> QueryState<T>.seeded(value: T, at: Long): QueryState<T> =
  * When data counts as stale: [staleTimeMs] after it landed, or at once when it never did or was
  * invalidated. The one rule behind every refetch-on-resume and refresh-when-old check.
  */
-class StaleGate(private val staleTimeMs: Long, private val clock: () -> Long = ::nowMs) {
+internal class StaleGate(private val staleTimeMs: Long, private val clock: () -> Long = ::nowMs) {
     fun isStale(updatedAt: Long, invalidated: Boolean = false): Boolean =
         invalidated || updatedAt == 0L || clock() - updatedAt >= staleTimeMs
 }

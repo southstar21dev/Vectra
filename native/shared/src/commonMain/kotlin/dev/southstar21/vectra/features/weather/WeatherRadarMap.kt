@@ -54,7 +54,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val RadarCameraMaxZoom = 14.0
 
 @Composable
-fun WeatherRadarMap(
+internal fun WeatherRadarMap(
     style: String,
     center: WeatherCoords,
     activeFrame: RadarFrame?,

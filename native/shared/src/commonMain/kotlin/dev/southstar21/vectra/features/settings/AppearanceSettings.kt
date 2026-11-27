@@ -62,7 +62,7 @@ private fun SectionLabel(text: String) =
 
 /** The "Look" section. Every control applies instantly. */
 @Composable
-fun AppearanceSettings(repo: AppearanceRepository) {
+internal fun AppearanceSettings(repo: AppearanceRepository) {
     val prefs by repo.prefs.collectAsStateWithLifecycle()
     val c = Vectra.colors
     SettingsSection("Look", tilt = StampTilt.Left, rows = listOf {

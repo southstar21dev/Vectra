@@ -19,7 +19,7 @@ import kotlinx.coroutines.sync.withLock
  * [DemoFeed.NoPinEmail] gets two real lines and no pins. Started once from `AppStartup`, so no
  * screen has to be open for it, and it does nothing when [enabled] is false (release builds).
  */
-class DemoSeeder(
+internal class DemoSeeder(
     private val auth: AuthRepository,
     private val transit: TransitRepository,
     private val scope: CoroutineScope,

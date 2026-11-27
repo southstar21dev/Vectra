@@ -51,7 +51,7 @@ private val CardWidth = 448.dp
  * screen's owl above one card). There is no way past it except updating.
  */
 @Composable
-fun UpdateRequiredScreen(required: UpdateRequired, installedVersion: String, modifier: Modifier = Modifier) {
+internal fun UpdateRequiredScreen(required: UpdateRequired, installedVersion: String, modifier: Modifier = Modifier) {
     val target = remember { updateTarget() }
     val uri = LocalUriHandler.current
     Box(

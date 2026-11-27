@@ -57,7 +57,7 @@ internal fun QueryState<FutarArrivalsResponse>.toEntry() =
  *
  * Obtain through [transitRepository].
  */
-class TransitRepository internal constructor(
+internal class TransitRepository internal constructor(
     private val pb: PocketBaseClient,
     private val crypto: CryptoClient,
     private val kv: KeyValueStore,

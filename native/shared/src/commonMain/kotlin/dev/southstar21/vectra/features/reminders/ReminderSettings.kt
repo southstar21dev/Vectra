@@ -67,7 +67,7 @@ private fun BlockLabel(text: String) =
     VText(text, Modifier.padding(bottom = 8.dp), vtext(11.sp to 16.sp, Weight.Semibold), Vectra.colors.textMuted)
 
 /** The "Class reminders" settings group. */
-fun classReminderRows(scheduler: ReminderScheduler, notifier: Notifier): List<@Composable () -> Unit> = listOf(
+internal fun classReminderRows(scheduler: ReminderScheduler, notifier: Notifier): List<@Composable () -> Unit> = listOf(
     { BeforeClassRows(scheduler, notifier) },
     { NextClassRow(scheduler, notifier) },
     { TypeFilter(scheduler) },
@@ -167,7 +167,7 @@ private fun PersonalItemsRow(scheduler: ReminderScheduler) {
 
 /** The Class reminders footer: a test reminder a few seconds out. */
 @Composable
-fun TestReminderLink(scheduler: ReminderScheduler, notifier: Notifier) {
+internal fun TestReminderLink(scheduler: ReminderScheduler, notifier: Notifier) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val enable = rememberEnabler(notifier)

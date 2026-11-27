@@ -2,9 +2,9 @@ package dev.southstar21.vectra.core.platform
 
 import android.os.Build
 
-actual val platformName: String = "android"
+internal actual val platformName: String = "android"
 
-actual val deviceDisplayName: String
+internal actual val deviceDisplayName: String
     get() {
         val maker = Build.MANUFACTURER.orEmpty().replaceFirstChar { it.uppercase() }
         val model = Build.MODEL.orEmpty()
@@ -12,4 +12,4 @@ actual val deviceDisplayName: String
         return name.trim().ifEmpty { "Android" }
     }
 
-actual val biometricName: String = "fingerprint"
+internal actual val biometricName: String = "fingerprint"

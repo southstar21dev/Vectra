@@ -46,7 +46,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
-data class SelectOption<T>(
+internal data class SelectOption<T>(
     val value: T,
     val label: String,
     val subtitle: String? = null,
@@ -59,7 +59,7 @@ data class SelectOption<T>(
 
 /** Glass pill showing the current choice; tapping it opens the options in a sheet. */
 @Composable
-fun <T> VSelect(
+internal fun <T> VSelect(
     value: T,
     options: List<SelectOption<T>>,
     onChange: (T) -> Unit,
@@ -118,7 +118,7 @@ fun <T> VSelect(
 
 /** A sheet listing [options] with a check against the current [value]. */
 @Composable
-fun <T> OptionSheet(
+internal fun <T> OptionSheet(
     open: Boolean,
     title: String?,
     options: List<SelectOption<T>>,
@@ -130,7 +130,7 @@ fun <T> OptionSheet(
 
 /** A sheet listing [options] with a check against each one in [values]; tapping one toggles it and leaves the sheet open. */
 @Composable
-fun <T> MultiOptionSheet(
+internal fun <T> MultiOptionSheet(
     open: Boolean,
     title: String?,
     options: List<SelectOption<T>>,

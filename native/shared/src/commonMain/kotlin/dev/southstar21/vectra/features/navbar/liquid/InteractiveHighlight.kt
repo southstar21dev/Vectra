@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
  * starts under the fingertip and follows it, while [pressProgress] and [offset] drive a gel-like
  * swell and lean in the glass's graphics layer.
  */
-class InteractiveHighlight(
+internal class InteractiveHighlight(
     private val animationScope: CoroutineScope,
     private val position: (size: Size, offset: Offset) -> Offset = { _, offset -> offset },
 ) {

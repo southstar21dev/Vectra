@@ -23,7 +23,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
 /** What a [Banner] says: a mistake, a warning, a notice, a success or a plain note. */
-enum class BannerTone { Red, Amber, Blue, Green, Neutral }
+internal enum class BannerTone { Red, Amber, Blue, Green, Neutral }
 
 @Composable
 private fun BannerTone.tint(): Tint {
@@ -43,7 +43,7 @@ private fun BannerTone.tint(): Tint {
  * [onClick] makes the whole banner tappable.
  */
 @Composable
-fun Banner(
+internal fun Banner(
     tone: BannerTone,
     icon: ImageVector?,
     title: String,
@@ -75,6 +75,6 @@ fun Banner(
 
 /** The trailing chevron of a tappable [Banner], in the banner's ink. */
 @Composable
-fun BannerChevron(tone: BannerTone, modifier: Modifier = Modifier) {
+internal fun BannerChevron(tone: BannerTone, modifier: Modifier = Modifier) {
     VIcon(RemixIcons.ArrowRightSLine, modifier.padding(start = 2.dp), tint = tone.tint().text)
 }

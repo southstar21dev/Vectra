@@ -43,7 +43,7 @@ internal class ScheduleSession(private val auth: AuthRepository, private val con
 }
 
 /** The class editor's output. */
-data class ScheduleFormData(
+internal data class ScheduleFormData(
     val courseName: String,
     val attendanceType: String?,
     val courseCode: String,

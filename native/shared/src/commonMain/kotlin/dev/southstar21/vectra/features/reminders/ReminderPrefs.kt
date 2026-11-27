@@ -8,14 +8,14 @@ import kotlinx.serialization.Serializable
 import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Settings saved when each leg held a single line. */
-object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
+internal object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
 
 /**
  * The reminder settings. Off until the user turns them on (they need the permission). Kept on the
  * device and in the profile's `preferences.reminders`, so they come back after a reinstall.
  */
 @Serializable
-data class ReminderPrefs(
+internal data class ReminderPrefs(
     /** Before the first class of the day (and the first after a long break): the room, [leadMinutes] ahead. */
     val beforeClass: Boolean = false,
     val leadMinutes: Int = 60,
@@ -48,7 +48,7 @@ data class ReminderPrefs(
  * and at boot without the tracker list. The tracker id only marks which row is selected.
  */
 @Serializable
-data class CommuteLeg(
+internal data class CommuteLeg(
     val trackerId: String,
     val stopId: String,
     val stopName: String,

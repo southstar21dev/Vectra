@@ -16,10 +16,10 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
-enum class StatusTone { Amber, Blue, Emerald, Green, Purple, Red, Sky, Violet, Neutral }
+internal enum class StatusTone { Amber, Blue, Emerald, Green, Purple, Red, Sky, Violet, Neutral }
 
 @Composable
-fun StatusTone.color() = Vectra.colors.let { c ->
+internal fun StatusTone.color() = Vectra.colors.let { c ->
     when (this) {
         StatusTone.Amber -> c.tints.amber.text
         StatusTone.Blue -> c.tints.blue.text
@@ -35,7 +35,7 @@ fun StatusTone.color() = Vectra.colors.let { c ->
 
 /** Inline metadata label: a tone-coloured icon or dot beside a quiet grey label. */
 @Composable
-fun StatusLabel(text: String, modifier: Modifier = Modifier, tone: StatusTone = StatusTone.Neutral, icon: ImageVector? = null) {
+internal fun StatusLabel(text: String, modifier: Modifier = Modifier, tone: StatusTone = StatusTone.Neutral, icon: ImageVector? = null) {
     val toneColor = tone.color()
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) VIcon(icon, size = 14.dp, tint = toneColor)

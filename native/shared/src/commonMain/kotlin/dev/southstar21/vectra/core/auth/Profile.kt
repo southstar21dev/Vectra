@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /** The users auth record. */
-data class Profile(
+internal data class Profile(
     val id: String,
     val email: String?,
     val fullName: String?,

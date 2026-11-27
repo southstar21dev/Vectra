@@ -6,14 +6,14 @@ import platform.LocalAuthentication.LABiometryTypeTouchID
 import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthenticationWithBiometrics
 import platform.UIKit.UIDevice
 
-actual val platformName: String = "ios"
+internal actual val platformName: String = "ios"
 
-actual val deviceDisplayName: String
+internal actual val deviceDisplayName: String
     get() = UIDevice.currentDevice.model.ifEmpty { "iPhone" }
 
 /** Touch ID on devices that have it, otherwise Face ID (biometryType is only filled in after a policy check). */
 @OptIn(ExperimentalForeignApi::class)
-actual val biometricName: String
+internal actual val biometricName: String
     get() {
         val context = LAContext()
         context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, error = null)

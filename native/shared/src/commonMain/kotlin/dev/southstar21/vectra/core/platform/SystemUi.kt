@@ -12,4 +12,4 @@ expect fun rememberSystemReduceMotion(): Boolean
  * style (iOS) must leave it unpinned and keep tracking the OS.
  */
 @Composable
-expect fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean)
+internal expect fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean)

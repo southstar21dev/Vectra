@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * `data` (the encrypted blob) and `updated_at` — with a unique index on `user`.
  * PocketBase has no upsert, so the writer finds the row first.
  */
-interface TrackerCloud {
+internal interface TrackerCloud {
     /** The encrypted blob, or null when the user has no row yet; other failures throw. */
     suspend fun fetch(userId: String): String?
 
@@ -25,7 +25,7 @@ interface TrackerCloud {
     suspend fun upsert(userId: String, encrypted: String)
 }
 
-class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
+internal class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
     private val collection get() = pb.collection("course_tracker_data")
 
     private suspend fun findRow(userId: String): JsonObject? = collection.getFirstOrNull("user = ${pbString(userId)}")
@@ -62,7 +62,7 @@ class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
 }
 
 /** Field encryption for the blob. */
-interface TrackerCipher {
+internal interface TrackerCipher {
     /** Throws on failure — plaintext is never stored. */
     suspend fun encrypt(plain: String): String
 
@@ -70,13 +70,13 @@ interface TrackerCipher {
     suspend fun decrypt(value: String): String
 }
 
-class CryptoTrackerCipher(private val crypto: CryptoClient) : TrackerCipher {
+internal class CryptoTrackerCipher(private val crypto: CryptoClient) : TrackerCipher {
     override suspend fun encrypt(plain: String): String = crypto.encrypt(plain) ?: error("Encryption failed")
     override suspend fun decrypt(value: String): String = crypto.decrypt(value) ?: value
 }
 
 /** Thrown when the cloud row exists but cannot be decrypted or parsed. */
-class UnreadableCloudTrackerException : IllegalStateException("Course tracker cloud data is unreadable")
+internal class UnreadableCloudTrackerException : IllegalStateException("Course tracker cloud data is unreadable")
 
 /**
  * The cloud-write gate. The row is one whole-document
@@ -85,7 +85,7 @@ class UnreadableCloudTrackerException : IllegalStateException("Course tracker cl
  * write is remembered, and uploads are serialised with queued ones collapsing
  * to the newest (each carries the full document).
  */
-class CloudWriteGate {
+internal class CloudWriteGate {
     private val state = Mutex()
     private val queue = Mutex()
     private val readable = mutableSetOf<String>()

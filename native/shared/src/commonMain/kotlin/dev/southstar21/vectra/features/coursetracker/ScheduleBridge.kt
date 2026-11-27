@@ -13,7 +13,7 @@ import dev.southstar21.vectra.features.schedule.normalizeTime
  * The course tracker's side of the schedule: the class card's check-in button and
  * the key the Course Hub is opened with.
  */
-class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : ScheduleCourseTrackerHooks {
+internal class CourseTrackerScheduleHooks(tracker: Lazy<CourseTrackerRepository>) : ScheduleCourseTrackerHooks {
     private val repo by tracker
 
     private fun identity(e: ScheduleEvent) =
@@ -96,7 +96,7 @@ internal fun presentStreak(sessions: List<AttendanceSession>, date: String, star
 }
 
 /** After a Neptun sync, refresh the tracker blob and reconcile it against the new schedule. */
-class CourseTrackerScheduleSync(private val tracker: Lazy<CourseTrackerRepository>) : NeptunSyncListener {
+internal class CourseTrackerScheduleSync(private val tracker: Lazy<CourseTrackerRepository>) : NeptunSyncListener {
     override suspend fun onNeptunEventsPersisted(events: List<ScheduleEvent>) {
         val repo = tracker.value
         repo.refresh()

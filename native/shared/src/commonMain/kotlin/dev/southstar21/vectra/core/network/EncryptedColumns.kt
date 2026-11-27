@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonObject
  * Values are addressed by column name; the position in [names] only matters for the batched
  * `decryptAll` round trip, where [ciphertexts] and [clear] share it.
  */
-class EncryptedColumns(val names: List<String>) {
+internal class EncryptedColumns(val names: List<String>) {
     init {
         require(names.toSet().size == names.size) { "Duplicate encrypted column" }
     }
@@ -39,7 +39,7 @@ class EncryptedColumns(val names: List<String>) {
 }
 
 /** One row's decrypted columns, by name. */
-class ClearColumns(private val values: Map<String, String?>) {
+internal class ClearColumns(private val values: Map<String, String?>) {
     operator fun get(name: String): String? = values.getValue(name)
 
     /** Whether any column came back still encrypted (the key could not be used). */

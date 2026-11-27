@@ -14,7 +14,7 @@ private var activeRadarScheme: RadarMapScheme? = null
  * Serves the map's `doppler://` radar tiles: RainViewer's, recoloured (and past zoom 7 enlarged)
  * by [RadarTileRenderer], as a PNG. Installed through `configureMapNetworking`.
  */
-class RadarMapScheme(http: HttpClient) : MapSchemeHandler {
+internal class RadarMapScheme(http: HttpClient) : MapSchemeHandler {
     private val renderer = radarTileRenderer(http)
 
     init {
@@ -33,6 +33,6 @@ class RadarMapScheme(http: HttpClient) : MapSchemeHandler {
 }
 
 /** Drop the radar's cached raw tiles; call when the radar closes so they don't stay on the heap. */
-fun releaseRadarTileCache() {
+internal fun releaseRadarTileCache() {
     activeRadarScheme?.clear()
 }

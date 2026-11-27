@@ -61,7 +61,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  * (a short fade under reduced motion). Anything larger belongs on a pushed screen or a sheet.
  */
 @Composable
-fun VDialog(
+internal fun VDialog(
     open: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -152,32 +152,32 @@ fun VDialog(
 private const val DialogRestDelta = 0.005f
 
 @Composable
-fun DialogCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun DialogCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     BarButton(RemixIcons.CloseLine, "Close", onClick, modifier)
 }
 
 @Composable
-fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.padding(top = 4.dp, end = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
 }
 
 @Composable
-fun DialogTitle(text: String, modifier: Modifier = Modifier) =
+internal fun DialogTitle(text: String, modifier: Modifier = Modifier) =
     VText(text, modifier.semantics { heading() }, vtext(TypeScale.Title17, Weight.Bold), Vectra.colors.textPrimary)
 
 @Composable
-fun DialogDescription(text: String, modifier: Modifier = Modifier) =
+internal fun DialogDescription(text: String, modifier: Modifier = Modifier) =
     VText(text, modifier.padding(top = 6.dp), vtext(TypeScale.Caption, lineHeight = 19.5.sp), Vectra.colors.textSecondary)
 
 /** Buttons stacked full-width under the dialog text. */
 @Composable
-fun DialogFooter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun DialogFooter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom), content = content)
 }
 
 /** Asks before a consequential action; [onConfirm] runs with the dialog showing progress. */
 @Composable
-fun ConfirmDialog(
+internal fun ConfirmDialog(
     open: Boolean,
     onClose: () -> Unit,
     onConfirm: suspend () -> Unit,

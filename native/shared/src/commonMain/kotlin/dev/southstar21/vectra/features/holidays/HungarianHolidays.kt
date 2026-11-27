@@ -9,9 +9,9 @@ import kotlinx.datetime.plus
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-data class Holiday(val month: Int, val day: Int, val name: String, val hungarian: String)
+internal data class Holiday(val month: Int, val day: Int, val name: String, val hungarian: String)
 
-data class UpcomingHoliday(val holiday: Holiday, val daysUntil: Int)
+internal data class UpcomingHoliday(val holiday: Holiday, val daysUntil: Int)
 
 /** Easter Sunday (Gauss algorithm) for the given year. */
 internal fun easterSunday(year: Int): LocalDate {
@@ -59,7 +59,7 @@ private fun easterBasedHolidays(year: Int): List<Holiday> {
     )
 }
 
-fun getHungarianHolidays(year: Int): List<Holiday> = FixedHolidays + easterBasedHolidays(year)
+internal fun getHungarianHolidays(year: Int): List<Holiday> = FixedHolidays + easterBasedHolidays(year)
 
 private val YmdPattern = Regex("""^(\d{4})-(\d{2})-(\d{2})$""")
 
@@ -67,7 +67,7 @@ private val YmdPattern = Regex("""^(\d{4})-(\d{2})-(\d{2})$""")
  * Whether a Budapest calendar date (YYYY-MM-DD) is a Hungarian public holiday
  * (munkaszüneti nap): no classes are held, so weekly classes skip it.
  */
-fun isHungarianPublicHoliday(ymd: String): Boolean {
+internal fun isHungarianPublicHoliday(ymd: String): Boolean {
     val match = YmdPattern.matchEntire(ymd) ?: return false
     val (y, m, d) = match.destructured
     val month = m.toInt()
@@ -79,7 +79,7 @@ fun isHungarianPublicHoliday(ymd: String): Boolean {
  * Every holiday within [maxDaysAhead] days, chronologically. "Today" is the
  * Budapest calendar date of [now], not the device's.
  */
-fun getUpcomingHolidays(now: Instant = Clock.System.now(), maxDaysAhead: Int = 14): List<UpcomingHoliday> {
+internal fun getUpcomingHolidays(now: Instant = Clock.System.now(), maxDaysAhead: Int = 14): List<UpcomingHoliday> {
     val today = nowInBudapest(now).date
     return listOf(today.year, today.year + 1)
         .flatMap { year ->

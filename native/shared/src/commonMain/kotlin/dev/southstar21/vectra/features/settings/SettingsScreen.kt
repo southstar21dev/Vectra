@@ -63,13 +63,13 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 private val SettingsColumnWidth = 448.dp
 
 /** Published by .github/workflows/release.yml from .github/pages/privacy.html. */
-const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
+internal const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
 
 /** "1" once the setup card was dismissed on this device. */
 private const val SetupDismissedKey = "settings_setup_dismissed"
 
 /** Sections the setup card can bring into view, for features set up in place. */
-enum class SettingsAnchor { Account, Commute }
+internal enum class SettingsAnchor { Account, Commute }
 
 /**
  * The settings page. The Neptun card, the location row and the schedule's Danger-zone rows belong
@@ -77,7 +77,7 @@ enum class SettingsAnchor { Account, Commute }
  * passed in as slots.
  */
 @Composable
-fun SettingsScreen(
+internal fun SettingsScreen(
     graph: AppGraph,
     neptunSection: (@Composable () -> Unit)? = null,
     locationRow: (@Composable () -> Unit)? = null,

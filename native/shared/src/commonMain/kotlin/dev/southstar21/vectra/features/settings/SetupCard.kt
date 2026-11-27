@@ -42,7 +42,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
  * left out rather than flashing in as missing.
  */
 @Immutable
-class SetupItem(
+internal class SetupItem(
     val icon: ImageVector,
     val title: String,
     val subtitle: String,
@@ -61,7 +61,7 @@ private const val FirstShown = 4
  * turns it on. Items drop off as they're done; [onDismiss] hides the card for good (About brings it back).
  */
 @Composable
-fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = Vectra.colors
     val known = items.filter { it.done != null }
     val missing = known.filter { it.done == false }

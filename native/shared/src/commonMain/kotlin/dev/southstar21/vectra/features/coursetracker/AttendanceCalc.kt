@@ -22,13 +22,13 @@ import kotlinx.datetime.plus
 
 private val YmdPattern = Regex("^\\d{4}-\\d{2}-\\d{2}$")
 
-data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
+internal data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
 
 /**
  * The academic week of [dateStr] the way the schedule's week switcher numbers
  * it: the week containing the semester start is Week 1, earlier is "Pre-semester".
  */
-fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
+internal fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
     if (semesterStartStr == null || !isYmdString(semesterStartStr) || !isYmdString(dateStr)) return null
     val start = parseIsoDate(semesterStartStr) ?: return null
     val target = parseIsoDate(dateStr) ?: return null
@@ -42,7 +42,7 @@ fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWee
 // Attendance
 // ---------------------------------------------------------------------------
 
-data class AttendanceStats(
+internal data class AttendanceStats(
     val totalSessions: Int,
     val presentCount: Int,
     val absentCount: Int,
@@ -63,20 +63,20 @@ data class AttendanceStats(
     val isOverAbsenceLimit: Boolean,
 )
 
-enum class AttendanceRiskTier { Unknown, Safe, Warning, Critical }
+internal enum class AttendanceRiskTier { Unknown, Safe, Warning, Critical }
 
 /**
  * THE single source of truth for a course's tracker key: the base code (or the
  * base title for short/absent codes) plus the semester. Any other derivation
  * silently forks the tracker.
  */
-fun resolveCourseKey(identity: CourseIdentity): String =
+internal fun resolveCourseKey(identity: CourseIdentity): String =
     TrackerCourses.courseKey(identity.courseCode, identity.courseName, identity.semester)
 
-fun resolveCourseKey(event: ScheduleEvent): String = TrackerCourses.courseKey(event.courseCode, event.courseName, event.semester)
+internal fun resolveCourseKey(event: ScheduleEvent): String = TrackerCourses.courseKey(event.courseCode, event.courseName, event.semester)
 
 /** Collapses duplicate sessions of a slot, keeping a marked one; sorted by date and time. */
-fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSession> {
+internal fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSession> {
     val map = LinkedHashMap<String, AttendanceSession>()
     for (s in sessions) {
         if (s.date.isEmpty()) continue
@@ -105,7 +105,7 @@ fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSessi
  * wins, then the group code's class type (E01 → lecture, G01 → seminar,
  * L01 → lab), then the event type.
  */
-fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType: String?): SessionType {
+internal fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType: String?): SessionType {
     val explicit = attendanceType.nonEmpty()
     var type = if (explicit == "unknown") SessionType.Other else SessionType.Lecture
     when (explicit) {
@@ -126,7 +126,7 @@ fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType:
     return type
 }
 
-fun getEventSessionType(event: ScheduleEvent): SessionType = getEventSessionType(event.courseCode, event.eventType, event.attendanceType)
+internal fun getEventSessionType(event: ScheduleEvent): SessionType = getEventSessionType(event.courseCode, event.eventType, event.attendanceType)
 
 private data class ClassSlot(
     val dayOfWeek: Int,
@@ -169,7 +169,7 @@ private fun weeksToCover(start: LocalDate, slots: List<ClassSlot>): Int {
  * the manual fallback slot), preserving every marked or custom session and
  * never resurrecting a tombstoned slot.
  */
-fun generateSessionsFromScheduleEvents(
+internal fun generateSessionsFromScheduleEvents(
     courseName: String,
     courseCode: String? = null,
     semester: String? = null,
@@ -319,7 +319,7 @@ fun generateSessionsFromScheduleEvents(
 }
 
 /** generateScheduleSessions: the single-slot convenience form. */
-fun generateScheduleSessions(
+internal fun generateScheduleSessions(
     dayOfWeek: Int,
     startTime: String? = null,
     endTime: String? = null,
@@ -342,7 +342,7 @@ fun generateScheduleSessions(
     frequency = frequency,
 )
 
-fun calculateAttendanceStats(
+internal fun calculateAttendanceStats(
     sessions: List<AttendanceSession>,
     maxAbsencesAllowed: Int?,
     minAttendancePercent: Double?,
@@ -389,7 +389,7 @@ fun calculateAttendanceStats(
  * Risk tier: unknown with nothing marked; critical over the quota or below the
  * minimum; warning at the quota or one away; safe otherwise.
  */
-fun getAttendanceRiskTier(
+internal fun getAttendanceRiskTier(
     absentCount: Int,
     maxAbsencesAllowed: Int?,
     attendancePercent: Double,

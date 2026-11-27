@@ -6,7 +6,7 @@ import kotlin.math.abs
  * Pure tap/swipe classification shared by the
  * bottom nav and the schedule day switcher.
  */
-object NavGestures {
+internal object NavGestures {
     /** A touch with less movement than this (either axis) is a tap. */
     const val TAP_SLOP = 20f
     /** A horizontal drag must move at least this far to count as a swipe. */

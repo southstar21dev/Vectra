@@ -38,7 +38,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  * pass the rows as a list and the dividers are inserted between them.
  */
 @Composable
-fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
+internal fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     Column(modifier.fillMaxWidth().plannerCard()) {
         rows.forEachIndexed { i, row ->
             if (i > 0) HairlineDivider()
@@ -49,7 +49,7 @@ fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>)
 
 /** A stacked label + control row inside a FormGroup. */
 @Composable
-fun FormField(
+internal fun FormField(
     label: String,
     modifier: Modifier = Modifier,
     hint: String? = null,
@@ -69,7 +69,7 @@ fun FormField(
 
 /** A single-line row: text on the left, a switch or value on the right. */
 @Composable
-fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String? = null, control: @Composable () -> Unit) {
+internal fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String? = null, control: @Composable () -> Unit) {
     val c = Vectra.colors
     Row(
         modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
@@ -86,7 +86,7 @@ fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String?
 
 /** Segmented choice on the shared Tabs pill; wraps into rows of [columns]. */
 @Composable
-fun <T> PillRadio(
+internal fun <T> PillRadio(
     value: T,
     options: List<SelectOption<T>>,
     onChange: (T) -> Unit,
@@ -109,7 +109,7 @@ fun <T> PillRadio(
  * disarms itself after four seconds.
  */
 @Composable
-fun DeleteRow(
+internal fun DeleteRow(
     label: String,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
@@ -156,4 +156,4 @@ fun DeleteRow(
 }
 
 /** Text field height inside sheets and forms. */
-val SheetInputHeight = 44.dp
+internal val SheetInputHeight = 44.dp

@@ -14,7 +14,7 @@ class ProcessStartup {
 }
 
 /** What has to happen once per process before the app can show the session. */
-object AppStartup {
+internal object AppStartup {
     suspend fun run(graph: AppGraph) {
         val startup = graph.startup
         if (startup.restored) return

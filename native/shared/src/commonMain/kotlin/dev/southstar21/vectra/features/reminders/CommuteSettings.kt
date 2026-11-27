@@ -46,7 +46,7 @@ import dev.southstar21.vectra.features.transit.getTrackerStops
 import dev.southstar21.vectra.features.transit.routeTypeMeta
 
 /** The "Commute" settings group: which saved trackers get you to uni and back. */
-fun commuteRows(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier): List<@Composable () -> Unit> = listOf(
+internal fun commuteRows(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier): List<@Composable () -> Unit> = listOf(
     { CommutePicker(scheduler, transit, notifier, home = false) },
     { CommutePicker(scheduler, transit, notifier, home = true) },
     { DeparturesRow(scheduler, notifier) },

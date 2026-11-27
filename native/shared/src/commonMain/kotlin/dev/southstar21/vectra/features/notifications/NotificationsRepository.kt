@@ -22,7 +22,7 @@ import kotlinx.serialization.json.jsonObject
  * backend dropped `transport = 'fcm'` rows in migration 1700000006); the registration code below
  * stays for when a push transport returns, and nothing reaches the server until then.
  */
-class NotificationsRepository(
+internal class NotificationsRepository(
     private val pb: PocketBaseClient,
     private val auth: AuthRepository,
     private val kv: KeyValueStore,

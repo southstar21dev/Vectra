@@ -45,7 +45,7 @@ import dev.southstar21.vectra.navigation.Route
  * Switching is a short cross-fade.
  */
 @Composable
-fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, page: @Composable (Route) -> Unit) {
+internal fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, page: @Composable (Route) -> Unit) {
     val visited = remember { mutableStateListOf<Route>() }
     if (current !in visited) visited += current
     // Once the app has settled, compose the remaining tabs one per frame while they are

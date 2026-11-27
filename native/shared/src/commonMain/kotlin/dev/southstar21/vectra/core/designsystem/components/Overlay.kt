@@ -27,7 +27,7 @@ import androidx.navigationevent.compose.rememberNavigationEventState
  * navbar, in the order they opened.
  */
 @Stable
-class OverlayHost {
+internal class OverlayHost {
     internal class Entry(val id: Long, val modal: Boolean, val content: @Composable () -> Unit)
 
     internal val entries = mutableStateListOf<Entry>()
@@ -40,11 +40,11 @@ class OverlayHost {
     }
 }
 
-val LocalOverlayHost = staticCompositionLocalOf<OverlayHost> { error("OverlayHost missing") }
+internal val LocalOverlayHost = staticCompositionLocalOf<OverlayHost> { error("OverlayHost missing") }
 
 /** Wraps the app and paints the overlay layer on top. */
 @Composable
-fun OverlayRoot(
+internal fun OverlayRoot(
     host: OverlayHost,
     modifier: Modifier = Modifier,
     /** Drawn above every overlay (toasts sit over dialogs). */
@@ -75,7 +75,7 @@ internal fun topModalIndex(modal: List<Boolean>): Int = modal.indexOfLast { it }
  * overlay hides everything under it from screen readers.
  */
 @Composable
-fun Overlay(modal: Boolean = true, content: @Composable () -> Unit) {
+internal fun Overlay(modal: Boolean = true, content: @Composable () -> Unit) {
     val host = LocalOverlayHost.current
     val latest = rememberUpdatedState(content)
     DisposableEffect(host, modal) {
@@ -89,7 +89,7 @@ fun Overlay(modal: Boolean = true, content: @Composable () -> Unit) {
  * appears), read as one group, with a dismiss action while [open] standing in for the scrim
  * tap, the drag and the back gesture.
  */
-fun Modifier.modalPane(title: String, open: Boolean, onDismiss: () -> Unit): Modifier = semantics {
+internal fun Modifier.modalPane(title: String, open: Boolean, onDismiss: () -> Unit): Modifier = semantics {
     paneTitle = title
     isTraversalGroup = true
     if (open) dismiss("Close") { onDismiss(); true }
@@ -100,7 +100,7 @@ fun Modifier.modalPane(title: String, open: Boolean, onDismiss: () -> Unit): Mod
  * content (as Material's modal sheet does), so VoiceOver users without a back gesture can
  * always leave. Nothing while [enabled] is false (closing, or a scrim that doesn't dismiss).
  */
-fun Modifier.scrimSemantics(enabled: Boolean, onDismiss: () -> Unit): Modifier =
+internal fun Modifier.scrimSemantics(enabled: Boolean, onDismiss: () -> Unit): Modifier =
     if (!enabled) this else semantics {
         contentDescription = "Close"
         traversalIndex = 1f
@@ -109,7 +109,7 @@ fun Modifier.scrimSemantics(enabled: Boolean, onDismiss: () -> Unit): Modifier =
 
 /** System back / predictive back gesture handler. */
 @Composable
-fun VBackHandler(enabled: Boolean = true, onBack: () -> Unit) {
+internal fun VBackHandler(enabled: Boolean = true, onBack: () -> Unit) {
     val latest = rememberUpdatedState(onBack)
     val state = rememberNavigationEventState(NavigationEventInfo.None)
     NavigationBackHandler(state = state, isBackEnabled = enabled, onBackCompleted = { latest.value() })

@@ -218,7 +218,7 @@ private class GeoError(val code: Int, message: String) : Exception(message)
  * `Dispatchers.Default`, where a watchdog restart could race a page's release and leave a
  * watch running with no consumer (audit 03 #14).
  */
-class DeviceLocation(
+internal class DeviceLocation(
     private val provider: LocationProvider,
     private val kv: KeyValueStore,
     private val scope: CoroutineScope,

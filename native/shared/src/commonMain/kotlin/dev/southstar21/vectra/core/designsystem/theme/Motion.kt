@@ -7,7 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 
 /** Easing curves. Spatial movement prefers springs ([VectraSprings]); these are for tweens. */
-object VectraEasing {
+internal object VectraEasing {
     /** Entrances: fast start, long soft landing. */
     val Decelerate = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
     /** Something already on screen moving to a new place. */
@@ -26,7 +26,7 @@ object VectraEasing {
  * Spring tokens. Springs keep velocity when a gesture hands off to an animation, so anything
  * the finger can touch (pills, sheets, rows, toggles) should settle with one of these.
  */
-object VectraSprings {
+internal object VectraSprings {
     /** Selection pills, toggles, segmented controls. */
     fun <T> snappy(visibilityThreshold: T? = null): SpringSpec<T> = spring(0.85f, 500f, visibilityThreshold)
     /** Centered surfaces popping in (dialogs, menus). */
@@ -41,7 +41,7 @@ object VectraSprings {
     fun <T> glide(visibilityThreshold: T? = null): SpringSpec<T> = spring(1.25f, 90f, visibilityThreshold)
 }
 
-object VectraMotion {
+internal object VectraMotion {
     /** Staggered card entrance on a page's first load. */
     const val RevealStaggerMs = 50
     const val RevealRiseDp = 14f

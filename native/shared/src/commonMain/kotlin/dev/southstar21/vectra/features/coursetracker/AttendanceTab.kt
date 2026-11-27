@@ -62,7 +62,7 @@ private val TypeOrder = listOf(SessionType.Lecture, SessionType.Seminar, Session
 private val IntensiveInfo = TypeInfo("Intensive", "Intensive", StatusTone.Amber)
 
 /** Who teaches a session and where, from the timetable row it came from. */
-data class SessionMeta(val instructor: String?, val location: String?)
+internal data class SessionMeta(val instructor: String?, val location: String?)
 
 /**
  * The attendance tab: today's class, the standing card with the semester as

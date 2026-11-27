@@ -19,7 +19,7 @@ import kotlin.time.Clock
  * the token is close to expiry. Only a definitive auth rejection (401/403) or an
  * already-expired token signs the user out; network errors wait for the next trigger.
  */
-class SessionWatchdog(
+internal class SessionWatchdog(
     private val auth: AuthRepository,
     private val store: AuthStore,
     private val scope: CoroutineScope,

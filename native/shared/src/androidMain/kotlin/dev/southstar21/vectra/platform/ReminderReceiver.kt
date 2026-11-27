@@ -26,7 +26,7 @@ object ReminderRuntime {
  * Fires reminders (adding live departures first), keeps commute departures fresh for a few
  * minutes, and puts every alarm back after a reboot, a clock change or an app update.
  */
-class ReminderReceiver : BroadcastReceiver() {
+internal class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
         scope.launch {

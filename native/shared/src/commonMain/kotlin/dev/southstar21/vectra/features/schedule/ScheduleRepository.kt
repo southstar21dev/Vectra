@@ -27,7 +27,7 @@ import kotlin.time.Instant
  * ([ScheduleItemsSync]) and Neptun ([NeptunSyncService]) each live in their own class; this
  * ties them to the session and the connection, and works out what needs all of them.
  */
-class ScheduleRepository(
+internal class ScheduleRepository(
     pb: PocketBaseClient,
     crypto: CryptoClient,
     kv: KeyValueStore,
@@ -206,7 +206,7 @@ class ScheduleRepository(
  * Today's classes that actually meet today
  * (odd/even weeks, date ranges, holidays). The dashboard's timeline input.
  */
-fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.now()): List<ScheduleEvent> {
+internal fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.now()): List<ScheduleEvent> {
     val now = nowInBudapest(at)
     val index = ScheduleEventIndex(events)
     return events.filter { it.dayOfWeek == now.dayOfWeek }
@@ -214,5 +214,5 @@ fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.
 }
 
 /** Unique semesters, chronologically. */
-fun scheduleSemesters(events: List<ScheduleEvent>): List<String> =
+internal fun scheduleSemesters(events: List<ScheduleEvent>): List<String> =
     events.map { it.semester }.filter { it.isNotEmpty() }.distinct().sorted()

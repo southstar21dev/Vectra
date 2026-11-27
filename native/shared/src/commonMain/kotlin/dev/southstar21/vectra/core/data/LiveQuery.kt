@@ -31,10 +31,10 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** The longest a failing query waits between polls. */
-const val MaxPollBackoffMs = 5 * 60_000L
+internal const val MaxPollBackoffMs = 5 * 60_000L
 
 /** The wait between polls: [intervalMs] when healthy, doubling per consecutive failed poll up to [MaxPollBackoffMs]. */
-fun pollIntervalMs(intervalMs: Long, consecutiveFailures: Int): Long {
+internal fun pollIntervalMs(intervalMs: Long, consecutiveFailures: Int): Long {
     if (consecutiveFailures <= 0) return intervalMs
     return max(intervalMs, exponentialBackoffMs(min(consecutiveFailures, 16), intervalMs, MaxPollBackoffMs))
 }
@@ -51,7 +51,7 @@ fun pollIntervalMs(intervalMs: Long, consecutiveFailures: Int): Long {
  * one read from outside it, so the entry map is an immutable snapshot, replaced on change.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class LiveQuery<K, T>(
+internal class LiveQuery<K, T>(
     private val scope: CoroutineScope,
     private val refetchIntervalMs: Long? = null,
     private val staleTimeMs: Long = 0,

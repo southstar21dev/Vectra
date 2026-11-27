@@ -28,7 +28,7 @@ import dev.southstar21.vectra.features.weather.WeatherLocationMode
  * section into view for the ones set up in place (commute lines, passkeys).
  */
 @Composable
-fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): List<SetupItem> {
+internal fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): List<SetupItem> {
     val c = Vectra.colors
     val navigator = LocalNavigator.current
     val profile by graph.auth.profile.collectAsStateWithLifecycle()

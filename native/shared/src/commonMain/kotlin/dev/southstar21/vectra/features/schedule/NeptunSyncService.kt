@@ -41,10 +41,10 @@ import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-enum class NeptunSyncStatus { Idle, Syncing, Success, Error }
+internal enum class NeptunSyncStatus { Idle, Syncing, Success, Error }
 
 /** One clean, DB-shaped Neptun event (sensitive fields still plaintext). */
-data class NeptunSyncEvent(
+internal data class NeptunSyncEvent(
     val courseName: String,
     val courseCode: String,
     val instructor: String,
@@ -59,7 +59,7 @@ data class NeptunSyncEvent(
     val eventType: String,
 )
 
-fun ParsedIcsEvent.toSyncEvent() = NeptunSyncEvent(
+internal fun ParsedIcsEvent.toSyncEvent() = NeptunSyncEvent(
     courseName, courseCode, instructor, location, dayOfWeek, startTime, endTime,
     color.ifEmpty { "#3B82F6" }, semester, semesterStart?.ifEmpty { null }, semesterEnd?.ifEmpty { null }, eventType.ifEmpty { "class" },
 )
@@ -75,7 +75,7 @@ internal fun NeptunSyncEvent.toScheduleEvent(owner: String) = ScheduleEvent(
  * Told after a Neptun sync or import persisted its events, with every class as it now stands
  * (the new Neptun rows and the manual ones). Failures never fail the sync.
  */
-fun interface NeptunSyncListener {
+internal fun interface NeptunSyncListener {
     suspend fun onNeptunEventsPersisted(events: List<ScheduleEvent>)
 }
 

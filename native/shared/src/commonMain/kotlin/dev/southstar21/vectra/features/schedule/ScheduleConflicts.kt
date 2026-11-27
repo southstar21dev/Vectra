@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 
 /** A personal schedule item: a work shift or a task. */
 @Serializable
-data class ScheduleItem(
+internal data class ScheduleItem(
     val id: String,
     /** 'shift' | 'task' */
     val type: String,
@@ -34,9 +34,9 @@ data class ScheduleItem(
 }
 
 /** A half-open interval in Budapest calendar minutes on [date]. */
-data class ScheduleInterval(val date: String, val startMinute: Int, val endMinute: Int)
+internal data class ScheduleInterval(val date: String, val startMinute: Int, val endMinute: Int)
 
-data class ScheduleConflict(
+internal data class ScheduleConflict(
     val key: String,
     val itemId: String,
     val otherItemId: String? = null,
@@ -72,7 +72,7 @@ private fun minuteOfDay(value: String): Int? {
 }
 
 /** The date-specific intervals an item occupies; an overnight shift splits at midnight. */
-fun getItemIntervals(item: ScheduleItem): List<ScheduleInterval> {
+internal fun getItemIntervals(item: ScheduleItem): List<ScheduleInterval> {
     val ordinal = ordinalForDate(item.date)
     val start = minuteOfDay(item.startTime)
     val end = minuteOfDay(item.endTime)
@@ -93,7 +93,7 @@ private fun occurrenceInterval(event: ScheduleEvent): Pair<Int, Int>? {
 }
 
 /** True when the class/exam is a mandatory-attendance conflict candidate. */
-fun isConflictRelevantClass(event: ScheduleEvent, intensive: Boolean = false): Boolean {
+internal fun isConflictRelevantClass(event: ScheduleEvent, intensive: Boolean = false): Boolean {
     if (event.isExam() || intensive || isIntensiveClass(event.courseName, event.courseCode, event.eventType)) return true
     // Non-Neptun rows are manual; an unclassified one is treated as mandatory.
     if (event.source != "neptun") {
@@ -178,7 +178,7 @@ internal fun semesterWeekOneMonday(semester: String, events: List<ScheduleEvent>
         ?: nominalSemesterStart(semester)
 
 /** Whether a weekly class meets on a candidate Budapest-local date. */
-fun classOccursOnDate(
+internal fun classOccursOnDate(
     event: ScheduleEvent,
     dateStr: String,
     scheduleEvents: List<ScheduleEvent> = listOf(event),
@@ -220,7 +220,7 @@ internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, index: Sch
 private fun normalizeKeyPart(value: String): String = value.trim().lowercase().replace(KeyWhitespace, " ")
 
 /** Stable occurrence key that survives Neptun's replace-all row ids. */
-fun getClassConflictKey(event: ScheduleEvent, date: String): String = listOf(
+internal fun getClassConflictKey(event: ScheduleEvent, date: String): String = listOf(
     "class",
     event.source ?: "manual",
     normalizeKeyPart(event.courseCode),
@@ -247,7 +247,7 @@ private fun overlap(a: ScheduleInterval, b: ScheduleInterval): Pair<Int, Int>? {
 }
 
 /** Active clashes between personal items and class occurrences (optionally only on [dates]). */
-fun getScheduleConflicts(
+internal fun getScheduleConflicts(
     items: List<ScheduleItem>,
     events: List<ScheduleEvent>,
     dates: Collection<String>? = null,
@@ -301,7 +301,7 @@ fun getScheduleConflicts(
 
 // ---- Occurrences --------------------------------------------------------------
 
-data class ScheduleItemOccurrence(
+internal data class ScheduleItemOccurrence(
     val item: ScheduleItem,
     val date: String,
     val startTime: String,
@@ -310,7 +310,7 @@ data class ScheduleItemOccurrence(
 )
 
 /** Expand items into day-specific timeline rows for an inclusive date range. */
-fun getScheduleItemOccurrences(items: List<ScheduleItem>, startDate: String, endDate: String): List<ScheduleItemOccurrence> {
+internal fun getScheduleItemOccurrences(items: List<ScheduleItem>, startDate: String, endDate: String): List<ScheduleItemOccurrence> {
     if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate) || startDate > endDate) return emptyList()
     val out = mutableListOf<ScheduleItemOccurrence>()
     for (item in items) {
@@ -324,5 +324,5 @@ fun getScheduleItemOccurrences(items: List<ScheduleItem>, startDate: String, end
 }
 
 /** A day's item rows, including the next-day tail of an overnight shift. */
-fun getScheduleItemOccurrencesForDate(items: List<ScheduleItem>, date: String): List<ScheduleItemOccurrence> =
+internal fun getScheduleItemOccurrencesForDate(items: List<ScheduleItem>, date: String): List<ScheduleItemOccurrence> =
     getScheduleItemOccurrences(items, date, date)

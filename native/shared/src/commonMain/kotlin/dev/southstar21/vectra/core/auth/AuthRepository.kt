@@ -30,7 +30,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
 /** Hooks run on sign-out (push cleanup) and after the session ends (cache wipe). */
-interface SessionListener {
+internal interface SessionListener {
     suspend fun beforeSignOut() {}
     suspend fun onSessionCleared() {}
 
@@ -42,20 +42,20 @@ interface SessionListener {
 }
 
 /** The account exists but the sign-in that followed failed: [cause] is why. */
-class AccountCreatedSignInFailed(override val cause: Throwable) : Exception("Account created, but sign-in failed", cause)
+internal class AccountCreatedSignInFailed(override val cause: Throwable) : Exception("Account created, but sign-in failed", cause)
 
 /**
  * The session, the profile, and the account
  * mutations. The profile is the users auth record itself.
  */
-class AuthRepository(
+class AuthRepository internal constructor(
     private val pb: PocketBaseClient,
     private val store: AuthStore,
     private val kv: KeyValueStore,
     scope: CoroutineScope,
     private val listeners: Lazy<List<SessionListener>>,
 ) {
-    val session: StateFlow<AuthState?> = store.state
+    internal val session: StateFlow<AuthState?> = store.state
 
     /**
      * The signed-in user's id, the one answer to "who is signed in": null when signed out or when
@@ -71,9 +71,9 @@ class AuthRepository(
      * Scopes for per-user async work: cancelled when the signed-in user changes, so a sync or fetch
      * started for one account cannot outlive it.
      */
-    val sessionScope: SessionScope = SessionScope(scope, { userId }, store.state.map { it?.userId?.ifEmpty { null } })
+    internal val sessionScope: SessionScope = SessionScope(scope, { userId }, store.state.map { it?.userId?.ifEmpty { null } })
 
-    val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
+    internal val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
         .stateIn(scope, SharingStarted.Eagerly, store.current?.record?.let(Profile::from))
 
     private val _sessionExpired = MutableStateFlow(false)

@@ -38,7 +38,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.time.Clock
 
 /** What the weather card renders. */
-data class WeatherState(
+internal data class WeatherState(
     val data: WeatherData? = null,
     /** Coordinates [data] was fetched for. */
     val dataCoords: WeatherCoords? = null,
@@ -47,7 +47,7 @@ data class WeatherState(
     val error: Throwable? = null,
 )
 
-data class RadarState(
+internal data class RadarState(
     val data: NormalizedRadarData? = null,
     val fetchedAt: Long = 0,
     val isFetching: Boolean = false,
@@ -59,7 +59,7 @@ data class RadarState(
  * setting (persisted per device), the current conditions for it with a
  * persisted snapshot for instant first paint, and RainViewer metadata.
  */
-class WeatherRepository(
+internal class WeatherRepository(
     private val http: HttpClient,
     private val kv: KeyValueStore,
     private val locationProvider: LocationProvider,

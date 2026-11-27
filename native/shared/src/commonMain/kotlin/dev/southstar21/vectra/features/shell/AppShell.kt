@@ -96,7 +96,7 @@ private const val ParallaxFraction = 0.28f
  * going back is instant and every tab keeps its state; it drifts left as a screen covers it.
  */
 @Composable
-fun AppShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, screen: @Composable (Screen) -> Unit) {
+internal fun AppShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, screen: @Composable (Screen) -> Unit) {
     val cover = remember { ShellCover() }
     val reduceMotion = Vectra.reduceMotion
     val fullyCovered by remember { derivedStateOf { cover.fraction >= 1f } }

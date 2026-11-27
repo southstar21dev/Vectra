@@ -23,21 +23,21 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /** RainViewer public API. */
-const val RainViewerApiUrl = "https://api.rainviewer.com/public/weather-maps.json"
-const val RainViewerDefaultHost = "https://tilecache.rainviewer.com"
+internal const val RainViewerApiUrl = "https://api.rainviewer.com/public/weather-maps.json"
+internal const val RainViewerDefaultHost = "https://tilecache.rainviewer.com"
 
-data class RadarFrame(val time: Long, val path: String)
+internal data class RadarFrame(val time: Long, val path: String)
 
-data class RainViewerResponse(val generated: Long, val host: String, val past: List<RadarFrame>)
+internal data class RainViewerResponse(val generated: Long, val host: String, val past: List<RadarFrame>)
 
-data class NormalizedRadarData(
+internal data class NormalizedRadarData(
     val generated: Long,
     val host: String,
     val radarFrames: List<RadarFrame>,
     val latestPastTime: Long,
 )
 
-class RadarShapeException(message: String) : IllegalStateException(message)
+internal class RadarShapeException(message: String) : IllegalStateException(message)
 
 /** z.union([number, string→Number||0]) */
 private fun JsonElement?.looseNumber(): Long? = when {
@@ -47,7 +47,7 @@ private fun JsonElement?.looseNumber(): Long? = when {
 }
 
 /** rainViewerResponseSchema.parse: defaults for generated/host/radar, strict frames. */
-fun parseRainViewerResponse(json: JsonElement, nowSeconds: Long = Clock.System.now().epochSeconds): RainViewerResponse {
+internal fun parseRainViewerResponse(json: JsonElement, nowSeconds: Long = Clock.System.now().epochSeconds): RainViewerResponse {
     val root = json as? JsonObject ?: throw RadarShapeException("Expected object")
     val generated = if (root["generated"] == null) nowSeconds
     else root["generated"].looseNumber() ?: throw RadarShapeException("Invalid generated")
@@ -73,7 +73,7 @@ fun parseRainViewerResponse(json: JsonElement, nowSeconds: Long = Clock.System.n
 }
 
 /** Past-only timeline: RainViewer's free API no longer serves nowcast frames (Jan 2026). */
-fun normalizeRadarData(data: RainViewerResponse): NormalizedRadarData = NormalizedRadarData(
+internal fun normalizeRadarData(data: RainViewerResponse): NormalizedRadarData = NormalizedRadarData(
     generated = data.generated,
     host = data.host,
     radarFrames = data.past,
@@ -81,18 +81,18 @@ fun normalizeRadarData(data: RainViewerResponse): NormalizedRadarData = Normaliz
 )
 
 /** Tile URL template for a radar frame. */
-fun getRadarTileUrl(host: String, path: String, colorScheme: Int = 1, options: String = "1_1", size: Int = 256): String {
+internal fun getRadarTileUrl(host: String, path: String, colorScheme: Int = 1, options: String = "1_1", size: Int = 256): String {
     val cleanHost = host.trimEnd('/')
     val cleanPath = if (path.startsWith("/")) path else "/$path"
     return "$cleanHost$cleanPath/$size/{z}/{x}/{y}/$colorScheme/$options.png"
 }
 
-data class RadarFrameLabel(val timeStr: String, val relative: String)
+internal data class RadarFrameLabel(val timeStr: String, val relative: String)
 
 /**
  * The frame's clock time (2-digit hour/minute, Budapest wall clock) and its offset from [referenceTime] ("-30m" / "Now").
  */
-fun formatRadarFrameLabel(
+internal fun formatRadarFrameLabel(
     frame: RadarFrame,
     referenceTime: Long = Clock.System.now().epochSeconds,
     hour12: Boolean = false,
@@ -109,7 +109,7 @@ fun formatRadarFrameLabel(
 }
 
 /** Latest radar metadata and frame timestamps. */
-suspend fun fetchRainViewerData(http: HttpClient): NormalizedRadarData {
+internal suspend fun fetchRainViewerData(http: HttpClient): NormalizedRadarData {
     val res = withTimeout(10_000) { http.get(RainViewerApiUrl) }
     if (!res.status.isSuccess()) error("RainViewer API returned HTTP ${res.status.value}")
     return normalizeRadarData(parseRainViewerResponse(VectraJson.parseToJsonElement(res.bodyAsText())))

@@ -55,7 +55,7 @@ import kotlin.time.Instant
 
 /** The home tab: weather, holidays, today's timeline and favourite trackers. */
 @Composable
-fun DashboardScreen(graph: AppGraph) {
+internal fun DashboardScreen(graph: AppGraph) {
     val navigator = LocalNavigator.current
     val schedule = graph.scheduleRepository
     val online by schedule.isOnline.collectAsStateWithLifecycle()

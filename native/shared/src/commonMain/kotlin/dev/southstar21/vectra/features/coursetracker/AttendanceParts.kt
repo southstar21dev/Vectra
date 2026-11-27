@@ -509,7 +509,7 @@ internal fun SessionLedgerRow(
  * who teaches it, where and when, and the four marks.
  */
 @Composable
-fun TodaySessionCard(
+internal fun TodaySessionCard(
     session: AttendanceSession,
     typeLabel: String,
     weekTitle: String,

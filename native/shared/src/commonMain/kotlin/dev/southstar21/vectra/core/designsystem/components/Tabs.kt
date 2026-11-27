@@ -66,7 +66,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
  * out as a grid that wraps (PillRadio).
  */
 @Composable
-fun <T> VTabs(
+internal fun <T> VTabs(
     selected: T,
     options: List<T>,
     onSelect: (T) -> Unit,
@@ -177,7 +177,7 @@ fun <T> VTabs(
 
 /** Plain-text tabs (the common case). */
 @Composable
-fun <T> VTabs(
+internal fun <T> VTabs(
     selected: T,
     options: List<T>,
     onSelect: (T) -> Unit,

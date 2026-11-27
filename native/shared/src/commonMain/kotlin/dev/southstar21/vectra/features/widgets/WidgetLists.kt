@@ -33,7 +33,7 @@ data class FootNote(val type: FootNoteType, val kind: WidgetKind?, val text: Str
 private fun andMore(count: Int) = if (count > 1) " and ${count - 1} more" else ""
 
 /** "Then X and N more" for the sessions a cut leaves off. */
-fun thenNote(hidden: List<WidgetSession>, hour12: Boolean = false): FootNote? = hidden.firstOrNull()?.let {
+internal fun thenNote(hidden: List<WidgetSession>, hour12: Boolean = false): FootNote? = hidden.firstOrNull()?.let {
     FootNote(FootNoteType.Then, it.kind, "Then ${it.title}${andMore(hidden.size)}", clockLabel(it.startMs, hour12))
 }
 

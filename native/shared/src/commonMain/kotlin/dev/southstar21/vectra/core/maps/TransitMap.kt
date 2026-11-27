@@ -82,15 +82,15 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 /* The shared basemap: OpenFreeMap style loading, the map composable and vehicle markers. */
 
 /** What every map needs from the app; screens deep in a page shouldn't have to pass it down. */
-class MapEnvironment(val http: HttpClient, val connectivity: Connectivity)
+internal class MapEnvironment(val http: HttpClient, val connectivity: Connectivity)
 
-val LocalMapEnvironment = staticCompositionLocalOf<MapEnvironment> { error("MapEnvironment missing") }
+internal val LocalMapEnvironment = staticCompositionLocalOf<MapEnvironment> { error("MapEnvironment missing") }
 
 /** maplibre position of a [LatLon]. */
-val LatLon.position: Position get() = Position(longitude = lon, latitude = lat)
+internal val LatLon.position: Position get() = Position(longitude = lon, latitude = lat)
 
 /** Fetches + sanitizes the OpenFreeMap basemap style (memoized per theme and day). */
-object MapStyles {
+internal object MapStyles {
     private val lock = Mutex()
     private val cache = HashMap<String, String>()
 
@@ -106,7 +106,7 @@ object MapStyles {
 }
 
 /** The glyph stack stop labels use (OpenFreeMap hosts Noto Sans). */
-val MapFontStack = listOf("Noto Sans Regular")
+internal val MapFontStack = listOf("Noto Sans Regular")
 
 /**
  * The shared OpenFreeMap vector basemap with a theme-aware
@@ -118,7 +118,7 @@ val MapFontStack = listOf("Noto Sans Regular")
  * "Map unavailable" note and retries when the connection returns.
  */
 @Composable
-fun TransitMap(
+internal fun TransitMap(
     initialCenter: LatLon,
     initialZoom: Double,
     modifier: Modifier = Modifier,
@@ -246,7 +246,7 @@ fun TransitMap(
 
 /** Tiny mono credit on a translucent chip. */
 @Composable
-fun MapAttribution(modifier: Modifier = Modifier, text: String = OpenFreeMapAttribution, align: TextAlign = TextAlign.Start) {
+internal fun MapAttribution(modifier: Modifier = Modifier, text: String = OpenFreeMapAttribution, align: TextAlign = TextAlign.Start) {
     val c = Vectra.colors
     val uri = LocalUriHandler.current
     VText(
@@ -265,10 +265,10 @@ fun MapAttribution(modifier: Modifier = Modifier, text: String = OpenFreeMapAttr
 
 // ---- markers -------------------------------------------------------------------
 
-enum class VehicleVariant { Primary, Secondary, Approximate }
+internal enum class VehicleVariant { Primary, Secondary, Approximate }
 
 /** Meaning colours: the tracked line, other lines on the map, estimated positions. */
-fun VehicleVariant.color(): Color = when (this) {
+internal fun VehicleVariant.color(): Color = when (this) {
     VehicleVariant.Primary -> Palette.Emerald500
     VehicleVariant.Secondary -> Palette.Violet500
     VehicleVariant.Approximate -> Palette.Pink500
@@ -281,7 +281,7 @@ private val teardrop by lazy { PathParser().parsePathString(TeardropPath).toPath
  * The vehicle teardrop in a 44×44 box: round body centred on (22,22) — the
  * position and rotation pivot — tip pointing along [bearing] (degrees, 0 = north).
  */
-fun DrawScope.drawVehicleTeardrop(color: Color, bearing: Float = 0f) {
+internal fun DrawScope.drawVehicleTeardrop(color: Color, bearing: Float = 0f) {
     val s = size.minDimension / 44f
     rotate(bearing, pivot = Offset(size.width / 2f, size.height / 2f)) {
         translate((size.width - 44f * s) / 2f, (size.height - 44f * s) / 2f) {
@@ -298,14 +298,14 @@ fun DrawScope.drawVehicleTeardrop(color: Color, bearing: Float = 0f) {
 
 /** A live vehicle marker as a Compose element (place with `Modifier.placedAt`). */
 @Composable
-fun VehicleMarker(color: Color, bearing: Float, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+internal fun VehicleMarker(color: Color, bearing: Float, modifier: Modifier = Modifier, size: Dp = 44.dp) {
     Canvas(modifier.size(size)) { drawVehicleTeardrop(color, bearing) }
 }
 
 // ---- GeoJSON building -------------------------------------------------------------
 
 /** Minimal GeoJSON builders; sources take the string via `GeoJsonData.JsonString`. */
-object GeoJson {
+internal object GeoJson {
     fun point(lat: Double, lon: Double, properties: JsonObject = JsonObject(emptyMap())): JsonObject = buildJsonObject {
         put("type", "Feature")
         put("properties", properties)

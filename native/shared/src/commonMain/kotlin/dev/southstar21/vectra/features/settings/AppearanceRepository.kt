@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
  * `appearance` wins (and again whenever a newer record brings a different one), unless this device holds a change it never
  * managed to save there; changes apply instantly and sync to the profile in the background.
  */
-class AppearanceRepository(
+class AppearanceRepository internal constructor(
     private val kv: KeyValueStore,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,

@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 /** Why work started for one account stopped: that account is no longer the signed-in one. */
-class SessionEndedException(uid: String) : CancellationException("The session of user $uid ended")
+internal class SessionEndedException(uid: String) : CancellationException("The session of user $uid ended")
 
 /**
  * Coroutine scopes tied to one signed-in user. Async work that belongs to account A runs in
@@ -29,7 +29,7 @@ class SessionEndedException(uid: String) : CancellationException("The session of
  * [currentUser] answers who is signed in right now (synchronously); [userChanges] reports changes.
  * A scope asked for a user who is not the current one is already cancelled.
  */
-class SessionScope(
+internal class SessionScope(
     private val parent: CoroutineScope,
     private val currentUser: () -> String?,
     userChanges: Flow<String?>,

@@ -149,7 +149,7 @@ private class DayListScope(
  * Used by the dashboard and the Schedule tab.
  */
 @Composable
-fun ScheduleDayList(
+internal fun ScheduleDayList(
     events: List<ScheduleEvent>,
     tracker: ScheduleCourseTrackerHooks,
     dateStr: String,

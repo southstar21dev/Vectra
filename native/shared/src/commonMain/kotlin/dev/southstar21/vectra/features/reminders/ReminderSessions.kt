@@ -18,10 +18,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 
-enum class SessionKind { Lecture, Seminar, Lab, Exam, Personal, Other }
+internal enum class SessionKind { Lecture, Seminar, Lab, Exam, Personal, Other }
 
 /** One class, exam or timed personal item on one day, in epoch millis. [key] ends in "@yyyy-mm-dd". */
-data class ReminderSession(
+internal data class ReminderSession(
     val key: String,
     val title: String,
     val location: String,
@@ -40,12 +40,12 @@ data class ReminderSession(
 }
 
 /** A gap longer than this between sessions counts as going home and coming back. */
-const val LongBreakMinutes = 120
+internal const val LongBreakMinutes = 120
 
 internal const val MinuteMs = 60_000L
 
 /** The kinds the type chips switch off; anything unclassified always counts. */
-fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
+internal fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
     SessionKind.Lecture -> prefs.lectures
     SessionKind.Seminar -> prefs.seminars
     SessionKind.Lab -> prefs.labs
@@ -54,7 +54,7 @@ fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
 }
 
 /** Seminars and practice share a kind: a group code's practice classes read as seminars. */
-fun sessionKind(event: ScheduleEvent): SessionKind = when {
+internal fun sessionKind(event: ScheduleEvent): SessionKind = when {
     event.isExam() -> SessionKind.Exam
     else -> when (getEventSessionType(event)) {
         SessionType.Lecture -> SessionKind.Lecture
@@ -105,7 +105,7 @@ private fun personalRange(o: ScheduleItemOccurrence): Pair<Long, Long>? {
  * The sessions that actually meet on each of [days] days from [from]: odd/even weeks, semester
  * ranges and public holidays as the schedule shows them, minus classes marked "No class".
  */
-fun expandSessions(
+internal fun expandSessions(
     events: List<ScheduleEvent>,
     items: List<ScheduleItem>,
     includeItems: Boolean,

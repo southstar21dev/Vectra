@@ -10,7 +10,7 @@ import kotlin.math.min
 // Points
 // ---------------------------------------------------------------------------
 
-data class PointsSummary(
+internal data class PointsSummary(
     val totalEarned: Double,
     val totalMax: Double,
     val scoredMax: Double,
@@ -29,7 +29,7 @@ data class PointsSummary(
 /** Far below anything a percentage is shown with, far above double rounding error. */
 private const val GradeEpsilon = 1e-9
 
-fun estimateGrade(percentage: Double, scale: List<GradingScaleTier> = DefaultGradingScale): Int {
+internal fun estimateGrade(percentage: Double, scale: List<GradingScaleTier> = DefaultGradingScale): Int {
     for (tier in scale.sortedByDescending { it.minPercentage }) {
         // Exactly at a cutoff counts as reaching it, whatever rounding the division left behind.
         if (percentage + GradeEpsilon >= tier.minPercentage) return tier.grade
@@ -38,9 +38,9 @@ fun estimateGrade(percentage: Double, scale: List<GradingScaleTier> = DefaultGra
 }
 
 /** Explicitly completed, or (when unset) any points earned. */
-val AssessmentItem.isScored: Boolean get() = isCompleted ?: (earnedPoints > 0)
+internal val AssessmentItem.isScored: Boolean get() = isCompleted ?: (earnedPoints > 0)
 
-fun calculatePointsSummary(
+internal fun calculatePointsSummary(
     assessments: List<AssessmentItem>,
     useWeightedCategories: Boolean = false,
     gradingScale: List<GradingScaleTier>? = null,
@@ -89,10 +89,10 @@ fun calculatePointsSummary(
 // ---------------------------------------------------------------------------
 
 /** What each grade means on the Hungarian five-point scale. */
-val GradeNames: Map<Int, String> = mapOf(5 to "Excellent", 4 to "Good", 3 to "Satisfactory", 2 to "Pass", 1 to "Fail")
+internal val GradeNames: Map<Int, String> = mapOf(5 to "Excellent", 4 to "Good", 3 to "Satisfactory", 2 to "Pass", 1 to "Fail")
 
 /** The grade a percentage earns on [scale] (1 when it clears no cutoff). */
-fun gradeForPercent(percent: Double, scale: List<GradingScaleTier>): Int =
+internal fun gradeForPercent(percent: Double, scale: List<GradingScaleTier>): Int =
     scale.filter { it.grade >= 2 && percent >= it.minPercentage }.fold(1) { best, t -> if (t.grade > best) t.grade else best }
 
 // ---------------------------------------------------------------------------
@@ -103,27 +103,27 @@ fun gradeForPercent(percent: Double, scale: List<GradingScaleTier>): Int =
  * Hungarian keyboards type decimal commas ("12,5"): treat comma and dot alike,
  * keep one decimal point, and leave clamping to the commit step.
  */
-fun normalizeDecimalInput(raw: String): String {
+internal fun normalizeDecimalInput(raw: String): String {
     val cleaned = raw.replace(',', '.').filter { it.isDigit() || it == '.' }
     val parts = cleaned.split('.')
     return if (parts.size > 2) "${parts[0]}.${parts.drop(1).joinToString("")}" else cleaned
 }
 
 /** Null for empty input, a lone separator, or anything non-finite. */
-fun parseFiniteNumber(raw: String): Double? {
+internal fun parseFiniteNumber(raw: String): Double? {
     val normalized = normalizeDecimalInput(raw).trim()
     if (normalized.isEmpty() || normalized == ".") return null
     // Only digits and one point remain, so "12." and ".5" parse as 12.0 and 0.5.
     return normalized.toDoubleOrNull()?.takeIf { it.isFinite() }
 }
 
-fun clampNumber(value: Double, min: Double, max: Double): Double = min(max, max(min, value))
+internal fun clampNumber(value: Double, min: Double, max: Double): Double = min(max, max(min, value))
 
 /**
  * Grade cutoffs must be monotonic (5 ≥ 4 ≥ 3 ≥ 2 ≥ 1); an out-of-order scale
  * silently misgrades every estimate, so the write is blocked with a reason.
  */
-fun validateScaleOrder(scale: List<GradingScaleTier>): String? {
+internal fun validateScaleOrder(scale: List<GradingScaleTier>): String? {
     fun minOf(grade: Int) = scale.firstOrNull { it.grade == grade }?.minPercentage ?: 0.0
     for ((higher, lower) in listOf(5 to 4, 4 to 3, 3 to 2, 2 to 1)) {
         if (minOf(higher) < minOf(lower)) {
@@ -134,7 +134,7 @@ fun validateScaleOrder(scale: List<GradingScaleTier>): String? {
 }
 
 /** Whole numbers without a decimal point: `12`, `12.5`. */
-fun formatNumber(value: Double): String =
+internal fun formatNumber(value: Double): String =
     if (value == floor(value) && abs(value) < 1e15) value.toLong().toString() else value.toString()
 
 // ---------------------------------------------------------------------------
@@ -145,10 +145,10 @@ private val WeekdaysShort = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Su
 private val MonthsShort = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 /** "Today" stays literal; everything else reads day-month like a timetable. */
-fun formatSessionDate(iso: String, todayIso: String): String = if (iso == todayIso) "Today" else formatSessionDateFull(iso)
+internal fun formatSessionDate(iso: String, todayIso: String): String = if (iso == todayIso) "Today" else formatSessionDateFull(iso)
 
 /** en-GB `Tue 15 Sept`-style reading: weekday, day, short month. */
-fun formatSessionDateFull(iso: String): String {
+internal fun formatSessionDateFull(iso: String): String {
     val d = parseIsoDate(iso) ?: return iso
     // en-GB spells September "Sept".
     val month = if (d.month.ordinal == 8) "Sept" else MonthsShort[d.month.ordinal]
@@ -156,9 +156,9 @@ fun formatSessionDateFull(iso: String): String {
 }
 
 /** Month/day/weekday parts of a date tile (month always three letters, upper-case). */
-data class TileParts(val month: String, val day: String, val weekday: String)
+internal data class TileParts(val month: String, val day: String, val weekday: String)
 
-fun tileParts(iso: String?): TileParts? {
+internal fun tileParts(iso: String?): TileParts? {
     val d = parseIsoDate(iso ?: return null) ?: return null
     return TileParts(MonthsShort[d.month.ordinal].uppercase(), d.day.toString(), WeekdaysShort[d.dayOfWeek.ordinal])
 }

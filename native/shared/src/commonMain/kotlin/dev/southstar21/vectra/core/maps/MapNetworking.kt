@@ -20,7 +20,7 @@ import org.maplibre.compose.resource.MapResourceRequest
  * A map resource scheme a feature serves itself instead of plain HTTP (the weather radar's
  * `doppler://` recoloured tiles). Core knows only this seam, not what any scheme draws.
  */
-interface MapSchemeHandler {
+internal interface MapSchemeHandler {
     /** The URL prefix this handler answers, e.g. `doppler://`. */
     val scheme: String
 
@@ -73,7 +73,7 @@ private class KtorMapResources(private val http: HttpClient, private val handler
 private val configured = MutableStateFlow(false)
 
 /** Install once, before the first map composes. */
-fun configureMapNetworking(http: HttpClient, handlers: List<MapSchemeHandler> = emptyList()) {
+internal fun configureMapNetworking(http: HttpClient, handlers: List<MapSchemeHandler> = emptyList()) {
     if (!configured.compareAndSet(expect = false, update = true)) return
     DefaultMapRuntime.configure { resourceProvider = KtorMapResources(http, handlers) }
 }

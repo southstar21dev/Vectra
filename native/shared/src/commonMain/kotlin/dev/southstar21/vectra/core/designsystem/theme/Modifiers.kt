@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
  * ([TapIndication]) that reads the theme colour through a composition local, and the haptics
  * are looked up from the same locals when a click lands.
  */
-fun Modifier.tappable(
+internal fun Modifier.tappable(
     shape: Shape = RectangleShape,
     enabled: Boolean = true,
     role: Role? = Role.Button,
@@ -166,7 +166,7 @@ private class ThemedPressHighlightNode(private val source: InteractionSource, pr
  * tree: a scrim isn't an unlabelled button, and a panel's contents stay separate nodes instead of
  * merging into one. Surfaces offer their dismissal to screen readers as a `dismiss` action.
  */
-fun Modifier.consumeTouches(enabled: Boolean = true, onClick: () -> Unit = {}): Modifier =
+internal fun Modifier.consumeTouches(enabled: Boolean = true, onClick: () -> Unit = {}): Modifier =
     this then ConsumeTouchesElement(enabled, onClick)
 
 private class ConsumeTouchesElement(val enabled: Boolean, val onClick: () -> Unit) : ModifierNodeElement<ConsumeTouchesNode>() {
@@ -188,7 +188,7 @@ private class ConsumeTouchesNode(var enabled: Boolean, var onClick: () -> Unit) 
 }
 
 /** Outer layers of a shadow stack; paint below the background. */
-fun Modifier.boxShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {
+internal fun Modifier.boxShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {
     var m = this
     for (s in shadows.filter { !it.inset }) {
         m = m.dropShadow(shape, Shadow(s.blur.dp, s.color, s.spread.dp, DpOffset(s.x.dp, s.y.dp)))
@@ -197,7 +197,7 @@ fun Modifier.boxShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {
 }
 
 /** Inset layers of a shadow stack; apply after the background. */
-fun Modifier.insetShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {
+internal fun Modifier.insetShadow(shape: Shape, shadows: List<BoxShadow>): Modifier {
     var m = this
     for (s in shadows.filter { it.inset }) {
         m = m.innerShadow(shape, Shadow(s.blur.dp, s.color, s.spread.dp, DpOffset(s.x.dp, s.y.dp)))
@@ -211,7 +211,7 @@ private const val DefaultPressDurationMs = 150
  * Shrinks the element while pressed and springs it back on release, so the release carries
  * a little bounce. `durationMs = 0` snaps the press with no animation.
  */
-fun Modifier.pressScale(interactionSource: MutableInteractionSource, scale: Float = 0.95f, durationMs: Int = DefaultPressDurationMs): Modifier =
+internal fun Modifier.pressScale(interactionSource: MutableInteractionSource, scale: Float = 0.95f, durationMs: Int = DefaultPressDurationMs): Modifier =
     this then PressScaleElement(interactionSource, scale, durationMs)
 
 private class PressScaleElement(val source: InteractionSource, val scale: Float, val durationMs: Int) : ModifierNodeElement<PressScaleNode>() {
@@ -271,7 +271,7 @@ private class PressScaleNode(private var source: InteractionSource, private var 
 }
 
 /** A 1dp highlight along the top edge that fades out towards both ends. */
-fun Modifier.topSheen(color: Color = Color.White.copy(alpha = 0.5f), insetX: Float = 8f): Modifier = drawWithContent {
+internal fun Modifier.topSheen(color: Color = Color.White.copy(alpha = 0.5f), insetX: Float = 8f): Modifier = drawWithContent {
     drawContent()
     val inset = insetX.dp.toPx()
     drawRect(
@@ -282,7 +282,7 @@ fun Modifier.topSheen(color: Color = Color.White.copy(alpha = 0.5f), insetX: Flo
 }
 
 /** Negative margins: lay out wider/taller than the parent slot. */
-fun Modifier.bleed(horizontal: Dp = 0.dp, vertical: Dp = 0.dp): Modifier = layout { measurable, constraints ->
+internal fun Modifier.bleed(horizontal: Dp = 0.dp, vertical: Dp = 0.dp): Modifier = layout { measurable, constraints ->
     val h = horizontal.roundToPx()
     val v = vertical.roundToPx()
     val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth + 2 * h else constraints.maxWidth

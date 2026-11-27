@@ -20,39 +20,39 @@
     <ID>ComplexCondition:WeekNavigation.kt:mon &lt;= last || (index &gt; 0 &amp;&amp; mon.month == targetDate.month &amp;&amp; mon.year == targetDate.year)</ID>
     <ID>ComposableParamOrder:AttendanceParts.kt:@Composable internal fun DateTile</ID>
     <ID>ComposableParamOrder:ScheduleChrome.kt:@Composable internal fun ChipButton</ID>
-    <ID>ComposableParamOrder:SettingsSection.kt:@Composable fun SettingsSection</ID>
-    <ID>ComposableParamOrder:SheetForm.kt:@Composable fun FormGroup</ID>
+    <ID>ComposableParamOrder:SettingsSection.kt:@Composable internal fun SettingsSection</ID>
+    <ID>ComposableParamOrder:SheetForm.kt:@Composable internal fun FormGroup</ID>
     <ID>ComposableParamOrder:TrackerChrome.kt:@Composable internal fun DraftField</ID>
     <ID>ComposableParamOrder:TrackerParts.kt:@Composable internal fun ClippedFormGroup</ID>
     <ID>ContentSlotReused:Misc.kt:content: @Composable () -&gt; Unit</ID>
     <ID>ContentSlotReused:Overlay.kt:content: @Composable () -&gt; Unit</ID>
     <ID>CyclomaticComplexMethod:AppearancePrefs.kt:AppearancePrefs.Companion$fun normalize: AppearancePrefs</ID>
-    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:fun calculateAttendanceStats: AttendanceStats</ID>
-    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
+    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:internal fun calculateAttendanceStats: AttendanceStats</ID>
+    <ID>CyclomaticComplexMethod:AttendanceCalc.kt:internal fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
     <ID>CyclomaticComplexMethod:CourseLogic.kt:CourseRules$fun officialSemesterStart: String?</ID>
-    <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:fun applySetAttendanceStatus: CourseTrackerData</ID>
+    <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:internal fun applySetAttendanceStatus: CourseTrackerData</ID>
     <ID>CyclomaticComplexMethod:CourseTrackerStore.kt:private fun findLegacyTracker: Pair&lt;String, CourseTracker&gt;?</ID>
     <ID>CyclomaticComplexMethod:DeviceLocation.kt:DeviceLocation$private fun startWatch</ID>
-    <ID>CyclomaticComplexMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
+    <ID>CyclomaticComplexMethod:IcsParser.kt:internal fun parseIcsContent: ParseIcsResult</ID>
     <ID>CyclomaticComplexMethod:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
     <ID>CyclomaticComplexMethod:LivePosition.kt:internal fun routeProgress: RouteProgress</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun buildExplorerMapStops: List&lt;ExplorerMapStop&gt;</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun buildRadarDepartures: List&lt;RadarDepartureItem&gt;</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun parseAllNearbyBoards: List&lt;NearbyDeparture&gt;</ID>
     <ID>CyclomaticComplexMethod:NearbyStops.kt:internal fun routeNameCompare: Int</ID>
-    <ID>CyclomaticComplexMethod:PointsCalc.kt:fun calculatePointsSummary: PointsSummary</ID>
-    <ID>CyclomaticComplexMethod:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
-    <ID>CyclomaticComplexMethod:RouteGeometry.kt:fun snapToPolyline: SnappedPoint?</ID>
-    <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:fun getScheduleConflicts: List&lt;ScheduleConflict&gt;</ID>
+    <ID>CyclomaticComplexMethod:PointsCalc.kt:internal fun calculatePointsSummary: PointsSummary</ID>
+    <ID>CyclomaticComplexMethod:RadarApi.kt:internal fun parseRainViewerResponse: RainViewerResponse</ID>
+    <ID>CyclomaticComplexMethod:RouteGeometry.kt:internal fun snapToPolyline: SnappedPoint?</ID>
+    <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:internal fun getScheduleConflicts: List&lt;ScheduleConflict&gt;</ID>
     <ID>CyclomaticComplexMethod:ScheduleConflicts.kt:internal fun classOccursOnDate: Boolean</ID>
-    <ID>CyclomaticComplexMethod:ScheduleItemsStore.kt:fun validateScheduleItem: ScheduleItem?</ID>
+    <ID>CyclomaticComplexMethod:ScheduleItemsStore.kt:internal fun validateScheduleItem: ScheduleItem?</ID>
     <ID>CyclomaticComplexMethod:ScheduleItemsStore.kt:internal fun parsePayload: ScheduleItem?</ID>
     <ID>CyclomaticComplexMethod:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
-    <ID>CyclomaticComplexMethod:ScheduleReconciler.kt:fun reconcileTrackersWithSchedule: ReconcileResult</ID>
-    <ID>CyclomaticComplexMethod:TrackerTypes.kt:fun parseTrackerData: CourseTrackerData?</ID>
+    <ID>CyclomaticComplexMethod:ScheduleReconciler.kt:internal fun reconcileTrackersWithSchedule: ReconcileResult</ID>
+    <ID>CyclomaticComplexMethod:TrackerTypes.kt:internal fun parseTrackerData: CourseTrackerData?</ID>
     <ID>CyclomaticComplexMethod:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
     <ID>CyclomaticComplexMethod:TransitUtils.kt:internal fun parseAlerts: List&lt;TransitAlert&gt;</ID>
-    <ID>CyclomaticComplexMethod:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
+    <ID>CyclomaticComplexMethod:WeatherLogic.kt:internal fun parseWeatherSnapshot: WeatherSnapshot?</ID>
     <ID>CyclomaticComplexMethod:WeatherRepository.kt:WeatherRepository$fun refreshWeather</ID>
     <ID>DestructuringDeclarationWithTooManyEntries:NearbyStops.kt:val (north, south, east, west) = bounds</ID>
     <ID>EmptyElseBlock:LiveQueryTest.kt:LiveQueryTest$if (++calls == 1) gate.await()</ID>
@@ -61,8 +61,8 @@
     <ID>LambdaParameterInRestartableEffect:AppSplash.kt:onPresented: () -&gt; Unit</ID>
     <ID>LambdaParameterInRestartableEffect:AttendanceTab.kt:/** Root-space top of the scrolling body's viewport (to centre a ledger row). */ viewportTop: () -&gt; Float</ID>
     <ID>LambdaParameterInRestartableEffect:PageScope.kt:nowMillis: () -&gt; Long = { Clock.System.now().toEpochMilliseconds() }</ID>
-    <ID>LongMethod:AttendanceCalc.kt:fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
-    <ID>LongMethod:IcsParser.kt:fun parseIcsContent: ParseIcsResult</ID>
+    <ID>LongMethod:AttendanceCalc.kt:internal fun generateSessionsFromScheduleEvents: List&lt;AttendanceSession&gt;</ID>
+    <ID>LongMethod:IcsParser.kt:internal fun parseIcsContent: ParseIcsResult</ID>
     <ID>LongMethod:ScheduleItemsSync.kt:ScheduleItemsSync$private suspend fun runSyncPass: Boolean</ID>
     <ID>LoopWithTooManyJumpStatements:AttendanceCalc.kt:for</ID>
     <ID>LoopWithTooManyJumpStatements:IcsParser.kt:for</ID>
@@ -100,18 +100,18 @@
     <ID>ReturnCount:CourseLogic.kt:CourseRules$fun classKind: ClassKind?</ID>
     <ID>ReturnCount:DeviceLocation.kt:internal fun readStoredLocation: WatchLocationState?</ID>
     <ID>ReturnCount:IcsParser.kt:private fun expandRecurrence: List&lt;IcsTimestampInfo&gt;</ID>
-    <ID>ReturnCount:ScheduleConflicts.kt:fun isConflictRelevantClass: Boolean</ID>
-    <ID>ReturnCount:ScheduleItemsStore.kt:fun parseScheduleItemsState: ScheduleItemsState?</ID>
-    <ID>ReturnCount:ScheduleItemsStore.kt:fun validateScheduleItem: ScheduleItem?</ID>
+    <ID>ReturnCount:ScheduleConflicts.kt:internal fun isConflictRelevantClass: Boolean</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:internal fun parseScheduleItemsState: ScheduleItemsState?</ID>
+    <ID>ReturnCount:ScheduleItemsStore.kt:internal fun validateScheduleItem: ScheduleItem?</ID>
     <ID>ReturnCount:TrackerTypes.kt:private fun CourseTracker.isValid: Boolean</ID>
-    <ID>ReturnCount:WeatherLogic.kt:fun parseWeatherSnapshot: WeatherSnapshot?</ID>
+    <ID>ReturnCount:WeatherLogic.kt:internal fun parseWeatherSnapshot: WeatherSnapshot?</ID>
     <ID>SwallowedException:ScheduleEventsRepository.kt:ScheduleEventsRepository$e: Throwable</ID>
     <ID>SwallowedException:ScheduleScreen.kt:e: ScheduleItemConflictException</ID>
     <ID>ThrowingExceptionsWithoutMessageOrCause:ScheduleItemsStore.kt:IllegalArgumentException()</ID>
     <ID>ThrowsCount:AndroidDevice.kt:AndroidLocationProvider$@SuppressLint("MissingPermission") override suspend fun current: GeoFix</ID>
     <ID>ThrowsCount:EditTrackerScreen.kt:@Composable internal fun EditTrackerScreen</ID>
     <ID>ThrowsCount:PocketBase.kt:PocketBaseClient$suspend fun sendText: String</ID>
-    <ID>ThrowsCount:RadarApi.kt:fun parseRainViewerResponse: RainViewerResponse</ID>
+    <ID>ThrowsCount:RadarApi.kt:internal fun parseRainViewerResponse: RainViewerResponse</ID>
     <ID>TooGenericExceptionCaught:AddTrackerState.kt:AddTrackerState$e: Throwable</ID>
     <ID>TooGenericExceptionCaught:ArrivalsLoader.kt:ArrivalsLoader$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:Catalog.kt:TransitCatalog$t: Throwable</ID>

@@ -24,14 +24,14 @@ import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 
 /** Offline cache base key: `<base>_<userId>`, the bare base when signed out. */
-const val CourseTrackerCacheKey = UserKeys.COURSE_TRACKER
+internal const val CourseTrackerCacheKey = UserKeys.COURSE_TRACKER
 
-fun courseTrackerCacheKey(userId: String?): String = if (userId.isNullOrEmpty()) CourseTrackerCacheKey else "${CourseTrackerCacheKey}_$userId"
+internal fun courseTrackerCacheKey(userId: String?): String = if (userId.isNullOrEmpty()) CourseTrackerCacheKey else "${CourseTrackerCacheKey}_$userId"
 
-enum class TrackerUploadResult { Uploaded, HeldBack }
+internal enum class TrackerUploadResult { Uploaded, HeldBack }
 
 /** Attendance gets ticked off in runs; only the last state of a run goes to the cloud. */
-const val TrackerUploadDebounceMs = 1500L
+internal const val TrackerUploadDebounceMs = 1500L
 
 /**
  * The course tracker's data, cloud sync and schedule reconciliation. One encrypted
@@ -41,7 +41,7 @@ const val TrackerUploadDebounceMs = 1500L
  * the [CloudWriteGate] (merged with the latest cloud copy at upload time)
  * once writes pause for [TrackerUploadDebounceMs].
  */
-class CourseTrackerRepository(
+internal class CourseTrackerRepository(
     private val cloud: TrackerCloud,
     private val cipher: TrackerCipher,
     private val kv: KeyValueStore,

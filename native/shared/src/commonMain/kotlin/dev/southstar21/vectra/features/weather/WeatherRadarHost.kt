@@ -14,7 +14,7 @@ import dev.southstar21.vectra.navigation.AppNavigator
  * from (W2) into the full-screen map, and shrinks back into it on close or back.
  */
 @Composable
-fun WeatherRadarHost(repo: WeatherRepository, navigator: AppNavigator, modifier: Modifier = Modifier) {
+internal fun WeatherRadarHost(repo: WeatherRepository, navigator: AppNavigator, modifier: Modifier = Modifier) {
     val close = { navigator.radar = null }
     val density = LocalDensity.current
     CardGrowOverlay(navigator.radar, close, modifier) { g ->

@@ -98,7 +98,7 @@ private fun Modifier.tabName(name: String?, selected: Boolean): Modifier =
  * @param item one item's content; [tinted] is the accent copy the drop shows.
  */
 @Composable
-fun LiquidTabs(
+internal fun LiquidTabs(
     count: Int,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
