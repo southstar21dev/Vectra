@@ -16,6 +16,7 @@ import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.SessionEndedException
 import dev.southstar21.vectra.features.coursetracker.CourseIdentity
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerScheduleSync
@@ -612,12 +613,14 @@ class ScheduleSyncTest {
         val held = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         b.afterListRead = { if (held.complete(Unit)) release.await() }
-        val save = scope.async { assertFailsWith<IllegalStateException> { repo.saveItem(item()) } }
+        val save = scope.async { runCatching { repo.saveItem(item()) }.exceptionOrNull() }
         held.await()
         auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
         until { repo.itemsState.value.items.isEmpty() && !repo.itemsLoading.value }
         release.complete(Unit)
-        save.await()
+        // Either the save is ended with its session or its enqueue refuses ("Nothing was saved"): which one wins is a race.
+        val failure = save.await()
+        assertTrue(failure is IllegalStateException || failure is SessionEndedException, failure.toString())
         settle()
         assertTrue(parseScheduleItemsState(kv.get(getScheduleItemsStorageKey(OtherUser)))?.items.orEmpty().isEmpty())
         assertTrue(repo.itemsState.value.items.isEmpty())
