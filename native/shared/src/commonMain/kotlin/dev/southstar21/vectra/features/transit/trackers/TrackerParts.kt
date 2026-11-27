@@ -44,7 +44,6 @@ import dev.southstar21.vectra.core.designsystem.theme.PillTone
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.pillDepth
 import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
@@ -78,7 +77,7 @@ internal fun ClippedFormGroup(modifier: Modifier = Modifier, rows: List<@Composa
  */
 @Composable
 internal fun ClippedFormRow(first: Boolean, last: Boolean, modifier: Modifier = Modifier, row: @Composable () -> Unit) {
-    val radius = 24.dp
+    val radius = 22.dp
     Box(modifier.fillMaxWidth()) {
         Box(
             Modifier
@@ -100,7 +99,7 @@ internal fun ClippedFormRow(first: Boolean, last: Boolean, modifier: Modifier = 
                     val placeable = measurable.measure(constraints.copy(minHeight = constraints.maxHeight + above + below, maxHeight = constraints.maxHeight + above + below))
                     layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(0, -above) }
                 }
-                .glass(RoundedCornerShape(radius)),
+                .plannerCard(RoundedCornerShape(radius)),
         )
         Column(
             Modifier.fillMaxWidth().clip(
