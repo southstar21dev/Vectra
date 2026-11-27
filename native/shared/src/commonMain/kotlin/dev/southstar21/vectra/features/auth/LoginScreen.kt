@@ -37,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -68,9 +67,7 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.cardDepthShadows
-import dev.southstar21.vectra.core.designsystem.theme.insetShadow
+import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -125,31 +122,23 @@ private fun AuthCard(
             VIcon(VectraLogo, size = 128.dp, tint = if (c.isDark) Color.White else Color.Black)
         }
         val shape = Radius.Card
-        val depth = cardDepthShadows(c.isDark)
+        // The reset step is a screen of its own: the Sign in / Create account tabs go away until it is left.
+        var resetting by remember { mutableStateOf(false) }
         Column(
             Modifier
                 .fillMaxWidth()
                 .animateContentSize(tween(280, easing = VectraEasing.Decelerate))
-                .boxShadow(shape, depth)
-                .background(c.surfaceSecondary, shape)
-                .background(
-                    Brush.linearGradient(
-                        0f to rgba(168, 85, 247, if (c.isDark) 0.10f else 0.08f),
-                        0.45f to Color.Transparent,
-                        start = Offset(0f, 0f),
-                        end = Offset(600f, 1000f),
-                    ),
-                    shape,
-                )
-                .insetShadow(shape, depth)
-                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
+                .glass(shape)
+                .padding(start = 24.dp, end = 24.dp, top = if (resetting) 24.dp else 12.dp, bottom = 24.dp),
         ) {
-            VTabs(
-                mode,
-                AuthMode.entries,
-                onMode,
-                Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            ) { m, _ -> VText(if (m == AuthMode.Login) "Sign in" else "Create account", maxLines = 1) }
+            if (!resetting) {
+                VTabs(
+                    mode,
+                    AuthMode.entries,
+                    onMode,
+                    Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                ) { m, _ -> VText(if (m == AuthMode.Login) "Sign in" else "Create account", maxLines = 1) }
+            }
             AnimatedContent(
                 mode,
                 transitionSpec = {
@@ -158,7 +147,7 @@ private fun AuthCard(
                 },
                 label = "authMode",
             ) { m ->
-                if (m == AuthMode.Login) LoginForm(auth, passkeys, createdEmail) else SignupForm(auth, passkeys, onSwitchToSignIn)
+                if (m == AuthMode.Login) LoginForm(auth, passkeys, createdEmail, resetting) { resetting = it } else SignupForm(auth, passkeys, onSwitchToSignIn)
             }
         }
     }
@@ -181,6 +170,11 @@ interface PasskeyActions {
 private fun FieldLabel(text: String) =
     VText(text, style = vtext(TypeScale.Caption, Weight.Bold), color = Vectra.colors.textSecondary)
 
+/** The inline message under a field the person left empty. */
+@Composable
+private fun FieldMessage(text: String) =
+    VText(text, style = vtext(TypeScale.Caption), color = Vectra.colors.tints.red.text)
+
 @Composable
 private fun PasswordToggle(visible: Boolean, onToggle: () -> Unit) {
     VIcon(
@@ -192,7 +186,7 @@ private fun PasswordToggle(visible: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEmail: String?) {
+private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEmail: String?, resetting: Boolean, onResetting: (Boolean) -> Unit) {
     val c = Vectra.colors
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf(createdEmail.orEmpty()) }
@@ -202,17 +196,20 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
     var error by remember { mutableStateOf<Throwable?>(null) }
     var passkeyPending by remember { mutableStateOf(false) }
     var passkeyError by remember { mutableStateOf<String?>(null) }
-    var resetting by remember { mutableStateOf(false) }
+    var emailMissing by remember { mutableStateOf(false) }
+    var passwordMissing by remember { mutableStateOf(false) }
     val sessionExpired = remember { auth.sessionExpired.value.also { auth.consumeSessionExpired() } }
     val notice = remember { auth.loginNotice.value.also { auth.consumeLoginNotice() } }
 
     if (resetting) {
-        ResetPasswordForm(auth, email) { resetting = false }
+        ResetPasswordForm(auth, email) { onResetting(false) }
         return
     }
 
     val submit = {
-        if (!pending && email.isNotBlank() && password.isNotEmpty()) {
+        emailMissing = email.isBlank()
+        passwordMissing = password.isEmpty()
+        if (!pending && !emailMissing && !passwordMissing) {
             pending = true
             error = null
             scope.launchCatching({ auth.login(email.trim(), password); pending = false }) { pending = false; error = it }
@@ -235,8 +232,8 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
                     enabled = !passkeyPending,
                 ) {
                     if (passkeyPending) InlineLoader() else {
-                        VIcon(RemixIcons.FingerprintLine)
-                        VText("Continue with biometrics", style = vtext(TypeScale.Caption, Weight.Bold))
+                        VIcon(BiometricCopy.icon())
+                        VText(BiometricCopy.signInTitle(), style = vtext(TypeScale.Caption, Weight.Bold))
                     }
                 }
                 passkeyError?.let { Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, it) }
@@ -245,22 +242,24 @@ private fun LoginForm(auth: AuthRepository, passkeys: PasskeyActions?, createdEm
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FieldLabel("Email address")
             VInput(
-                email, { email = it }, placeholder = "name@example.com", icon = RemixIcons.MailLine,
+                email, { email = it; emailMissing = false }, placeholder = "name@example.com", icon = RemixIcons.MailLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             )
+            if (emailMissing) FieldMessage("Enter your email address.")
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FieldLabel("Password")
             VInput(
-                password, { password = it }, placeholder = "••••••••", icon = RemixIcons.LockLine,
+                password, { password = it; passwordMissing = false }, placeholder = "••••••••", icon = RemixIcons.LockLine,
                 visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 trailing = { PasswordToggle(show) { show = !show } },
             )
+            if (passwordMissing) FieldMessage("Enter your password.")
             VText(
                 "Forgot password?",
-                Modifier.align(Alignment.End).tappable(onClick = { resetting = true }).padding(vertical = 4.dp),
+                Modifier.align(Alignment.End).tappable(onClick = { onResetting(true) }).padding(vertical = 4.dp),
                 vtext(TypeScale.Caption, Weight.Bold),
                 c.tints.purple.text,
             )
@@ -414,11 +413,11 @@ private fun SignupForm(auth: AuthRepository, passkeys: PasskeyActions?, onSwitch
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    VText("Enable biometric sign-in", style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary)
+                    VText(BiometricCopy.signInTitle(), style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary)
                     VText(BiometricCopy.signInInstead(), Modifier.padding(top = 4.dp), vtext(TypeScale.Caption), c.textMuted)
                     PasskeyResetNote(PasskeyResetNotes.SIGNUP, Modifier.padding(top = 8.dp))
                 }
-                VToggle(biometrics, { biometrics = it }, label = "Enable biometric sign-in for faster logins")
+                VToggle(biometrics, { biometrics = it }, label = "${BiometricCopy.signInTitle()} for faster logins")
             }
         }
         VButton(onClick = { submit() }, modifier = Modifier.fillMaxWidth(), variant = ButtonVariant.Primary, enabled = !pending) {
