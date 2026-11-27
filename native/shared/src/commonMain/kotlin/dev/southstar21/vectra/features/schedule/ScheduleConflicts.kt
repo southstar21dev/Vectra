@@ -199,6 +199,10 @@ internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, index: Sch
     // Manual weekly classes repeat blindly, but nobody teaches on a public holiday.
     if (event.source != "neptun" && isHungarianPublicHoliday(dateStr)) return false
 
+    val frequency = getEventFrequency(event.csvMetadata)
+    // A dated weekly class meets every week of its own range, also an intensive block before week one.
+    if (frequency == ScheduleFrequency.Weekly && dateStart != null) return true
+
     val weekOneStart = semesterWeekOneStart(event, dateStr, index)
     val weekOneOrdinal = ordinalForDate(weekOneStart) ?: return false
     val anchorWeekday = weekdayForDate(weekOneStart) ?: return false
@@ -206,7 +210,7 @@ internal fun classOccursOnDate(event: ScheduleEvent, dateStr: String, index: Sch
     val since = candidateOrdinal - firstOccurrence
     if (since < 0 || since % 7 != 0L) return false
     val weekNumber = since / 7 + 1
-    return when (getEventFrequency(event.csvMetadata)) {
+    return when (frequency) {
         ScheduleFrequency.Even -> weekNumber % 2 == 0L
         ScheduleFrequency.Odd -> weekNumber % 2 != 0L
         ScheduleFrequency.Weekly -> true

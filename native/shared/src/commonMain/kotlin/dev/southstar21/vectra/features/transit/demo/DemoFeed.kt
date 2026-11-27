@@ -51,7 +51,7 @@ internal object DemoFeed {
         val stopTimes = stop.directions.flatMapIndexed { i, d ->
             if (stop.behaviour == DemoBehaviour.Empty) return@flatMapIndexed emptyList()
             tripsOf(stop, i, now).map { (tripId, t) ->
-                trips[tripId] = FutarTripRef(if (d.replacement) line.replacementRouteId else line.routeId, d.headsign)
+                trips[tripId] = FutarTripRef(if (d.replacement) line.replacementRouteId else line.routeId, d.headsign, d.directionId)
                 val at = (now + (t.minutes * 60_000).toLong()) / 1000
                 FutarStopTime(
                     stopId = stopId,
@@ -128,7 +128,7 @@ internal object DemoFeed {
         val stop = line.stops.first()
         val geometries = stop.directions.indices.map { demoGeometry(stop, it) }
         val variants = stop.directions.mapIndexed { i, d ->
-            FutarRouteVariant(routeId, d.headsign, d.headsign, geometries[i].stopIds, FutarPolyline(encodePolyline(geometries[i].points)))
+            FutarRouteVariant(routeId, d.headsign, d.headsign, geometries[i].stopIds, FutarPolyline(encodePolyline(geometries[i].points)), d.directionId)
         }
         val stops = geometries.fold(emptyMap<String, FutarStop>()) { acc, g -> acc + g.stops() }
         return FutarRouteDetailsResponse(now, "OK", FutarRouteDetailsData(FutarRouteDetailsEntry(routeId, variants), FutarStopsReferences(stops, mapOf(routeId to line.route))))

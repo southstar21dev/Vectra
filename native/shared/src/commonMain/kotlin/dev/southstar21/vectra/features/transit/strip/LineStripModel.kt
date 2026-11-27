@@ -62,6 +62,9 @@ internal data class StripModel(
     /** That end's direction is run by replacement buses. */
     val leftBus: Boolean = false,
     val rightBus: Boolean = false,
+    /** That end's replacement buses go the other way from the direction picked. */
+    val leftOther: Boolean = false,
+    val rightOther: Boolean = false,
     /** The next departures each way (the one drawn on the line first), for the times under the ends. */
     val leftTimes: List<StripTime> = emptyList(),
     val rightTimes: List<StripTime> = emptyList(),
@@ -89,6 +92,8 @@ internal data class StripDirection(
     val terminus: Boolean = false,
     /** Its next trip is a replacement bus standing in for the line. */
     val replacement: Boolean = false,
+    /** Its next trip is a replacement bus going the other way from the direction picked. */
+    val otherDirection: Boolean = false,
     /** The departures after [arrival], same direction. */
     val later: List<Arrival> = emptyList(),
 )
@@ -142,6 +147,8 @@ internal fun buildStripModel(directions: List<StripDirection>, now: Long, metro:
         fork = fork?.let { (e, heading) -> StripFork(heading, e.destination) },
         leftBus = left?.replacement == true,
         rightBus = right?.replacement == true,
+        leftOther = left?.otherDirection == true,
+        rightOther = right?.otherDirection == true,
         leftTimes = endTimes(left, now, metro, frozen),
         rightTimes = endTimes(right, now, metro, frozen),
         forkTimes = endTimes(fork?.first, now, metro, frozen),

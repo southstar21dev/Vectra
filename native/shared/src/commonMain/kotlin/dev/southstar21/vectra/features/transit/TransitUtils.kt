@@ -125,6 +125,8 @@ internal fun extractHeadsignDestination(headsign: String?): String {
 
 private val ParenNotes = Regex("""\([^)]*\)""")
 private val StationSuffixes = Regex("""\b(m|h|pu|vasutallomas|allomas)\b""")
+/** "Móricz Zs. körtér" and "Móricz Zsigmond körtér" name the same stop. */
+private val ZsAbbreviation = Regex("""\bzs\b\.?""")
 private val Whitespace = Regex("""\s+""")
 private val RouteTitleSeparator = Regex("""\s*\|\s*""")
 private val SixDigitStopId = Regex("""^BKK_\d{6}$""")
@@ -133,6 +135,7 @@ private val EightDigitStopId = Regex("""^BKK_\d{8}$""")
 private fun normalizeHeadsignForMatch(s: String): String =
     normalizeSearchText(s)
         .replace(ParenNotes, "")
+        .replace(ZsAbbreviation, "zsigmond")
         .replace(StationSuffixes, "")
         .replace(Whitespace, " ")
         .trim()
@@ -204,24 +207,12 @@ internal fun isReplacementFor(tripRouteId: String?, tripShortName: String?, rout
     return key in names || key.split(ReplacementNameSplit).any { part -> part.isNotEmpty() && part in names }
 }
 
-private fun narrowReplacementDirection(
-    matched: List<Pair<Arrival, String?>>,
-    headsign: String?,
-    targetDirectionId: String?,
-): List<Pair<Arrival, String?>> {
-    if (headsign.isNullOrBlank() || targetDirectionId.isNullOrBlank()) return matched
-    val repDirs = matched.mapNotNull { (a, dirId) -> if (a.isReplacementBus) dirId?.takeIf(String::isNotBlank) else null }.toSet()
-    return if (repDirs.size > 1 && targetDirectionId in repDirs) {
-        matched.filter { (a, dirId) -> !a.isReplacementBus || dirId == targetDirectionId }
-    } else {
-        matched
-    }
-}
-
 /**
  * Upcoming arrivals for one route from a stop's Futár response, narrowed to
  * [headsign] when set. Paired lines combine, and the line's replacement buses count as the line
- * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them.
+ * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them,
+ * in either direction. The ones going the other way from [headsign] are flagged
+ * ([Arrival.otherDirection], from [otherHeadsigns]) so callers can tell them apart.
  * When [targetDirectionId] is supplied, short-turned or diverted trips moving in the same physical
  * direction still match automatically even if their terminus headsign changed.
  */
@@ -232,6 +223,7 @@ internal fun parseStopArrivals(
     now: Long = nowMs(),
     shortName: String? = null,
     targetDirectionId: String? = null,
+    otherHeadsigns: List<String> = emptyList(),
 ): List<Arrival> {
     val stopTimes = data?.data?.entry?.stopTimes.orEmpty()
     val refs = data?.data?.references
@@ -240,7 +232,7 @@ internal fun parseStopArrivals(
     val lineName = shortName?.takeIf { it.isNotBlank() } ?: routes[routeId]?.shortName ?: FallbackShortNames[routeId]
     fun serves(tripRouteId: String?) =
         isRouteMatch(tripRouteId, routeId) || isReplacementFor(tripRouteId, tripRouteId?.let { routes[it]?.shortName }, routeId, lineName)
-    val matched = stopTimes
+    return stopTimes
         .filter { !it.canceled && serves(trips[it.tripId]?.routeId) }
         .map { st -> st.toArrival(trips[st.tripId], routes) to trips[st.tripId]?.directionId }
         .filter { (a, _) -> a.arrivalMs > 0 && a.arrivalMs >= now - 60_000 }
@@ -249,8 +241,23 @@ internal fun parseStopArrivals(
                 isHeadsignMatch(headsign, a.headSign, a.tripHeadsign) ||
                 (!headsign.isNullOrBlank() && !targetDirectionId.isNullOrBlank() && dirId == targetDirectionId)
         }
-    return narrowReplacementDirection(matched, headsign, targetDirectionId).map { it.first }.sortedBy { it.arrivalMs }
+        .map { (a, _) -> if (a.isReplacementBus && isOtherDirection(a, headsign, otherHeadsigns)) a.copy(otherDirection = true) else a }
+        .sortedBy { it.arrivalMs }
 }
+
+/**
+ * Whether the replacement bus [a] goes the other way from the picked [headsign]: its headsign (or
+ * terminus) matches one of the line's [otherHeadsigns] and does not match the picked headsign. A
+ * compound "A / B" picked headsign matches on any part. Replacement buses keep their own
+ * destinations, so this only labels them, it never filters. Direction ids are deliberately not
+ * used: a replacement route numbers them on its own, and a bus that runs to the end of the replaced
+ * section can carry the other id while still going the picked way. Anything else is unknown, and
+ * unknown is not labelled.
+ */
+internal fun isOtherDirection(a: Arrival, headsign: String?, otherHeadsigns: List<String>): Boolean =
+    !headsign.isNullOrBlank() &&
+        !isHeadsignMatch(headsign, a.headSign, a.tripHeadsign) &&
+        otherHeadsigns.any { isHeadsignMatch(it, a.headSign, a.tripHeadsign) }
 
 /** One stop time as an arrival: the live estimate when there is one, else the timetable. */
 private fun FutarStopTime.toArrival(trip: FutarTripRef?, routes: Map<String, FutarRoute>): Arrival {

@@ -50,7 +50,9 @@ internal fun clipRouteToTrackedStop(polyline: List<LatLon>, stops: List<LatLon>,
 internal fun trackedTripIds(arrivals: List<Arrival>): List<String> {
     val seenDirections = HashSet<String>()
     val out = mutableListOf<String>()
-    for (a in arrivals) {
+    // Buses going the other way from the picked direction come last: the trips followed (and the
+    // lead one) are the picked direction's first.
+    for (a in arrivals.sortedBy { it.otherDirection }) {
         if (a.tripId.isEmpty() || a.headSign in seenDirections) continue
         seenDirections += a.headSign
         out += a.tripId

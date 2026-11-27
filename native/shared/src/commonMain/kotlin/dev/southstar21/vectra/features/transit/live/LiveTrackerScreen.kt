@@ -118,8 +118,15 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
         targetDirectionIdFor(activeStop?.headsign, routeVariants, activeStop?.stopId, stopRefs)
     }
 
+    // The line's other direction, to tell which way a replacement bus goes. Only known once the
+    // picked direction is resolved against the route's variants (already loaded for the strip).
+    val otherHeadsigns = remember(targetDirectionId, routeVariants) {
+        if (targetDirectionId == null) emptyList()
+        else routeVariants.filter { !it.direction.isNullOrBlank() && it.direction != targetDirectionId }.mapNotNull { it.headsign?.takeIf(String::isNotBlank) }
+    }
+
     // Next arrival per tracked direction → the trips we're following.
-    val arrivals = remember(arrivalsQuery.data, tracker, activeStop, targetDirectionId) {
+    val arrivals = remember(arrivalsQuery.data, tracker, activeStop, targetDirectionId, otherHeadsigns) {
         if (tracker == null || activeStop == null) emptyList()
         else parseStopArrivals(
             arrivalsQuery.data,
@@ -127,6 +134,7 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
             activeStop.headsign?.takeIf { it.isNotEmpty() },
             shortName = tracker.routeShortName,
             targetDirectionId = targetDirectionId,
+            otherHeadsigns = otherHeadsigns,
         )
     }
     // While replacement buses stand in for the line, their positions come from their own route.
@@ -140,9 +148,13 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
     // All directions are tracked; the LEAD one (map emphasis + first card) is
     // the one with a live vehicle, else the soonest arrival.
     val hasTrip = tripIds.isNotEmpty()
-    val leadTripId = remember(tripIds, vehicles) {
+    val leadTripId = remember(tripIds, vehicles, arrivals) {
         if (tripIds.size <= 1) tripIds.firstOrNull()
-        else tripIds.firstOrNull { id -> vehicles.any { it.tripId == id } } ?: tripIds[0]
+        else {
+            // A bus going the other way from the picked direction never leads.
+            val picked = tripIds.filter { id -> arrivals.none { it.tripId == id && it.otherDirection } }.ifEmpty { tripIds }
+            picked.firstOrNull { id -> vehicles.any { it.tripId == id } } ?: picked[0]
+        }
     }
     val otherTripId = if (tripIds.size > 1) tripIds.firstOrNull { it != leadTripId } else null
     val thirdTripId = if (tripIds.size > 2) tripIds.firstOrNull { it != leadTripId && it != otherTripId } else null

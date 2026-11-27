@@ -288,18 +288,35 @@ type request struct {
 // Batch limits. Older clients (the deprecated web client and older app
 // versions: shrink these caps once both are retired) send a whole collection in
 // one decrypt (decryptAll), so the per-request caps sit far above any real account's data;
-// current clients split their batches well below them. Every value or part
-// list costs one unit of the caller's budget.
+// current clients split their batches well below them.
+//
+// Cost: every value or part list costs one budget unit, plus one more for each
+// CostUnitBytes it holds beyond the first, so a big blob cannot ride along as
+// "one value". A value of up to CostUnitBytes (every field except the course
+// tracker document) still costs exactly one unit.
+//
+// MaxValueBytes bounds one value or part. The largest legitimate value is the
+// course tracker document, capped at 1,000,000 characters of ciphertext by
+// migration 1700000016 (its plaintext is smaller), so 1 MiB covers both the
+// encrypt and the decrypt direction.
 const (
 	MaxValues       = 20_000
 	MaxPartLists    = 2_000
 	MaxPartsPerList = 16
 	MaxBatchBytes   = 16 << 20
+	MaxValueBytes   = 1 << 20
+	CostUnitBytes   = 4096
 )
 
 // UserLimiter holds each user's budget of values per window
 // (limits.CryptoValues). It is a var so tests can substitute a fresh one.
 var UserLimiter = ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window)
+
+// unitCost is the budget cost of size bytes: at least one unit, one more per
+// CostUnitBytes started.
+func unitCost(size int) int {
+	return max(1, (size+CostUnitBytes-1)/CostUnitBytes)
+}
 
 // batchCost checks body against the caps and returns its cost in budget
 // units, or a non-empty reason when it is too large.
@@ -310,22 +327,32 @@ func batchCost(body request) (int, string) {
 	if len(body.Parts) > MaxPartLists {
 		return 0, fmt.Sprintf("Too many digests in one request (at most %d)", MaxPartLists)
 	}
-	size := 0
+	size, cost := 0, 0
 	for _, v := range body.Values {
+		if len(v) > MaxValueBytes {
+			return 0, fmt.Sprintf("Value too large (at most %d bytes)", MaxValueBytes)
+		}
 		size += len(v)
+		cost += unitCost(len(v))
 	}
 	for _, p := range body.Parts {
 		if len(p) > MaxPartsPerList {
 			return 0, fmt.Sprintf("Too many parts in one digest (at most %d)", MaxPartsPerList)
 		}
+		list := 0
 		for _, v := range p {
-			size += len(v)
+			if len(v) > MaxValueBytes {
+				return 0, fmt.Sprintf("Value too large (at most %d bytes)", MaxValueBytes)
+			}
+			list += len(v)
 		}
+		size += list
+		cost += unitCost(list)
 	}
 	if size > MaxBatchBytes {
 		return 0, fmt.Sprintf("Request too large (at most %d bytes of values)", MaxBatchBytes)
 	}
-	return max(1, len(body.Values)+len(body.Parts)), ""
+	return max(1, cost), ""
 }
 
 // Handler implements POST /api/vectra/crypto (JWT-gated).

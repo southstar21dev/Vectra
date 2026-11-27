@@ -111,3 +111,39 @@ func TestUserBudget(t *testing.T) {
 	// The budget refills once the window has passed.
 	require.True(t, l.AllowN(alice.Id, 5, time.Now().Add(2*time.Minute)))
 }
+
+// TestValueByteCap: one value (or digest part) over MaxValueBytes is refused
+// with 413 even though the request is far below the total byte cap; one
+// exactly at it is accepted.
+func TestValueByteCap(t *testing.T) {
+	app, alice, _ := limitsApp(t)
+	freshLimiter(t, ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window))
+
+	require.Equal(t, http.StatusOK, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": []string{strings.Repeat("a", MaxValueBytes)}}))
+	require.Equal(t, http.StatusRequestEntityTooLarge, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": []string{strings.Repeat("a", MaxValueBytes+1)}}))
+	require.Equal(t, http.StatusRequestEntityTooLarge, callStatus(t, app, alice, map[string]any{"op": "encrypt", "values": []string{strings.Repeat("a", MaxValueBytes+1)}}))
+	require.Equal(t, http.StatusRequestEntityTooLarge, callStatus(t, app, alice, map[string]any{"op": "digest", "parts": [][]string{{"r", strings.Repeat("a", MaxValueBytes+1)}}}))
+}
+
+// TestBatchCostCountsBytes: values up to CostUnitBytes cost one unit each as
+// before; larger ones cost one unit per CostUnitBytes started, so bytes use up
+// the budget and not only the number of values.
+func TestBatchCostCountsBytes(t *testing.T) {
+	cost := func(body request) int {
+		c, reason := batchCost(body)
+		require.Empty(t, reason)
+		return c
+	}
+	require.Equal(t, 1, cost(request{}), "an empty request costs one unit")
+	require.Equal(t, 3, cost(request{Values: []string{"a", "", strings.Repeat("b", CostUnitBytes)}}))
+	require.Equal(t, 2, cost(request{Values: []string{strings.Repeat("b", CostUnitBytes+1)}}))
+	require.Equal(t, 256, cost(request{Values: []string{strings.Repeat("b", MaxValueBytes)}}))
+	require.Equal(t, 3, cost(request{Parts: [][]string{{"r", "s"}, {strings.Repeat("p", CostUnitBytes+1)}}}))
+
+	// Through the handler: a budget of 100 units refuses a 1 MiB value
+	// (256 units) that the old per-value count would have let through.
+	app, alice, _ := limitsApp(t)
+	freshLimiter(t, ratelimit.New(100, time.Minute))
+	require.Equal(t, http.StatusTooManyRequests, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": []string{strings.Repeat("a", MaxValueBytes)}}))
+	require.Equal(t, http.StatusOK, callStatus(t, app, alice, map[string]any{"op": "decrypt", "values": []string{strings.Repeat("a", 50*CostUnitBytes)}}))
+}

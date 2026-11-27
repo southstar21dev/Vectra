@@ -49,6 +49,8 @@ private data class SlimDirectionEntry(
     val destination: String,
     val vehicle: StripVehicle,
     val nextTimes: List<StripTime>,
+    /** Replacement buses going the other way from the direction picked. */
+    val other: Boolean = false,
 )
 
 /**
@@ -67,10 +69,10 @@ internal fun SlimDirectionRows(
     val left = model.vehicles.firstOrNull { it.heading < 0 }
     val entries = buildList {
         if (right?.label != null && model.rightEnd != null) {
-            add(SlimDirectionEntry(true, model.rightEnd, right, if (showNext) model.rightTimes.drop(1).take(2) else emptyList()))
+            add(SlimDirectionEntry(true, model.rightEnd, right, if (showNext) model.rightTimes.drop(1).take(2) else emptyList(), model.rightOther))
         }
         if (left?.label != null && model.leftEnd != null) {
-            add(SlimDirectionEntry(false, model.leftEnd, left, if (showNext) model.leftTimes.drop(1).take(2) else emptyList()))
+            add(SlimDirectionEntry(false, model.leftEnd, left, if (showNext) model.leftTimes.drop(1).take(2) else emptyList(), model.leftOther))
         }
     }
     if (entries.isEmpty() && fallback == null) return
@@ -95,7 +97,10 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry) {
     ) {
         VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
         if (entry.vehicle.replacement) VIcon(RemixIcons.BusLine, size = 12.dp, tint = BusBlue)
-        VText(entry.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+        Column(Modifier.weight(1f)) {
+            VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+            if (entry.other) OtherDirectionNote()
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
             VText(
                 entry.vehicle.label.orEmpty(),
@@ -196,3 +201,9 @@ internal fun stripDescription(model: StripModel): String = model.vehicles.mapNot
     }
     "to $dest $time"
 }.joinToString(", ")
+
+/** Quiet note under a direction whose replacement buses go the other way from the one picked. */
+@Composable
+internal fun OtherDirectionNote(modifier: Modifier = Modifier, align: TextAlign = TextAlign.Start) {
+    VText("Other direction", modifier, vtext(11.sp to 15.sp, Weight.Semibold), Vectra.colors.tints.amber.text, align = align, maxLines = 1)
+}

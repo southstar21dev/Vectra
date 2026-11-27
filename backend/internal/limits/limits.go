@@ -35,7 +35,8 @@ var (
 	AuthResets  = Limit{Max: 10, Window: 10 * time.Minute}
 
 	// CryptoValues is each user's budget of values per window on /crypto.
-	// Key: user id. Every value or part list costs one unit.
+	// Key: user id. Every value or part list costs one unit, plus one more per
+	// 4 KiB it holds beyond the first (crypto.CostUnitBytes).
 	CryptoValues = Limit{Max: 200_000, Window: 10 * time.Minute}
 
 	// NeptunReplace caps /neptun/replace calls per user.

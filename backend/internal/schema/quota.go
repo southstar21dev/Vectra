@@ -7,8 +7,8 @@ import (
 
 // RowQuotas caps how many rows one user may own per collection. The limits
 // are far above what the app really stores, so they only stop a free account
-// from filling the server disk through the records API (blob fields allow
-// about 1 MB per row). push_subscriptions has its own cap in the push package.
+// from filling the server disk through the records API (blob fields are capped
+// per row by migration 1700000016). push_subscriptions has its own cap in the push package.
 var RowQuotas = map[string]int{
 	"schedule_events":        5000,
 	"neptun_schedule_events": 5000,
