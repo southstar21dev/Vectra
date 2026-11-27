@@ -194,7 +194,7 @@
   {
     "id": "BKK_F0090",
     "shortName": "9❆",
-    "description": "Kőbánya alsó vasútállomás | Óbuda, Bogdáni út",
+    "description": "Kőbánya alsó vasútáll. | Óbuda, Bogdáni út",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
@@ -222,14 +222,6 @@
     "type": "TRAM",
     "color": "FFD800",
     "textColor": "000000"
-  },
-  {
-    "id": "BKK_OP12",
-    "shortName": "12",
-    "description": "Rákospalota, Kossuth utca | Angyalföld kocsiszín",
-    "type": "BUS",
-    "color": "009EE3",
-    "textColor": "FFFFFF"
   },
   {
     "id": "volan_12",
@@ -2762,7 +2754,7 @@
   {
     "id": "BKK_2810",
     "shortName": "281",
-    "description": "Haller utca / Mester utca | Haller utca / Mester utca",
+    "description": "Haller utca / Mester utca | Aszódi utca",
     "type": "BUS",
     "color": "009EE3",
     "textColor": "FFFFFF"
