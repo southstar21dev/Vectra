@@ -44,6 +44,26 @@ object PlannerSurface {
     fun borderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.2f) else rgba(15, 23, 42, 0.1f)
     fun shadow(dark: Boolean): List<BoxShadow> =
         listOf(BoxShadow(y = 16f, blur = 36f, spread = -8f, color = if (dark) rgba(0, 0, 0, 0.5f) else rgba(15, 23, 42, 0.12f)))
+
+    /** A cancelled card: darker than a card, still flat (never carved in). */
+    fun cancelledFill(dark: Boolean): Color = if (dark) Color(0xFF08090B) else Color(0xFFE2E8F0)
+
+    /** The flat strip between cards (breaks, notes, the stacked day's rows). */
+    fun stripFill(dark: Boolean): Color = if (dark) Color(0xFF14151C) else Color(0xFFF8FAFC)
+    fun stripShadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 8f, blur = 18f, spread = -6f, color = if (dark) rgba(0, 0, 0, 0.75f) else rgba(15, 23, 42, 0.1f)))
+
+    /** The small card (panel radius): a stronger top edge and a tighter shadow. */
+    fun smallBorderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.18f) else rgba(15, 23, 42, 0.18f)
+    fun smallShadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 10f, blur = 22f, spread = -10f, color = if (dark) rgba(0, 0, 0, 0.8f) else rgba(15, 23, 42, 0.14f)))
+
+    /** The two edges of a stacked card pile behind the front card. */
+    fun edgeNear(dark: Boolean): Color = if (dark) Color(0xFF13141B) else Color(0xFFE9EDF3)
+    fun edgeFar(dark: Boolean): Color = if (dark) Color(0xFF101117) else Color(0xFFE2E7EE)
+
+    /** The loading placeholder strip. */
+    fun placeholderStripFill(dark: Boolean): Color = if (dark) Color(0xFF121318) else Color(0xFFE9EDF3)
 }
 
 /** The planner card surface (light and dark). Pass [Radius.Strip] or [Radius.Panel] for smaller cards. */
