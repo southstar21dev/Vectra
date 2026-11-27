@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -320,7 +321,7 @@ private fun TitlePlacard(tracker: TransitTracker, stopName: String, isLive: Bool
     ) {
         RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Md)
         Column(Modifier.weight(1f, fill = false)) {
-            VText(stopName, style = vtext(15.sp to 19.sp, Weight.Bold), color = c.textPrimary, maxLines = 1)
+            VText(stopName, style = vtext(15.sp to 19.sp, Weight.Bold), color = c.textPrimary, maxLines = 2)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (isLive) {
                     LiveSignalIcon(size = 10.dp, tint = c.tints.emerald.text)
@@ -371,7 +372,13 @@ private fun StopsSection(tracker: TransitTracker, routeColor: String, stopId: St
     val dirIndex = directionTabIndex(directions.map(::directionLabel), picked)
     Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 24.dp)) {
         val labels = directions.map(::directionLabel)
-        val stacked = directions.size > 1 && directionTabsStacked(labels)
+        // Two-up tabs share 230dp; a name wider than its tab (less its padding) gets a row of its own.
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val tabStyle = vtext(TypeScale.Caption, Weight.Bold)
+        val stacked = directions.size > 1 && directionTabsStacked(labels, with(density) { 90.dp.toPx() }) { label ->
+            measurer.measure(label, tabStyle, maxLines = 1, softWrap = false).size.width.toFloat()
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             VText("Stops", style = vtext(20.sp to 24.sp, Weight.Bold), color = c.textPrimary)
             Spacer(Modifier.weight(1f))
