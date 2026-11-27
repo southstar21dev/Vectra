@@ -224,11 +224,11 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
         NavbarActionConfig(
             icon = RemixIcons.AddLine,
             actions = buildList {
-                if (trackers.isNotEmpty()) add(NavbarAction("reorder", "Manage Trackers", RemixIcons.Equalizer2Line, NavbarActionVariant.Gray) {
+                if (trackers.isNotEmpty()) add(NavbarAction("reorder", "Manage trackers", RemixIcons.Equalizer2Line, NavbarActionVariant.Gray) {
                     navigator.push(Screen.ManageTrackers)
                 })
-                add(NavbarAction("nearby", "Show Nearby", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.nearbyMap = CardLaunch(null) })
-                add(NavbarAction("add-tracker", "Add Tracker", RemixIcons.AddLine, NavbarActionVariant.Primary) { navigator.push(Screen.AddTracker) })
+                add(NavbarAction("nearby", "Nearby map", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.nearbyMap = CardLaunch(null) })
+                add(NavbarAction("add-tracker", "Add tracker", RemixIcons.AddLine, NavbarActionVariant.Primary) { navigator.push(Screen.AddTracker) })
             },
         ),
     )
@@ -330,8 +330,8 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
         actions = if (menu == null) emptyList() else listOf(
             SheetAction("Live departures", RemixIcons.TimeLine) { navigator.openLiveTracker(menu.id, menu.stopId) },
             SheetAction("Edit tracker", RemixIcons.PencilLine) { navigator.push(Screen.EditTracker(menu.id)) },
-            SheetAction(if (menu.isFavorite) "Remove from favourites" else "Add to favourites", if (menu.isFavorite) RemixIcons.StarFill else RemixIcons.StarLine) {
-                scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update favourites", it.message) } }
+            SheetAction(if (menu.isFavorite) "Unpin" else "Pin to Dashboard", if (menu.isFavorite) RemixIcons.StarFill else RemixIcons.StarLine) {
+                scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update pinned trackers", it.message) } }
             },
             SheetAction("Remove tracker", RemixIcons.DeleteBinLine, destructive = true) {
                 repo.launchInAppScope { runSuspendCatching { removeTrackerWithUndo(repo, toaster, menu) }.onFailure { toaster.error("Failed to remove tracker", trackerErrorMessage(it)) } }
@@ -412,11 +412,7 @@ private fun InactiveStack(trackers: List<TransitTracker>, open: Boolean, onToggl
                         lines.take(StackBadges).forEach { t ->
                             RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
                         }
-                        if (lines.size > StackBadges) {
-                            Box(Modifier.height(28.dp).background(c.surfaceOverlay, CircleShape).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                                VText("+${lines.size - StackBadges}", style = vtext(11.sp to 14.sp, Weight.Bold), color = c.textSecondary)
-                            }
-                        }
+                        if (lines.size > StackBadges) RouteBadge("+${lines.size - StackBadges}", null, null, size = RouteBadgeSize.Xs)
                     }
                 }
                 VIcon(RemixIcons.ArrowDownSLine, Modifier.graphicsLayer { rotationZ = 180f * fan }, tint = c.textMuted)
