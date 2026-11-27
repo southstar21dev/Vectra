@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit.trackers
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -36,11 +37,13 @@ internal fun LineBadgeSlot(modifier: Modifier = Modifier, badge: @Composable () 
 @Composable
 internal fun LineRowText(title: String, toLine: String? = null, meta: (@Composable () -> Unit)? = null) {
     val c = Vectra.colors
-    VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 2)
-    if (!toLine.isNullOrEmpty()) {
-        VText("→ $toLine", Modifier.padding(top = 1.dp), vtext(TypeScale.Caption, Weight.Medium), c.textSecondary, maxLines = 2)
+    Column {
+        VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 2)
+        if (!toLine.isNullOrEmpty()) {
+            VText("→ $toLine", Modifier.padding(top = 1.dp), vtext(TypeScale.Caption, Weight.Medium), c.textSecondary, maxLines = 2)
+        }
+        if (meta != null) Box(Modifier.padding(top = 3.dp)) { meta() }
     }
-    if (meta != null) Box(Modifier.padding(top = 3.dp)) { meta() }
 }
 
 /**

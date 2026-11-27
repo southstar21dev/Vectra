@@ -205,9 +205,3 @@ internal fun directionLabel(d: DirectionView): String =
 /** The tab for the direction the user picked by [pickedLabel]; the first one when nothing was picked or it is gone. */
 internal fun directionTabIndex(labels: List<String>, pickedLabel: String?): Int =
     pickedLabel?.let { labels.indexOf(it) }?.takeIf { it >= 0 } ?: 0
-
-/** Longest direction name that still fits a two-up tab; a longer one gets a stacked option group instead. */
-private const val TwoUpTabMaxChars = 11
-
-/** Whether the directions' names are too long for tabs side by side. */
-internal fun directionTabsStacked(labels: List<String>): Boolean = labels.any { it.length > TwoUpTabMaxChars }
