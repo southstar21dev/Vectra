@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,6 +49,10 @@ import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import kotlin.math.floor
 import kotlin.math.round
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private enum class ScoreMode { Points, Percent }
 
@@ -432,8 +434,6 @@ private fun ColumnScope.AssessmentForm(
       }
     }
     BottomBar {
-        TrackerButton(::submit, Modifier.fillMaxWidth(), shape = Radius.Panel, height = 48.dp) { ink ->
-            VText(if (editing) "Save changes" else "Add assessment", style = vtext(TypeScale.Body, Weight.Bold), color = ink)
-        }
+        VButton(if (editing) "Save changes" else "Add assessment", ::submit, Modifier.fillMaxWidth(), size = ButtonSize.Lg)
     }
 }

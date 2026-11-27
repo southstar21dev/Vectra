@@ -27,7 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,17 +62,29 @@ import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import kotlin.math.round
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import androidx.compose.runtime.setValue
 
-/** One hue per grade everywhere a grade is drawn. */
+/**
+ * One hue per grade everywhere a grade is drawn. [zone] is the scale bar's band: the grade's ink at a
+ * light alpha, so every band keeps its own hue on a dark card instead of the 500 fill going maroon or ochre.
+ */
 internal data class GradeTone(val fill: Color, val dim: Color, val zone: Color, val text: Color)
 
-internal fun gradeTone(grade: Int, c: VectraColors): GradeTone = when (grade) {
-    5 -> GradeTone(Fills.Emerald500, Fills.Emerald500.copy(alpha = 0.45f), Fills.Emerald500.copy(alpha = 0.75f), c.tints.emerald.text)
-    4 -> GradeTone(Fills.Sky500, Fills.Sky500.copy(alpha = 0.45f), Fills.Sky500.copy(alpha = 0.75f), c.tints.sky.text)
-    3 -> GradeTone(Fills.Amber500, Fills.Amber500.copy(alpha = 0.45f), Fills.Amber500.copy(alpha = 0.75f), c.tints.amber.text)
-    2 -> GradeTone(Fills.Orange500, Fills.Orange500.copy(alpha = 0.45f), Fills.Orange500.copy(alpha = 0.75f), c.tints.amber.text)
-    else -> GradeTone(Fills.Red500, Fills.Red500.copy(alpha = 0.45f), Fills.Red500.copy(alpha = 0.35f), c.tints.red.text)
+internal fun gradeTone(grade: Int, c: VectraColors): GradeTone {
+    val (fill, tint) = when (grade) {
+        5 -> Fills.Emerald500 to c.tints.emerald
+        4 -> Fills.Sky500 to c.tints.sky
+        3 -> Fills.Amber500 to c.tints.amber
+        2 -> Fills.Orange500 to c.tints.orange
+        else -> Fills.Red500 to c.tints.red
+    }
+    return GradeTone(fill, fill.copy(alpha = 0.45f), tint.text.copy(alpha = ZoneAlpha), tint.text)
 }
+
+private const val ZoneAlpha = 0.6f
 
 /** Rounded to two decimals, printed without a trailing `.0`. */
 internal fun formatScore(value: Double): String = formatNumber(round(value * 100) / 100)
@@ -211,9 +222,7 @@ internal fun AssessmentCard(
                     align = TextAlign.End,
                 )
             } else if (!editing) {
-                TrackerButton({ editing = true }, shape = Radius.Tile, horizontalPadding = 14.dp) { ink ->
-                    VText("Add score", style = vtext(TypeScale.Caption, Weight.Extrabold), color = ink)
-                }
+                VButton("Add score", { editing = true }, size = ButtonSize.Sm)
             }
             val interaction = remember { MutableInteractionSource() }
             Box(
@@ -259,24 +268,12 @@ internal fun AssessmentCard(
                     )
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TrackerButton(
-                        { editing = false; onEdit() },
-                        Modifier.offset(x = (-8).dp),
-                        kind = PillKind.Ghost,
-                        horizontalPadding = 12.dp,
-                    ) { ink ->
-                        VIcon(RemixIcons.PencilLine, size = 14.dp, tint = ink)
-                        VText("Edit details", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                    }
+                    VButton("Edit details", { editing = false; onEdit() }, Modifier.offset(x = (-8).dp), ButtonVariant.Ghost, ButtonSize.Sm, icon = RemixIcons.PencilLine)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (completed) {
-                            TrackerButton({ onUpdate { it.copy(isCompleted = false) }; editing = false }, kind = PillKind.Ghost, horizontalPadding = 12.dp) { ink ->
-                                VText("Not graded yet", style = vtext(TypeScale.Caption), color = ink)
-                            }
+                            VButton("Not graded yet", { onUpdate { it.copy(isCompleted = false) }; editing = false }, variant = ButtonVariant.Ghost, size = ButtonSize.Sm)
                         }
-                        TrackerButton({ editing = false }, shape = Radius.Tile) { ink ->
-                            VText("Done", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                        }
+                        VButton("Done", { editing = false }, size = ButtonSize.Sm)
                     }
                 }
             }

@@ -27,13 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import dev.southstar21.vectra.features.shell.LocalTabSelected
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -61,6 +59,11 @@ import dev.southstar21.vectra.core.time.nowInBudapest
 import kotlin.time.Instant
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
+import dev.southstar21.vectra.core.designsystem.components.EmptyState
+import dev.southstar21.vectra.core.designsystem.components.EmptyAction
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * Week navigation as Compose state: month offset + the user's week
@@ -225,6 +228,9 @@ internal fun ScheduleView(
     onItemClick: (ScheduleItem) -> Unit,
     onToggleTaskCompleted: (ScheduleItem) -> Unit,
     onResolveSyncConflict: (String, String) -> Unit,
+    /** The empty schedule's two ways out. */
+    onLinkNeptun: () -> Unit,
+    onAddClass: () -> Unit,
     /** The course open in the wide layout's side pane. */
     selectedCourseKey: String? = null,
 ) {
@@ -313,13 +319,20 @@ internal fun ScheduleView(
                 },
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (activeDays.isEmpty()) {
+                if (activeDays.isEmpty() && !hasAnyScheduleItems) {
+                    EmptyState(
+                        art = { GhostScheduleArt() },
+                        title = "No classes yet",
+                        body = "Link your Neptun calendar and every class shows up here, every week of the semester.",
+                        primary = EmptyAction("Link Neptun", onLinkNeptun),
+                        secondary = EmptyAction("Add a class", onAddClass),
+                    )
+                } else if (activeDays.isEmpty()) {
                     EmptyWeekCard(
                         title = when {
                             selectedDay != null -> "Nothing scheduled on ${getDayName(selectedDay!!)}"
                             events.isNotEmpty() -> "No classes this week"
-                            hasAnyScheduleItems -> "Nothing scheduled this week"
-                            else -> "You don't have any schedule items"
+                            else -> "Nothing scheduled this week"
                         },
                         showReset = !atDefault[0],
                         resetLabel = if (nav.semesterInfo.status == "upcoming") "Jump to semester start" else "Jump to current week",
@@ -336,11 +349,11 @@ internal fun ScheduleView(
                                 agendaDay.isEmpty && selectedDay == null -> Unit
                                 agendaDay.isEmpty -> key(day) {
                                     Column(
-                                        Modifier.fillMaxWidth().daySwipe(swipe).flushGlass(Radius.Card).padding(32.dp),
+                                        Modifier.fillMaxWidth().daySwipe(swipe).plannerCard().padding(32.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         VText(
-                                            if (hasAnyScheduleItems) "Nothing scheduled on ${getDayName(day)}" else "You don't have any schedule items",
+                                            "Nothing scheduled on ${getDayName(day)}",
                                             style = vtext(TypeScale.Caption, Weight.Bold), color = c.textSecondary, align = TextAlign.Center,
                                         )
                                         VText("Swipe left or right to browse other days", Modifier.padding(top = 8.dp), vtext(TypeScale.Micro), c.textMuted, align = TextAlign.Center)
@@ -412,15 +425,11 @@ private fun buildAgenda(
 private fun EmptyWeekCard(title: String, showReset: Boolean, resetLabel: String, onReset: () -> Unit, modifier: Modifier = Modifier) {
     val c = Vectra.colors
     Column(
-        modifier.fillMaxWidth().flushGlass(Radius.Card).padding(40.dp),
+        modifier.fillMaxWidth().plannerCard().padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val tile = Radius.Panel
-        Box(
-            Modifier.size(48.dp).background(c.surfaceOverlay, tile).border(1.dp, c.borderSubtle, tile),
-            contentAlignment = Alignment.Center,
-        ) { VText("📅", style = vtext(TypeScale.Title)) }
+        VIcon(RemixIcons.CalendarLine, size = 28.dp, tint = c.textMuted)
         VText(title, style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, align = TextAlign.Center)
         VText("Swipe left or right to browse other days", style = vtext(11.sp to 16.sp), color = c.textMuted, align = TextAlign.Center)
         if (showReset) {

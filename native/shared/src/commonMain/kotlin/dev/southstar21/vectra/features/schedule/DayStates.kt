@@ -113,28 +113,39 @@ internal fun DayDoneCard(summary: String, d: DayColors) {
     }
 }
 
-/** "Nothing scheduled" with when things start again ([backOn] is e.g. "Monday" or "tomorrow"). */
+/**
+ * "Nothing scheduled" with when things start again ([backOn] is e.g. "Monday" or "tomorrow", [backAt]
+ * the time, [title] the first class or item). Left aligned with the dashed check-in orb as its art,
+ * so it sits in the Today list like a card.
+ */
 @Composable
-fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = Modifier) {
+fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = Modifier, title: String? = null) {
     val d = rememberDayColors()
-    Column(
+    Row(
         modifier
             .fillMaxWidth()
             .plannerCard()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        VText("Nothing scheduled", style = vtext(20.sp to 26.sp, Weight.Extrabold, (-0.01).em), color = d.text, align = TextAlign.Center)
-        if (backOn != null && backAt != null) {
-            val text = buildAnnotatedString {
-                append(if (backOn == "tomorrow") "Back tomorrow at " else "Back on $backOn at ")
-                withStyle(SpanStyle(fontFamily = Vectra.fonts.mono, fontWeight = Weight.Bold, color = d.room)) { append(backAt) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            VText("Nothing scheduled", style = vtext(18.sp to 24.sp, Weight.Extrabold, (-0.01).em), color = d.text)
+            if (backOn != null && backAt != null) {
+                val text = buildAnnotatedString {
+                    append(backOnPrefix(backOn))
+                    withStyle(SpanStyle(fontFamily = Vectra.fonts.mono, fontWeight = Weight.Bold, color = d.room)) { append(backAt) }
+                    if (!title.isNullOrBlank()) append(", $title")
+                }
+                VText(text, style = vtext(TypeScale.Meta13, Weight.Medium), color = d.secondary)
             }
-            VText(text, style = vtext(TypeScale.Meta13), color = d.secondary, align = TextAlign.Center)
         }
+        DashedOrb(color = d.dashed)
     }
 }
+
+/** The start of "Back tomorrow at 08:00" ([backOn] is "tomorrow", a weekday or a weekday with a date). */
+internal fun backOnPrefix(backOn: String): String = if (backOn == "tomorrow") "Back tomorrow at " else "Back on $backOn at "
 
 /** First load with nothing cached: two cards in the real shape, no shimmer. */
 @Composable
@@ -211,27 +222,27 @@ internal fun daySummary(classes: Int, shifts: Int, tasks: Int, checkedIn: Int, t
     }
 }
 
-/**
- * When things start again after an empty day: ("tomorrow" or a weekday name, "HH:mm") for the
- * first class or item in the next two weeks, or null when there is none.
- */
-fun nextScheduledStart(events: List<ScheduleEvent>, items: List<ScheduleItem>, today: String): Pair<String, String>? {
+/** The first thing on after an empty day: [day] is "tomorrow" or a weekday name, [time] "HH:mm", [title] its name. */
+data class NextStart(val day: String, val time: String, val title: String?)
+
+/** When things start again after an empty day: the first class or item in the next two weeks, or null when there is none. */
+fun nextScheduledStart(events: List<ScheduleEvent>, items: List<ScheduleItem>, today: String): NextStart? {
     val start = parseYmd(today) ?: return null
     val index = ScheduleEventIndex(events)
     return (1..14).asSequence().mapNotNull { offset -> firstStartOn(start.plus(DatePeriod(days = offset)), offset, events, items, index) }.firstOrNull()
 }
 
-/** The first start on [date] as ("tomorrow" / weekday name, "HH:mm"), or null when nothing is on. */
-private fun firstStartOn(date: LocalDate, offset: Int, events: List<ScheduleEvent>, items: List<ScheduleItem>, index: ScheduleEventIndex): Pair<String, String>? {
+/** The first start on [date] (day named as in [NextStart]), or null when nothing is on. */
+private fun firstStartOn(date: LocalDate, offset: Int, events: List<ScheduleEvent>, items: List<ScheduleItem>, index: ScheduleEventIndex): NextStart? {
     val ymd = date.ymd()
     val dow = date.dayOfWeek.daysSinceSunday
-    val classTimes = events.filter { it.dayOfWeek == dow && classOccursOnDate(it, ymd, index) }.mapNotNull { e -> minuteOf(e.startTime)?.let { it to e.startTime } }
-    val itemTimes = getScheduleItemOccurrencesForDate(items, ymd).filter { !it.continuation }.mapNotNull { o -> minuteOf(o.startTime)?.let { it to o.startTime } }
+    val classTimes = events.filter { it.dayOfWeek == dow && classOccursOnDate(it, ymd, index) }.mapNotNull { e -> minuteOf(e.startTime)?.let { Triple(it, e.startTime, e.courseName) } }
+    val itemTimes = getScheduleItemOccurrencesForDate(items, ymd).filter { !it.continuation }.mapNotNull { o -> minuteOf(o.startTime)?.let { Triple(it, o.startTime, o.item.title) } }
     val first = (classTimes + itemTimes).minByOrNull { it.first } ?: return null
     val day = when {
         offset == 1 -> "tomorrow"
         offset < 7 -> getDayName(dow)
         else -> "${getDayName(dow)} ${formatDayMonth(ymd)}"
     }
-    return day to first.second
+    return NextStart(day, first.second, first.third.takeIf { it.isNotBlank() })
 }

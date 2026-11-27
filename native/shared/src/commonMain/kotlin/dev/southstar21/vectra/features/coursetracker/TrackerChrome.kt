@@ -4,20 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -29,14 +23,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
@@ -52,17 +44,11 @@ import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.mix
 import dev.southstar21.vectra.core.designsystem.theme.mixTransparent
-import dev.southstar21.vectra.core.designsystem.theme.pressScale
-import dev.southstar21.vectra.core.designsystem.theme.PillTone
-import dev.southstar21.vectra.core.designsystem.theme.pillDepth
-import dev.southstar21.vectra.core.designsystem.theme.pillGlass
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.designsystem.theme.resolve
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
-import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import androidx.compose.runtime.getValue
 
 /** The quiet glass button behind idle marks and steppers. */
 @Composable
@@ -197,44 +183,4 @@ internal object Fills {
     val Orange500 = Palette.Orange500
     val Red500 = Palette.Red500
     val Slate400 = Palette.Slate400
-}
-
-internal enum class PillKind { Accent, Outline, Ghost }
-
-/** The tracker's buttons: a pill by default, reshaped per use (rounded rects, 48dp submits). */
-@Composable
-internal fun TrackerButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    kind: PillKind = PillKind.Accent,
-    shape: Shape = CircleShape,
-    height: Dp = 36.dp,
-    horizontalPadding: Dp = 16.dp,
-    enabled: Boolean = true,
-    content: @Composable RowScope.(ink: Color) -> Unit,
-) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    val ink = when (kind) {
-        PillKind.Accent -> Color.White
-        PillKind.Outline -> c.textPrimary
-        PillKind.Ghost -> c.textSecondary
-    }
-    val surface = when (kind) {
-        PillKind.Accent -> if (enabled) Modifier.pillDepth(shape, PillTone.Accent) else Modifier.background(c.accentPrimary, shape)
-        PillKind.Outline -> Modifier.pillGlass(shape)
-        PillKind.Ghost -> Modifier
-    }
-    Row(
-        modifier
-            .then(if (enabled) Modifier.pressScale(interaction) else Modifier)
-            .alpha(if (enabled) 1f else 0.5f)
-            .then(surface)
-            .clip(shape)
-            .tappable(enabled = enabled, role = Role.Button, highlight = false, interactionSource = interaction, onClick = onClick)
-            .height(height)
-            .padding(horizontal = horizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) { content(ink) }
 }

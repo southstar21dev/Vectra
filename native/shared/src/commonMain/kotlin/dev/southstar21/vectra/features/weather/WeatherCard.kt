@@ -62,7 +62,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -175,7 +175,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
             Modifier
                 .fillMaxWidth()
                 .pressScale(interaction, 0.995f)
-                .glass(shape)
+                .plannerCard(shape)
                 .angledLinearGradient(160f, skyFrom, skyTo, shape)
                 .clip(shape)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
