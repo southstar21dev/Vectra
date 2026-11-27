@@ -261,4 +261,10 @@ internal data class Arrival(
     val platformLon: Double? = null,
     /** The trip's service day (YYYYMMDD), for its trip-details. */
     val serviceDate: String? = null,
+    /**
+     * A replacement bus heading the other way from the direction the tracker picked: its headsign
+     * matches the line's other direction and not the picked one. False when it goes the picked way
+     * or when that can't be told.
+     */
+    val otherDirection: Boolean = false,
 )

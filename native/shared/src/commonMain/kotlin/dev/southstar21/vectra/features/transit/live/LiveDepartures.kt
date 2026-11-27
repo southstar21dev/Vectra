@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VIcon
@@ -31,6 +34,7 @@ import dev.southstar21.vectra.features.transit.LiveSignalIcon
 import dev.southstar21.vectra.features.transit.data.Arrival
 import dev.southstar21.vectra.features.transit.etaMinutes
 import dev.southstar21.vectra.features.transit.monitor
+import dev.southstar21.vectra.features.transit.strip.OtherDirectionNote
 import dev.southstar21.vectra.features.transit.strip.StripDirection
 import dev.southstar21.vectra.features.transit.strip.drawnDirections
 import dev.southstar21.vectra.features.transit.strip.toStripDirection
@@ -54,25 +58,32 @@ internal fun DeparturesSection(directions: List<DirectionView>, now: Long, modif
             // The strip draws the first direction on the right and the second on the left.
             val left = drawn.getOrNull(1)
             val right = drawn[0]
+            // The note takes a line of its own: every column keeps it, so the departures line up.
+            val reserve = drawn.any { it.otherDirection }
             if (left != null) {
-                DepartureColumn(left, now, right = false, Modifier.weight(1f))
+                DepartureColumn(left, now, right = false, reserve, Modifier.weight(1f))
                 Box(Modifier.padding(horizontal = 4.dp).fillMaxHeight().width(1.dp).background(c.textPrimary.copy(alpha = 0.08f)))
             }
-            DepartureColumn(right, now, right = left != null, Modifier.weight(1f))
+            DepartureColumn(right, now, right = left != null, reserve, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun DepartureColumn(d: StripDirection, now: Long, right: Boolean, modifier: Modifier = Modifier) {
+private fun DepartureColumn(d: StripDirection, now: Long, right: Boolean, reserveNote: Boolean, modifier: Modifier = Modifier) {
     val c = Vectra.colors
     val side = if (right) Alignment.End else Alignment.Start
     val all = listOfNotNull(d.arrival) + d.later
     Column(modifier, horizontalAlignment = side, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
-            VText(d.destination, Modifier.weight(1f, fill = false), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 1)
-            if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
+        Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 6.dp), horizontalAlignment = side) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
+                VText(d.destination, Modifier.weight(1f, fill = false), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 1)
+                if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
+            }
+            if (d.otherDirection) OtherDirectionNote(align = if (right) TextAlign.End else TextAlign.Start)
+            // Same line height as the note in sp, so the columns stay aligned at any font scale.
+            else if (reserveNote) Spacer(Modifier.height(with(LocalDensity.current) { 15.sp.toDp() }))
         }
         all.forEachIndexed { i, a -> DepartureRow(a, i == 0, now, side) }
     }

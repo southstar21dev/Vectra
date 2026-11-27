@@ -25,6 +25,8 @@ internal class DemoDirection(
     val trips: List<DemoTrip> = emptyList(),
     /** Run by the line's replacement buses (their own route, [DemoLine.replacementRouteId]). */
     val replacement: Boolean = false,
+    /** Futár's direction id for the trip and the route variant; null: the demo feed gives none. */
+    val directionId: String? = null,
 )
 
 internal class DemoStop(
@@ -33,6 +35,8 @@ internal class DemoStop(
     val directions: List<DemoDirection>,
     val behaviour: DemoBehaviour = DemoBehaviour.Live,
     val alert: String? = null,
+    /** The direction the demo tracker is set to at this stop; null: all directions. */
+    val picked: String? = null,
 ) {
     val stopId get() = "${DemoFeed.Prefix}S_$key"
 }
@@ -73,8 +77,14 @@ private fun two(a: List<DemoTrip>, b: List<DemoTrip>) = listOf(
     DemoDirection("Közvágóhíd H", "Fővám", trips = b),
 )
 
-private fun stop(key: String, name: String, dirs: List<DemoDirection>, behaviour: DemoBehaviour = DemoBehaviour.Live, alert: String? = null) =
-    DemoStop(key, name, dirs, behaviour, alert)
+private fun stop(
+    key: String,
+    name: String,
+    dirs: List<DemoDirection>,
+    behaviour: DemoBehaviour = DemoBehaviour.Live,
+    alert: String? = null,
+    picked: String? = null,
+) = DemoStop(key, name, dirs, behaviour, alert, picked)
 
 private val Steady = two(listOf(DemoTrip(3.0, 1.4), DemoTrip(11.0, 4.5)), listOf(DemoTrip(5.0, 2.2), DemoTrip(13.0, 5.0)))
 
@@ -166,6 +176,14 @@ internal val DemoLines: List<DemoLine> = listOf(
             DemoDirection("Teleki László tér", "Népszínház", replacement = true, trips = listOf(DemoTrip(3.0, 1.3), DemoTrip(12.0, 4.6))),
             DemoDirection("Blaha Lujza tér M", "Dologház", replacement = true, trips = listOf(DemoTrip(6.0, 2.4))),
         ), alert = ReplacementAlert),
+    )),
+    // A direction picked on a replaced line, with the buses of both directions due: the ones going
+    // the other way carry a note.
+    DemoLine("replacedpicked", "28", "TRAM", Yellow, Dark, stops = listOf(
+        stop("replacedpicked", "Replaced, one direction picked", listOf(
+            DemoDirection("Teleki László tér", "Népszínház", replacement = true, directionId = "0", trips = listOf(DemoTrip(3.0, 1.3), DemoTrip(12.0, 4.6))),
+            DemoDirection("Blaha Lujza tér M", "Dologház", replacement = true, directionId = "1", trips = listOf(DemoTrip(6.0, 2.4))),
+        ), alert = ReplacementAlert, picked = "Teleki László tér"),
     )),
     // Replaced too, but its buses stop on another street: no trams here, and not "not running".
     DemoLine("replacedaway", "28A", "TRAM", Yellow, Dark, stops = listOf(

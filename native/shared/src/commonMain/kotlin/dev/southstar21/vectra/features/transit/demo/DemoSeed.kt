@@ -44,7 +44,7 @@ private suspend fun seedDemo(repo: TransitRepository, email: String, trackers: L
                     routeType = line.type,
                     routeColor = line.color,
                     routeTextColor = line.textColor,
-                    stops = line.stops.map { TrackerStop(it.stopId, it.name, "") },
+                    stops = line.stops.map { TrackerStop(it.stopId, it.name, it.picked.orEmpty()) },
                 ),
             )
             if (line.pinned) repo.toggleFavorite(t.id)
