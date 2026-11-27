@@ -1,6 +1,9 @@
 package dev.southstar21.vectra.features.schedule
 
 import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.data.OfflineCache
+import dev.southstar21.vectra.core.data.UserKeys
+import kotlinx.serialization.builtins.ListSerializer
 import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.CryptoClient
@@ -102,6 +105,8 @@ private class FakeBackend {
     /** Runs after a full item list was read, before it is answered: hold it to make it stale. */
     var afterListRead: (suspend () -> Unit)? = null
     @Volatile var listReads = 0
+    /** Runs after the class list was read, before it is answered: hold it to make a class fetch outlive its account. */
+    var afterClassRead: (suspend () -> Unit)? = null
     /** Bodies of class edits (PATCH schedule_events). */
     val eventPatches = mutableListOf<JsonObject>()
     /** The Neptun feed the proxy serves, and a hook run inside its fetch. */
@@ -152,7 +157,13 @@ private class FakeBackend {
                 json(JsonObject(b + mapOf("id" to JsonPrimitive(path.substringAfterLast('/')), "updated_at" to JsonPrimitive("e2"))).toString())
             }
             path.startsWith("/api/collections/schedule_events/") ->
-                if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(classRows.toList()) })
+                if (classesDown) {
+                    json("{}", HttpStatusCode.InternalServerError)
+                } else {
+                    val snapshot = lock.withLock { list(classRows.toList()) }
+                    afterClassRead?.invoke()
+                    json(snapshot)
+                }
             path.startsWith("/api/collections/neptun_schedule_events/") ->
                 if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(neptunRows.toList()) })
             path.startsWith("/api/collections/schedule_items/") -> items(req, path.substringAfter("/records").trim('/'))
@@ -844,6 +855,42 @@ class ScheduleSyncTest {
         until { repo.events.value.isNotEmpty() }
         coroutineScope { List(10) { launch { repo.refreshEvents(force = true) } } }
         assertEquals("Algebra", repo.events.value.single().courseName)
+    }
+
+    /** A class fetch still running when another account signs in lands in neither its state nor the old account's cache. */
+    @Test fun aClassFetchStartedBeforeAnAccountSwitchDoesNotLandInTheNewAccount() = scenario { b ->
+        start()
+        until { !repo.eventsLoading.value }
+        val cache = OfflineCache(kv, UserKeys.SCHEDULE_EVENTS, ListSerializer(ScheduleEvent.serializer()))
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterClassRead = { if (held.complete(Unit)) release.await() }
+        b.seedClass()
+        val refresh = scope.launch { runCatching { repo.refreshEvents(force = true) } }
+        held.await()
+        b.classRows.clear()
+        auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
+        until { auth.session.value?.userId == OtherUser && !repo.eventsLoading.value }
+        release.complete(Unit)
+        refresh.join()
+        settle()
+        assertTrue(repo.events.value.isEmpty())
+        assertTrue(cache.read(OtherUser).orEmpty().isEmpty())
+        assertTrue(cache.read(UserId).orEmpty().isEmpty())
+    }
+
+    /** Signing out while a sync pass is mid-request ends the pass: it neither retries nor reports an error afterwards. */
+    @Test fun aSyncPassEndsWhenItsAccountSignsOut() = scenario { b ->
+        val inCreate = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.duringCreate = { inCreate.complete(Unit); release.await() }
+        start(queuedCreate(item()))
+        inCreate.await()
+        auth.signOut()
+        release.complete(Unit)
+        delay(50)
+        assertNull(repo.itemSyncError.value)
+        assertTrue(repo.itemsState.value.queue.isEmpty())
     }
 
     @Test fun signingOutClearsTheClassError() = scenario { b ->

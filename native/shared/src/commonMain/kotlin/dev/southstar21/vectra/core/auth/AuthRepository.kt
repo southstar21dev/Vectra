@@ -67,6 +67,13 @@ class AuthRepository(
 
     val currentUserId: StateFlow<String?> = store.state.map { it?.userId?.ifEmpty { null } }
         .stateIn(scope, SharingStarted.Eagerly, userId)
+
+    /**
+     * Scopes for per-user async work: cancelled when the signed-in user changes, so a sync or fetch
+     * started for one account cannot outlive it.
+     */
+    val sessionScope: SessionScope = SessionScope(scope, { userId }, store.state.map { it?.userId?.ifEmpty { null } })
+
     val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
         .stateIn(scope, SharingStarted.Eagerly, store.current?.record?.let(Profile::from))
 

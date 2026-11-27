@@ -12,16 +12,17 @@ import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.SessionScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.ListSerializer
@@ -35,6 +36,8 @@ import kotlin.time.Clock
 /** Who the schedule belongs to right now and whether the network is reachable. */
 internal class ScheduleSession(private val auth: AuthRepository, private val connectivity: Connectivity) {
     val userId: String? get() = auth.userId
+    /** Scopes for per-user async work: cancelled when the signed-in user changes. */
+    val sessions: SessionScope get() = auth.sessionScope
     val online: Boolean get() = connectivity.online.value
     fun requireUserId(): String = userId ?: error("Not authenticated")
 }
@@ -65,11 +68,11 @@ internal class ScheduleEventsRepository(
     private val crypto: CryptoClient,
     kv: KeyValueStore,
     private val session: ScheduleSession,
-    private val scope: CoroutineScope,
 ) {
     private val eventsCache = OfflineCache(kv, UserKeys.SCHEDULE_EVENTS, ListSerializer(ScheduleEvent.serializer()))
 
     private val userId: String? get() = session.userId
+    private val sessions get() = session.sessions
     private val online: Boolean get() = session.online
 
     private val _events = MutableStateFlow<List<ScheduleEvent>>(emptyList())
@@ -100,8 +103,7 @@ internal class ScheduleEventsRepository(
     /** Forget the previous account; a new one paints its cached classes first. */
     suspend fun onUserChanged(uid: String?) {
         eventsFetchedAt = 0L
-        // The previous account's load must not run on, or be joined by, the next one.
-        eventsJobLock.withLock { eventsJob?.second?.cancel() }
+        // The previous account's load and fetch were cancelled with its session scope.
         _eventsError.value = null
         if (uid == null) {
             _events.value = emptyList()
@@ -115,8 +117,9 @@ internal class ScheduleEventsRepository(
 
     /** Refresh when stale (15 min). */
     fun ensureFresh() {
+        val uid = userId ?: return
         val now = Clock.System.now().toEpochMilliseconds()
-        if (now - eventsFetchedAt > EVENTS_STALE_MS) scope.launch { runSuspendCatching { refreshEvents() } }
+        if (now - eventsFetchedAt > EVENTS_STALE_MS) sessions.launchFor(uid) { runSuspendCatching { refreshEvents() } }
     }
 
     suspend fun cached(uid: String): List<ScheduleEvent>? = eventsCache.read(uid)
@@ -134,17 +137,17 @@ internal class ScheduleEventsRepository(
 
     /** The fetch: cache offline; cloud otherwise, falling back to a non-empty cache. */
     suspend fun refreshEvents(force: Boolean = false) {
+        val uid = userId ?: return
         val job = eventsJobLock.withLock {
             val epoch = writeEpoch
             val running = eventsJob?.takeIf { (startedAt, job) -> job.isActive && startedAt == epoch }?.second
             if (running == null && !force && Clock.System.now().toEpochMilliseconds() - eventsFetchedAt < EVENTS_STALE_MS) return
-            running ?: scope.async { loadEvents() }.also { eventsJob = epoch to it }
+            running ?: sessions.asyncFor(uid) { loadEvents(uid) }.also { eventsJob = epoch to it }
         }
         job.await()
     }
 
-    private suspend fun loadEvents() {
-        val uid = userId ?: return
+    private suspend fun loadEvents(uid: String) {
         try {
             if (!online) {
                 _events.value = eventsCache.read(uid).orEmpty()
@@ -153,9 +156,9 @@ internal class ScheduleEventsRepository(
             try {
                 val epoch = writeEpoch
                 val fresh = fetchShared(uid)
-                if (userId != uid) return
                 // A write landed meanwhile: its own reload publishes the newer list.
                 if (writeEpoch != epoch) return
+                currentCoroutineContext().ensureActive()
                 _events.value = fresh
                 _eventsError.value = null
                 eventsFetchedAt = Clock.System.now().toEpochMilliseconds()
@@ -179,7 +182,7 @@ internal class ScheduleEventsRepository(
         val job = eventsFetchLock.withLock {
             val epoch = writeEpoch
             eventsFetch?.takeIf { (owner, startedAt, job) -> owner == uid && startedAt == epoch && job.isActive }?.third
-                ?: scope.async { fetchEventsFromCloud(uid) }.also { eventsFetch = Triple(uid, epoch, it) }
+                ?: sessions.asyncFor(uid) { fetchEventsFromCloud(uid) }.also { eventsFetch = Triple(uid, epoch, it) }
         }
         return job.await()
     }

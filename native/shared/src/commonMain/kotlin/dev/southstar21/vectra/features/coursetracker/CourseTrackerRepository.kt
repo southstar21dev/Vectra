@@ -2,12 +2,15 @@ package dev.southstar21.vectra.features.coursetracker
 
 import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.auth.SessionScope
 import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,6 +69,9 @@ class CourseTrackerRepository(
     private var uploadTimer: Job? = null
 
     private val userId: String? get() = userIdFlow.value
+
+    /** Per-user async work (refreshes, uploads, cache writes) runs here and dies with the signed-in user. */
+    private val sessions = SessionScope(scope, { userIdFlow.value }, userIdFlow)
     private var uploadedSnapshot: CourseTrackerData? = null
 
     // Tracker keys a schedule sync removed (stale exams, legacy keys): cloud copies of them are
@@ -152,7 +158,8 @@ class CourseTrackerRepository(
     /** On resume, when the data is over 30 s old. */
     fun refreshIfStale() {
         if (Clock.System.now().toEpochMilliseconds() - lastFetchMs < StaleMs) return
-        scope.launch { refresh() }
+        val uid = userId ?: return
+        sessions.launchFor(uid) { refresh() }
     }
 
     /** The query function: merge the cloud copy into the live data (newest tracker wins). */
@@ -160,6 +167,12 @@ class CourseTrackerRepository(
         val uid = userId
         if (uid == null || !isOnline()) return@withLock
         lastFetchMs = Clock.System.now().toEpochMilliseconds()
+        // A sign-out ends the refresh quietly; the next user's own refresh follows it.
+        sessions.withSessionOrNull(uid) { refreshFor(uid) }
+        Unit
+    }
+
+    private suspend fun refreshFor(uid: String) {
         try {
             val encrypted = cloud.fetch(uid)
             if (encrypted == null) {
@@ -167,18 +180,19 @@ class CourseTrackerRepository(
                 gate.markReadable(uid)
                 gate.takeHeldBack(uid)
                 seedCloud(uid, _data.value)
-                return@withLock
+                return
             }
             val decrypted = cipher.decrypt(encrypted)
             // Unreadable (e.g. a newer client): keep the gate closed so the local copy never replaces it.
-            val parsed = (if (isCiphertext(decrypted)) null else parseTrackerData(decrypted)) ?: return@withLock
+            val parsed = (if (isCiphertext(decrypted)) null else parseTrackerData(decrypted)) ?: return
             gate.markReadable(uid)
-            if (userId != uid) return@withLock
+            // The fetch was awaited in the session, so a sign-out ended it; this only guards the first write.
+            currentCoroutineContext().ensureActive()
             // Merge against the live data at return time so an edit that landed
             // during the fetch is never clobbered by the cloud snapshot.
             var reconciledNext: CourseTrackerData? = null
             _data.update { live -> mergeTrackerData(live, withoutDropped(parsed)).also { reconciledNext = it } }
-            val reconciled = reconciledNext ?: return@withLock
+            val reconciled = reconciledNext ?: return
             writeCache(reconciled, uid)
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
@@ -215,7 +229,7 @@ class CourseTrackerRepository(
     private suspend fun scheduleUpload(uid: String) = uploadLock.withLock {
         pendingUploadUser = uid
         uploadTimer?.cancel()
-        uploadTimer = scope.launch {
+        uploadTimer = sessions.launchFor(uid) {
             delay(TrackerUploadDebounceMs)
             uploadPending()
         }
@@ -226,19 +240,24 @@ class CourseTrackerRepository(
             uploadTimer = null
             pendingUploadUser.also { pendingUploadUser = null }
         } ?: return
-        // Signed out meanwhile: that user's edits stay out of the next user's upload.
-        if (userId != uid) return
+        // Signed out meanwhile: that user's edits stay out of the next user's upload, and the
+        // upload below stops with the session.
+        sessions.withSessionOrNull(uid) { uploadFor(uid) }
+    }
+
+    private suspend fun uploadFor(uid: String) {
         _isSaving.value = true
         val edits = editsMade
         try {
             if (upload(uid, _data.value) == TrackerUploadResult.HeldBack) {
                 refresh()
             } else {
-                if (userId == uid) editsUploaded = maxOf(editsUploaded, edits)
-                // The upload just merged the cloud copy, so another device's trackers are in hand.
-                uploadedSnapshot?.let { merged ->
-                    uploadedSnapshot = null
-                    if (userId == uid) {
+                // Kept: both writes below touch the next user's counters and data, with no suspension before them.
+                if (userId == uid) {
+                    editsUploaded = maxOf(editsUploaded, edits)
+                    // The upload just merged the cloud copy, so another device's trackers are in hand.
+                    uploadedSnapshot?.let { merged ->
+                        uploadedSnapshot = null
                         var next: CourseTrackerData? = null
                         _data.update { live -> mergeTrackerData(live, merged).also { next = it } }
                         next?.let { writeCache(it, uid) }
@@ -259,11 +278,11 @@ class CourseTrackerRepository(
      * that failed offline or was held back because the cloud copy was never read).
      */
     fun retryUnsynced() {
-        scope.launch {
-            val uid = userId ?: return@launch
-            if (!isOnline()) return@launch
+        val uid = userId ?: return
+        sessions.launchFor(uid) {
+            if (!isOnline()) return@launchFor
             if (!gate.isReadable(uid)) refresh()
-            if (userId == uid && editsMade != editsUploaded && gate.isReadable(uid)) {
+            if (editsMade != editsUploaded && gate.isReadable(uid)) {
                 uploadLock.withLock {
                     uploadTimer?.cancel()
                     uploadTimer = null
@@ -276,7 +295,8 @@ class CourseTrackerRepository(
 
     /** Sends a debounced upload now: the app is leaving the foreground and may not get another chance. */
     fun flushPendingUpload() {
-        scope.launch {
+        val uid = userId ?: return
+        sessions.launchFor(uid) {
             uploadLock.withLock { uploadTimer?.cancel() }
             uploadPending()
         }
@@ -306,10 +326,12 @@ class CourseTrackerRepository(
         val snapshot = next ?: return
         val uid = userId
         if (uid != null) editsMade++
-        scope.launch {
+        val save: suspend CoroutineScope.() -> Unit = {
             writeCache(snapshot, uid)
             if (uid != null) scheduleUpload(uid)
         }
+        // A signed-in edit must not outlive its account: it would write that account's cache after the wipe.
+        if (uid != null) sessions.launchFor(uid, save) else scope.launch(block = save)
     }
 
     fun getTracker(identity: CourseIdentity): CourseTracker? = findTracker(_data.value, identity)

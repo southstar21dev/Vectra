@@ -106,8 +106,8 @@ private class PolicyHarness(private val profile: Map<String, String?>) {
     private val auth = AuthRepository(pb, store, kv, scope, lazyOf(emptyList()))
     private val session = ScheduleSession(auth, connectivity)
     private val crypto = CryptoClient(pb, scope)
-    private val classes = ScheduleEventsRepository(pb, crypto, kv, session, scope)
-    val service = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, scope, { }, { replacedCount++ }, { nowMs })
+    private val classes = ScheduleEventsRepository(pb, crypto, kv, session)
+    val service = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, { }, { replacedCount++ }, { nowMs })
 
     suspend fun signIn() {
         val record = JsonObject(
