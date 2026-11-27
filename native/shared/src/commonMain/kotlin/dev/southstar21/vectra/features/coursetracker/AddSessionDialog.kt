@@ -28,13 +28,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
-import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DateField
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
 import dev.southstar21.vectra.core.designsystem.components.SectionTitle
+import dev.southstar21.vectra.core.designsystem.components.SheetHeader
 import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
-import dev.southstar21.vectra.core.designsystem.components.TopBar
 import dev.southstar21.vectra.core.designsystem.components.TimeField
 import dev.southstar21.vectra.core.designsystem.components.FormField
 import dev.southstar21.vectra.core.designsystem.components.FormGroup
@@ -93,7 +92,6 @@ internal fun AddSessionDialog(open: Boolean, onDismiss: () -> Unit, onAddSession
 @Composable
 private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (AttendanceSession) -> Unit) {
     val c = Vectra.colors
-    var scrolled by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("Extra consultation") }
     var date by remember { mutableStateOf(nowInBudapest().ymd) }
     var start by remember { mutableStateOf("10:00") }
@@ -103,10 +101,9 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
     var notes by remember { mutableStateOf("") }
     val canSubmit = title.trim().isNotEmpty() && date.isNotEmpty()
 
-    TopBar("Add session", BarLeading.Close, onCancel, scrolled = scrolled)
+    SheetHeader("Add session", onCancel)
     ScrollBody(
         scrollState = rememberScrollState(),
-        onScrolledChange = { scrolled = it },
         fadeBottom = false,
         contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = 24.dp),
     ) {
@@ -127,12 +124,12 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("When")
             FormGroup(rows = listOf(
-                { FormField("Date") { DateField(date, { date = it }) } },
+                { FormField("Date") { DateField(date, { date = it }, title = "Date") } },
                 {
                     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                        Box(Modifier.weight(1f)) { FormField("Starts") { TimeField(start, { start = it }) } }
+                        Box(Modifier.weight(1f)) { FormField("Starts") { TimeField(start, { start = it }, title = "Starts") } }
                         Box(Modifier.width(1.dp).fillMaxHeight().background(c.borderSubtle))
-                        Box(Modifier.weight(1f)) { FormField("Ends") { TimeField(end, { end = it }) } }
+                        Box(Modifier.weight(1f)) { FormField("Ends") { TimeField(end, { end = it }, title = "Ends") } }
                     }
                 },
             ))

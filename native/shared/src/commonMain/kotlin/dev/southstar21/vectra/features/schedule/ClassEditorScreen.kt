@@ -246,8 +246,8 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                         { FormField("Day") { PillRadio(form.dayOfWeek, DayOptions, { form.dayOfWeek = it }, columns = 7) } },
                         {
                             TwoColumns(
-                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }, minuteStep = 5) } },
-                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }, minuteStep = 5) } },
+                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }, title = "Starts", minuteStep = 5) } },
+                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }, title = "Ends", minuteStep = 5) } },
                             )
                         },
                         { FormField("Repeats") { PillRadio(form.frequency, FrequencyOptions, { form.frequency = it }, columns = 3) } },
@@ -270,6 +270,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                                     listOf(SelectOption("", "All semesters")) + availableSemesters.map { SelectOption(it, it) },
                                     { form.semester = it },
                                     Modifier.fillMaxWidth().height(44.dp),
+                                    title = "Semester",
                                 )
                             }
                         }

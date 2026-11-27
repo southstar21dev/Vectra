@@ -213,11 +213,11 @@ private fun ItemEditorContent(
                 SheetSection {
                     SectionTitle("When")
                     val rows = mutableListOf<@Composable () -> Unit>(
-                        { FormField("Date", error = if (dateValid) null else "Pick a real date.") { DateField(form.date, { form.date = it }) } },
+                        { FormField("Date", error = if (dateValid) null else "Pick a real date.") { DateField(form.date, { form.date = it }, title = "Date") } },
                         {
                             TwoColumns(
-                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }) } },
-                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }) } },
+                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }, title = "Starts") } },
+                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }, title = "Ends") } },
                             )
                         },
                     )

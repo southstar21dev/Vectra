@@ -24,14 +24,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
-import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DateField
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
 import dev.southstar21.vectra.core.designsystem.components.SectionTitle
+import dev.southstar21.vectra.core.designsystem.components.SheetHeader
 import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
-import dev.southstar21.vectra.core.designsystem.components.TopBar
-import dev.southstar21.vectra.core.designsystem.components.TopBarSubtitle
 import dev.southstar21.vectra.core.designsystem.components.DeleteRow
 import dev.southstar21.vectra.core.designsystem.components.FormField
 import dev.southstar21.vectra.core.designsystem.components.FormGroup
@@ -167,7 +165,6 @@ private fun ColumnScope.AssessmentForm(
 ) {
     val c = Vectra.colors
     val editing = item != null
-    var scrolled by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(item?.name.orEmpty()) }
     var date by remember { mutableStateOf(item?.date.orEmpty()) }
     var mode by remember { mutableStateOf(ScoreMode.Points) }
@@ -310,16 +307,9 @@ private fun ColumnScope.AssessmentForm(
         )
     }
 
-    TopBar(
-        if (editing) "Edit assessment" else "Add assessment",
-        BarLeading.Close,
-        onClose,
-        scrolled = scrolled,
-        subtitle = subtitle?.let { text -> { TopBarSubtitle(text) } },
-    )
+    SheetHeader(if (editing) "Edit assessment" else "Add assessment", onClose, subtitle = subtitle)
     ScrollBody(
         scrollState = rememberScrollState(),
-        onScrolledChange = { scrolled = it },
         fadeBottom = false,
         contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = 24.dp),
     ) {
@@ -332,7 +322,7 @@ private fun ColumnScope.AssessmentForm(
                         VInput(name, { name = it; if (nameError != null) nameError = null }, placeholder = "Midterm 1, ZH 2, homework…", height = SheetInputHeight, textSize = TypeScale.BodyLarge)
                     }
                 },
-                { FormField("Date", hint = "Optional. Shown next to the name in the list.") { DateField(date, { date = it }, onClear = { date = "" }) } },
+                { FormField("Date", hint = "Optional. Shown next to the name in the list.") { DateField(date, { date = it }, title = "Date", onClear = { date = "" }) } },
             ))
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -159,7 +159,7 @@ private fun <T> OptionList(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = SurfaceGutter, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             for (opt in options) {
@@ -171,7 +171,7 @@ private fun <T> OptionList(
             if (footnote != null) {
                 VText(
                     footnote,
-                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    Modifier.padding(vertical = 8.dp),
                     vtext(TypeScale.Caption),
                     Vectra.colors.textMuted,
                 )
