@@ -6,7 +6,6 @@ import (
 	"ganigeorgiev.com/pocketbase/dbx"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
-	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -27,12 +26,6 @@ const (
 	// unbounded number of records inside a single write transaction.
 	maxEvents = 500
 )
-
-// limiter is the per-user limiter for Handler (limits.NeptunReplace: the client
-// syncs on demand and on login, so a handful per minute is ample; each call
-// rewrites the user's whole calendar). It is a var so tests can substitute a
-// fresh one.
-var limiter = ratelimit.New(limits.NeptunReplace.Max, limits.NeptunReplace.Window)
 
 // verbatimFields are the client-supplied content fields copied as-is into a
 // row. Their values are ciphertext (or, for color, display metadata) and must
@@ -114,10 +107,17 @@ func valueOrDefault(ev map[string]any, key, def string) string {
 	return def
 }
 
-// Handler implements POST /api/vectra/neptun/replace (JWT-gated). It reads
+// Handler implements POST /api/vectra/neptun/replace (JWT-gated). limiter is
+// the per-user limit (limits.NeptunReplace: the client syncs on demand and on
+// login, so a handful per minute is ample; each call rewrites the user's whole
+// calendar). It reads
 // {events: [...]} and replaces the caller's own calendar. The owner is always
 // e.Auth.Id; any user id in the body is ignored.
-func Handler(e *core.RequestEvent) error {
+func Handler(limiter *ratelimit.Limiter) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return replace(limiter, e) }
+}
+
+func replace(limiter *ratelimit.Limiter, e *core.RequestEvent) error {
 	if e.Auth == nil || e.Auth.Id == "" {
 		return e.UnauthorizedError("Authentication required", nil)
 	}

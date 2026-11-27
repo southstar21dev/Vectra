@@ -22,7 +22,6 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"golang.org/x/crypto/pbkdf2"
 
-	"vectra/pb/internal/limits"
 	"vectra/pb/internal/ratelimit"
 )
 
@@ -243,10 +242,6 @@ const (
 	CostUnitBytes   = 4096
 )
 
-// UserLimiter holds each user's budget of values per window
-// (limits.CryptoValues). It is a var so tests can substitute a fresh one.
-var UserLimiter = ratelimit.New(limits.CryptoValues.Max, limits.CryptoValues.Window)
-
 // unitCost is the budget cost of size bytes: at least one unit, one more per
 // CostUnitBytes started.
 func unitCost(size int) int {
@@ -290,7 +285,8 @@ func batchCost(body request) (int, string) {
 	return max(1, cost), ""
 }
 
-// Handler implements POST /api/vectra/crypto (JWT-gated).
+// Handler implements POST /api/vectra/crypto (JWT-gated). userLimiter holds
+// each user's budget of values per window (limits.CryptoValues).
 //
 // encrypt emits `vc3:` ciphertext bound to the caller (e.Auth.Id). decrypt
 // opens the caller's own `vc3:` values and passes anything without a
@@ -299,7 +295,11 @@ func batchCost(body request) (int, string) {
 // its slot in `values` echoes the original input, so the client's existing
 // "still starts with vc2:/vc3:" guard sees the failure, and its index is
 // listed in `errors`.
-func Handler(e *core.RequestEvent) error {
+func Handler(userLimiter *ratelimit.Limiter) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return handle(userLimiter, e) }
+}
+
+func handle(userLimiter *ratelimit.Limiter, e *core.RequestEvent) error {
 	if e.Auth == nil || e.Auth.Id == "" {
 		return e.UnauthorizedError("Authentication required", nil)
 	}
@@ -315,7 +315,7 @@ func Handler(e *core.RequestEvent) error {
 	if tooLarge != "" {
 		return e.Error(http.StatusRequestEntityTooLarge, tooLarge, nil)
 	}
-	if !UserLimiter.AllowN(e.Auth.Id, cost, time.Now()) {
+	if !userLimiter.AllowN(e.Auth.Id, cost, time.Now()) {
 		return e.TooManyRequestsError("Too many crypto requests. Please wait a while and try again.", nil)
 	}
 	switch body.Op {

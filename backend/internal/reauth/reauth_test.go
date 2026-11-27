@@ -16,7 +16,8 @@ import (
 // guesses spend the shared budget, then even the right one is refused (429),
 // while updates that do not touch password fields are never throttled.
 func TestPasswordChangeGuard(t *testing.T) {
-	swapLimiters(t, 2, 100)
+	t.Parallel()
+	g := newGuard(2, 100)
 
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
@@ -31,7 +32,7 @@ func TestPasswordChangeGuard(t *testing.T) {
 	token, err := u.NewAuthToken()
 	require.NoError(t, err)
 
-	RegisterPasswordChangeGuard(app)
+	RegisterPasswordChangeGuard(app, g)
 	factory := func(testing.TB) *tests.TestApp { return app }
 	auth := map[string]string{"Authorization": token}
 	url := "/api/collections/users/records/" + u.Id

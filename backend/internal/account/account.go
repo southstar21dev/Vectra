@@ -28,17 +28,21 @@ func deleteAccount(app core.App, userID string) error {
 }
 
 // Handler implements POST /api/vectra/account/delete (JWT-gated): reads
-// {currentPassword}, verifies it (rate-limited, see reauth.Check), then deletes
+// {currentPassword}, verifies it (rate-limited, see reauth.Guard.Check), then deletes
 // the caller's owned records and the auth record itself in one transaction. The
 // password check keeps a leaked session token from deleting the account.
-func Handler(e *core.RequestEvent) error {
+func Handler(g *reauth.Guard) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return deleteAccountHandler(g, e) }
+}
+
+func deleteAccountHandler(g *reauth.Guard, e *core.RequestEvent) error {
 	var body struct {
 		CurrentPassword string `json:"currentPassword"`
 	}
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
-	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+	if err := g.Check(e, body.CurrentPassword); err != nil {
 		return err
 	}
 	userID := e.Auth.Id
@@ -80,7 +84,11 @@ func ChangeEmail(app core.App, userID, currentPassword, newEmail string) error {
 // EmailHandler implements POST /api/vectra/account/email (JWT-gated): reads
 // {currentPassword, newEmail}, verifies the password, and switches the email
 // for the authenticated user only (the id is never taken from the body).
-func EmailHandler(e *core.RequestEvent) error {
+func EmailHandler(g *reauth.Guard) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return changeEmailHandler(g, e) }
+}
+
+func changeEmailHandler(g *reauth.Guard, e *core.RequestEvent) error {
 	var body struct {
 		CurrentPassword string `json:"currentPassword"`
 		NewEmail        string `json:"newEmail"`
@@ -90,7 +98,7 @@ func EmailHandler(e *core.RequestEvent) error {
 	}
 	// The shared re-auth gate rate-limits the password check per user and IP;
 	// ChangeEmail re-validates it as part of the change itself.
-	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+	if err := g.Check(e, body.CurrentPassword); err != nil {
 		return err
 	}
 	err := ChangeEmail(e.App, e.Auth.Id, body.CurrentPassword, body.NewEmail)

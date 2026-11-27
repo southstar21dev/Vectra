@@ -137,8 +137,9 @@ header is client-controlled. The compose file binds it to `127.0.0.1` for that r
 
 Two layers, both keyed on the client IP (see above) unless a user or identity is named.
 
-**In-process limiters.** Every value is in one table, `internal/limits/limits.go`; each package builds
-its limiter from it. State is in memory, so it resets on every restart or deploy.
+**In-process limiters.** Every value is in one table, `internal/limits/limits.go`; `main.go` and `routes.NewDeps` build
+each limiter from it and hand it to the handler that owns it (handlers take their limiter as a
+parameter, so tests build their own). State is in memory, so it resets on every restart or deploy.
 
 | Limit | Applies to | Key |
 |---|---|---|

@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
-
-	"vectra/pb/internal/futar"
 )
 
 // Schedule of the refresh loop.
@@ -100,8 +98,9 @@ func (s *Service) Run(ctx context.Context) {
 // Register serves /catalog/{file} and starts the builder. dataDir is the
 // PocketBase data dir; the catalog lives in <dataDir>/catalog so it survives a
 // restart. CATALOG_BUILD=0 turns the builder off (the route still serves what
-// is on disk). The returned func stops the builder.
-func Register(se *core.ServeEvent, dataDir string) (stop func()) {
+// is on disk). gate is called before each upstream request the builder makes
+// (the shared Futár budget). The returned func stops the builder.
+func Register(se *core.ServeEvent, dataDir string, gate func(context.Context) error) (stop func()) {
 	store := NewStore(filepath.Join(dataDir, "catalog"))
 	h := Handler(store)
 	// Public: transit data, no auth. Same file names as the old web host.
@@ -115,7 +114,7 @@ func Register(se *core.ServeEvent, dataDir string) (stop func()) {
 	case key == "":
 		log.Printf("catalog: FUTAR_API_KEY is not set, the builder will not run")
 	default:
-		svc := NewService(store, &Generator{Key: key, Gate: futar.WaitUpstream})
+		svc := NewService(store, &Generator{Key: key, Gate: gate})
 		go svc.Run(ctx)
 	}
 	return cancel

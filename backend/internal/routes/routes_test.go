@@ -9,6 +9,8 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 
+	"vectra/pb/internal/limits"
+	"vectra/pb/internal/reauth"
 	"vectra/pb/internal/routes"
 	_ "vectra/pb/migrations"
 )
@@ -24,7 +26,7 @@ func TestRouteBindings(t *testing.T) {
 	t.Setenv("WEBAUTHN_RP_DISPLAY_NAME", "Vectra Test")
 
 	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) {
-		routes.Register(e)
+		routes.Register(e, routes.NewDeps(reauth.NewGuard(limits.ReauthUser.New(), limits.ReauthIP.New())))
 	}
 
 	scenarios := []tests.ApiScenario{
@@ -129,7 +131,9 @@ func TestRouteBindings(t *testing.T) {
 // TestSuperuserBindings enforces the auth convention: routes for signed-in
 // users refuse a superuser token (403). No route currently lets superusers in.
 func TestSuperuserBindings(t *testing.T) {
-	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) { routes.Register(e) }
+	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) {
+		routes.Register(e, routes.NewDeps(reauth.NewGuard(limits.ReauthUser.New(), limits.ReauthIP.New())))
+	}
 	super := func(t testing.TB, app *tests.TestApp) {
 		_, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "root@test.local")
 		if err == nil {

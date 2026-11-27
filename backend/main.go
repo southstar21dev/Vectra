@@ -12,6 +12,7 @@ import (
 	"vectra/pb/internal/authguard"
 	"vectra/pb/internal/catalog"
 	"vectra/pb/internal/config"
+	"vectra/pb/internal/limits"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
 	"vectra/pb/internal/reauth"
@@ -39,10 +40,13 @@ func main() {
 	// Revoke passkeys when the password or email changes (tokenKey rotation),
 	// so a passkey enrolled before a password reset cannot log in after it.
 	passkeys.RegisterRevokeOnCredentialChange(app)
-	// Count wrong oldPassword guesses on PATCH users/{id} against the re-auth budget.
-	reauth.RegisterPasswordChangeGuard(app)
+	// Count wrong oldPassword guesses on PATCH users/{id} against the re-auth
+	// budget. The same guard goes to the routes, so one set of buckets covers
+	// every password check.
+	reauthGuard := reauth.NewGuard(limits.ReauthUser.New(), limits.ReauthIP.New())
+	reauth.RegisterPasswordChangeGuard(app, reauthGuard)
 	// Per-identity and /64-keyed limits, and the unused email flows switched off.
-	authguard.Register(app)
+	authguard.Register(app, authguard.NewLimiters())
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
 
@@ -56,10 +60,11 @@ func main() {
 		}
 		// Refuses app builds older than the minimum in app_config (426), before any route runs.
 		versiongate.Register(se)
-		routes.Register(se)
+		deps := routes.NewDeps(reauthGuard)
+		routes.Register(se, deps)
 		// The public transit catalog (/catalog/*.json): built from Futár, refreshed daily,
 		// kept under the data dir. The builder stops with the server.
-		stopCatalog := catalog.Register(se, app.DataDir())
+		stopCatalog := catalog.Register(se, app.DataDir(), deps.Futar.WaitUpstream)
 		app.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
 			stopCatalog()
 			return e.Next()

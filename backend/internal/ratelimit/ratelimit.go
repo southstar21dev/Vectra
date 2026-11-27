@@ -1,6 +1,6 @@
 // Package ratelimit holds the tiny in-process fixed-window limiter shared by
 // the public / abuse-prone vectra routes (passkey login start, the Futár proxy,
-// Neptun replace, push send, the crypto route).
+// Neptun replace, the crypto route).
 package ratelimit
 
 import (

@@ -12,6 +12,8 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
+
+	"vectra/pb/internal/limits"
 )
 
 // The route tests only need the users collection, which PocketBase's test data
@@ -71,7 +73,7 @@ func callHandler(t *testing.T, app *tests.TestApp, auth *core.Record, body strin
 	e := &core.RequestEvent{App: app, Auth: auth}
 	e.Request = req
 	e.Response = rec
-	require.NoError(t, Handler(e))
+	require.NoError(t, Handler(limits.CryptoValues.New())(e))
 	require.Equal(t, http.StatusOK, rec.Code)
 	var out map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))

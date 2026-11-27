@@ -14,18 +14,18 @@ import (
 	_ "vectra/pb/migrations"
 )
 
-func freshLimiters(t *testing.T) {
-	t.Helper()
-	pi, pf, ps, pr := IdentityFailures, IPFailures, Signups, Resets
-	IdentityFailures = ratelimit.New(2, time.Minute)
-	IPFailures = ratelimit.New(100, time.Minute)
-	Signups = ratelimit.New(100, time.Minute)
-	Resets = ratelimit.New(100, time.Minute)
-	t.Cleanup(func() { IdentityFailures, IPFailures, Signups, Resets = pi, pf, ps, pr })
+func testLimiters() Limiters {
+	return Limiters{
+		IdentityFailures: ratelimit.New(2, time.Minute),
+		IPFailures:       ratelimit.New(100, time.Minute),
+		Signups:          ratelimit.New(100, time.Minute),
+		Resets:           ratelimit.New(100, time.Minute),
+	}
 }
 
 func TestLoginFailureLimitAndDisabledFlows(t *testing.T) {
-	freshLimiters(t)
+	t.Parallel()
+	l := testLimiters()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -39,7 +39,7 @@ func TestLoginFailureLimitAndDisabledFlows(t *testing.T) {
 	token, err := u.NewAuthToken()
 	require.NoError(t, err)
 
-	Register(app)
+	Register(app, l)
 	factory := func(testing.TB) *tests.TestApp { return app }
 	login := func(name, pw string, status int, content string) tests.ApiScenario {
 		return tests.ApiScenario{
@@ -72,13 +72,14 @@ func TestLoginFailureLimitAndDisabledFlows(t *testing.T) {
 }
 
 func TestSignupAndResetLimits(t *testing.T) {
-	freshLimiters(t)
-	Signups = ratelimit.New(1, time.Minute)
-	Resets = ratelimit.New(1, time.Minute)
+	t.Parallel()
+	l := testLimiters()
+	l.Signups = ratelimit.New(1, time.Minute)
+	l.Resets = ratelimit.New(1, time.Minute)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
-	Register(app)
+	Register(app, l)
 	factory := func(testing.TB) *tests.TestApp { return app }
 	users, err := app.FindCollectionByNameOrId("users")
 	require.NoError(t, err)
