@@ -13,7 +13,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +42,8 @@ import dev.southstar21.vectra.features.schedule.getWeekBeforeStart
 import dev.southstar21.vectra.features.schedule.isIntensiveClass
 import kotlinx.coroutines.delay
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import androidx.compose.runtime.setValue
 
 internal data class TypeInfo(val label: String, val plural: String, val tone: StatusTone)
 
@@ -190,10 +191,7 @@ internal fun AttendanceTab(
                     c.textSecondary,
                     align = TextAlign.Center,
                 )
-                TrackerButton(onClick = { showAdd = true }, modifier = Modifier.padding(top = 16.dp)) { ink ->
-                    VIcon(RemixIcons.AddLine, size = 14.dp, tint = ink)
-                    VText("Add a session", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                }
+                VButton("Add a session", { showAdd = true }, Modifier.padding(top = 16.dp), icon = RemixIcons.AddLine)
             }
         } else {
             for (s in todaySessions) {

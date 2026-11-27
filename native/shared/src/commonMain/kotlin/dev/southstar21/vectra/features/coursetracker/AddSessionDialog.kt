@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +50,10 @@ import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.designsystem.theme.tappable
-import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private val SessionTypeOptions = listOf(
     SelectOption(SessionType.Lecture, "Lecture"),
@@ -171,9 +172,10 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
       }
     }
     BottomBar {
-        TrackerButton(
-            onClick = {
-                if (!canSubmit) return@TrackerButton
+        VButton(
+            "Add session",
+            {
+                if (!canSubmit) return@VButton
                 onSubmit(
                     AttendanceSession(
                         id = genId(),
@@ -188,11 +190,10 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
                     ),
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = Radius.Panel,
-            height = 48.dp,
+            Modifier.fillMaxWidth(),
+            size = ButtonSize.Lg,
             enabled = canSubmit,
-        ) { ink -> VText("Add session", style = vtext(TypeScale.Body, Weight.Bold), color = ink) }
+        )
     }
 }
 
