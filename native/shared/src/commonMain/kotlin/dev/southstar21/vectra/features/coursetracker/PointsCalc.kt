@@ -85,12 +85,6 @@ fun calculatePointsSummary(
     )
 }
 
-fun calculatePointsToTarget(totalEarned: Double, totalMax: Double, targetGrade: Int, gradingScale: List<GradingScaleTier>? = null): Int? {
-    val tier = (gradingScale ?: DefaultGradingScale).firstOrNull { it.grade == targetGrade } ?: return null
-    val needed = tier.minPercentage / 100 * totalMax - totalEarned
-    return max(0.0, ceil(needed)).toInt()
-}
-
 // ---------------------------------------------------------------------------
 // Grades
 // ---------------------------------------------------------------------------

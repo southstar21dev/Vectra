@@ -4,27 +4,6 @@ import dev.southstar21.vectra.core.time.nowInBudapest
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-// ---- Breaks between entries ---------------------------------------------------
-
-data class BreakInfo(val startTime: String, val endTime: String, val gapMinutes: Int, val durationLabel: String)
-
-/** The gap between consecutive timeline entries, or null when they touch/overlap. */
-fun calculateBreakInfo(curEndTime: String?, nextStartTime: String?): BreakInfo? {
-    if (curEndTime.isNullOrEmpty() || nextStartTime.isNullOrEmpty()) return null
-    val e = curEndTime.split(':')
-    val s = nextStartTime.split(':')
-    val eH = e.getOrNull(0)?.toIntOrNull() ?: return null
-    val eM = e.getOrNull(1)?.toIntOrNull() ?: return null
-    val sH = s.getOrNull(0)?.toIntOrNull() ?: return null
-    val sM = s.getOrNull(1)?.toIntOrNull() ?: return null
-    val gap = (sH * 60 + sM) - (eH * 60 + eM)
-    if (gap <= 0) return null
-    val hours = gap / 60
-    val mins = gap % 60
-    val label = if (hours > 0) (if (mins > 0) "${hours}h ${mins}m" else "${hours}h") else "${mins}m"
-    return BreakInfo(curEndTime, nextStartTime, gap, label)
-}
-
 // ---- Semester status banner ---------------------------------------------------
 
 /** status: 'current' | 'active' | 'upcoming' | 'past' */

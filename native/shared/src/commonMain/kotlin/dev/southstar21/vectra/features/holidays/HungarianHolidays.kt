@@ -92,7 +92,3 @@ fun getUpcomingHolidays(now: Instant = Clock.System.now(), maxDaysAhead: Int = 1
         .sortedBy { it.second }
         .map { UpcomingHoliday(it.first, it.third) }
 }
-
-/** Today's holiday (daysUntil = 0) or the nearest one within the window, else null. */
-fun getNextHoliday(now: Instant = Clock.System.now(), maxDaysAhead: Int = 14): UpcomingHoliday? =
-    getUpcomingHolidays(now, maxDaysAhead).firstOrNull()

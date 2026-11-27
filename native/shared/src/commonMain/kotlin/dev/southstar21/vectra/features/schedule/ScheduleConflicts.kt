@@ -299,14 +299,6 @@ fun getScheduleConflicts(
     return conflicts.sortedWith(compareBy<ScheduleConflict> { it.date }.thenBy { it.startMinute }.thenBy { it.itemId })
 }
 
-fun conflictIsAcknowledged(conflict: ScheduleConflict, items: List<ScheduleItem>): Boolean {
-    val target = items.firstOrNull { it.id == conflict.itemId }
-    if (target != null && conflict.key in target.acknowledgedConflictKeys) return true
-    val otherId = conflict.otherItemId ?: return false
-    val other = items.firstOrNull { it.id == otherId }
-    return other != null && conflict.key in other.acknowledgedConflictKeys
-}
-
 // ---- Occurrences --------------------------------------------------------------
 
 data class ScheduleItemOccurrence(

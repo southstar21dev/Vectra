@@ -167,8 +167,6 @@ class ScheduleConflictsTest {
         val conflict = getScheduleConflicts(listOf(a, b), emptyList())[0]
         assertEquals("a", conflict.itemId)
         assertEquals("b", conflict.otherItemId)
-        assertFalse(conflictIsAcknowledged(conflict, listOf(a, b)))
-        assertTrue(conflictIsAcknowledged(conflict, listOf(a, b.copy(acknowledgedConflictKeys = listOf(conflict.key)))))
     }
 
     @Test fun stableNeptunKeys() {

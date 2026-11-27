@@ -102,15 +102,6 @@ internal fun resolveAnchor(lat: Double, lon: Double): MapAnchor =
     if (isInHungary(lat, lon)) MapAnchor(lat, lon, MapAnchorLabel.You, false)
     else MapAnchor(BudapestCenter.lat, BudapestCenter.lon, MapAnchorLabel.BudapestCenter, true)
 
-/** Full BKK stop catalog (memoized per session by [TransitCatalog]). */
-internal suspend fun getCatalogStops(catalog: TransitCatalog): List<CatalogStop> = catalog.stops()
-
-/** Per-route direction index (ordered stop names per variant). */
-internal suspend fun getRouteVariants(catalog: TransitCatalog): Map<String, List<CatalogRouteVariant>> = catalog.routeVariants()
-
-/** Route catalog keyed by id. */
-internal suspend fun getCatalogRouteMap(catalog: TransitCatalog): Map<String, CatalogRoute> = catalog.routeMap()
-
 /** Nearest N catalog stops within the radius, sorted by distance. */
 internal fun findNearbyStops(
     stops: List<CatalogStop>,

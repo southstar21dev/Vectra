@@ -496,8 +496,6 @@ internal fun addOrUpdateTrackerStop(stops: List<TrackerStop>, newStop: TrackerSt
     return stops + newStop
 }
 
-internal fun removeTrackerStop(stops: List<TrackerStop>, stopId: String): List<TrackerStop> = stops.filter { it.stopId != stopId }
-
 internal fun splitRouteTitle(title: String?): List<String> =
     if (title.isNullOrEmpty()) emptyList() else title.split(RouteTitleSeparator).filter { it.isNotEmpty() }
 

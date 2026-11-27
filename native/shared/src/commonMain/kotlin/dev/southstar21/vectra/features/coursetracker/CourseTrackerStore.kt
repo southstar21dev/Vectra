@@ -191,17 +191,6 @@ fun applySetAttendanceStatus(
     )
 }
 
-/** Upsert a full tracker under its canonical key (healing legacy keys). */
-fun applyUpsertTracker(data: CourseTrackerData, tracker: CourseTracker, now: String = nowIso()): CourseTrackerData {
-    val canonicalKey = resolveCourseKey(CourseIdentity(courseCode = tracker.courseCode, courseName = tracker.courseName, semester = tracker.semester))
-    val cleaned = tracker.copy(
-        courseKey = canonicalKey,
-        attendance = tracker.attendance.copy(sessions = deduplicateSessions(tracker.attendance.sessions)),
-        updatedAt = now,
-    )
-    return data.copy(trackers = commitTracker(data.trackers, canonicalKey, cleaned, tracker.courseKey.takeIf { it != canonicalKey }))
-}
-
 /**
  * Writes to the tracker the Course Hub shows: the canonical key, else a legacy-keyed tracker
  * (moved to the canonical key), else a new one when [create]. Without [create] a course with
