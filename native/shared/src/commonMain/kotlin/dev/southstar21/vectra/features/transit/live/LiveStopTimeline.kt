@@ -144,7 +144,7 @@ private fun TimelineRow(name: String, time: String?, marker: TimelineMarker, col
                 passed -> c.textMuted
                 else -> c.textPrimary.copy(alpha = 0.86f)
             }
-            VText(name, Modifier.weight(1f, fill = false), vtext(14.sp to 18.sp, weight), ink, maxLines = 1)
+            VText(name, Modifier.weight(1f, fill = false), vtext(14.sp to 18.sp, weight), ink, maxLines = 2)
             if (marker.isYou) VText("YOU", Modifier.padding(start = 6.dp), vtext(11.sp to 14.sp, Weight.Bold), c.tints.emerald.text)
         }
         if (time != null) {

@@ -569,6 +569,7 @@ private fun TrackerRow(
             LineRowText(
                 title.ifEmpty { displayName },
                 toLine,
+                titleLines = 3,
                 meta = stopList?.let { list -> { VText(list, style = vtext(TypeScale.Caption), color = c.textMuted, maxLines = 2) } },
             )
         }

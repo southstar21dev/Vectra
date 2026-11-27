@@ -326,7 +326,7 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
     ActionSheet(
         open = menu != null,
         onDismiss = { menuTracker = null },
-        title = menu?.let { "${it.routeShortName}, ${it.stopName}" },
+        title = menu?.let { "${formatRouteDisplayName(it.routeShortName, it.routeId)} at ${it.stopName}" },
         actions = if (menu == null) emptyList() else listOf(
             SheetAction("Live departures", RemixIcons.TimeLine) { navigator.openLiveTracker(menu.id, menu.stopId) },
             SheetAction("Edit tracker", RemixIcons.PencilLine) { navigator.push(Screen.EditTracker(menu.id)) },
