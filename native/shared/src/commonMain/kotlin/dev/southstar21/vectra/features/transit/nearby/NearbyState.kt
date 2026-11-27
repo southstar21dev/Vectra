@@ -33,8 +33,9 @@ internal data class CatalogQuery<T>(val data: T? = null, val isLoading: Boolean 
 
 @Composable
 private fun <T> rememberCatalogQuery(repo: TransitRepository, load: suspend TransitCatalog.() -> T): CatalogQuery<T> {
+    val currentLoad by rememberUpdatedState(load)
     val state by produceState(CatalogQuery<T>(), repo) {
-        val data = loadCatalogUntilLoaded(repo.online, { repo.withCatalog { load() } }) { value = CatalogQuery(null, false) }
+        val data = loadCatalogUntilLoaded(repo.online, { repo.withCatalog { currentLoad() } }) { value = CatalogQuery(null, false) }
         value = CatalogQuery(data, false)
     }
     return state
