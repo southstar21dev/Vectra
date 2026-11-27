@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit.trackers
 
 import androidx.compose.runtime.mutableStateOf
+import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.designsystem.components.ToastType
 import dev.southstar21.vectra.core.designsystem.components.Toaster
@@ -12,15 +13,14 @@ import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.network.json
 import dev.southstar21.vectra.core.platform.Connectivity
-import dev.southstar21.vectra.core.platform.GeoFix
-import dev.southstar21.vectra.core.platform.GeoPermission
-import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
 import dev.southstar21.vectra.features.transit.MaxTrackerStops
 import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.FutarApi
 import dev.southstar21.vectra.features.transit.data.FutarRoute
 import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.RealFutarSource
 import dev.southstar21.vectra.features.transit.data.TrackerStop
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
@@ -38,9 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -61,12 +59,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private const val Owner = "user-1"
-
-private object NoLocation : LocationProvider {
-    override fun permission() = GeoPermission.Denied
-    override suspend fun current(): GeoFix = error("no location in tests")
-    override fun watch(): Flow<GeoFix> = emptyFlow()
-}
 
 private fun arrivals(vararg routes: FutarRoute): String {
     val map = routes.joinToString(",") { """"${it.id}":{"id":"${it.id}","shortName":"${it.shortName}","type":"${it.type}","color":"${it.color}","textColor":"${it.textColor}"}""" }
@@ -152,8 +144,9 @@ private class Fixture {
     val store = AuthStore(kv, PlainSecretCipher)
     private val pb = PocketBaseClient(createHttpClient(http), "https://pb.test", store)
     private val connectivity = object : Connectivity { override val online = MutableStateFlow(true) }
+    private val auth = AuthRepository(pb, store, kv, scope, lazyOf(emptyList()))
     val repo = TransitRepository(
-        pb, CryptoClient(pb, scope), kv, connectivity, NoLocation, http, "https://web.test/",
+        pb, CryptoClient(pb, scope), kv, auth, connectivity, RealFutarSource(FutarApi(pb), scope), http, "https://web.test/",
         CatalogDiskCache(Path(SystemTemporaryDirectory, "vectra-add-tracker-test-${Random.nextLong().toULong()}")), scope,
     )
     val toaster = Toaster()

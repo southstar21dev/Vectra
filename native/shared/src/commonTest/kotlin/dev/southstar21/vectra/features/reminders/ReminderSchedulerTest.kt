@@ -10,9 +10,6 @@ import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.network.createHttpClient
 import dev.southstar21.vectra.core.network.json
 import dev.southstar21.vectra.core.platform.Connectivity
-import dev.southstar21.vectra.core.platform.GeoFix
-import dev.southstar21.vectra.core.platform.GeoPermission
-import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.core.platform.ScheduledNotification
@@ -24,6 +21,8 @@ import dev.southstar21.vectra.features.coursetracker.PassThroughCipher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.FutarApi
+import dev.southstar21.vectra.features.transit.data.RealFutarSource
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import io.ktor.client.HttpClient
@@ -37,9 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -72,12 +69,6 @@ private class RecordingNotifier : Notifier {
         replans += atMs
     }
     val last get() = plans.last()
-}
-
-private object NoLocation : LocationProvider {
-    override fun permission() = GeoPermission.Denied
-    override suspend fun current(): GeoFix = error("no location in tests")
-    override fun watch(): Flow<GeoFix> = emptyFlow()
 }
 
 /** One manual class on every weekday of a range that spans today, so some session always lies ahead. */
@@ -118,7 +109,7 @@ private class Harness {
     val schedule = ScheduleRepository(pb, crypto, kv, connectivity, auth, http, scope, NeptunSyncListener { })
     private val courseTracker = CourseTrackerRepository(FakeCloud(), PassThroughCipher, kv, scope, auth.currentUserId, isOnline = { true })
     private val transit = TransitRepository(
-        pb, crypto, kv, connectivity, NoLocation, http, "https://web.test/", CatalogDiskCache(Path("vectra-reminder-test-unused")), scope,
+        pb, crypto, kv, auth, connectivity, RealFutarSource(FutarApi(pb), scope), http, "https://web.test/", CatalogDiskCache(Path("vectra-reminder-test-unused")), scope,
     )
     val updateGate = UpdateGate(kv, scope, "1.0.0")
     val scheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate, crypto)
