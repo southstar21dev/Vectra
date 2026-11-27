@@ -57,7 +57,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
@@ -138,7 +138,7 @@ private fun SettingsSectionBox(title: String, tiltLeft: Boolean = true, content:
     val c = Vectra.colors
     val shape = Radius.Card
     Box(Modifier.fillMaxWidth().padding(top = 20.dp)) {
-        Column(Modifier.fillMaxWidth().glass(shape).clip(shape).padding(top = 16.dp), content = content)
+        Column(Modifier.fillMaxWidth().plannerCard(shape).clip(shape).padding(top = 16.dp), content = content)
         PostageStamp(
             Modifier.padding(start = 16.dp).offset(y = (-20).dp).rotate(if (tiltLeft) -3f else 2f),
             innerModifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),

@@ -39,18 +39,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.Palette
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.cardDepthShadows
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.mix
 import dev.southstar21.vectra.core.designsystem.theme.mixTransparent
@@ -66,21 +65,6 @@ import dev.southstar21.vectra.core.designsystem.theme.specularBorder
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
-
-/**
- * A glass card with depth: the glass fill and specular edge, the glass shadow in dark
- * mode and the deeper card shadow in light mode.
- */
-@Composable
-internal fun Modifier.glassDepth(shape: Shape): Modifier {
-    val c = Vectra.colors
-    val shadows = if (c.isDark) c.glassShadow else cardDepthShadows(false)
-    return this
-        .boxShadow(shape, shadows)
-        .background(c.glassBg, shape)
-        .insetShadow(shape, shadows)
-        .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
-}
 
 /** The quiet glass button behind idle marks and steppers. */
 @Composable
@@ -167,7 +151,7 @@ internal fun AddPill(label: String = "Add", onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(RemixIcons.AddLine, size = 14.dp, tint = c.textPrimary)
-        VText(label, style = vtext(13.sp to 18.sp, Weight.Bold), color = c.textPrimary)
+        VText(label, style = vtext(TypeScale.Meta13, Weight.Bold), color = c.textPrimary)
     }
 }
 

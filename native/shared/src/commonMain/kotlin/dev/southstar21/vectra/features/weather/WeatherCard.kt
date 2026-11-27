@@ -265,7 +265,7 @@ private fun Reading(icon: ImageVector, value: String, label: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(icon, size = 14.dp, tint = c.textMuted)
-        VText(value, style = vtext(13.sp to 18.sp, Weight.Bold).tnum(), color = c.textPrimary, maxLines = 1)
+        VText(value, style = vtext(TypeScale.Meta13, Weight.Bold).tnum(), color = c.textPrimary, maxLines = 1)
     }
 }
 

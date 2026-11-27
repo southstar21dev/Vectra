@@ -34,6 +34,28 @@ fun Modifier.glass(shape: Shape, colors: VectraColors = Vectra.colors, hairlineI
         .specularBorder(shape, side, top)
 }
 
+/**
+ * The planner's card recipe: opaque, a soft drop shadow and a lit top edge. Content cards use it
+ * (the day list, tracker strips, settings sections); [glass] stays for chrome and controls.
+ */
+object PlannerSurface {
+    fun fill(dark: Boolean): Color = if (dark) Color(0xFF0E0F14) else Color.White
+    fun border(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.08f) else rgba(15, 23, 42, 0.08f)
+    fun borderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.2f) else rgba(15, 23, 42, 0.1f)
+    fun shadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 16f, blur = 36f, spread = -8f, color = if (dark) rgba(0, 0, 0, 0.5f) else rgba(15, 23, 42, 0.12f)))
+}
+
+/** The planner card surface (light and dark). Pass [Radius.Strip] or [Radius.Panel] for smaller cards. */
+@Composable
+fun Modifier.plannerCard(shape: Shape = Radius.Card, colors: VectraColors = Vectra.colors): Modifier {
+    val dark = colors.isDark
+    return this
+        .boxShadow(shape, PlannerSurface.shadow(dark))
+        .background(PlannerSurface.fill(dark), shape)
+        .specularBorder(shape, PlannerSurface.border(dark), PlannerSurface.borderTop(dark))
+}
+
 /** Depth of dialogs and solid cards. */
 fun cardDepthShadows(dark: Boolean): List<BoxShadow> = if (dark) listOf(
     BoxShadow(y = 1f, color = rgba(255, 255, 255, 0.08f), inset = true),

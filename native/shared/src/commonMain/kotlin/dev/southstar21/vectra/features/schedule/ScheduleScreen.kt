@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import kotlin.time.Instant
 import kotlinx.coroutines.coroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -401,7 +402,7 @@ private fun ScheduleActionButtons(onSync: () -> Unit, onAddClass: () -> Unit, on
 private fun ClassPanePlaceholder() {
     val c = Vectra.colors
     Column(
-        Modifier.fillMaxSize().glass(Radius.Card).padding(32.dp),
+        Modifier.fillMaxSize().plannerCard().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {

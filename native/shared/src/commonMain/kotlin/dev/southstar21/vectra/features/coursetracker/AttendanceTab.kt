@@ -35,6 +35,7 @@ import dev.southstar21.vectra.core.designsystem.components.SectionTitle
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.features.holidays.rememberNowInstant
@@ -177,7 +178,7 @@ internal fun AttendanceTab(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         if (sessions.isEmpty()) {
             Column(
-                Modifier.fillMaxWidth().glassDepth(Radius.Card).padding(32.dp),
+                Modifier.fillMaxWidth().plannerCard(Radius.Card).padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 VIcon(RemixIcons.CalendarLine, size = 32.dp, tint = c.textMuted)
@@ -222,7 +223,7 @@ internal fun AttendanceTab(
                 if (options.size > 2) {
                     PillRadio(typeFilter, options, { typeFilter = it }, columns = minOf(4, options.size))
                 }
-                Box(Modifier.fillMaxWidth().clip(Radius.Card).glassDepth(Radius.Card)) {
+                Box(Modifier.fillMaxWidth().clip(Radius.Card).plannerCard(Radius.Card)) {
                     Column(Modifier.fillMaxWidth()) {
                         Divided(
                             filtered.map { s ->

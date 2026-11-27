@@ -30,12 +30,11 @@ import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
@@ -68,7 +67,7 @@ fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier 
     val missing = known.filter { it.done == false }
     var expanded by remember { mutableStateOf(false) }
     val shown = if (expanded) missing else missing.take(FirstShown)
-    Column(modifier.fillMaxWidth().glass(Radius.Card).animateContentSize()) {
+    Column(modifier.fillMaxWidth().plannerCard().animateContentSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 2.dp)) {
                 VText("Finish setting up Vectra", style = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight), color = c.textPrimary)

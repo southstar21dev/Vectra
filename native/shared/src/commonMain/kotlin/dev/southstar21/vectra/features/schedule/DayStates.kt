@@ -30,9 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VText
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
+import dev.southstar21.vectra.core.designsystem.theme.VType
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -85,9 +88,9 @@ internal fun BreakStrip(row: DayRow.Break, nowMinute: Int?, d: DayColors, timeFo
             horizontalArrangement = Arrangement.spacedBy(9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            VText(if (now) "Break now" else "Break", Modifier.weight(1f), vtext(13.sp to 18.sp, Weight.Bold), accent, maxLines = 1)
+            VText(if (now) "Break now" else "Break", Modifier.weight(1f), vtext(TypeScale.Meta13, Weight.Bold), accent, maxLines = 1)
             VText(rangeLabel(row.start, row.end, timeFormat), style = vtext(12.sp to 16.sp, Weight.Bold, mono = true).tnum(), color = d.room, maxLines = 1)
-            VText(rightText, Modifier.weight(1f), vtext(13.sp to 18.sp, Weight.Semibold), rightColor, align = TextAlign.End, maxLines = 1)
+            VText(rightText, Modifier.weight(1f), vtext(TypeScale.Meta13, Weight.Semibold), rightColor, align = TextAlign.End, maxLines = 1)
         }
     }
 }
@@ -97,9 +100,7 @@ internal fun DayDoneCard(summary: String, d: DayColors) {
     Row(
         Modifier
             .fillMaxWidth()
-            .boxShadow(CardShape, d.cardShadow)
-            .background(d.card, CardShape)
-            .specularBorder(CardShape, d.border, d.borderTop)
+            .plannerCard(CardShape)
             .padding(18.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -107,7 +108,7 @@ internal fun DayDoneCard(summary: String, d: DayColors) {
         DoneDisc()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             VText("All done for today", style = vtext(18.sp to 24.sp, Weight.Extrabold, (-0.01).em), color = d.text)
-            VText(summary, style = vtext(13.sp to 18.sp, Weight.Medium), color = d.secondary)
+            VText(summary, style = vtext(TypeScale.Meta13, Weight.Medium), color = d.secondary)
         }
     }
 }
@@ -116,13 +117,10 @@ internal fun DayDoneCard(summary: String, d: DayColors) {
 @Composable
 fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = Modifier) {
     val d = rememberDayColors()
-    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier
             .fillMaxWidth()
-            .boxShadow(shape, d.cardShadow)
-            .background(d.card, shape)
-            .specularBorder(shape, d.border, d.borderTop)
+            .plannerCard()
             .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -133,7 +131,7 @@ fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = 
                 append(if (backOn == "tomorrow") "Back tomorrow at " else "Back on $backOn at ")
                 withStyle(SpanStyle(fontFamily = Vectra.fonts.mono, fontWeight = Weight.Bold, color = d.room)) { append(backAt) }
             }
-            VText(text, style = vtext(13.sp to 18.sp), color = d.secondary, align = TextAlign.Center)
+            VText(text, style = vtext(TypeScale.Meta13), color = d.secondary, align = TextAlign.Center)
         }
     }
 }
@@ -188,8 +186,8 @@ fun DayListHeader(title: String, date: String, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
-        VText(title, Modifier.alignByBaseline(), vtext(24.sp to 30.sp, Weight.Extrabold, (-0.02).em), c.textPrimary, maxLines = 1)
-        VText(date, Modifier.alignByBaseline(), vtext(13.sp to 18.sp, Weight.Medium).tnum(), c.textSecondary, maxLines = 1)
+        VText(title, Modifier.alignByBaseline(), VType.PageHeading, c.textPrimary, maxLines = 1)
+        VText(date, Modifier.alignByBaseline(), vtext(TypeScale.Meta13, Weight.Medium).tnum(), c.textSecondary, maxLines = 1)
     }
 }
 

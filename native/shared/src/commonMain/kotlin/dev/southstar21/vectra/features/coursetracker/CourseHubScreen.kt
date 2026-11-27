@@ -2,7 +2,6 @@ package dev.southstar21.vectra.features.coursetracker
 
 import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.designsystem.theme.Radius
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -37,6 +36,7 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.time.parseIsoDate
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
@@ -309,7 +309,7 @@ private fun CourseHub(
     // The sheet's own glass shows through; the pane is a rounded card beside the day list.
     Column(
         if (sheet) Modifier.fillMaxSize()
-        else Modifier.fillMaxSize().glass(Radius.Card).clip(Radius.Card).background(c.surfacePrimary),
+        else Modifier.fillMaxSize().plannerCard().clip(Radius.Card).background(c.surfacePrimary),
     ) {
         if (sheet) {
             HubSheetHeader(tracker, onClose = onBack) { tabRow(it) }

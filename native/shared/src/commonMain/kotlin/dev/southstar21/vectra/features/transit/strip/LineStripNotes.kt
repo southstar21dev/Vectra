@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -116,7 +117,7 @@ private fun FeedErrorRow(repo: TransitRepository) {
     val scope = rememberCoroutineScope()
     val pill = RoundedCornerShape(999.dp)
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        VText("Live feed unavailable", Modifier.weight(1f), vtext(13.sp to 18.sp, Weight.Semibold), c.tints.red.text, maxLines = 1)
+        VText("Live feed unavailable", Modifier.weight(1f), vtext(TypeScale.Meta13, Weight.Semibold), c.tints.red.text, maxLines = 1)
         Row(
             Modifier
                 .clip(pill)
@@ -128,7 +129,7 @@ private fun FeedErrorRow(repo: TransitRepository) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             VIcon(RemixIcons.RefreshLine, size = 14.dp, tint = c.textSecondary)
-            VText("Retry", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+            VText("Retry", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
         }
     }
 }

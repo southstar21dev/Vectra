@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.delay
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -39,7 +39,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  */
 @Composable
 fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
-    Column(modifier.fillMaxWidth().glass(Radius.Card)) {
+    Column(modifier.fillMaxWidth().plannerCard()) {
         rows.forEachIndexed { i, row ->
             if (i > 0) HairlineDivider()
             row()

@@ -54,6 +54,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.tnum
@@ -182,7 +183,7 @@ internal fun AssessmentCard(
         if (completed) null else "not graded yet",
     ).joinToString(", ")
     val shape = Radius.Card
-    Column(Modifier.fillMaxWidth().glassDepth(shape).padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().plannerCard(shape).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             DateTile(item.date)
             Column(Modifier.weight(1f)) {
@@ -245,9 +246,9 @@ internal fun AssessmentCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     VText("Score", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
                     ScoreField(item.earnedPoints, 0.0, 10000.0, "${item.name} points earned") { v -> onUpdate { it.copy(earnedPoints = v, isCompleted = true) } }
-                    VText("/", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                    VText("/", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
                     ScoreField(item.maxPoints, 0.1, 10000.0, "${item.name} maximum points") { v -> onUpdate { it.copy(maxPoints = v) } }
-                    VText("pts", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                    VText("pts", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
                 }
                 if (item.earnedPoints > item.maxPoints) {
                     // Allowed — bonus points exist — but usually a typo.
@@ -326,7 +327,7 @@ internal fun PointsTab(
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         val shape = Radius.Card
-        Column(Modifier.fillMaxWidth().glassDepth(shape).padding(20.dp).semantics { contentDescription = "Grade" }) {
+        Column(Modifier.fillMaxWidth().plannerCard(shape).padding(20.dp).semantics { contentDescription = "Grade" }) {
             if (hasGrades) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     VText(grade.toString(), Modifier.alignByBaseline(), vtext(44.sp to 44.sp, Weight.Black, Tracking.Tight), tones.text)
@@ -391,7 +392,7 @@ internal fun PointsTab(
                             else -> "All scored"
                         },
                         Modifier.alignByBaseline(),
-                        vtext(13.sp to 18.sp).tnum(),
+                        vtext(TypeScale.Meta13).tnum(),
                         c.textSecondary,
                     )
                 }
@@ -455,7 +456,7 @@ internal fun PointsTab(
                 AddPill { editing = null; showSheet = true }
             }
             if (!hasGrades) {
-                Column(Modifier.fillMaxWidth().glassDepth(shape).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.fillMaxWidth().plannerCard(shape).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     VIcon(RemixIcons.AwardLine, size = 32.dp, tint = c.textMuted)
                     VText("Nothing logged yet", Modifier.padding(top = 12.dp), vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight), c.textPrimary, align = TextAlign.Center)
                     VText(

@@ -10,6 +10,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.features.transit.data.DeviceLocation
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
@@ -281,7 +282,7 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
                         }
                         Column {
                             VText("All tracked lines are off-service", style = vtext(15.sp to 20.sp, Weight.Bold), color = c.textPrimary)
-                            VText("Nothing is running right now.", style = vtext(13.sp to 18.sp), color = c.textSecondary)
+                            VText("Nothing is running right now.", style = vtext(TypeScale.Meta13), color = c.textSecondary)
                         }
                     }
                     trackers.forEach { t -> key(t.id) { TrackerCard(t) } }
@@ -363,10 +364,10 @@ private fun NoTrackersCard(onAdd: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         LineStrip(sample, colors, Modifier.padding(bottom = 6.dp), labels = false)
-        VText("No trackers yet", style = vtext(17.sp to 22.sp, Weight.Bold), color = c.textPrimary)
+        VText("No trackers yet", style = vtext(TypeScale.Title17, Weight.Bold), color = c.textPrimary)
         VText(
             "Pick a line and a stop, and it shows up here with its vehicles on the way.",
-            style = vtext(13.sp to 18.sp),
+            style = vtext(TypeScale.Meta13),
             color = c.textSecondary,
             align = TextAlign.Center,
         )

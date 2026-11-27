@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.features.transit.strip
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,10 +29,11 @@ import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.specularBorder
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.features.schedule.rememberDayColors
@@ -59,7 +58,7 @@ import dev.southstar21.vectra.features.transit.rememberNowMillis
 import dev.southstar21.vectra.features.transit.rememberOnline
 import kotlinx.coroutines.delay
 
-internal val StripCardShape = RoundedCornerShape(22.dp)
+internal val StripCardShape = Radius.Card
 
 /** A stop still loading after this long stops holding up the not-running stack. */
 private const val SettleAfterMs = 8_000L
@@ -67,8 +66,7 @@ private const val SettleAfterMs = 8_000L
 /** The schedule's day-card surface: opaque, a soft drop shadow, a lit top edge. */
 @Composable
 internal fun Modifier.stripCardSurface(shape: Shape = StripCardShape): Modifier {
-    val d = rememberDayColors()
-    return this.boxShadow(shape, d.cardShadow).background(d.card, shape).specularBorder(shape, d.border, d.borderTop)
+    return this.plannerCard(shape)
 }
 
 /** One tracked stop's strip and its state. */
@@ -264,8 +262,8 @@ private fun StripHeader(
             size = RouteBadgeSize.Sm,
         )
         Column(Modifier.weight(1f)) {
-            VText(title, style = vtext(17.sp to 22.sp, Weight.Bold), color = if (grey) c.textSecondary else c.textPrimary, maxLines = 2)
-            if (subtitle != null) VText(subtitle, style = vtext(13.sp to 18.sp, Weight.Medium), color = c.textSecondary, maxLines = 1)
+            VText(title, style = vtext(TypeScale.Title17, Weight.Bold), color = if (grey) c.textSecondary else c.textPrimary, maxLines = 2)
+            if (subtitle != null) VText(subtitle, style = vtext(TypeScale.Meta13, Weight.Medium), color = c.textSecondary, maxLines = 1)
         }
         if (replaced) VIcon(RemixIcons.BusLine, size = 18.dp, tint = c.tints.sky.text, contentDescription = "Replacement buses")
         else if (alert) VIcon(RemixIcons.AlertLine, size = 18.dp, tint = c.tints.amber.text, contentDescription = "Service alert")

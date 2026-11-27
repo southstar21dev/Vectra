@@ -45,6 +45,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.pillDepth
 import dev.southstar21.vectra.core.designsystem.theme.pillGlass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -59,7 +60,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 @Composable
 internal fun ClippedFormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     val shape = Radius.Card
-    Box(modifier.fillMaxWidth().glass(shape)) {
+    Box(modifier.fillMaxWidth().plannerCard(shape)) {
         Column(Modifier.fillMaxWidth().clip(shape)) {
             rows.forEachIndexed { i, row ->
                 if (i > 0) HairlineDivider()
