@@ -127,7 +127,7 @@ fun AppearanceSettings(repo: AppearanceRepository) {
                 }
             }
             Column {
-                SectionLabel("Time Format")
+                SectionLabel("Time format")
                 VTabs(prefs.timeFormat, TimeFormat.entries, { f -> repo.update { it.copy(timeFormat = f) } }, Modifier.fillMaxWidth(), triggerHeight = 36.dp, pillSpec = VectraSprings.snappy(), pillHonorsReduceMotion = false) { f, _ ->
                     VIcon(RemixIcons.TimeFill, size = 14.dp)
                     VText(if (f == TimeFormat.H24) "24-hour" else "12-hour", style = vtext(TypeScale.Caption, Weight.Medium))

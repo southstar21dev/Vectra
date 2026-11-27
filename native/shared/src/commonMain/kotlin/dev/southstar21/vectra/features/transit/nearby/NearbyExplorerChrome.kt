@@ -40,6 +40,8 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.formatPrimeCountdown
+import dev.southstar21.vectra.features.transit.trackers.LineBadgeSlot
+import dev.southstar21.vectra.features.transit.trackers.LineRowText
 
 /** The island's pills' height. */
 internal val IslandHeight = 44.dp
@@ -102,7 +104,7 @@ private fun PulsingDot(color: Color) {
 
 /**
  * The departure being followed, pinned at the top of the sheet under "Following": badge, where it
- * goes and from which stop, the countdown, and Stop to let it go.
+ * goes and from which stop, the countdown, and Stop following to let it go.
  */
 @Composable
 internal fun FollowedDeparture(selection: ExplorerSelection, countdown: Int, onStop: () -> Unit, modifier: Modifier = Modifier) {
@@ -118,19 +120,16 @@ internal fun FollowedDeparture(selection: ExplorerSelection, countdown: Int, onS
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.widthIn(min = 40.dp), contentAlignment = Alignment.Center) {
-                RouteBadge(selection.shortName, selection.color, selection.textColor, size = RouteBadgeSize.Md)
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textSecondary)
-                    VText(selection.headsign.ifEmpty { "Any direction" }, style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, maxLines = 1)
-                }
-                VText("from ${selection.stopName}", style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 1)
+            LineBadgeSlot { RouteBadge(selection.shortName, selection.color, selection.textColor, size = RouteBadgeSize.Md) }
+            Column(Modifier.weight(1f)) {
+                LineRowText(
+                    title = selection.headsign.ifEmpty { "Any direction" },
+                    meta = { VText("from ${selection.stopName}", style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 2) },
+                )
             }
             NearbyEtaRow(selection.isPredicted, formatPrimeCountdown(countdown))
             VText(
-                "Stop",
+                "Stop following",
                 Modifier.tappable(CircleShape, role = Role.Button, onClickLabel = "Stop following this line", onClick = onStop).padding(horizontal = 10.dp, vertical = 8.dp),
                 vtext(TypeScale.Caption, Weight.Bold),
                 c.accentPrimary,

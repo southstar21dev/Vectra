@@ -77,11 +77,11 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.features.transit.FormattedRouteTitle
+import dev.southstar21.vectra.features.transit.splitTermini
 import dev.southstar21.vectra.features.transit.MaxFavoriteTrackers
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
@@ -155,17 +155,17 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
     }
     val handleToggleFavorite: (TransitTracker) -> Unit = { tracker ->
         if (!tracker.isFavorite && sourceTrackers.count { it.isFavorite } >= MaxFavoriteTrackers) {
-            toaster.error("Maximum of $MaxFavoriteTrackers favourite trackers allowed.")
+            toaster.error("You can pin up to $MaxFavoriteTrackers trackers to the Dashboard.")
         } else {
             favoriteBusyId = tracker.id
             scope.launch {
                 try {
                     val next = repo.toggleFavorite(tracker.id)
-                    toaster.success(if (next) "Added to dashboard favourites" else "Removed from dashboard favourites")
+                    toaster.success(if (next) "Pinned to Dashboard" else "Unpinned from Dashboard")
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
-                    toaster.error("Could not update favourites", t.message)
+                    toaster.error("Could not update pinned trackers", t.message)
                 } finally {
                     favoriteBusyId = null
                 }
@@ -180,7 +180,7 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
             try {
                 repo.reorderTrackers(ids)
                 isPending = false
-                toaster.success(if (favTab) "Favourites order updated" else "Transit trackers order updated")
+                toaster.success(if (favTab) "Pinned order updated" else "Transit trackers order updated")
                 haptics.confirm()
                 onBack()
             } catch (e: CancellationException) {
@@ -214,8 +214,8 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
                         VText("All", maxLines = 1)
                         VText("${allItems.size}", style = countStyle, color = ink.copy(alpha = ink.alpha * 0.6f), maxLines = 1)
                     } else {
-                        VText("Dashboard", maxLines = 1)
-                        VText("${favItems.size}/$MaxFavoriteTrackers", style = countStyle, color = ink.copy(alpha = ink.alpha * 0.6f), maxLines = 1)
+                        VText("Pinned", maxLines = 1)
+                        VText("${favItems.size} of $MaxFavoriteTrackers", style = countStyle, color = ink.copy(alpha = ink.alpha * 0.6f), maxLines = 1)
                     }
                 }
             },
@@ -233,13 +233,13 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     VText(
-                        if (isFavoritesTab) "Nothing on your dashboard yet" else "No trackers saved yet",
+                        if (isFavoritesTab) "Nothing pinned yet" else "No trackers saved yet",
                         style = vtext(TypeScale.Body, Weight.Bold),
                         color = c.textPrimary,
                         align = TextAlign.Center,
                     )
                     VText(
-                        if (isFavoritesTab) "Star a tracker under All to pin it to your dashboard."
+                        if (isFavoritesTab) "Pin a tracker under All to show it on your Dashboard."
                         else "Add trackers from the transit page to organize them here.",
                         Modifier.padding(top = 4.dp).widthIn(max = 260.dp),
                         vtext(TypeScale.Caption),
@@ -255,7 +255,7 @@ internal fun ManageTrackersScreen(repo: TransitRepository, onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 VText(
-                    if (isFavoritesTab) "The order they appear on your dashboard" else "Drag to reorder, star to pin",
+                    if (isFavoritesTab) "The order they appear on your Dashboard" else "Drag to reorder, pin to show on your Dashboard",
                     Modifier.weight(1f),
                     vtext(TypeScale.Caption),
                     c.textMuted,
@@ -527,23 +527,21 @@ private fun TrackerRow(
     val stops = getTrackerStops(tracker)
     val isMultiStop = stops.size > 1
     val displayName = formatRouteDisplayName(tracker.routeShortName, tracker.routeId)
-    val title = if (isMultiStop) tracker.routeLongName.ifEmpty { displayName } else stops.firstOrNull()?.stopName ?: tracker.stopName
-    val subtitle = when {
-        isMultiStop -> "${stops.size} stops \u00B7 ${stops.joinToString(", ") { it.stopName }}"
-        !stops.firstOrNull()?.headsign.isNullOrEmpty() -> "Towards ${stops[0].headsign}"
-        else -> null
-    }
+    // A line of several stops reads as its termini; one stop as the stop and where it is watched towards.
+    val (title, toLine) = if (isMultiStop) splitTermini(tracker.routeLongName.ifEmpty { displayName })
+    else (stops.firstOrNull()?.stopName ?: tracker.stopName) to stops.firstOrNull()?.headsign?.takeIf { it.isNotEmpty() }
+    val stopList = if (isMultiStop) "${stops.size} stops: ${stops.joinToString(", ") { it.stopName }}" else null
     val favoriteLabel = when {
-        tracker.isFavorite -> "Remove from dashboard"
+        tracker.isFavorite -> "Unpin from Dashboard"
         favoriteLocked -> "Dashboard is full ($MaxFavoriteTrackers max)"
-        else -> "Pin to dashboard"
+        else -> "Pin to Dashboard"
     }
     val gripEnabled = !disabled && count > 1
 
     Row(
         modifier
             .fillMaxWidth()
-            .glass(RowShape)
+            .plannerCard(RowShape)
             .padding(start = 4.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -565,11 +563,15 @@ private fun TrackerRow(
             contentAlignment = Alignment.Center,
         ) { VIcon(RemixIcons.Draggable, size = 20.dp, tint = c.textMuted) }
 
-        RouteBadge(displayName, tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Sm)
+        LineBadgeSlot { RouteBadge(displayName, tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Sm) }
 
         Column(Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-            FormattedRouteTitle(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
-            if (subtitle != null) VText(subtitle, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption), c.textMuted, maxLines = 1)
+            LineRowText(
+                title.ifEmpty { displayName },
+                toLine,
+                titleLines = 3,
+                meta = stopList?.let { list -> { VText(list, style = vtext(TypeScale.Caption), color = c.textMuted, maxLines = 2) } },
+            )
         }
 
         if (onToggleFavorite != null) {

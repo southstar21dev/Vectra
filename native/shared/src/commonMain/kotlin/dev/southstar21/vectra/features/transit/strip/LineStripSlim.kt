@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -44,7 +45,8 @@ private val SlimCardShape = RoundedCornerShape(18.dp)
 /** Room for the widest usual badge ("200E", "M3"), so every slim card lines up. */
 internal val SlimBadgeSlot = 48.dp
 
-private data class SlimDirectionEntry(
+/** One headsign row of a card: its arrow, vehicle, name and the times in their columns. */
+internal data class SlimDirectionEntry(
     val arrowRight: Boolean,
     val destination: String,
     val vehicle: StripVehicle,
@@ -52,6 +54,31 @@ private data class SlimDirectionEntry(
     /** Replacement buses going the other way from the direction picked. */
     val other: Boolean = false,
 )
+
+/** The later times each row has room for, in fixed columns so the rows line up. */
+internal const val SlimLaterColumns = 2
+
+/**
+ * The rows a card lists under its strip: the two directions it draws, then any further heading
+ * ([extra]) laid out the same way. [showNext] adds each row's later times.
+ */
+internal fun slimDirectionEntries(model: StripModel, extra: List<StripExtraRow> = emptyList(), showNext: Boolean = false): List<SlimDirectionEntry> {
+    val right = model.vehicles.firstOrNull { it.heading > 0 }
+    val left = model.vehicles.firstOrNull { it.heading < 0 }
+    fun later(times: List<StripTime>) = if (showNext) times.drop(1).take(SlimLaterColumns) else emptyList()
+    return buildList {
+        if (right?.label != null && model.rightEnd != null) add(SlimDirectionEntry(true, model.rightEnd, right, later(model.rightTimes), model.rightOther))
+        if (left?.label != null && model.leftEnd != null) add(SlimDirectionEntry(false, model.leftEnd, left, later(model.leftTimes), model.leftOther))
+        // A line that forks past an end: its second destination is a row like the others.
+        val fork = model.fork
+        val forkFirst = model.forkTimes.firstOrNull()
+        if (fork != null && forkFirst != null) {
+            val vehicle = StripVehicle(0f, fork.heading, forkFirst.label, kind = forkFirst.kind, arriving = forkFirst.label == "NOW")
+            add(SlimDirectionEntry(fork.heading > 0, fork.destination, vehicle, later(model.forkTimes)))
+        }
+        for (e in extra) add(SlimDirectionEntry(true, e.destination, e.vehicle, if (showNext) e.later else emptyList()))
+    }
+}
 
 /**
  * Compact full-width direction rows for multi-stop and slim cards: pairs each heading arrow with
@@ -63,18 +90,11 @@ internal fun SlimDirectionRows(
     modifier: Modifier = Modifier,
     fallback: String? = null,
     showNext: Boolean = false,
+    /** Headings past the two the strip draws, listed like the rows above. */
+    extra: List<StripExtraRow> = emptyList(),
 ) {
     val c = Vectra.colors
-    val right = model.vehicles.firstOrNull { it.heading > 0 }
-    val left = model.vehicles.firstOrNull { it.heading < 0 }
-    val entries = buildList {
-        if (right?.label != null && model.rightEnd != null) {
-            add(SlimDirectionEntry(true, model.rightEnd, right, if (showNext) model.rightTimes.drop(1).take(2) else emptyList(), model.rightOther))
-        }
-        if (left?.label != null && model.leftEnd != null) {
-            add(SlimDirectionEntry(false, model.leftEnd, left, if (showNext) model.leftTimes.drop(1).take(2) else emptyList(), model.leftOther))
-        }
-    }
+    val entries = slimDirectionEntries(model, extra, showNext)
     if (entries.isEmpty() && fallback == null) return
     Column(modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (entries.isEmpty()) {
@@ -82,26 +102,34 @@ internal fun SlimDirectionRows(
                 VText(fallback.orEmpty(), style = vtext(13.sp to 17.sp, Weight.Bold), color = c.textMuted)
             }
         } else {
-            for (entry in entries) SlimDirectionRow(entry)
+            // As many columns as the fullest row needs, so a short row leaves its later ones empty.
+            val columns = entries.maxOf { it.nextTimes.size }
+            for (entry in entries) SlimDirectionRow(entry, columns)
         }
     }
 }
 
+private val FirstTimeColumn = 40.dp
+private val LaterTimeColumn = 34.dp
+
 @Composable
-private fun SlimDirectionRow(entry: SlimDirectionEntry) {
+private fun SlimDirectionRow(entry: SlimDirectionEntry, laterColumns: Int) {
     val c = Vectra.colors
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
+        VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = directionArrowTint(c))
         if (entry.vehicle.replacement) VIcon(RemixIcons.BusLine, size = 12.dp, tint = BusBlue)
         Column(Modifier.weight(1f)) {
-            VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+            VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 2)
             if (entry.other) OtherDirectionNote()
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.widthIn(min = FirstTimeColumn), horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            if (entry.vehicle.kind == StripTimeKind.Scheduled && !entry.vehicle.faded && entry.vehicle.label != null) {
+                VIcon(RemixIcons.TimeLine, size = 11.dp, tint = stripTimeColor(entry.vehicle))
+            }
             VText(
                 entry.vehicle.label.orEmpty(),
                 style = vtext(13.sp to 17.sp, Weight.Extrabold, mono = true).tnum(),
@@ -109,14 +137,12 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry) {
                 maxLines = 1,
                 align = TextAlign.End,
             )
-            if (entry.nextTimes.isNotEmpty()) {
-                VText(
-                    entry.nextTimes.joinToString(" ") { it.label },
-                    style = vtext(11.sp to 15.sp, Weight.Medium, mono = true).tnum(),
-                    color = c.textMuted,
-                    maxLines = 1,
-                    align = TextAlign.End,
-                )
+        }
+        for (i in 0 until laterColumns) {
+            Box(Modifier.width(LaterTimeColumn), contentAlignment = Alignment.CenterEnd) {
+                entry.nextTimes.getOrNull(i)?.let {
+                    VText(it.label, style = vtext(11.sp to 15.sp, Weight.Medium, mono = true).tnum(), color = c.textMuted, maxLines = 1, softWrap = false, align = TextAlign.End)
+                }
             }
         }
     }

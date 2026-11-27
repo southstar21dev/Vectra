@@ -31,9 +31,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.HairlineDivider
 import dev.southstar21.vectra.core.designsystem.components.InlineLoader
-import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.LocalContentColor
@@ -42,9 +44,8 @@ import dev.southstar21.vectra.core.designsystem.theme.PillTone
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.pillDepth
-import dev.southstar21.vectra.core.designsystem.theme.pillGlass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -59,7 +60,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 @Composable
 internal fun ClippedFormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     val shape = Radius.Card
-    Box(modifier.fillMaxWidth().glass(shape)) {
+    Box(modifier.fillMaxWidth().plannerCard(shape)) {
         Column(Modifier.fillMaxWidth().clip(shape)) {
             rows.forEachIndexed { i, row ->
                 if (i > 0) HairlineDivider()
@@ -76,7 +77,7 @@ internal fun ClippedFormGroup(modifier: Modifier = Modifier, rows: List<@Composa
  */
 @Composable
 internal fun ClippedFormRow(first: Boolean, last: Boolean, modifier: Modifier = Modifier, row: @Composable () -> Unit) {
-    val radius = 24.dp
+    val radius = 22.dp
     Box(modifier.fillMaxWidth()) {
         Box(
             Modifier
@@ -98,7 +99,7 @@ internal fun ClippedFormRow(first: Boolean, last: Boolean, modifier: Modifier = 
                     val placeable = measurable.measure(constraints.copy(minHeight = constraints.maxHeight + above + below, maxHeight = constraints.maxHeight + above + below))
                     layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(0, -above) }
                 }
-                .glass(RoundedCornerShape(radius)),
+                .plannerCard(RoundedCornerShape(radius)),
         )
         Column(
             Modifier.fillMaxWidth().clip(
@@ -154,24 +155,10 @@ internal fun RowScope.SheetPrimaryLabel(saving: Boolean, text: String) {
     else VText(text, maxLines = 1)
 }
 
-/** A small outlined Retry pill. */
+/** A small outlined Retry button. */
 @Composable
 internal fun SheetRetryButton(onClick: () -> Unit) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    Row(
-        Modifier
-            .height(32.dp)
-            .pressScale(interaction)
-            .pillGlass(CircleShape)
-            .tappable(role = Role.Button, highlight = false, interactionSource = interaction, onClick = onClick)
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(RemixIcons.RefreshLine, size = 14.dp, tint = c.textPrimary)
-        VText("Retry", style = vtext(TypeScale.Caption), color = c.textPrimary)
-    }
+    VButton("Retry", onClick, variant = ButtonVariant.Outline, size = ButtonSize.Sm, icon = RemixIcons.RefreshLine)
 }
 
 /** The spinner inside a [ListStatus]. */

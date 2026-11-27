@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 
 /** The colours one strip is drawn in. */
@@ -26,9 +27,13 @@ internal class StripColors(
     val busInk: Color = Color.White,
     /** The ring around a vehicle token and its heading point. */
     val ring: Color = Color.White,
+    /** The ring around your stop on the line strip; the line's colour unless a theme sets it apart. */
+    val youRing: Color = line,
+    /** Your stop's centre on the line strip. */
+    val youFill: Color = you,
 ) {
     /** The same, with the line drawn in [line] (the route map's own colour, say). */
-    fun withLine(line: Color) = StripColors(line, marker, markerInk, card, you, track, bus, busInk, ring)
+    fun withLine(line: Color) = StripColors(line, marker, markerInk, card, you, track, bus, busInk, ring, if (youRing == this.line) line else youRing, youFill)
 }
 
 /** BKK's bus blue, for replacement buses. */
@@ -55,5 +60,13 @@ internal fun stripColors(routeColor: String?, routeTextColor: String?, card: Col
     }
     // A black night-bus marker would vanish on a dark card.
     val (marker, markerInk) = if (dark && l < 0.03f) Palette.Slate300 to Palette.Slate900 else route to ink
-    return StripColors(line, marker, markerInk, card, c.textPrimary, track)
+    // Light: the marker's ring is drawn in ink over a card-coloured centre, so it never fades into
+    // a pale line on the white card. Dark keeps the line colour around an ink centre.
+    val youRing = if (dark) line else c.textPrimary
+    val youFill = if (dark) c.textPrimary else card
+    return StripColors(line, marker, markerInk, card, c.textPrimary, track, youRing = youRing, youFill = youFill)
 }
+
+/** The arrow before a direction's name: ink on a light card, where the muted grey fades into it. */
+internal fun directionArrowTint(c: VectraColors): Color =
+    if (c.isDark) c.textMuted else c.textPrimary

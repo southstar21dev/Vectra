@@ -65,20 +65,32 @@ private final class PassthroughView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard let tabs else { return nil }
-        // iOS 26 lets the tap that dismisses a popover through to what's underneath; swallow it.
-        if tabs.menuOpen {
-            // Gone already (an action ran, or it dismissed without telling us): stop shielding.
-            if tabs.actionsShowing { return self } else { tabs.menuOpen = false }
-        }
+        // iOS 26 lets the tap that dismisses a menu through to what's underneath; swallow it.
+        if tabs.menuOpen { return self }
         guard tabs.isInteractive else { return nil }
         let bar = tabs.tabBar
         guard bar.point(inside: convert(point, to: bar), with: event) || tabs.sideActionButtonHit(convert(point, to: tabs.view)) else { return nil }
         return super.hitTest(point, with: event)
     }
 
-    // The shielded tap is the one that dismissed the menu; once it ends, the app takes touches again.
+    // The swallowed tap is the one that dismissed the menu; once it ends, the app takes touches again.
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { tabs?.menuOpen = false }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { tabs?.menuOpen = false }
+}
+
+/// A button whose menu reports when it opens and closes, so the host can shield the app from the dismissing tap.
+private final class MenuButton: UIButton {
+    var onMenuVisibility: ((Bool) -> Void)?
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+        super.contextMenuInteraction(interaction, willDisplayMenuFor: configuration, animator: animator)
+        onMenuVisibility?(true)
+    }
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+        super.contextMenuInteraction(interaction, willEndFor: configuration, animator: animator)
+        onMenuVisibility?(false)
+    }
 }
 
 /// An empty, see-through page: the content is the Compose app underneath.
@@ -90,7 +102,7 @@ private final class ClearPage: UIViewController {
     }
 }
 
-final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopoverPresentationControllerDelegate, UIGestureRecognizerDelegate, @preconcurrency UIEditMenuInteractionDelegate, @preconcurrency IosTabBarHost {
+final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestureRecognizerDelegate, @preconcurrency IosTabBarHost {
     /// The tabs, as the shared PrimaryNavItems describe them in every state the app pushes (labels, SF Symbols,
     /// which ones open something when held). Empty until the first render.
     private var items: [SystemNavbarTab] = []
@@ -130,13 +142,15 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
     /// Down the side the + is a glass button of the app's own, just above the tabs. As a system tab it
     /// would shove the whole bar up or down each time it comes and goes with the page, and iOS draws
     /// that tab's glass where it can't be faded; this one simply fades in and out.
-    private lazy var sideActionButton: UIButton = {
+    private lazy var sideActionButton: MenuButton = {
         var config: UIButton.Configuration
         if #available(iOS 26.0, *) { config = .glass() } else { config = .gray() }
         config.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold))
         config.baseForegroundColor = .label
         config.cornerStyle = .capsule
-        let button = UIButton(configuration: config, primaryAction: UIAction { [weak self] _ in self?.presentActions() })
+        let button = MenuButton(configuration: config)
+        button.showsMenuAsPrimaryAction = true
+        button.onMenuVisibility = { [weak self] open in self?.menuVisibilityChanged(open) }
         button.accessibilityLabel = actionTab.title
         button.accessibilityHint = "Shows what you can add on this page"
         button.alpha = 0
@@ -144,13 +158,28 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         return button
     }()
 
-    /// The + menu is showing (the overlay then shields the Compose app from the dismissing tap).
+    /// An invisible button over the + tab. A system tab can't carry a menu, so the tap on it lands here and
+    /// opens the same native menu the side + shows.
+    private lazy var actionMenuAnchor: MenuButton = {
+        let button = MenuButton(type: .custom)
+        button.onMenuVisibility = { [weak self] open in self?.menuVisibilityChanged(open) }
+        button.showsMenuAsPrimaryAction = true
+        button.isAccessibilityElement = false
+        button.isHidden = true
+        return button
+    }()
+
+    /// The + menu is up, or just left: the overlay then shields the app from the tap that dismissed it.
     var menuOpen = false
 
-    /// The + menu, while it is up.
-    private weak var actionsSheet: UIAlertController?
-
-    var actionsShowing: Bool { actionsSheet?.presentingViewController != nil }
+    private func menuVisibilityChanged(_ open: Bool) {
+        if open {
+            menuOpen = true
+        } else {
+            // The shielded tap's end releases it; this covers a dismissal that has no tap (an action ran).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.menuOpen = false }
+        }
+    }
 
     var isInteractive: Bool { !hidden && covered < 0.01 && state != nil }
 
@@ -171,6 +200,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         #endif
         view.alpha = 0
         view.addSubview(sideActionButton)
+        view.addSubview(actionMenuAnchor)
         // Holding a tab (Transit: the nearby map grows out of it). Alongside the bar's own gestures,
         // so dragging the selection still works.
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(handleHold(_:)))
@@ -213,7 +243,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
     /// private views, found by their titles; failing that, the bar's strip split evenly.
     private func tabItem(at point: CGPoint) -> (Int, CGRect)? {
         func search(_ node: UIView) -> (Int, CGRect)? {
-            if node.isHidden || node === sideActionButton { return nil }
+            if node.isHidden || node === sideActionButton || node === actionMenuAnchor { return nil }
             let frame = node.convert(node.bounds, to: view)
             if frame.contains(point), frame.width < view.bounds.width / 2,
                let label = node.accessibilityLabel, let index = items.firstIndex(where: { $0.label == label }) {
@@ -258,6 +288,10 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             setTabs(wanted, animated: animated)
         }
         showSideActionButton(vertical && !state.actions.isEmpty, animated: animated)
+        let menu = Self.actionsMenu(state.actions, accent: Self.color(argb: state.accentArgb))
+        sideActionButton.menu = menu
+        actionMenuAnchor.menu = menu
+        placeActionMenuAnchor()
         let index = Int(state.selectedIndex)
         if mainTabs.indices.contains(index), selectedTab !== mainTabs[index] {
             selectedTab = mainTabs[index]
@@ -291,6 +325,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
             cover(fraction: Float(covered))
         }
         placeSideActionButton()
+        placeActionMenuAnchor()
     }
 
     func remove() {
@@ -302,7 +337,9 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
 
     func tabBarController(_ tabBarController: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
         if tab === actionTab {
-            presentActions()
+            // Reached without a touch on the anchor (VoiceOver, keyboard): open the menu from it.
+            placeActionMenuAnchor()
+            actionMenuAnchor.performPrimaryAction()
             return false
         }
         if let index = mainTabs.firstIndex(where: { $0 === tab }) {
@@ -350,7 +387,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
     private func tabsPillFrame() -> CGRect? {
         let strip = tabBar.convert(tabBar.bounds, to: view)
         func find(_ node: UIView) -> CGRect? {
-            if node === tabBar || node === sideActionButton || node.isHidden { return nil }
+            if node === tabBar || node === sideActionButton || node === actionMenuAnchor || node.isHidden { return nil }
             let frame = node.convert(node.bounds, to: view)
             // Tall and narrow, but not the full-height strip iOS keeps beside the bar.
             if (40...80).contains(frame.width), frame.height >= 2 * frame.width, frame.height < strip.height * 0.8,
@@ -374,81 +411,44 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIPopove
         }
     }
 
-    private func presentActions() {
-        // On a Mac an action sheet is always a dialog in the middle of the window: use a Mac menu at the + instead.
-        if ProcessInfo.processInfo.isiOSAppOnMac {
-            guard let actions = state?.actions, !actions.isEmpty else { return }
-            let anchor = actionTabView().map { $0.convert(CGPoint(x: $0.bounds.midX, y: $0.bounds.minY), to: view) }
-                ?? CGPoint(x: tabBar.frame.maxX - 34, y: tabBar.frame.minY)
-            macActionsMenu.presentEditMenu(with: UIEditMenuConfiguration(identifier: nil, sourcePoint: anchor))
-            return
-        }
-        // On iPad this controller is held to a compact width (see RootViewController), where an
-        // action sheet turns into a dialog in the middle of the window. The root keeps the window's regular
-        // width, so presented from there it stays a popover pointing at the +.
-        let presenter = traitCollection.userInterfaceIdiom == .pad ? (parent ?? self) : self
-        guard let actions = state?.actions, !actions.isEmpty, !actionsShowing, presenter.presentedViewController == nil else { return }
-        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        for action in actions {
-            let item = UIAlertAction(title: action.label, style: .default) { [weak self] _ in
-                self?.menuOpen = false
-                IosTabBar.shared.runAction(id: action.id)
-            }
-            item.isEnabled = !action.disabled
-            sheet.addAction(item)
-        }
-        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in self?.menuOpen = false })
-        if let popover = sheet.popoverPresentationController {
-            if isVertical {
-                popover.sourceView = sideActionButton
-                popover.sourceRect = sideActionButton.bounds
-            } else {
-                if let plus = actionTabView() {
-                    popover.sourceView = plus
-                    popover.sourceRect = plus.bounds
-                } else {
-                    popover.sourceView = tabBar
-                    popover.sourceRect = CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height)
-                }
-                popover.permittedArrowDirections = .down
-            }
-            popover.delegate = self
-        }
-        menuOpen = true
-        actionsSheet = sheet
-        presenter.present(sheet, animated: true)
+    /// The + menu as a native UIMenu. The shared list runs from the least to the most important action; a menu
+    /// that opens above its button lists its first element nearest the button, so the primary one goes first.
+    private static func actionsMenu(_ actions: [SystemNavbarAction], accent: UIColor) -> UIMenu {
+        UIMenu(children: actions.reversed().map { action in
+            UIAction(
+                title: action.label,
+                image: UIImage(systemName: action.sfSymbol)?.withTintColor(
+                    action.id == actions.last?.id ? accent : .label, renderingMode: .alwaysOriginal
+                ),
+                attributes: action.disabled ? .disabled : []
+            ) { _ in IosTabBar.shared.runAction(id: action.id) }
+        })
     }
 
-    /// The + menu on a Mac, a native menu (see presentActions).
-    private lazy var macActionsMenu: UIEditMenuInteraction = {
-        let interaction = UIEditMenuInteraction(delegate: self)
-        view.addInteraction(interaction)
-        return interaction
-    }()
-
-    func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
-        guard let actions = state?.actions, !actions.isEmpty else { return nil }
-        return UIMenu(children: actions.map { action in
-            UIAction(title: action.label, attributes: action.disabled ? .disabled : []) { _ in
-                IosTabBar.shared.runAction(id: action.id)
-            }
-        })
+    /// Lays the invisible menu button over the + tab (hidden when there is none: no actions, or the bar
+    /// runs down the side where sideActionButton is the +).
+    private func placeActionMenuAnchor() {
+        guard let state, !state.actions.isEmpty, !isVertical, tabs.contains(where: { $0 === actionTab }) else {
+            actionMenuAnchor.isHidden = true
+            return
+        }
+        if let plus = actionTabView() {
+            actionMenuAnchor.frame = plus.convert(plus.bounds, to: view)
+        } else {
+            actionMenuAnchor.frame = tabBar.convert(CGRect(x: tabBar.bounds.maxX - 56, y: 0, width: 44, height: tabBar.bounds.height), to: view)
+        }
+        actionMenuAnchor.isHidden = false
     }
 
     /// The + in the bar. Like the tabs, a private view of the bar's, found by its title.
     private func actionTabView() -> UIView? {
         func search(_ node: UIView) -> UIView? {
-            if node.isHidden || node === sideActionButton { return nil }
+            if node.isHidden || node === sideActionButton || node === actionMenuAnchor { return nil }
             if node.accessibilityLabel == actionTab.title, node.bounds.width < view.bounds.width / 2 { return node }
             for sub in node.subviews { if let hit = search(sub) { return hit } }
             return nil
         }
         return search(view)
-    }
-
-    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        // Let the dismissing tap finish before the app takes touches again.
-        DispatchQueue.main.async { self.menuOpen = false }
     }
 
     private static func color(argb: Int32) -> UIColor {

@@ -11,3 +11,5 @@ actual val deviceDisplayName: String
         val name = if (model.startsWith(maker, ignoreCase = true)) model else "$maker $model"
         return name.trim().ifEmpty { "Android" }
     }
+
+actual val biometricName: String = "fingerprint"

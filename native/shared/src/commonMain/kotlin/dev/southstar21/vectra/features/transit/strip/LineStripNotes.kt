@@ -1,36 +1,35 @@
 package dev.southstar21.vectra.features.transit.strip
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerChevron
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.tappable
-import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.transit.data.TransitAlert
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
 import dev.southstar21.vectra.features.transit.isReplacementAlert
-import dev.southstar21.vectra.features.transit.monitor
 import kotlinx.coroutines.launch
 
 /**
@@ -47,17 +46,7 @@ internal fun StripStatus(repo: TransitRepository, tracker: TransitTracker, s: St
             StripNote(RemixIcons.MapPinLine, "Last stop, ${noun ?: "vehicles"} only arrive here", c.textSecondary)
         }
         if (s.divertedTo != null) {
-            val amber = c.tints.amber
-            StripNote(RemixIcons.AlertLine, "Diverted, terminating at ${s.divertedTo}", amber.text, background = amber.bg)
-        }
-        for (d in s.extra) {
-            val a = d.arrival ?: continue
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                VText("Also", style = vtext(12.sp to 16.sp, Weight.Medium), color = c.textMuted)
-                VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
-                VText(d.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 1)
-                VText(stripTimeLabel(a.arrivalMs, s.now), style = vtext(13.sp to 16.sp, Weight.Extrabold, mono = true).tnum(), color = Vectra.monitor.live, maxLines = 1)
-            }
+            Banner(BannerTone.Amber, RemixIcons.AlertLine, "Diverted, terminating at ${s.divertedTo}", Modifier.padding(top = 6.dp))
         }
         AlertNote(s.alerts)
     }
@@ -72,63 +61,50 @@ private fun StripHeadline(s: StopStrip, noun: String?) {
         s.noDepartures && s.replaced ->
             StripNote(RemixIcons.BusLine, "No ${noun ?: "vehicles"} stop here for now, replacement buses instead", c.textSecondary)
         s.noDepartures || s.loading -> Unit
-        s.model.fork != null -> ForkEndRow(s.model.fork, s.model.forkTimes)
     }
 }
 
 /** The first alert: a replacement before anything else, in bus blue; any other in amber. */
 @Composable
 private fun AlertNote(alerts: List<TransitAlert>) {
-    val c = Vectra.colors
     val alert = alerts.firstOrNull(::isReplacementAlert) ?: alerts.firstOrNull() ?: return
-    if (isReplacementAlert(alert)) {
-        val sky = c.tints.sky
-        StripNote(RemixIcons.BusLine, alert.header.replaceFirstChar { it.uppercase() }, sky.text, background = sky.bg, chevron = true)
-    } else {
-        val amber = c.tints.amber
-        val text = alert.header.ifEmpty { alert.description }.replaceFirstChar { it.uppercase() }
-        StripNote(RemixIcons.AlertLine, text, amber.text, background = amber.bg, chevron = true)
-    }
+    val replacement = isReplacementAlert(alert)
+    val text = if (replacement) alert.header else alert.header.ifEmpty { alert.description }
+    val tone = if (replacement) BannerTone.Blue else BannerTone.Amber
+    // The card around it opens the alert detail; the chevron says so.
+    Banner(
+        tone,
+        if (replacement) RemixIcons.BusLine else RemixIcons.AlertLine,
+        text.replaceFirstChar { it.uppercase() },
+        Modifier.padding(top = 6.dp),
+        trailing = { BannerChevron(tone) },
+    )
 }
 
-/** One line under the strip, at most two lines of text; tinted and with a chevron when it opens something. */
+/** One quiet line under the strip. */
 @Composable
-private fun StripNote(icon: ImageVector, text: String, color: Color, background: Color? = null, chevron: Boolean = false) {
-    val shape = RoundedCornerShape(12.dp)
+private fun StripNote(icon: ImageVector, text: String, color: Color) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp)
-            .then(if (background != null) Modifier.background(background, shape).padding(horizontal = 10.dp, vertical = 9.dp) else Modifier.padding(top = 2.dp)),
+        Modifier.fillMaxWidth().padding(top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(icon, size = 15.dp, tint = color)
         VText(text, Modifier.weight(1f), vtext(12.5.sp to 17.sp, Weight.Semibold), color, maxLines = 2)
-        if (chevron) VIcon(RemixIcons.ArrowRightSLine, size = 14.dp, tint = color)
     }
 }
 
 /** The feed failed for this stop: say so, with a retry. */
 @Composable
 private fun FeedErrorRow(repo: TransitRepository) {
-    val c = Vectra.colors
     val scope = rememberCoroutineScope()
-    val pill = RoundedCornerShape(999.dp)
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        VText("Live feed unavailable", Modifier.weight(1f), vtext(13.sp to 18.sp, Weight.Semibold), c.tints.red.text, maxLines = 1)
-        Row(
-            Modifier
-                .clip(pill)
-                .background(c.surfaceOverlay, pill)
-                .tappable(pill) { scope.launch { runSuspendCatching { repo.refresh() } } }
-                .defaultMinSize(minHeight = 34.dp)
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            VIcon(RemixIcons.RefreshLine, size = 14.dp, tint = c.textSecondary)
-            VText("Retry", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
-        }
-    }
+    Banner(
+        BannerTone.Red,
+        RemixIcons.ErrorWarningLine,
+        "Live feed unavailable",
+        Modifier.padding(top = 4.dp),
+        trailing = {
+            VButton("Retry", { scope.launch { runSuspendCatching { repo.refresh() } } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm, icon = RemixIcons.RefreshLine)
+        },
+    )
 }

@@ -133,8 +133,8 @@ internal fun DrawScope.drawStripParts(
     if (xs.none { abs(it - yc.x) < half / 2 }) {
         val yr = YouRadius.toPx()
         drawCircle(colors.card, yr + 4.dp.toPx(), yc)
-        drawCircle(colors.line, yr, yc)
-        drawCircle(colors.you, yr - YouRing.toPx(), yc)
+        drawCircle(colors.youRing, yr, yc)
+        drawCircle(colors.youFill, yr - YouRing.toPx(), yc)
     }
     drawMarkers(markers, colors, mid)
 }

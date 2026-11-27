@@ -46,6 +46,7 @@ object Radius {
     val Control = RoundedCornerShape(12.dp)
     val Row = RoundedCornerShape(14.dp)
     val Panel = RoundedCornerShape(16.dp)
+    val Strip = RoundedCornerShape(18.dp)
     val Tile = RoundedCornerShape(20.dp)
-    val Card = RoundedCornerShape(24.dp)
+    val Card = RoundedCornerShape(22.dp)
 }

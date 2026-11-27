@@ -33,6 +33,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DeleteRow
@@ -82,7 +84,7 @@ private val EditMapHeight = 208.dp
 
 /**
  * The stop editor for one tracker: the route on a map (tap a dot to track or untrack it),
- * the tracked stops with their directions, a search to add more, and a two-tap delete
+ * the tracked stops with their directions, a search to add more, and a two-tap remove
  * that can be undone from its toast. Pops itself if the tracker disappears.
  */
 @Composable
@@ -281,7 +283,7 @@ internal fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBac
                             if (stops.isEmpty()) {
                                 add {
                                     SheetMutedText(
-                                        "No stops tracked. Add one below, or delete the tracker.",
+                                        "No stops tracked. Add one below, or remove the tracker.",
                                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
                                     )
                                 }
@@ -305,14 +307,18 @@ internal fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBac
                             )
                             when {
                                 loadingRoute -> ListStatus(Modifier.edgeStatus()) { SheetListSpinner() }
-                                routeError != null -> ListStatus(Modifier.edgeStatus()) {
-                                    SheetMutedText(routeError!!, Modifier.padding(horizontal = 8.dp), c.tints.red.text)
-                                    SheetRetryButton {
-                                        routeError = null
-                                        loadingRoute = true
-                                        reloadNonce++
-                                    }
-                                }
+                                routeError != null -> Banner(
+                                    BannerTone.Red,
+                                    RemixIcons.ErrorWarningLine,
+                                    routeError!!,
+                                    trailing = {
+                                        SheetRetryButton {
+                                            routeError = null
+                                            loadingRoute = true
+                                            reloadNonce++
+                                        }
+                                    },
+                                )
                                 availableStops.isNotEmpty() -> ClippedFormGroup(
                                     rows = availableStops.take(20).map { stop ->
                                         @Composable {
@@ -335,7 +341,8 @@ internal fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBac
                     }
 
                     DeleteRow(
-                        label = "Delete tracker",
+                        label = "Remove tracker",
+                        confirmLabel = "Tap again to remove",
                         onConfirm = handleDeleteTracker,
                         enabled = !saving,
                         busy = deleting,

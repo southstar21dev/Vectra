@@ -54,7 +54,9 @@ object TypeScale {
     val Micro = 10.sp to 14.sp
     val Caption = 12.sp to 16.sp
     val Body = 14.sp to 20.sp
+    val Meta13 = 13.sp to 18.sp
     val BodyLarge = 16.sp to 24.sp
+    val Title17 = 17.sp to 22.sp
     val Subtitle = 18.sp to 28.sp
     val Title = 20.sp to 28.sp
     val Headline = 24.sp to 32.sp
@@ -111,4 +113,8 @@ object VType {
     val Title = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Heading, lineHeight = 19.2.sp)
     val SectionTitle = vtext(TypeScale.Subtitle, Weight.Black, Tracking.Tight, lineHeight = 18.sp)
     val Display = vtext(TypeScale.Headline, Weight.Black, Tracking.Heading)
+    /** A day or page section heading ("Today", "Monday"). */
+    val PageHeading = vtext(24.sp to 30.sp, Weight.Extrabold, Tracking.Heading)
+    /** The small mono label for a kind of thing ("CLASS", "SHIFT"). */
+    val TypeWord = vtext(12.sp to 14.sp, Weight.Extrabold, 0.16.em, mono = true)
 }

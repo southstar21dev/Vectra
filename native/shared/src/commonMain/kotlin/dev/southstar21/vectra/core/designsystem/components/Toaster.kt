@@ -3,7 +3,6 @@ package dev.southstar21.vectra.core.designsystem.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -19,8 +18,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -44,14 +41,13 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
+import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.rgba
+import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.coroutineScope
@@ -193,7 +189,7 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
         ToastType.Warning -> RemixIcons.AlertFill to c.tints.amber.text
         ToastType.Default -> null to c.textPrimary
     }
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Radius.Tile
     Row(
         Modifier
             .widthIn(max = 480.dp)
@@ -251,9 +247,7 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
                     }
                 }
             }
-            .boxShadow(shape, listOf(BoxShadow(y = 8f, blur = 24f, color = rgba(0, 0, 0, 0.18f))))
-            .background(c.surfaceSecondary, shape)
-            .border(1.dp, c.borderSubtle, shape)
+            .glass(shape)
             .heightIn(min = 52.dp)
             .padding(start = 16.dp, end = if (toast.action != null) 8.dp else 16.dp, top = 12.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -268,8 +262,8 @@ private fun ToastBanner(toast: Toast, toaster: Toaster) {
             Box(
                 Modifier
                     .heightIn(min = 36.dp)
-                    .background(c.accentPrimary.copy(alpha = 0.15f), CircleShape)
-                    .tappable(CircleShape, haptic = { tick() }) {
+                    .background(c.accentPrimary.copy(alpha = 0.15f), Radius.Control)
+                    .tappable(Radius.Control, haptic = { tick() }) {
                         action.onClick()
                         leave()
                     }

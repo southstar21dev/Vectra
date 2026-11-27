@@ -54,8 +54,8 @@ private const val SlimCardsFrom = 4
  * the nearest stop as strips, and a link to pin your own.
  *
  * [favorites]: starred trackers in their saved order. [onOpenTracker]: open a
- * tracker's live view. [onOpenTransit]: go to the Transit tab ("Star a tracker
- * to pin it here").
+ * tracker's live view. [onOpenTransit]: go to the Transit tab ("Pin a tracker
+ * to show it here").
  */
 @Composable
 internal fun TransitDashboardWidget(
@@ -108,7 +108,7 @@ internal fun TransitDashboardWidget(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 VIcon(RemixIcons.StarLine, size = 15.dp, tint = c.tints.amber.text)
-                VText("Star a tracker to pin it here", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
+                VText("Pin a tracker to show it here", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
                 VIcon(RemixIcons.ArrowRightSLine, size = 15.dp, tint = c.textSecondary)
             }
         }

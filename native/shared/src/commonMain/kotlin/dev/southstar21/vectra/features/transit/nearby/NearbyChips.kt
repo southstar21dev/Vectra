@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit.nearby
 
 import androidx.compose.foundation.border
+import dev.southstar21.vectra.features.transit.strip.departureColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.features.transit.monitor
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
@@ -122,7 +124,7 @@ internal val ChipGap = 8.dp
 internal fun DepartureChip(chip: NearbyChip, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false, dimmed: Boolean = false) {
     val c = Vectra.colors
     val shape = RoundedCornerShape(10.dp)
-    val ink = if (chip.isPredicted) c.tints.emerald.text else c.textPrimary
+    val ink = departureColor(chip.isPredicted, formatPrimeCountdown(chip.countdown))
     Row(
         modifier
             .graphicsLayer { alpha = if (dimmed) 0.4f else 1f }
@@ -175,24 +177,28 @@ private fun BoardRow(items: List<RadarDepartureItem>) {
         Box(Modifier.widthIn(min = 28.dp), contentAlignment = Alignment.CenterStart) {
             RouteBadge(first.shortName, first.color, first.textColor, size = RouteBadgeSize.TagMd)
         }
-        VText(first.headsign.ifEmpty { "Any direction" }, Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textPrimary, maxLines = 1)
+        VText(first.headsign.ifEmpty { "Any direction" }, Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textPrimary, maxLines = 2)
         // The next three, one line, each in its own column so every row's times line up.
         for (i in 0 until BoardTimes) {
             val d = items.getOrNull(i)
+            val clock = i == 0 && d != null && !d.isPredicted
+            // A timetable time carries its clock; the column grows to hold it so the rows still line up.
+            Row(Modifier.width(if (i == 0) BoardFirstWidth else BoardTimeWidth), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                if (clock) VIcon(RemixIcons.TimeLine, size = 11.dp, tint = Vectra.monitor.sched)
             VText(
                 d?.let { formatPrimeCountdown(it.countdownMinutes) }.orEmpty(),
-                Modifier.width(BoardTimeWidth),
+                Modifier.padding(start = if (clock) 3.dp else 0.dp),
                 vtext(13.sp to 16.sp, if (i == 0) Weight.Extrabold else Weight.Semibold, mono = true),
                 when {
                     d == null -> c.textMuted
-                    i == 0 && d.isPredicted -> c.tints.emerald.text
-                    i == 0 -> c.textPrimary
+                    i == 0 -> departureColor(d.isPredicted, formatPrimeCountdown(d.countdownMinutes))
                     else -> c.textMuted
                 },
                 maxLines = 1,
                 softWrap = false,
                 align = TextAlign.End,
             )
+            }
         }
     }
 }
@@ -202,6 +208,9 @@ private const val BoardTimes = 3
 
 /** One time's column: room for "59'" or "NOW", so the columns line up row to row. */
 private val BoardTimeWidth: Dp = 34.dp
+
+/** The first column also holds a timetable time's clock. */
+private val BoardFirstWidth: Dp = 50.dp
 
 /** Groups [feed] by line, stop and direction, keeping the feed's order; each group's departures soonest first. */
 internal fun groupDepartures(feed: List<RadarDepartureItem>): List<List<RadarDepartureItem>> {

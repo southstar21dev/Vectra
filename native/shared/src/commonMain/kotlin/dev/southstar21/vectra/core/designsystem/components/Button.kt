@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import dev.southstar21.vectra.core.designsystem.theme.LocalContentColor
 import dev.southstar21.vectra.core.designsystem.theme.LocalTextStyle
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.PillTone
+import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
@@ -56,7 +56,7 @@ fun VButton(
 ) {
     val colors = Vectra.colors
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(if (size == ButtonSize.Sm) 8.dp else 12.dp)
+    val shape = Radius.Control
     val pill = when (variant) {
         ButtonVariant.Default, ButtonVariant.Primary -> PillTone.Accent
         ButtonVariant.Emerald, ButtonVariant.Success -> PillTone.Emerald

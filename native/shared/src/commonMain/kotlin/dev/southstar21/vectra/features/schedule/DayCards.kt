@@ -31,6 +31,8 @@ import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
+import dev.southstar21.vectra.core.designsystem.theme.VType
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
@@ -119,13 +121,14 @@ private fun Modifier.dayCardSurface(content: DayCardContent, d: DayColors, onCli
 private fun DayCardTitle(content: DayCardContent, d: DayColors) {
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            VText(content.typeWord, style = vtext(12.sp to 14.sp, Weight.Extrabold, 0.16.em, mono = true), color = content.typeColor, maxLines = 1)
+            VText(content.typeWord, style = VType.TypeWord, color = content.typeColor, maxLines = 1)
             VText(
                 content.title,
-                style = vtext(17.sp to 22.sp, Weight.Bold).copy(textDecoration = if (content.struck) TextDecoration.LineThrough else null),
+                style = vtext(TypeScale.Title17, Weight.Bold).copy(textDecoration = if (content.struck) TextDecoration.LineThrough else null),
                 color = d.text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                // A long title wraps and makes the card taller, never an ellipsis.
+                maxLines = 3,
+                overflow = TextOverflow.Clip,
             )
             if (!content.subtitle.isNullOrEmpty()) {
                 VText(content.subtitle, style = vtext(14.sp to 19.sp, Weight.Medium), color = d.secondary, maxLines = 1)

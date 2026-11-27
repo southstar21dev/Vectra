@@ -502,6 +502,19 @@ internal fun splitRouteTitle(title: String?): List<String> =
     if (title.isNullOrEmpty()) emptyList() else title.split(RouteTitleSeparator).filter { it.isNotEmpty() }
 
 /**
+ * A line title ("A | B") as where it starts and where it goes: "A" and "B". Further termini fold into
+ * the second part ("A | B | C" gives "B / C"); a title with no second part has no destination.
+ */
+internal fun splitTermini(title: String?): Pair<String, String?> {
+    val parts = splitRouteTitle(title)
+    return when (parts.size) {
+        0 -> "" to null
+        1 -> parts[0] to null
+        else -> parts[0] to parts.drop(1).joinToString(" / ")
+    }
+}
+
+/**
  * Normalizes a platform stop ID into its station-level area ID
  * (BKK_F… → BKK_CSF…, BKK_123456 → BKK_CS123456, BKK_12345678 → BKK_12345).
  */

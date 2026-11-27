@@ -173,7 +173,7 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
             offline = !online,
             emptyPlaceholder = {
                 val next = remember(events, plainItems, todayStr) { nextScheduledStart(events, plainItems, todayStr) }
-                NothingScheduledCard(next?.first, next?.second?.let { formatTime(it, Vectra.appearance.timeFormat) })
+                NothingScheduledCard(next?.day, next?.time?.let { formatTime(it, Vectra.appearance.timeFormat) }, title = next?.title)
             },
         )
     }

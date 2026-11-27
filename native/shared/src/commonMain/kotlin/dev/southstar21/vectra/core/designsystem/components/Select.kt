@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -79,9 +78,9 @@ fun <T> VSelect(
     val chevron by animateFloatAsState(if (open) 180f else 0f, VectraSprings.snappy(), label = "chevron")
     val lit by animateFloatAsState(if (open) 1f else 0f, tween(150, easing = VectraEasing.Fade), label = "selectOpen")
     val selected = options.firstOrNull { it.value == value } ?: options.firstOrNull()
-    val shape = CircleShape
+    val shape = Radius.Control
 
-    Box(
+    Row(
         modifier
             .heightIn(min = 36.dp)
             .alpha(if (enabled) 1f else 0.5f)
@@ -97,16 +96,15 @@ fun <T> VSelect(
             .glass(shape, hairlineInLight = true)
             .then(if (lit > 0f) Modifier.border(1.dp, c.accentPrimary.copy(alpha = c.accentPrimary.alpha * lit), shape) else Modifier)
             .tappable(shape, enabled = enabled, role = Role.DropdownList, pressedScale = 0.97f, interactionSource = interaction) { open = true }
-            .padding(start = if (icon != null) 36.dp else 16.dp, end = 36.dp, top = 8.dp, bottom = 8.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) {
-            VIcon(icon, Modifier.align(Alignment.CenterStart).offset(x = (-22).dp), tint = lerp(c.textMuted, c.accentPrimary, lit))
-        }
-        VText(selected?.label.orEmpty(), style = vtext(TypeScale.Caption, Weight.Semibold), color = c.textPrimary, maxLines = 1)
+        if (icon != null) VIcon(icon, tint = lerp(c.textMuted, c.accentPrimary, lit))
+        VText(selected?.label.orEmpty(), Modifier.weight(1f), vtext(TypeScale.BodyLarge), c.textPrimary, maxLines = 1)
         VIcon(
             RemixIcons.ArrowDownSLine,
-            Modifier.align(Alignment.CenterEnd).offset(x = 22.dp).rotate(chevron),
+            Modifier.rotate(chevron),
             size = 14.dp,
             tint = if (open) c.accentPrimary else c.textSecondary,
         )
@@ -159,7 +157,7 @@ private fun <T> OptionList(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = SurfaceGutter, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             for (opt in options) {
@@ -171,7 +169,7 @@ private fun <T> OptionList(
             if (footnote != null) {
                 VText(
                     footnote,
-                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    Modifier.padding(vertical = 8.dp),
                     vtext(TypeScale.Caption),
                     Vectra.colors.textMuted,
                 )

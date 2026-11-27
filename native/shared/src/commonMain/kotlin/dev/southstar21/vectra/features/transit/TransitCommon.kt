@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.VIcon
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
@@ -65,7 +67,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 // ---- colours ---------------------------------------------------------------
 
-/** Departure-board display ink: bright amber = live, dim amber = timetable. */
+/** Departure-board display ink: amber = live, grey = timetable. */
 @Immutable
 internal data class MonitorInk(
     val live: Color,
@@ -79,7 +81,7 @@ internal data class MonitorInk(
 
 internal fun monitorInk(c: VectraColors) = MonitorInk(
     live = if (c.isDark) Color(0xFFFFD24A) else Palette.Amber700,
-    sched = if (c.isDark) Color(0xFFA08A4A) else Color(0xFF8A6D3B),
+    sched = if (c.isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
     text = c.textPrimary,
     muted = c.textSecondary,
     rule = c.borderSubtle,
@@ -190,6 +192,8 @@ internal fun RouteBadge(
     textColor: String?,
     modifier: Modifier = Modifier,
     size: RouteBadgeSize = RouteBadgeSize.Md,
+    /** A glyph instead of the name, for a badge that stands for a group rather than a line. */
+    icon: ImageVector? = null,
 ) {
     val c = Vectra.colors
     val formatted = name.replace(SpacedSlash, "/")
@@ -197,28 +201,45 @@ internal fun RouteBadge(
     val spec = routeBadgeSpec(size)
     val font = spec.fontFor(n)
     val display = if (n > 12) formatted.take(10) + "…" else formatted
-    val bg = parseHexColor(color?.takeIf { it.isNotEmpty() })
-    val ink = if (bg != null) parseHexColor(textColor?.takeIf { it.isNotEmpty() } ?: "000000") ?: Color.Black else c.textPrimary
+    val lineColor = parseHexColor(color?.takeIf { it.isNotEmpty() })
+    // Night lines are black: a neutral outline instead, so they read on a dark card as well as a light one.
+    val outline = lineColor != null && isNightLineColor(lineColor)
+    val bg = lineColor.takeUnless { outline }
+    val ink = when {
+        bg != null -> parseHexColor(textColor?.takeIf { it.isNotEmpty() } ?: "000000") ?: Color.Black
+        else -> c.textPrimary
+    }
     val shape = RoundedCornerShape(spec.radius)
     Box(
         modifier
             .boxShadow(shape, listOf(BoxShadow(y = 1f, blur = 2f, color = Color.Black.copy(alpha = 0.05f))))
-            .background(bg ?: c.surfaceOverlay, shape)
-            .border(1.dp, if (c.isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.15f), shape)
+            .background(bg ?: if (outline) Color.Transparent else c.surfaceOverlay, shape)
+            .border(
+                if (outline) 1.5.dp else 1.dp,
+                if (outline) c.textSecondary else if (c.isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.15f),
+                shape,
+            )
             .defaultMinSize(minWidth = spec.minW)
             .height(spec.h)
             .padding(horizontal = spec.padX),
         contentAlignment = Alignment.Center,
     ) {
-        VText(
-            display,
-            style = vtext(font to font * 1.15f, Weight.Extrabold).tnum().copy(letterSpacing = (-0.2).sp),
-            color = ink,
-            maxLines = 1,
-            softWrap = false,
-        )
+        if (icon != null) {
+            VIcon(icon, size = spec.h * 0.55f, tint = ink)
+        } else {
+            VText(
+                display,
+                style = vtext(font to font * 1.15f, Weight.Extrabold).tnum().copy(letterSpacing = (-0.2).sp),
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
 }
+
+/** A line coloured (near) black: BKK's night lines. */
+internal fun isNightLineColor(color: Color): Boolean = color.luminance() < 0.03f
 
 private data class BadgeSpec(
     val minW: Dp,

@@ -10,8 +10,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +24,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,8 +38,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.Toaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
@@ -54,10 +48,9 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
@@ -67,6 +60,10 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** "Synced 5 minutes ago" from the profile's neptun_last_sync. */
 internal fun syncCounterText(lastSyncMs: Long?, nowMs: Long): String {
@@ -138,7 +135,7 @@ private fun SettingsSectionBox(title: String, tiltLeft: Boolean = true, content:
     val c = Vectra.colors
     val shape = Radius.Card
     Box(Modifier.fillMaxWidth().padding(top = 20.dp)) {
-        Column(Modifier.fillMaxWidth().glass(shape).clip(shape).padding(top = 16.dp), content = content)
+        Column(Modifier.fillMaxWidth().plannerCard(shape).clip(shape).padding(top = 16.dp), content = content)
         PostageStamp(
             Modifier.padding(start = 16.dp).offset(y = (-20).dp).rotate(if (tiltLeft) -3f else 2f),
             innerModifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -224,7 +221,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
 
     val busy = syncing || status == NeptunSyncStatus.Syncing
     SettingsSectionBox("Neptun") {
-        SettingsRow(RemixIcons.TimeLine, c.tints.blue.text, "Last sync", counter, titleStyle = RowTitle) {
+        SettingsRow(RemixIcons.TimeLine, "Last sync", counter, titleStyle = RowTitle) {
             if (savedUrl.isNotEmpty() && lastSyncMs != null) {
                 SyncLink(
                     state = when {
@@ -241,7 +238,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         RowDivider()
         if (savedUrl.isNotEmpty()) {
             // Removing it lives in the Danger zone, with clearing the classes.
-            SettingsRow(RemixIcons.Link, c.tints.emerald.text, "Calendar link", "Connected, stored encrypted", titleStyle = RowTitle)
+            SettingsRow(RemixIcons.Link, "Calendar link", "Connected, stored encrypted", titleStyle = RowTitle)
         } else {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column {
@@ -272,12 +269,11 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(36.dp),
-                        size = ButtonSize.Sm,
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !connecting,
                     ) {
-                        VIcon(RemixIcons.CheckLine, size = 14.dp)
-                        VText(if (connecting) "Checking the link..." else "Connect", style = vtext(TypeScale.Caption, Weight.Bold))
+                        VIcon(RemixIcons.CheckLine)
+                        VText(if (connecting) "Checking the link..." else "Connect")
                     }
                 }
             }
@@ -285,28 +281,12 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         if (status == NeptunSyncStatus.Error && !syncError.isNullOrEmpty()) {
             RowDivider()
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                val shape = Radius.Control
-                Row(
-                    Modifier.fillMaxWidth().background(Palette.Red500.copy(alpha = 0.1f), shape).border(1.dp, c.tints.red.border, shape).padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    VIcon(RemixIcons.ErrorWarningLine, size = 20.dp, tint = c.tints.red.text)
-                    Column {
-                        VText("Sync failed", style = vtext(TypeScale.Body, Weight.Bold, Tracking.Wide), color = c.tints.red.text)
-                        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            VText(syncError!!, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = c.tints.red.text.copy(alpha = 0.9f))
-                            Column(Modifier.drawBehind {
-                                drawLine(Palette.Red500.copy(alpha = 0.2f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
-                            }.padding(top = 12.dp)) {
-                                VText(
-                                    "The automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
-                                    style = vtext(TypeScale.Caption, lineHeight = 16.5.sp),
-                                    color = c.tints.red.text.copy(alpha = 0.8f),
-                                )
-                            }
-                        }
-                    }
-                }
+                Banner(
+                    tone = BannerTone.Red,
+                    icon = RemixIcons.ErrorWarningLine,
+                    title = "Sync failed",
+                    body = syncError!! + "\n\nThe automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
+                )
             }
         }
     }

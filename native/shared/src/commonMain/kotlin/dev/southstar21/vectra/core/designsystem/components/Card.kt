@@ -1,6 +1,5 @@
 package dev.southstar21.vectra.core.designsystem.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.CircleShape
@@ -12,12 +11,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import dev.southstar21.vectra.core.designsystem.theme.Tint
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 enum class StatusTone { Amber, Blue, Emerald, Green, Purple, Red, Sky, Violet, Neutral }
 
@@ -47,14 +44,4 @@ fun StatusLabel(text: String, modifier: Modifier = Modifier, tone: StatusTone = 
         }
         VText(text, style = vtext(TypeScale.Caption, Weight.Semibold), color = Vectra.colors.textSecondary, maxLines = 1)
     }
-}
-
-/** Icon chip used by section headers: tint background, border and ink, 12dp corners. */
-@Composable
-fun IconChip(icon: ImageVector, tint: Tint, modifier: Modifier = Modifier, size: Int = 36, iconSize: Int = 18) {
-    val shape = Radius.Control
-    Box(
-        modifier.size(size.dp).background(tint.bg, shape).border(1.dp, tint.border, shape),
-        contentAlignment = Alignment.Center,
-    ) { VIcon(icon, size = iconSize.dp, tint = tint.text) }
 }

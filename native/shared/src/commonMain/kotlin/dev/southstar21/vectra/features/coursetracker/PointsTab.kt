@@ -27,7 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +53,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.tnum
@@ -62,17 +62,42 @@ import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import kotlin.math.round
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import androidx.compose.runtime.setValue
 
-/** One hue per grade everywhere a grade is drawn. */
+/**
+ * One hue per grade everywhere a grade is drawn. [zone] is the scale bar's band: on a dark card the
+ * grade's light ink almost opaque, on a light card a clean mid hue, so no band turns maroon or ochre.
+ */
 internal data class GradeTone(val fill: Color, val dim: Color, val zone: Color, val text: Color)
 
-internal fun gradeTone(grade: Int, c: VectraColors): GradeTone = when (grade) {
-    5 -> GradeTone(Fills.Emerald500, Fills.Emerald500.copy(alpha = 0.45f), Fills.Emerald500.copy(alpha = 0.75f), c.tints.emerald.text)
-    4 -> GradeTone(Fills.Sky500, Fills.Sky500.copy(alpha = 0.45f), Fills.Sky500.copy(alpha = 0.75f), c.tints.sky.text)
-    3 -> GradeTone(Fills.Amber500, Fills.Amber500.copy(alpha = 0.45f), Fills.Amber500.copy(alpha = 0.75f), c.tints.amber.text)
-    2 -> GradeTone(Fills.Orange500, Fills.Orange500.copy(alpha = 0.45f), Fills.Orange500.copy(alpha = 0.75f), c.tints.amber.text)
-    else -> GradeTone(Fills.Red500, Fills.Red500.copy(alpha = 0.45f), Fills.Red500.copy(alpha = 0.35f), c.tints.red.text)
+internal fun gradeTone(grade: Int, c: VectraColors): GradeTone {
+    val dark = c.isDark
+    val fill = when (grade) {
+        5 -> Fills.Emerald500
+        4 -> Fills.Sky500
+        3 -> Fills.Amber500
+        2 -> Fills.Orange500
+        else -> Fills.Red500
+    }
+    // Light mode: amber's shared ink is too close to orange's, so grade 3 reads in a mustard of its own.
+    val ink = when (grade) {
+        5 -> c.tints.emerald.text
+        4 -> c.tints.sky.text
+        3 -> if (dark) c.tints.amber.text else GradeThreeLightInk
+        2 -> c.tints.orange.text
+        else -> c.tints.red.text
+    }
+    val zone = if (dark) ink.copy(alpha = DarkZoneAlpha) else if (grade == 3) GradeThreeLightBand else fill.copy(alpha = LightZoneAlpha)
+    return GradeTone(fill, fill.copy(alpha = 0.45f), zone, ink)
 }
+
+internal val GradeThreeLightInk = Color(0xFF7A5A00)
+private val GradeThreeLightBand = Color(0xFFCA8A04)
+private const val DarkZoneAlpha = 0.9f
+private const val LightZoneAlpha = 0.9f
 
 /** Rounded to two decimals, printed without a trailing `.0`. */
 internal fun formatScore(value: Double): String = formatNumber(round(value * 100) / 100)
@@ -182,7 +207,7 @@ internal fun AssessmentCard(
         if (completed) null else "not graded yet",
     ).joinToString(", ")
     val shape = Radius.Card
-    Column(Modifier.fillMaxWidth().glassDepth(shape).padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().plannerCard(shape).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             DateTile(item.date)
             Column(Modifier.weight(1f)) {
@@ -210,9 +235,7 @@ internal fun AssessmentCard(
                     align = TextAlign.End,
                 )
             } else if (!editing) {
-                TrackerButton({ editing = true }, shape = Radius.Tile, horizontalPadding = 14.dp) { ink ->
-                    VText("Add score", style = vtext(TypeScale.Caption, Weight.Extrabold), color = ink)
-                }
+                VButton("Add score", { editing = true }, size = ButtonSize.Sm)
             }
             val interaction = remember { MutableInteractionSource() }
             Box(
@@ -245,9 +268,9 @@ internal fun AssessmentCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     VText("Score", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
                     ScoreField(item.earnedPoints, 0.0, 10000.0, "${item.name} points earned") { v -> onUpdate { it.copy(earnedPoints = v, isCompleted = true) } }
-                    VText("/", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                    VText("/", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
                     ScoreField(item.maxPoints, 0.1, 10000.0, "${item.name} maximum points") { v -> onUpdate { it.copy(maxPoints = v) } }
-                    VText("pts", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                    VText("pts", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
                 }
                 if (item.earnedPoints > item.maxPoints) {
                     // Allowed — bonus points exist — but usually a typo.
@@ -258,24 +281,12 @@ internal fun AssessmentCard(
                     )
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TrackerButton(
-                        { editing = false; onEdit() },
-                        Modifier.offset(x = (-8).dp),
-                        kind = PillKind.Ghost,
-                        horizontalPadding = 12.dp,
-                    ) { ink ->
-                        VIcon(RemixIcons.PencilLine, size = 14.dp, tint = ink)
-                        VText("Edit details", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                    }
+                    VButton("Edit details", { editing = false; onEdit() }, Modifier.offset(x = (-8).dp), ButtonVariant.Ghost, ButtonSize.Sm, icon = RemixIcons.PencilLine)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (completed) {
-                            TrackerButton({ onUpdate { it.copy(isCompleted = false) }; editing = false }, kind = PillKind.Ghost, horizontalPadding = 12.dp) { ink ->
-                                VText("Not graded yet", style = vtext(TypeScale.Caption), color = ink)
-                            }
+                            VButton("Not graded yet", { onUpdate { it.copy(isCompleted = false) }; editing = false }, variant = ButtonVariant.Ghost, size = ButtonSize.Sm)
                         }
-                        TrackerButton({ editing = false }, shape = Radius.Tile) { ink ->
-                            VText("Done", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                        }
+                        VButton("Done", { editing = false }, size = ButtonSize.Sm)
                     }
                 }
             }
@@ -326,7 +337,7 @@ internal fun PointsTab(
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         val shape = Radius.Card
-        Column(Modifier.fillMaxWidth().glassDepth(shape).padding(20.dp).semantics { contentDescription = "Grade" }) {
+        Column(Modifier.fillMaxWidth().plannerCard(shape).padding(20.dp).semantics { contentDescription = "Grade" }) {
             if (hasGrades) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     VText(grade.toString(), Modifier.alignByBaseline(), vtext(44.sp to 44.sp, Weight.Black, Tracking.Tight), tones.text)
@@ -391,7 +402,7 @@ internal fun PointsTab(
                             else -> "All scored"
                         },
                         Modifier.alignByBaseline(),
-                        vtext(13.sp to 18.sp).tnum(),
+                        vtext(TypeScale.Meta13).tnum(),
                         c.textSecondary,
                     )
                 }
@@ -455,7 +466,7 @@ internal fun PointsTab(
                 AddPill { editing = null; showSheet = true }
             }
             if (!hasGrades) {
-                Column(Modifier.fillMaxWidth().glassDepth(shape).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.fillMaxWidth().plannerCard(shape).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     VIcon(RemixIcons.AwardLine, size = 32.dp, tint = c.textMuted)
                     VText("Nothing logged yet", Modifier.padding(top = 12.dp), vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight), c.textPrimary, align = TextAlign.Center)
                     VText(

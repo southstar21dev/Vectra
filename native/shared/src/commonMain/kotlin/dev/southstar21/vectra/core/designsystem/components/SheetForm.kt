@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.delay
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -39,7 +39,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  */
 @Composable
 fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
-    Column(modifier.fillMaxWidth().glass(Radius.Card)) {
+    Column(modifier.fillMaxWidth().plannerCard()) {
         rows.forEachIndexed { i, row ->
             if (i > 0) HairlineDivider()
             row()
@@ -126,7 +126,7 @@ fun DeleteRow(
             armed = false
         }
     }
-    val shape = Radius.Card
+    val shape = Radius.Control
     val interaction = remember { MutableInteractionSource() }
     val bg by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.15f) else c.surfaceOverlay, tween(150), label = "deleteRowBg")
     val border by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.5f) else c.borderSubtle, tween(150), label = "deleteRowBorder")

@@ -391,10 +391,27 @@ fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            VText(title, Modifier.semantics { heading() }, vtext(TypeScale.Subtitle, Weight.Extrabold, Tracking.Tight), Vectra.colors.textPrimary)
+            VText(title, Modifier.semantics { heading() }, vtext(TypeScale.Title17, Weight.Bold), Vectra.colors.textPrimary)
             if (subtitle != null) VText(subtitle, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary)
         }
         SheetCloseButton(onClose)
+    }
+}
+
+/**
+ * The action row at the foot of a sheet, on the 20dp gutter: an optional [secondary] action on the
+ * left of the primary one, which sits on the right. Pass a [VButton] to each (Outline or Ghost for the
+ * secondary, the default variant for the primary).
+ */
+@Composable
+fun SheetFooter(secondary: (@Composable () -> Unit)?, primary: @Composable () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().padding(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        secondary?.invoke()
+        primary()
     }
 }
 

@@ -73,7 +73,7 @@ import dev.southstar21.vectra.features.transit.route.RoutePreviewStop
 import dev.southstar21.vectra.features.transit.route.RoutePreviewVehicle
 import dev.southstar21.vectra.features.transit.trackers.ClippedFormRow
 import dev.southstar21.vectra.features.transit.trackers.DirectionSelect
-import dev.southstar21.vectra.features.transit.trackers.ListRow
+import dev.southstar21.vectra.features.transit.trackers.LineRow
 import dev.southstar21.vectra.features.transit.trackers.ListStatus
 import dev.southstar21.vectra.features.transit.trackers.MapBottomFade
 import dev.southstar21.vectra.features.transit.trackers.RouteTypeFilters
@@ -228,34 +228,16 @@ internal fun ColumnScope.LineBrowser(
 private fun RouteRow(route: FutarRoute, tracked: Boolean, onClick: () -> Unit) {
     val c = Vectra.colors
     val meta = routeTypeMeta(route.type)
-    ListRow(
-        route.description.ifEmpty { meta.label },
+    // Where it starts as the title, where it goes under it, the vehicle last.
+    val (from, to) = splitTermini(route.description)
+    LineRow(
+        badge = { RouteBadge(formatRouteDisplayName(route.shortName, route.id), route.color, route.textColor, size = RouteBadgeSize.Sm) },
+        title = from.ifEmpty { meta.label },
+        toLine = to,
         onClick = onClick,
         navigates = true,
-        leading = {
-            RouteBadge(
-                formatRouteDisplayName(route.shortName, route.id),
-                route.color,
-                route.textColor,
-                size = RouteBadgeSize.Sm,
-            )
-        },
-        titleContent = {
-            if (route.description.isNotEmpty()) {
-                FormattedRouteTitle(
-                    route.description,
-                    style = vtext(TypeScale.Body, Weight.Semibold),
-                    color = c.textPrimary,
-                    iconSize = 12.dp,
-                )
-            } else {
-                VText(meta.label, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 1)
-            }
-            Row(
-                Modifier.padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        meta = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 VIcon(meta.icon, size = 12.dp, tint = c.textMuted)
                 VText(meta.label, style = vtext(TypeScale.Caption), color = c.textSecondary, maxLines = 1)
                 if (tracked) TrackedChip()
@@ -415,7 +397,7 @@ private fun LineStopRow(
                 Modifier.size(20.dp).background(boxBg, shape).border(1.dp, boxBorder, shape),
                 contentAlignment = Alignment.Center,
             ) { VIcon(RemixIcons.CheckLine, size = 14.dp, tint = checkInk) }
-            VText(stop.name, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
+            VText(stop.name, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 2)
             if (note != null) StatusLabel(note, tone = StatusTone.Amber)
         }
         if (selectedEntry != null && directionOptions != null && directionOptions.options.size > 1) {

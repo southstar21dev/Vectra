@@ -4,21 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -30,57 +23,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.StatusTone
-import dev.southstar21.vectra.core.designsystem.components.VIcon
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
-import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.cardDepthShadows
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.mix
 import dev.southstar21.vectra.core.designsystem.theme.mixTransparent
-import dev.southstar21.vectra.core.designsystem.theme.pressScale
-import dev.southstar21.vectra.core.designsystem.theme.PillTone
-import dev.southstar21.vectra.core.designsystem.theme.pillDepth
-import dev.southstar21.vectra.core.designsystem.theme.pillGlass
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import dev.southstar21.vectra.core.designsystem.theme.resolve
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.specularBorder
-import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
-
-/**
- * A glass card with depth: the glass fill and specular edge, the glass shadow in dark
- * mode and the deeper card shadow in light mode.
- */
-@Composable
-internal fun Modifier.glassDepth(shape: Shape): Modifier {
-    val c = Vectra.colors
-    val shadows = if (c.isDark) c.glassShadow else cardDepthShadows(false)
-    return this
-        .boxShadow(shape, shadows)
-        .background(c.glassBg, shape)
-        .insetShadow(shape, shadows)
-        .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
-}
+import androidx.compose.runtime.getValue
 
 /** The quiet glass button behind idle marks and steppers. */
 @Composable
@@ -143,32 +111,10 @@ internal fun Divided(items: List<@Composable () -> Unit>) {
     }
 }
 
-/** The outline "Add" pill in section headers. */
+/** The outline "Add" button in section headers. */
 @Composable
 internal fun AddPill(label: String = "Add", onClick: () -> Unit) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    val shape = CircleShape
-    val shadows = listOf(
-        BoxShadow(y = 2f, blur = 8f, color = rgba(0, 0, 0, 0.08f)),
-        BoxShadow(y = 1f, color = rgba(255, 255, 255, 0.15f), inset = true),
-    )
-    Row(
-        Modifier
-            .pressScale(interaction)
-            .boxShadow(shape, shadows)
-            .background(c.glassBg, shape)
-            .insetShadow(shape, shadows)
-            .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
-            .tappable(role = null, highlight = false, interactionSource = interaction, onClick = onClick)
-            .padding(horizontal = 14.dp)
-            .defaultMinSize(minHeight = 36.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(RemixIcons.AddLine, size = 14.dp, tint = c.textPrimary)
-        VText(label, style = vtext(13.sp to 18.sp, Weight.Bold), color = c.textPrimary)
-    }
+    VButton(label, onClick, variant = ButtonVariant.Outline, size = ButtonSize.Sm, icon = RemixIcons.AddLine)
 }
 
 /**
@@ -237,44 +183,4 @@ internal object Fills {
     val Orange500 = Palette.Orange500
     val Red500 = Palette.Red500
     val Slate400 = Palette.Slate400
-}
-
-internal enum class PillKind { Accent, Outline, Ghost }
-
-/** The tracker's buttons: a pill by default, reshaped per use (rounded rects, 48dp submits). */
-@Composable
-internal fun TrackerButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    kind: PillKind = PillKind.Accent,
-    shape: Shape = CircleShape,
-    height: Dp = 36.dp,
-    horizontalPadding: Dp = 16.dp,
-    enabled: Boolean = true,
-    content: @Composable RowScope.(ink: Color) -> Unit,
-) {
-    val c = Vectra.colors
-    val interaction = remember { MutableInteractionSource() }
-    val ink = when (kind) {
-        PillKind.Accent -> Color.White
-        PillKind.Outline -> c.textPrimary
-        PillKind.Ghost -> c.textSecondary
-    }
-    val surface = when (kind) {
-        PillKind.Accent -> if (enabled) Modifier.pillDepth(shape, PillTone.Accent) else Modifier.background(c.accentPrimary, shape)
-        PillKind.Outline -> Modifier.pillGlass(shape)
-        PillKind.Ghost -> Modifier
-    }
-    Row(
-        modifier
-            .then(if (enabled) Modifier.pressScale(interaction) else Modifier)
-            .alpha(if (enabled) 1f else 0.5f)
-            .then(surface)
-            .clip(shape)
-            .tappable(enabled = enabled, role = Role.Button, highlight = false, interactionSource = interaction, onClick = onClick)
-            .height(height)
-            .padding(horizontal = horizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) { content(ink) }
 }

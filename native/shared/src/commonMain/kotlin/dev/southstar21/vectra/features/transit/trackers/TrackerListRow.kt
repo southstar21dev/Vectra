@@ -83,7 +83,7 @@ internal fun ListRow(
         if (leading != null) Box(contentAlignment = Alignment.Center) { leading() }
         Column(Modifier.weight(1f)) {
             if (titleContent != null) titleContent()
-            else VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 1)
+            else VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 2)
             if (subtitle != null) {
                 VText(subtitle, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption), c.textSecondary, maxLines = 1)
             }

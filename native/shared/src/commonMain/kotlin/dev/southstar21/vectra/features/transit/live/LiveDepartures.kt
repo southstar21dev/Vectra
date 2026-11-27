@@ -78,7 +78,7 @@ private fun DepartureColumn(d: StripDirection, now: Long, right: Boolean, reserv
         Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 6.dp), horizontalAlignment = side) {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
-                VText(d.destination, Modifier.weight(1f, fill = false), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 1)
+                VText(d.destination, Modifier.weight(1f, fill = false), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 2, align = if (right) TextAlign.End else TextAlign.Start)
                 if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
             }
             if (d.otherDirection) OtherDirectionNote(align = if (right) TextAlign.End else TextAlign.Start)
@@ -97,7 +97,8 @@ private fun DepartureRow(a: Arrival, next: Boolean, now: Long, side: Alignment.H
     val color = when {
         !next -> c.textSecondary
         a.isPredicted && minutes <= 1 -> c.tints.emerald.text
-        else -> Vectra.monitor.live
+        a.isPredicted -> Vectra.monitor.live
+        else -> Vectra.monitor.sched
     }
     val shape = RoundedCornerShape(12.dp)
     Column(
@@ -106,7 +107,8 @@ private fun DepartureRow(a: Arrival, next: Boolean, now: Long, side: Alignment.H
     ) {
         VText(formatBudapestHm(a.arrivalMs), style = vtext(20.sp to 24.sp, Weight.Extrabold, mono = true).tnum(), color = color, maxLines = 1)
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (a.isPredicted) LiveSignalIcon(size = 11.dp, tint = c.tints.emerald.text)
+            if (a.isPredicted) LiveSignalIcon(size = 11.dp, tint = Vectra.monitor.live)
+            else VIcon(RemixIcons.TimeLine, size = 11.dp, tint = Vectra.monitor.sched)
             VText(if (minutes <= 0) "now" else "in $minutes min", style = vtext(12.sp to 16.sp, Weight.Medium), color = c.textMuted, maxLines = 1)
         }
     }

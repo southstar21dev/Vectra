@@ -1,14 +1,14 @@
 package dev.southstar21.vectra.features.schedule
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
+import dev.southstar21.vectra.core.designsystem.theme.PlannerSurface
+import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.preferences.TimeFormat
@@ -18,14 +18,14 @@ import dev.southstar21.vectra.core.time.formatTime
 /** The day list's colours (builder spec 1, "Colour tokens"). */
 @Immutable
 internal class DayColors(val isDark: Boolean) {
-    val card = if (isDark) Color(0xFF0E0F14) else Color.White
+    val card = PlannerSurface.fill(isDark)
     /** A cancelled class: darker than a card, still flat (never carved in). */
     val cancelledCard = if (isDark) Color(0xFF08090B) else Color(0xFFE2E8F0)
     val strip = if (isDark) Color(0xFF14151C) else Color(0xFFF8FAFC)
-    val border = if (isDark) rgba(255, 255, 255, 0.08f) else rgba(15, 23, 42, 0.08f)
-    val borderTop = if (isDark) rgba(255, 255, 255, 0.2f) else rgba(15, 23, 42, 0.1f)
+    val border = PlannerSurface.border(isDark)
+    val borderTop = PlannerSurface.borderTop(isDark)
     val smallBorderTop = if (isDark) rgba(255, 255, 255, 0.18f) else rgba(15, 23, 42, 0.18f)
-    val cardShadow = listOf(BoxShadow(y = 16f, blur = 36f, spread = -8f, color = if (isDark) rgba(0, 0, 0, 0.5f) else rgba(15, 23, 42, 0.12f)))
+    val cardShadow = PlannerSurface.shadow(isDark)
     val stripShadow = listOf(BoxShadow(y = 8f, blur = 18f, spread = -6f, color = if (isDark) rgba(0, 0, 0, 0.75f) else rgba(15, 23, 42, 0.1f)))
     val smallShadow = listOf(BoxShadow(y = 10f, blur = 22f, spread = -10f, color = if (isDark) rgba(0, 0, 0, 0.8f) else rgba(15, 23, 42, 0.14f)))
     val text = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -61,9 +61,9 @@ internal fun rememberDayColors(): DayColors {
     return remember(dark) { DayColors(dark) }
 }
 
-internal val CardShape = RoundedCornerShape(22.dp)
-internal val StripShape = RoundedCornerShape(18.dp)
-internal val SmallShape = RoundedCornerShape(16.dp)
+internal val CardShape = Radius.Card
+internal val StripShape = Radius.Strip
+internal val SmallShape = Radius.Panel
 
 private fun contrast(a: Color, b: Color): Float {
     val la = a.luminance() + 0.05f

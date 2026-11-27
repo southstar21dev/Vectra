@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,8 +21,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.southstar21.vectra.core.designsystem.components.MultiOptionSheet
-import dev.southstar21.vectra.core.designsystem.components.SelectOption
+import dev.southstar21.vectra.core.designsystem.components.SheetHeader
+import dev.southstar21.vectra.core.designsystem.components.VSheet
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
@@ -28,6 +30,7 @@ import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -37,7 +40,10 @@ import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.collect
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormGroup
+import dev.southstar21.vectra.features.transit.trackers.LineRow
 import dev.southstar21.vectra.features.transit.getTrackerStops
+import dev.southstar21.vectra.features.transit.routeTypeMeta
 
 /** The "Commute" settings group: which saved trackers get you to uni and back. */
 fun commuteRows(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier): List<@Composable () -> Unit> = listOf(
@@ -51,7 +57,7 @@ private fun DeparturesRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.RouteLine, c.tints.emerald.text, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
+    SettingsRow(RemixIcons.RouteLine, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
         VToggle(prefs.departures, { on ->
             if (on) enable { scheduler.update { it.copy(departures = true) } } else scheduler.update { it.copy(departures = false) }
         }, label = "Departure times")
@@ -103,14 +109,49 @@ private fun CommutePicker(scheduler: ReminderScheduler, transit: TransitReposito
     }
     CommuteRow(current, home, title, subtitle) { open = true }
 
-    val options = legs.map { SelectOption(it.key(), "${it.lineLabel}, ${it.describe()}") }
-    MultiOptionSheet(open, title, options, current.map { it.key() }.toSet(), onDismiss = { open = false }) { key ->
-        val picked = current.any { it.key() == key }
-        val leg = legs.firstOrNull { it.key() == key } ?: return@MultiOptionSheet
+    CommuteLegSheet(open, title, legs, current.map { it.key() }.toSet(), onDismiss = { open = false }) { leg ->
+        val key = leg.key()
         fun set(transform: (List<CommuteLeg>) -> List<CommuteLeg>) =
             scheduler.update { if (home) it.copy(backHome = transform(it.backHome)) else it.copy(toUni = transform(it.toUni)) }
-        if (picked) set { list -> list.filterNot { it.key() == key } }
+        if (current.any { it.key() == key }) set { list -> list.filterNot { it.key() == key } }
         else enable { set { list -> list.filterNot { it.key() == key } + leg } }
+    }
+}
+
+/** The legs to pick from, each as a line row like the Transit lists: badge, stop, direction, vehicle. */
+@Composable
+private fun CommuteLegSheet(
+    open: Boolean,
+    title: String,
+    legs: List<CommuteLeg>,
+    picked: Set<String>,
+    onDismiss: () -> Unit,
+    onToggle: (CommuteLeg) -> Unit,
+) {
+    val haptics = Vectra.haptics
+    VSheet(open, onDismiss, title = title) {
+        SheetHeader(title, onDismiss)
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = SurfaceGutter, vertical = 8.dp),
+        ) {
+            ClippedFormGroup(
+                rows = legs.map { leg ->
+                    @Composable {
+                        LineRow(
+                            badge = { RouteBadge(leg.displayName, leg.routeColor, leg.routeTextColor, size = RouteBadgeSize.Sm) },
+                            title = leg.stopName,
+                            toLine = leg.headsign,
+                            selected = leg.key() in picked,
+                            onClick = {
+                                haptics.tick()
+                                onToggle(leg)
+                            },
+                            meta = { VText(routeTypeMeta(leg.routeType).label, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary, maxLines = 1) },
+                        )
+                    }
+                },
+            )
+        }
     }
 }
 

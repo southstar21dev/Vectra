@@ -33,10 +33,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.ConfirmDialog
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
@@ -46,6 +47,7 @@ import dev.southstar21.vectra.core.designsystem.components.SectionTitle
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -202,7 +204,7 @@ internal fun SettingsTab(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         // Seeded defaults must never pass for the course's actual rules.
         if (!tracker.settingsConfirmed && onConfirmSettings != null) {
-            Column(Modifier.fillMaxWidth().glassDepth(card).padding(18.dp)) {
+            Column(Modifier.fillMaxWidth().plannerCard(card).padding(18.dp)) {
                 VText("Check your syllabus", style = vtext(15.sp to 22.sp, Weight.Extrabold), color = c.textPrimary)
                 VText(
                     "These are Vectra's defaults. Match them to this course so your standing and grade are right.",
@@ -210,26 +212,16 @@ internal fun SettingsTab(
                     vtext(13.sp to 17.875.sp),
                     c.textSecondary,
                 )
-                val interaction = remember { MutableInteractionSource() }
-                val shape = Radius.Tile
-                Row(
-                    Modifier.padding(top = 14.dp).fillMaxWidth().height(44.dp)
-                        .pressScale(interaction, 0.98f)
-                        .markDepth(shape, MarkFill.Present)
-                        .clip(shape)
-                        .tappable(role = Role.Button, highlight = false, interactionSource = interaction, onClick = onConfirmSettings),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VIcon(RemixIcons.CheckLine, tint = Color.White)
-                    VText("They match", style = vtext(TypeScale.Body, Weight.Extrabold), color = Color.White)
+                VButton(onConfirmSettings, Modifier.padding(top = 14.dp).fillMaxWidth(), ButtonVariant.Outline) {
+                    VIcon(RemixIcons.CheckLine, tint = c.tints.emerald.text)
+                    VText("They match")
                 }
             }
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("Attendance", action = { savedFlash(SaveWhere.Attendance)() })
-            Column(Modifier.fillMaxWidth().glassDepth(card)) {
+            Column(Modifier.fillMaxWidth().plannerCard(card)) {
                 Divided(buildList {
                     add {
                         SettingRow("Limit absences", "Off if the course doesn't count them") {
@@ -265,7 +257,7 @@ internal fun SettingsTab(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("Points", action = { savedFlash(SaveWhere.Points)() })
-            Box(Modifier.fillMaxWidth().glassDepth(card)) {
+            Box(Modifier.fillMaxWidth().plannerCard(card)) {
                 SettingRow("Course total", "Everything you can earn this term") {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         DraftField(
@@ -277,7 +269,7 @@ internal fun SettingsTab(
                             keyboardType = KeyboardType.Number,
                             contentDescription = "Course total",
                         )
-                        VText("pts", style = vtext(13.sp to 18.sp, Weight.Semibold), color = c.textSecondary)
+                        VText("pts", style = vtext(TypeScale.Meta13, Weight.Semibold), color = c.textSecondary)
                     }
                 }
             }
@@ -285,7 +277,7 @@ internal fun SettingsTab(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("Grade cutoffs", action = { savedFlash(SaveWhere.Grades)() })
-            Column(Modifier.fillMaxWidth().clip(card).glassDepth(card)) {
+            Column(Modifier.fillMaxWidth().clip(card).plannerCard(card)) {
                 Divided(buildList {
                     add {
                         GradeScaleBar(
@@ -316,7 +308,7 @@ internal fun SettingsTab(
                                 style = field,
                                 contentDescription = "Grade $grade minimum percentage",
                             )
-                            VText("%", style = vtext(13.sp to 18.sp), color = c.textSecondary)
+                            VText("%", style = vtext(TypeScale.Meta13), color = c.textSecondary)
                         }
                     }
                     scaleError?.let { err ->
@@ -328,9 +320,7 @@ internal fun SettingsTab(
             }
         }
 
-        TrackerButton({ confirmReset = true }, Modifier.fillMaxWidth(), kind = PillKind.Outline, shape = Radius.Tile, height = 44.dp) {
-            VText("Reset to defaults", style = vtext(13.sp to 18.sp, Weight.Bold), color = c.textSecondary, align = TextAlign.Center)
-        }
+        VButton("Reset to defaults", { confirmReset = true }, Modifier.fillMaxWidth(), ButtonVariant.Outline)
     }
 
     ConfirmDialog(
