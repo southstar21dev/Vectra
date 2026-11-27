@@ -50,6 +50,8 @@ class SetupItem(
     val subtitle: String,
     val done: Boolean?,
     val actionLabel: String,
+    /** False when the same action is a link elsewhere on this page, so it is never the card's one button. */
+    val canBeButton: Boolean = true,
     val action: () -> Unit,
 )
 
@@ -67,6 +69,7 @@ fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier 
     val missing = known.filter { it.done == false }
     var expanded by remember { mutableStateOf(false) }
     val shown = if (expanded) missing else missing.take(FirstShown)
+    val buttonItem = missing.firstOrNull { it.canBeButton }
     Column(modifier.fillMaxWidth().plannerCard().animateContentSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 2.dp)) {
@@ -89,7 +92,7 @@ fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier 
         SetupProgress(done = known.size - missing.size, total = known.size, Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 6.dp))
         shown.forEachIndexed { i, item ->
             if (i > 0) HairlineDivider(Modifier.padding(start = 52.dp))
-            SetupRow(item, primary = i == 0)
+            SetupRow(item, primary = item === buttonItem)
         }
         if (missing.size > FirstShown) {
             SettingsLink(
@@ -127,6 +130,8 @@ private fun SetupRow(item: SetupItem, primary: Boolean) {
             VText(item.title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
             VText(item.subtitle, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption), c.textSecondary)
         }
-        VButton(item.actionLabel, item.action, variant = if (primary) ButtonVariant.Primary else ButtonVariant.Outline, size = ButtonSize.Sm)
+        // Only the first unfinished step is a button; the rest are links like the Account rows.
+        if (primary) VButton(item.actionLabel, item.action, variant = ButtonVariant.Primary, size = ButtonSize.Sm)
+        else SettingsLink(item.actionLabel, item.action)
     }
 }

@@ -2,6 +2,9 @@ package dev.southstar21.vectra.features.transit.live
 
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
@@ -10,8 +13,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +32,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
-import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.drawVehicleToken
@@ -185,17 +184,7 @@ private fun DrawScope.drawTimelineMarker(m: TimelineMarker, colors: StripColors)
 
 @Composable
 private fun ShowAllButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val c = Vectra.colors
-    Box(
-        modifier
-            .height(36.dp)
-            .background(c.textPrimary.copy(alpha = 0.08f), CircleShape)
-            .tappable(CircleShape, pressedScale = 0.95f, haptic = { tick() }, onClick = onClick)
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        VText(label, style = vtext(13.sp to 16.sp, Weight.Bold), color = c.textPrimary)
-    }
+    VButton(label, onClick, modifier, variant = ButtonVariant.Secondary, size = ButtonSize.Sm)
 }
 
 /**

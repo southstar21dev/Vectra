@@ -64,6 +64,8 @@ fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): Lis
         SetupItem(
             RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey sign-in", BiometricCopy.setupSubtitle(),
             done = passkeys?.isNotEmpty(), actionLabel = "Set up",
+            // The Account section below has its own "Set up" link for it.
+            canBeButton = false,
         ) { scrollTo(SettingsAnchor.Account) }.takeIf { graph.passkeyRepository.isSupported },
     )
 }

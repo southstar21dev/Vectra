@@ -43,7 +43,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.Toaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
@@ -272,12 +271,11 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(36.dp),
-                        size = ButtonSize.Sm,
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !connecting,
                     ) {
-                        VIcon(RemixIcons.CheckLine, size = 14.dp)
-                        VText(if (connecting) "Checking the link..." else "Connect", style = vtext(TypeScale.Caption, Weight.Bold))
+                        VIcon(RemixIcons.CheckLine)
+                        VText(if (connecting) "Checking the link..." else "Connect")
                     }
                 }
             }

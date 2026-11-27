@@ -1,9 +1,11 @@
 package dev.southstar21.vectra.features.transit.nearby
 
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.rememberLoop
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,16 +81,7 @@ private fun LocationPrompt(status: NearbyLocationStatus, onLocate: () -> Unit, m
             c.textPrimary,
         )
         if (status != NearbyLocationStatus.Locating) {
-            VText(
-                "Allow",
-                Modifier
-                    .border(1.dp, c.accentPrimary.copy(alpha = 0.6f), CircleShape)
-                    .tappable(CircleShape, role = androidx.compose.ui.semantics.Role.Button, haptic = { tick() }, onClick = onLocate)
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                vtext(TypeScale.Caption, Weight.Bold),
-                c.accentPrimary,
-                maxLines = 1,
-            )
+            VButton("Allow", onLocate, variant = ButtonVariant.Outline, size = ButtonSize.Sm)
         }
     }
 }

@@ -33,10 +33,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.ConfirmDialog
+import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
@@ -211,19 +212,9 @@ internal fun SettingsTab(
                     vtext(13.sp to 17.875.sp),
                     c.textSecondary,
                 )
-                val interaction = remember { MutableInteractionSource() }
-                val shape = Radius.Tile
-                Row(
-                    Modifier.padding(top = 14.dp).fillMaxWidth().height(44.dp)
-                        .pressScale(interaction, 0.98f)
-                        .markDepth(shape, MarkFill.Present)
-                        .clip(shape)
-                        .tappable(role = Role.Button, highlight = false, interactionSource = interaction, onClick = onConfirmSettings),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VIcon(RemixIcons.CheckLine, tint = Color.White)
-                    VText("They match", style = vtext(TypeScale.Body, Weight.Extrabold), color = Color.White)
+                VButton(onConfirmSettings, Modifier.padding(top = 14.dp).fillMaxWidth(), ButtonVariant.Outline) {
+                    VIcon(RemixIcons.CheckLine, tint = c.tints.emerald.text)
+                    VText("They match")
                 }
             }
         }
@@ -329,9 +320,7 @@ internal fun SettingsTab(
             }
         }
 
-        TrackerButton({ confirmReset = true }, Modifier.fillMaxWidth(), kind = PillKind.Outline, shape = Radius.Tile, height = 44.dp) {
-            VText("Reset to defaults", style = vtext(TypeScale.Meta13, Weight.Bold), color = c.textSecondary, align = TextAlign.Center)
-        }
+        VButton("Reset to defaults", { confirmReset = true }, Modifier.fillMaxWidth(), ButtonVariant.Outline)
     }
 
     ConfirmDialog(
