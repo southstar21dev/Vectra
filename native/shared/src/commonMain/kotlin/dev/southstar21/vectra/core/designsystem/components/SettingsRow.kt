@@ -26,14 +26,13 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
 /**
- * One settings row: a bare line icon in its tint (no tile behind it), title and subtitle, and a
+ * One settings row: a bare line icon (secondary text, red when [danger]; no tile behind it), title and subtitle, and a
  * control on the right. With [onClick] the whole row is the tap target and, without a control,
  * ends in a chevron. [enabled] false greys it out (an action with nothing to act on).
  */
 @Composable
 fun SettingsRow(
     icon: ImageVector,
-    iconTint: Color,
     title: String,
     subtitle: String? = null,
     danger: Boolean = false,
@@ -54,7 +53,7 @@ fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            VIcon(icon, size = 18.dp, tint = iconTint)
+            VIcon(icon, size = 18.dp, tint = if (danger) c.tints.red.text else c.textSecondary)
         }
         Column(Modifier.weight(1f)) {
             VText(title, style = titleStyle, color = if (danger) c.tints.red.text else c.textPrimary)

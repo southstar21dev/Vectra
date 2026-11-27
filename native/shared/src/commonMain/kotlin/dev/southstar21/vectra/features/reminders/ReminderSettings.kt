@@ -81,7 +81,7 @@ private fun BeforeClassRows(scheduler: ReminderScheduler, notifier: Notifier) {
     val enable = rememberEnabler(notifier)
     Column {
         PermissionLostRow(prefs, notifier)
-        SettingsRow(RemixIcons.TimeLine, c.tints.sky.text, "Before class", "Which class and room, ahead of time") {
+        SettingsRow(RemixIcons.TimeLine, "Before class", "Which class and room, ahead of time") {
             VToggle(prefs.beforeClass, { on ->
                 if (on) enable { scheduler.update { it.copy(beforeClass = true) } } else scheduler.update { it.copy(beforeClass = false) }
             }, label = "Before class")
@@ -117,7 +117,7 @@ private fun PermissionLostRow(prefs: ReminderPrefs, notifier: Notifier) {
     }
     val enable = rememberEnabler(notifier)
     if (granted || !prefs.anyOn) return
-    SettingsRow(RemixIcons.NotificationOffLine, c.tints.red.text, "Notifications are off", "Your reminders are set but can't appear") {
+    SettingsRow(RemixIcons.NotificationOffLine, "Notifications are off", "Your reminders are set but can't appear") {
         SettingsLink("Allow", { enable { granted = true } })
     }
     HairlineDivider()
@@ -128,7 +128,7 @@ private fun NextClassRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.ArrowRightLine, c.tints.purple.text, "Next class", "Five minutes before a class ends: what's next and where") {
+    SettingsRow(RemixIcons.ArrowRightLine, "Next class", "Five minutes before a class ends: what's next and where") {
         VToggle(prefs.nextClass, { on ->
             if (on) enable { scheduler.update { it.copy(nextClass = true) } } else scheduler.update { it.copy(nextClass = false) }
         }, label = "Next class")
@@ -160,7 +160,7 @@ private fun TypeFilter(scheduler: ReminderScheduler) {
 private fun PersonalItemsRow(scheduler: ReminderScheduler) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
-    SettingsRow(RemixIcons.Calendar2Line, c.tints.amber.text, "Personal items too", "Shifts and tasks from your schedule") {
+    SettingsRow(RemixIcons.Calendar2Line, "Personal items too", "Shifts and tasks from your schedule") {
         VToggle(prefs.personalItems, { on -> scheduler.update { it.copy(personalItems = on) } }, label = "Personal items too")
     }
 }

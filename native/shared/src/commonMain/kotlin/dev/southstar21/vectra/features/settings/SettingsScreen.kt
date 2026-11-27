@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import dev.southstar21.vectra.core.designsystem.components.VInput
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -130,7 +136,7 @@ fun SettingsScreen(
 private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): List<@Composable () -> Unit> = listOfNotNull(
     {
         val c = Vectra.colors
-        SettingsRow(RemixIcons.InformationLine, c.tints.sky.text, "Version") {
+        SettingsRow(RemixIcons.InformationLine, "Version") {
             VText("${graph.config.appVersion}-$platformName", style = vtext(TypeScale.Body), color = c.textSecondary)
         }
     },
@@ -139,7 +145,6 @@ private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): L
         val uri = LocalUriHandler.current
         SettingsRow(
             RemixIcons.ShieldCheckLine,
-            c.tints.purple.text,
             "Privacy policy",
             "What Vectra stores and how to remove it",
             onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } },
@@ -148,7 +153,7 @@ private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): L
     if (tipsLeft > 0) {
         {
             val c = Vectra.colors
-            SettingsRow(RemixIcons.CheckboxCircleLine, c.accentPrimary, "Setup tips", "$tipsLeft ${if (tipsLeft == 1) "thing" else "things"} left to set up") {
+            SettingsRow(RemixIcons.CheckboxCircleLine, "Setup tips", "$tipsLeft ${if (tipsLeft == 1) "thing" else "things"} left to set up") {
                 SettingsLink("Show", onShowTips)
             }
         }
@@ -168,37 +173,67 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
     LaunchedEffect(repo) { runSuspendCatching { repo.refresh() }.onFailure { loadError = true } }
     // The server re-checks the password before enrolling: a stolen session alone must not add a passkey.
     val register: () -> Unit = { registering = true }
-    CurrentPasswordDialog(
-        open = registering,
-        title = "Add a passkey",
-        description = "Confirm it's you with your current password, then follow your device's prompt.",
-        confirmText = "Continue",
-        onDismiss = { registering = false },
-        onConfirm = { password -> repo.register(password); toaster.success("Passkey added") },
-        errorMessage = repo::errorMessage,
-    )
     val list = passkeys
     Column {
         when {
-            !repo.isSupported -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Not supported on this device (needs Android 9+ or a modern browser on HTTPS)")
-            loadError -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Couldn't load your passkeys") {
+            registering -> PasskeySetupForm(repo) { registering = false }
+            !repo.isSupported -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Not supported on this device (needs Android 9+ or a modern browser on HTTPS)")
+            loadError -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Couldn't load your passkeys") {
                 SettingsLink("Retry", { loadError = false; scope.launch { runSuspendCatching { repo.refresh() }.onFailure { loadError = true } } })
             }
-            list == null -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Checking your passkeys…")
+            list == null -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Checking your passkeys…")
             list.isNotEmpty() -> {
                 list.forEach { p ->
-                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatLocalDate(p.createdAt)}") {
+                    SettingsRow(RemixIcons.FingerprintLine, p.friendlyName ?: "Passkey", "Added ${formatLocalDate(p.createdAt)}") {
                         VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting, contentDescription = "Delete passkey ${p.friendlyName ?: ""}".trim()) {
                             if (deleting) InlineLoader(tint = c.textMuted) else VIcon(RemixIcons.DeleteBinLine, tint = c.textMuted)
                         }
                     }
                 }
-                SettingsRow(RemixIcons.AddLine, c.textSecondary, "Add another passkey", "Register this device too", enabled = !registering, onClick = register)
+                SettingsRow(RemixIcons.AddLine, "Add another passkey", "Register this device too", onClick = register)
             }
-            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", BiometricCopy.useInstead()) {
-                SettingsLink("Set up", register, enabled = !registering)
+            else -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", BiometricCopy.useInstead()) {
+                SettingsLink("Set up", register)
             }
         }
+    }
+}
+
+/**
+ * "Add a passkey" in place, like "Change password": the server re-checks the password before
+ * enrolling, so a stolen session alone cannot add one.
+ */
+@Composable
+private fun PasskeySetupForm(repo: PasskeyRepository, onClose: () -> Unit) {
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val submit = {
+        if (!busy) {
+            if (password.isEmpty()) error = "Enter your current password" else {
+                busy = true; error = null
+                scope.launchCatching({ repo.register(password); busy = false; toaster.success("Passkey added"); onClose() }) {
+                    busy = false
+                    // A null message means the person cancelled the system prompt: close quietly.
+                    val message = repo.errorMessage(it)
+                    if (message == null) onClose() else error = message
+                }
+            }
+        }
+    }
+    Column(SettingsBlockPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        VText(BiometricCopy.confirmPrompt(), style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary)
+        FormLabel("Current password")
+        VInput(
+            password, { password = it; error = null }, placeholder = "Your current password", icon = RemixIcons.LockLine, enabled = !busy,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+        )
+        FieldError(error)
+        EditActions(busy, onClose, confirmText = "Continue") { submit() }
     }
 }
 
@@ -223,7 +258,6 @@ private fun PushNotificationsRow(repo: NotificationsRepository, launcher: Launch
     val on = if (repo.pushAvailable) subscribed else granted
     SettingsRow(
         if (on) RemixIcons.Notification3Line else RemixIcons.NotificationOffLine,
-        c.tints.purple.text,
         "Push notifications",
         when {
             !repo.pushAvailable && granted -> "System notifications allowed"
