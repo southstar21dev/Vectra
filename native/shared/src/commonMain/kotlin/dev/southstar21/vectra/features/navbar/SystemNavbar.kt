@@ -2,8 +2,8 @@ package dev.southstar21.vectra.features.navbar
 
 import androidx.compose.ui.geometry.Rect
 
-/** One + action as the platform bar shows it (labels only; the platform picks its own icons by [id]). */
-data class SystemNavbarAction(val id: String, val label: String, val disabled: Boolean)
+/** One + action as the platform bar shows it; [sfSymbol] is the SF Symbol its menu row draws on iOS. */
+data class SystemNavbarAction(val id: String, val label: String, val sfSymbol: String, val disabled: Boolean)
 
 /** One tab as the platform bar shows it; the order of the list is the index [SystemNavbarState.selectedIndex] and the callbacks use. */
 data class SystemNavbarTab(val label: String, val sfSymbol: String, val holdable: Boolean)
