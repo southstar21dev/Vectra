@@ -126,8 +126,9 @@ private fun DayCardTitle(content: DayCardContent, d: DayColors) {
                 content.title,
                 style = vtext(TypeScale.Title17, Weight.Bold).copy(textDecoration = if (content.struck) TextDecoration.LineThrough else null),
                 color = d.text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                // A long title wraps and makes the card taller, never an ellipsis.
+                maxLines = 3,
+                overflow = TextOverflow.Clip,
             )
             if (!content.subtitle.isNullOrEmpty()) {
                 VText(content.subtitle, style = vtext(14.sp to 19.sp, Weight.Medium), color = d.secondary, maxLines = 1)
