@@ -215,7 +215,7 @@ internal fun ForkEndRow(fork: StripFork, times: List<StripTime>) {
     val c = Vectra.colors
     val first = times.firstOrNull()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        VIcon(if (fork.heading > 0) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
+        VIcon(if (fork.heading > 0) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = directionArrowTint(c))
         VText(fork.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
         if (first != null) {
             VText(first.label, style = vtext(12.sp to 16.sp, Weight.Bold, mono = true).tnum(), color = c.textSecondary, maxLines = 1)

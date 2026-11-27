@@ -95,7 +95,7 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = c.textMuted)
+        VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = directionArrowTint(c))
         if (entry.vehicle.replacement) VIcon(RemixIcons.BusLine, size = 12.dp, tint = BusBlue)
         Column(Modifier.weight(1f)) {
             VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
