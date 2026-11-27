@@ -1,6 +1,7 @@
 # Installs a release APK on an emulator, launches it and fails if it crashes. Catches what only the
 # shrunk release build gets wrong (R8 stripping something the app needs), which the debug builds CI
-# tests can't: v1.5.0 shipped one that crashed before the first screen.
+# tests can't: v1.5.0 shipped one that crashed before the first screen. It then sends the widget refresh
+# broadcast (the receiver, WidgetStore and what they pull in) and fails on a crash or an R8-style error.
 #
 # release.yml runs it on the APK it just built, before publishing. Run it by hand to check an
 # existing release: gh workflow run android-launch.yml -f tag=v1.5.1
