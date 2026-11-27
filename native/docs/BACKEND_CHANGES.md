@@ -63,7 +63,7 @@ register rows as:
 { "user": "<id>", "transport": "fcm", "device_name": "Mobile", "subscription": { "token": "<FCM registration token>" } }
 ```
 
-**a. Validation** — add a hook on `push_subscriptions` that checks the token:
+**a. Validation**: add a hook on `push_subscriptions` that checks the token:
 
 ```go
 if e.Record.GetString("transport") == "fcm" {
@@ -77,7 +77,7 @@ if e.Record.GetString("transport") == "fcm" {
 
 Dedupe rows by token.
 
-**b. Delivery** — add a `/push/send` route and an FCM sender (design it fresh with a transport
+**b. Delivery**: add a `/push/send` route and an FCM sender (design it fresh with a transport
 interface; nothing exists to extend).
 
 The FCM sender uses `firebase.google.com/go/v4/messaging` with a service account from a new env
