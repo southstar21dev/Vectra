@@ -3,10 +3,12 @@ package dev.southstar21.vectra.features.schedule
 import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.OfflineCache
+import dev.southstar21.vectra.core.data.SingleFlight
+import dev.southstar21.vectra.core.data.StaleGate
+import dev.southstar21.vectra.core.network.EncryptedColumns
 import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.network.int
-import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
@@ -14,7 +16,6 @@ import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.SessionScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -23,10 +24,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -89,10 +89,13 @@ internal class ScheduleEventsRepository(
 
     // Written from whichever Default thread a coroutine lands on.
     @Volatile private var eventsFetchedAt = 0L
-    private val eventsJobLock = Mutex()
-    private var eventsJob: Pair<Int, Deferred<Unit>>? = null
-    private val eventsFetchLock = Mutex()
-    private var eventsFetch: Triple<String, Int, Deferred<List<ScheduleEvent>>>? = null
+    private val staleGate = StaleGate(EVENTS_STALE_MS)
+
+    /** The load in flight, keyed by the write epoch it began in. */
+    private val loadFlight = SingleFlight<Int, Unit>()
+
+    /** The cloud fetch in flight, keyed by the account and write epoch it began in. */
+    private val fetchFlight = SingleFlight<Pair<String, Int>, List<ScheduleEvent>>()
 
     /**
      * Bumped by every write. A load or fetch that started before a write may have read the
@@ -118,8 +121,7 @@ internal class ScheduleEventsRepository(
     /** Refresh when stale (15 min). */
     fun ensureFresh() {
         val uid = userId ?: return
-        val now = Clock.System.now().toEpochMilliseconds()
-        if (now - eventsFetchedAt > EVENTS_STALE_MS) sessions.launchFor(uid) { runSuspendCatching { refreshEvents() } }
+        if (staleGate.isStale(eventsFetchedAt)) sessions.launchFor(uid) { runSuspendCatching { refreshEvents() } }
     }
 
     suspend fun cached(uid: String): List<ScheduleEvent>? = eventsCache.read(uid)
@@ -138,13 +140,10 @@ internal class ScheduleEventsRepository(
     /** The fetch: cache offline; cloud otherwise, falling back to a non-empty cache. */
     suspend fun refreshEvents(force: Boolean = false) {
         val uid = userId ?: return
-        val job = eventsJobLock.withLock {
-            val epoch = writeEpoch
-            val running = eventsJob?.takeIf { (startedAt, job) -> job.isActive && startedAt == epoch }?.second
-            if (running == null && !force && Clock.System.now().toEpochMilliseconds() - eventsFetchedAt < EVENTS_STALE_MS) return
-            running ?: sessions.asyncFor(uid) { loadEvents(uid) }.also { eventsJob = epoch to it }
-        }
-        job.await()
+        // A write bumps the epoch, so a load that began before it is never joined.
+        val epoch = writeEpoch
+        if (!force && loadFlight.running(epoch) == null && !staleGate.isStale(eventsFetchedAt)) return
+        loadFlight.join(epoch, sessions.scopeFor(uid)) { loadEvents(uid) }.await()
     }
 
     private suspend fun loadEvents(uid: String) {
@@ -178,14 +177,8 @@ internal class ScheduleEventsRepository(
      * The cloud fetch, joined by anyone asking while one is in flight: cold start, pull to
      * refresh and a save all want the same data, and each would otherwise pay for it.
      */
-    internal suspend fun fetchShared(uid: String): List<ScheduleEvent> {
-        val job = eventsFetchLock.withLock {
-            val epoch = writeEpoch
-            eventsFetch?.takeIf { (owner, startedAt, job) -> owner == uid && startedAt == epoch && job.isActive }?.third
-                ?: sessions.asyncFor(uid) { fetchEventsFromCloud(uid) }.also { eventsFetch = Triple(uid, epoch, it) }
-        }
-        return job.await()
-    }
+    internal suspend fun fetchShared(uid: String): List<ScheduleEvent> =
+        fetchFlight.join(uid to writeEpoch, sessions.scopeFor(uid)) { fetchEventsFromCloud(uid) }.await()
 
     /** fetchScheduleEventsFromCloud: decrypt both collections, sort by day then start, cache. */
     suspend fun fetchEventsFromCloud(uid: String): List<ScheduleEvent> {
@@ -196,14 +189,14 @@ internal class ScheduleEventsRepository(
             manual.await() to neptun.await()
         }
         val clear = crypto.decryptAll(
-            manualRows.flatMap { row -> ManualEncryptedFields.map { row.string(it) } } +
+            manualRows.flatMap { row -> ManualColumns.ciphertexts(row) } +
                 neptunRows.flatMap { row -> NeptunColumns.ciphertexts(row) },
         )
-        val manualFieldCount = manualRows.size * ManualEncryptedFields.size
+        val manualFieldCount = manualRows.size * ManualColumns.names.size
         val manual = manualRows.mapIndexed { i, row ->
-            val (name, instructor, location) = clear.subList(i * ManualEncryptedFields.size, (i + 1) * ManualEncryptedFields.size)
-            if (listOf(name, instructor, location).any(::isCiphertext)) error("Could not decrypt the latest class schedule.")
-            adaptManualRow(row, name, instructor, location)
+            val c = ManualColumns.clear(clear, i)
+            if (c.hasCiphertext) error("Could not decrypt the latest class schedule.")
+            adaptManualRow(row, c["course_name"], c["instructor"], c["location"])
         }
         val neptunClear = clear.drop(manualFieldCount)
         val neptun = neptunRows.mapIndexed { i, row ->
@@ -238,25 +231,37 @@ internal class ScheduleEventsRepository(
         source = "manual",
     )
 
+    /**
+     * The row body create and update share: [ManualColumns] encrypted, the rest of the editor's output
+     * in the clear. [extra] adds what differs between the two.
+     */
+    private suspend fun manualBody(data: ScheduleFormData, extra: JsonObjectBuilder.() -> Unit): JsonObject {
+        val enc = ManualColumns.encrypt(
+            mapOf("course_name" to data.courseName, "instructor" to data.instructor, "location" to data.location),
+        ) { crypto.encrypt(it) }
+        return buildJsonObject {
+            for (name in ManualColumns.names) put(name, enc.getValue(name))
+            put("course_code", data.courseCode)
+            put("day_of_week", data.dayOfWeek)
+            put("start_time", data.startTime)
+            put("end_time", data.endTime)
+            put("color", data.color)
+            put("semester", data.semester)
+            // Frequency rides along in csv_metadata: there is no column for it. An edit replaces
+            // csv_metadata outright, so only the frequency survives.
+            put("csv_metadata", setFrequencyInMetadata(null, data.frequency))
+            extra()
+        }
+    }
+
     suspend fun createEvent(data: ScheduleFormData): ScheduleEvent {
         _isCreating.value = true
         try {
             val uid = session.requireUserId()
-            val body = buildJsonObject {
-                put("course_name", crypto.encrypt(data.courseName))
-                put("course_code", data.courseCode)
-                put("instructor", crypto.encrypt(data.instructor))
-                put("location", crypto.encrypt(data.location))
-                put("day_of_week", data.dayOfWeek)
-                put("start_time", data.startTime)
-                put("end_time", data.endTime)
-                put("color", data.color)
-                put("semester", data.semester)
+            val body = manualBody(data) {
                 put("semester_start", data.semesterStart)
                 put("semester_end", data.semesterEnd)
                 put("attendance_type", data.attendanceType ?: "unknown")
-                // Frequency rides along in csv_metadata — there is no column for it.
-                put("csv_metadata", setFrequencyInMetadata(null, data.frequency))
                 put("user", uid)
             }
             val record = pb.collection("schedule_events").create(body)
@@ -269,22 +274,11 @@ internal class ScheduleEventsRepository(
 
     suspend fun updateEvent(id: String, data: ScheduleFormData): ScheduleEvent {
         session.requireUserId()
-        val body = buildJsonObject {
-            put("course_name", crypto.encrypt(data.courseName))
-            put("course_code", data.courseCode)
-            put("instructor", crypto.encrypt(data.instructor))
-            put("location", crypto.encrypt(data.location))
-            put("day_of_week", data.dayOfWeek)
-            put("start_time", data.startTime)
-            put("end_time", data.endTime)
-            put("color", data.color)
-            put("semester", data.semester)
+        val body = manualBody(data) {
             // The editor has no date fields: a PATCH without them keeps the dates the class already has.
             data.semesterStart?.let { put("semester_start", it) }
             data.semesterEnd?.let { put("semester_end", it) }
             put("attendance_type", data.attendanceType)
-            // An edit replaces csv_metadata outright, so only the frequency survives.
-            put("csv_metadata", setFrequencyInMetadata(null, data.frequency))
         }
         try {
             val record = pb.collection("schedule_events").update(id, body)
@@ -324,6 +318,7 @@ internal class ScheduleEventsRepository(
     private companion object {
         const val EVENTS_STALE_MS = 15L * 60 * 1000
         const val EVENTS_LOAD_FAILED = "Could not load your classes. Pull down to try again."
-        val ManualEncryptedFields = listOf("course_name", "instructor", "location")
+        /** The encrypted columns of `schedule_events`, shared by create, update and the fetch. */
+        val ManualColumns = EncryptedColumns(listOf("course_name", "instructor", "location"))
     }
 }

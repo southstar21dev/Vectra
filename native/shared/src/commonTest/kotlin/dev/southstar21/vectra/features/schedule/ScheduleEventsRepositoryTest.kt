@@ -310,6 +310,60 @@ class ScheduleEventsRepositoryTest {
         assertEquals(setOf("Algebra", "Geometry"), repo.events.value.map { it.courseName }.toSet())
     }
 
+    /** The three sensitive columns leave the device encrypted, nothing else does, and a reload reads them back clear. */
+    @Test fun aCreatedClassGoesOutEncryptedAndReadsBackClear() = scenario {
+        signIn()
+        repo.createEvent(formData("Geometry").copy(instructor = "Dr. Who \u00e9\u0151", location = "C.1 / \"annex\""))
+        val sent = backend.creates.single()
+        assertEquals(setOf("vc3:Geometry", "vc3:Dr. Who \u00e9\u0151", "vc3:C.1 / \"annex\""), listOf("course_name", "instructor", "location").map { sent.string(it) }.toSet())
+        assertEquals("G1", sent.string("course_code"))
+        assertEquals("lecture", sent.string("attendance_type"))
+        assertEquals(Owner, sent.string("user"))
+        assertTrue("semester_start" in sent)
+        repo.refreshEvents(force = true)
+        val back = repo.events.value.single { it.id == "c-new" }
+        assertEquals("Geometry", back.courseName)
+        assertEquals("Dr. Who \u00e9\u0151", back.instructor)
+        assertEquals("C.1 / \"annex\"", back.location)
+    }
+
+    @Test fun aClassWithoutAnAttendanceTypeIsCreatedAsUnknown() = scenario {
+        signIn()
+        repo.createEvent(formData("Geometry").copy(attendanceType = null))
+        assertEquals("unknown", backend.creates.single().string("attendance_type"))
+    }
+
+    @Test fun anEditSendsTheSameEncryptedColumnsAndKeepsTheStoredDates() = scenario {
+        signIn()
+        repo.refreshEvents()
+        repo.updateEvent("c1", formData("Renamed").copy(instructor = "Dr. Who", location = "D.2"))
+        val sent = backend.patches.single()
+        assertEquals(listOf("vc3:Renamed", "vc3:Dr. Who", "vc3:D.2"), listOf("course_name", "instructor", "location").map { sent.string(it) })
+        assertFalse("semester_start" in sent)
+        assertFalse("semester_end" in sent)
+        assertFalse("user" in sent)
+        repo.refreshEvents(force = true)
+        val back = repo.events.value.single { it.id == "c1" }
+        assertEquals(Triple("Renamed", "Dr. Who", "D.2"), Triple(back.courseName, back.instructor, back.location))
+    }
+
+    @Test fun anEditThatCarriesDatesSendsThem() = scenario {
+        signIn()
+        repo.updateEvent("c1", formData("Renamed").copy(semesterStart = "2099-02-02", semesterEnd = "2099-05-25"))
+        val sent = backend.patches.single()
+        assertEquals("2099-02-02", sent.string("semester_start"))
+        assertEquals("2099-05-25", sent.string("semester_end"))
+    }
+
+    @Test fun aClassWhoseColumnsCannotBeDecryptedIsNotShown() = scenario {
+        signIn()
+        // A row whose ciphertext the key cannot open comes back unchanged from the crypto route.
+        backend.rows[0] = JsonObject(backend.rows[0] + ("course_name" to JsonPrimitive("vc2:garbage")))
+        repo.refreshEvents(force = true)
+        assertEquals(emptyList(), repo.events.value)
+        assertNotNull(repo.eventsError.value)
+    }
+
     private fun formData(name: String) = ScheduleFormData(
         courseName = name, attendanceType = "lecture", courseCode = "G1", instructor = "Dr. Who", location = "C.1", dayOfWeek = 2,
         startTime = "12:00", endTime = "13:00", color = "#3B82F6", semester = "2098/99/2",
