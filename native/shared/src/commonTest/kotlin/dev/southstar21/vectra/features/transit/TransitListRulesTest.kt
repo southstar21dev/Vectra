@@ -51,9 +51,10 @@ class TransitListRulesTest {
 
     @Test
     fun longDirectionNamesStackTheTabs() {
-        assertFalse(directionTabsStacked(listOf("Blaha", "Teleki")))
-        assertTrue(directionTabsStacked(listOf("Gyöngyösi utca M", "Apor Vilmos tér")))
-        assertFalse(directionTabsStacked(emptyList()))
+        val width = { s: String -> s.length * 6f }
+        assertFalse(directionTabsStacked(listOf("Blaha Lujza tér", "Teleki"), 100f, width))
+        assertTrue(directionTabsStacked(listOf("Gyöngyösi utca M", "Apor Vilmos tér"), 90f, width))
+        assertFalse(directionTabsStacked(emptyList(), 90f, width))
         assertNull(splitTermini("X").second)
     }
 }

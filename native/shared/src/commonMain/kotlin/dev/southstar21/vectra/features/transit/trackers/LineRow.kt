@@ -35,10 +35,10 @@ internal fun LineBadgeSlot(modifier: Modifier = Modifier, badge: @Composable () 
  * [meta] (the vehicle type, a "Tracked" chip). Names wrap rather than cut.
  */
 @Composable
-internal fun LineRowText(title: String, toLine: String? = null, meta: (@Composable () -> Unit)? = null) {
+internal fun LineRowText(title: String, toLine: String? = null, titleLines: Int = 2, meta: (@Composable () -> Unit)? = null) {
     val c = Vectra.colors
     Column {
-        VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 2)
+        VText(title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = titleLines)
         if (!toLine.isNullOrEmpty()) {
             VText("→ $toLine", Modifier.padding(top = 1.dp), vtext(TypeScale.Caption, Weight.Medium), c.textSecondary, maxLines = 2)
         }
@@ -70,7 +70,7 @@ internal fun LineRow(
         selected = selected,
         navigates = navigates,
         leading = { LineBadgeSlot(badge = badge) },
-        titleContent = { LineRowText(title, toLine, meta) },
+        titleContent = { LineRowText(title, toLine, meta = meta) },
         trailing = trailing,
     )
 }

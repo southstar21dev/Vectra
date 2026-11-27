@@ -43,6 +43,7 @@ import dev.southstar21.vectra.features.transit.data.TransitTracker
 import dev.southstar21.vectra.features.transit.trackers.ClippedFormGroup
 import dev.southstar21.vectra.features.transit.trackers.LineRow
 import dev.southstar21.vectra.features.transit.getTrackerStops
+import dev.southstar21.vectra.features.transit.routeTypeMeta
 
 /** The "Commute" settings group: which saved trackers get you to uni and back. */
 fun commuteRows(scheduler: ReminderScheduler, transit: TransitRepository, notifier: Notifier): List<@Composable () -> Unit> = listOf(
@@ -145,7 +146,7 @@ private fun CommuteLegSheet(
                                 haptics.tick()
                                 onToggle(leg)
                             },
-                            meta = { VText(leg.lineLabel, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary, maxLines = 1) },
+                            meta = { VText(routeTypeMeta(leg.routeType).label, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary, maxLines = 1) },
                         )
                     }
                 },

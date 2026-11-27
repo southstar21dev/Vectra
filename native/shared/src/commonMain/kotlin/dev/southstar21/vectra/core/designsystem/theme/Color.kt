@@ -160,7 +160,7 @@ data class VectraColors(
             glowPrimary = rgba(37, 99, 235, 0.08f),
             glowSecondary = rgba(124, 58, 237, 0.06f),
             glassBg = rgba(255, 255, 255, 0.95f),
-            glassBgElevated = rgba(255, 255, 255, 0.98f),
+            glassBgElevated = rgba(255, 255, 255, 1f),
             glassBorder = Color.Transparent,
             glassBorderSpecular = rgba(255, 255, 255, 0.80f),
             glassShadow = listOf(

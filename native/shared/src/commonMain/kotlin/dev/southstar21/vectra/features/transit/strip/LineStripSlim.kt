@@ -69,6 +69,13 @@ internal fun slimDirectionEntries(model: StripModel, extra: List<StripExtraRow> 
     return buildList {
         if (right?.label != null && model.rightEnd != null) add(SlimDirectionEntry(true, model.rightEnd, right, later(model.rightTimes), model.rightOther))
         if (left?.label != null && model.leftEnd != null) add(SlimDirectionEntry(false, model.leftEnd, left, later(model.leftTimes), model.leftOther))
+        // A line that forks past an end: its second destination is a row like the others.
+        val fork = model.fork
+        val forkFirst = model.forkTimes.firstOrNull()
+        if (fork != null && forkFirst != null) {
+            val vehicle = StripVehicle(0f, fork.heading, forkFirst.label, kind = forkFirst.kind, arriving = forkFirst.label == "NOW")
+            add(SlimDirectionEntry(fork.heading > 0, fork.destination, vehicle, later(model.forkTimes)))
+        }
         for (e in extra) add(SlimDirectionEntry(true, e.destination, e.vehicle, if (showNext) e.later else emptyList()))
     }
 }
@@ -116,10 +123,13 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry, laterColumns: Int) {
         VIcon(if (entry.arrowRight) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = directionArrowTint(c))
         if (entry.vehicle.replacement) VIcon(RemixIcons.BusLine, size = 12.dp, tint = BusBlue)
         Column(Modifier.weight(1f)) {
-            VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
+            VText(entry.destination, Modifier.fillMaxWidth(), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 2)
             if (entry.other) OtherDirectionNote()
         }
-        Box(Modifier.widthIn(min = FirstTimeColumn), contentAlignment = Alignment.CenterEnd) {
+        Row(Modifier.widthIn(min = FirstTimeColumn), horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            if (entry.vehicle.kind == StripTimeKind.Scheduled && !entry.vehicle.faded && entry.vehicle.label != null) {
+                VIcon(RemixIcons.TimeLine, size = 11.dp, tint = stripTimeColor(entry.vehicle))
+            }
             VText(
                 entry.vehicle.label.orEmpty(),
                 style = vtext(13.sp to 17.sp, Weight.Extrabold, mono = true).tnum(),

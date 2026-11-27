@@ -67,7 +67,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 // ---- colours ---------------------------------------------------------------
 
-/** Departure-board display ink: bright amber = live, dim amber = timetable. */
+/** Departure-board display ink: amber = live, grey = timetable. */
 @Immutable
 internal data class MonitorInk(
     val live: Color,
@@ -81,7 +81,7 @@ internal data class MonitorInk(
 
 internal fun monitorInk(c: VectraColors) = MonitorInk(
     live = if (c.isDark) Color(0xFFFFD24A) else Palette.Amber700,
-    sched = if (c.isDark) Color(0xFFA08A4A) else Color(0xFF8A6D3B),
+    sched = if (c.isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
     text = c.textPrimary,
     muted = c.textSecondary,
     rule = c.borderSubtle,

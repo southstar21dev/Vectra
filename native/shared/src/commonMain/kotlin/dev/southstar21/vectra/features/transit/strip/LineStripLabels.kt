@@ -95,6 +95,11 @@ internal fun timeToneColor(tone: TimeTone): Color = when (tone) {
     TimeTone.Live -> Vectra.monitor.live
 }
 
+/** The colour of a departure's minutes by the one rule, from whether it is live and the printed [label]. */
+@Composable
+internal fun departureColor(isPredicted: Boolean, label: String): Color =
+    timeToneColor(timeTone(if (isPredicted) StripTimeKind.Live else StripTimeKind.Scheduled, arriving = false, label = label))
+
 /** A vehicle's time colour: green when it is (nearly) here, the board's ink otherwise. */
 @Composable
 internal fun stripTimeColor(v: StripVehicle): Color = timeToneColor(timeTone(v.kind, v.arriving, v.label, v.faded))
@@ -219,19 +224,6 @@ private fun AlignedEndColumn(data: AlignedEndData, modifier: Modifier = Modifier
                     VText(v.sub, style = vtext(11.sp to 15.sp, Weight.Medium), color = c.textMuted, maxLines = 1)
                 }
             }
-        }
-    }
-}
-
-@Composable
-internal fun ForkEndRow(fork: StripFork, times: List<StripTime>) {
-    val c = Vectra.colors
-    val first = times.firstOrNull()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        VIcon(if (fork.heading > 0) RemixIcons.ArrowRightLine else RemixIcons.ArrowLeftLine, size = 12.dp, tint = directionArrowTint(c))
-        VText(fork.destination, Modifier.weight(1f), vtext(12.sp to 16.sp, Weight.Medium), c.textSecondary, maxLines = 1)
-        if (first != null) {
-            VText(first.label, style = vtext(12.sp to 16.sp, Weight.Bold, mono = true).tnum(), color = c.textSecondary, maxLines = 1)
         }
     }
 }

@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit.nearby
 
 import androidx.compose.foundation.border
+import dev.southstar21.vectra.features.transit.strip.departureColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,7 +123,7 @@ internal val ChipGap = 8.dp
 internal fun DepartureChip(chip: NearbyChip, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false, dimmed: Boolean = false) {
     val c = Vectra.colors
     val shape = RoundedCornerShape(10.dp)
-    val ink = if (chip.isPredicted) c.tints.emerald.text else c.textPrimary
+    val ink = departureColor(chip.isPredicted, formatPrimeCountdown(chip.countdown))
     Row(
         modifier
             .graphicsLayer { alpha = if (dimmed) 0.4f else 1f }
@@ -185,8 +186,7 @@ private fun BoardRow(items: List<RadarDepartureItem>) {
                 vtext(13.sp to 16.sp, if (i == 0) Weight.Extrabold else Weight.Semibold, mono = true),
                 when {
                     d == null -> c.textMuted
-                    i == 0 && d.isPredicted -> c.tints.emerald.text
-                    i == 0 -> c.textPrimary
+                    i == 0 -> departureColor(d.isPredicted, formatPrimeCountdown(d.countdownMinutes))
                     else -> c.textMuted
                 },
                 maxLines = 1,
