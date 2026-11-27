@@ -2,7 +2,6 @@ package dev.southstar21.vectra.features.schedule
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,11 +31,9 @@ import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
 import dev.southstar21.vectra.core.designsystem.components.TopBar
 import dev.southstar21.vectra.core.designsystem.components.TopBarSubtitle
 import dev.southstar21.vectra.core.designsystem.components.VBackHandler
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +70,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private data class NeptunStep(val title: String, val body: AnnotatedString, val image: List<String>, val alt: String)
 
@@ -241,15 +242,11 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
                             }
                         }
                         if (parseErrors.isNotEmpty()) {
-                            val shape = Radius.Panel
-                            Row(
-                                Modifier.fillMaxWidth().background(Palette.Amber500.copy(alpha = 0.1f), shape).border(1.dp, Palette.Amber500.copy(alpha = 0.3f), shape)
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                VIcon(RemixIcons.ErrorWarningLine, tint = c.tints.amber.text)
-                                VText("${plural(parseErrors.size, "item")} couldn’t be read and will be skipped.", style = vtext(TypeScale.Caption), color = c.textSecondary)
-                            }
+                            Banner(
+                                tone = BannerTone.Amber,
+                                icon = RemixIcons.ErrorWarningLine,
+                                title = "${plural(parseErrors.size, "item")} couldn’t be read and will be skipped.",
+                            )
                         }
                         if (previewCourses.isNotEmpty()) {
                             FormGroup(rows = previewCourses.values.map { evt ->
@@ -360,19 +357,7 @@ internal fun NeptunImportScreen(repo: ScheduleRepository, auth: AuthRepository, 
 
 @Composable
 private fun ErrorBanner(message: String) {
-    val c = Vectra.colors
-    val shape = Radius.Panel
-    Row(
-        Modifier.fillMaxWidth().background(Palette.Rose500.copy(alpha = 0.1f), shape).border(1.dp, Palette.Rose500.copy(alpha = 0.3f), shape)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        VIcon(RemixIcons.ErrorWarningLine, Modifier.padding(top = 2.dp), size = 20.dp, tint = c.tints.red.text)
-        Column {
-            VText("Couldn’t sync", style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
-            VText(message, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption, lineHeight = 19.5.sp), c.textSecondary)
-        }
-    }
+    Banner(tone = BannerTone.Red, icon = RemixIcons.ErrorWarningLine, title = "Couldn’t sync", body = message)
 }
 
 @OptIn(ExperimentalEncodingApi::class)

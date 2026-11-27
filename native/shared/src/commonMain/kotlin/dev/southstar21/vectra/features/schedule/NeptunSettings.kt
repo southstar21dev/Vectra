@@ -10,8 +10,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +24,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +38,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
 import dev.southstar21.vectra.core.designsystem.components.Toaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
@@ -53,7 +48,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.plannerCard
@@ -66,6 +60,10 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** "Synced 5 minutes ago" from the profile's neptun_last_sync. */
 internal fun syncCounterText(lastSyncMs: Long?, nowMs: Long): String {
@@ -283,28 +281,12 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         if (status == NeptunSyncStatus.Error && !syncError.isNullOrEmpty()) {
             RowDivider()
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                val shape = Radius.Control
-                Row(
-                    Modifier.fillMaxWidth().background(Palette.Red500.copy(alpha = 0.1f), shape).border(1.dp, c.tints.red.border, shape).padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    VIcon(RemixIcons.ErrorWarningLine, size = 20.dp, tint = c.tints.red.text)
-                    Column {
-                        VText("Sync failed", style = vtext(TypeScale.Body, Weight.Bold, Tracking.Wide), color = c.tints.red.text)
-                        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            VText(syncError!!, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = c.tints.red.text.copy(alpha = 0.9f))
-                            Column(Modifier.drawBehind {
-                                drawLine(Palette.Red500.copy(alpha = 0.2f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
-                            }.padding(top = 12.dp)) {
-                                VText(
-                                    "The automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
-                                    style = vtext(TypeScale.Caption, lineHeight = 16.5.sp),
-                                    color = c.tints.red.text.copy(alpha = 0.8f),
-                                )
-                            }
-                        }
-                    }
-                }
+                Banner(
+                    tone = BannerTone.Red,
+                    icon = RemixIcons.ErrorWarningLine,
+                    title = "Sync failed",
+                    body = syncError!! + "\n\nThe automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
+                )
             }
         }
     }
