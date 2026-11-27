@@ -57,6 +57,7 @@ import dev.southstar21.vectra.features.transit.parseAlerts
 import dev.southstar21.vectra.features.transit.rememberNowMillis
 import dev.southstar21.vectra.features.transit.rememberOnline
 import kotlinx.coroutines.delay
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 internal val StripCardShape = Radius.Card
 
@@ -113,7 +114,7 @@ internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker,
     val q = live.arrivalsQuery
     val updatedAt = q.dataUpdatedAt.takeIf { it > 0 }
     val frozen = isArrivalsStale(updatedAt, now, offline)
-    val metro = tracker.routeType == "SUBWAY"
+    val metro = tracker.routeType == RouteType.Subway
     // Enriched: the metro, which reports no GPS, gets its timetable-estimated position.
     val dirs = remember(live.enriched) { live.enriched.map { it.toStripDirection() } }
     val model = remember(dirs, now, metro, frozen) { buildStripModel(dirs, now, metro, frozen) }

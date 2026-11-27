@@ -33,6 +33,7 @@ import dev.southstar21.vectra.features.transit.route.RouteMapSecondaryLine
 import dev.southstar21.vectra.features.transit.route.RouteMapStop
 import dev.southstar21.vectra.features.transit.route.RouteMapVehicle
 import dev.southstar21.vectra.features.transit.targetDirectionIdFor
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Data landed and the latest fetch did not fail. */
 internal val QueryState<*>.isSuccess: Boolean get() = data != null && !isError
@@ -262,7 +263,7 @@ internal fun rememberLiveRoute(feeds: TransitFeeds, tracker: TransitTracker?, tr
     val approxNowMs = now / 10_000 * 10_000
     val enriched = remember(directions, tracker?.routeType, approxNowMs) {
         directions.map { d ->
-            val location = if (tracker?.routeType == "SUBWAY" && d.vehicles.isEmpty() && d.polyline.size >= 2) {
+            val location = if (tracker?.routeType == RouteType.Subway && d.vehicles.isEmpty() && d.polyline.size >= 2) {
                 approximateVehiclePosition(ApproximateVehicleInput(d.stopTimes, d.polyline, approxNowMs, 0))
             } else null
             val approxVehicle = location?.let { RouteMapVehicle(d.tripId ?: "approx", it, isApproximate = true) }

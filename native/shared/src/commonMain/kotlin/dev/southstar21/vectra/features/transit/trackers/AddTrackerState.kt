@@ -30,6 +30,7 @@ import dev.southstar21.vectra.features.transit.sortRoutes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** A stop the By stop flow can open: a curated quick pick or any catalog stop. */
 internal data class PickedStop(val id: String, val name: String, val group: String?)
@@ -195,7 +196,7 @@ internal class AddTrackerState(
         val line = stop.group
         val routeId = MetroRouteIds[line] ?: return null
         val colors = MetroFallbackColorsByLine.getValue(line)
-        return FutarRoute(id = routeId, shortName = line, description = "", type = "SUBWAY", color = colors.color, textColor = colors.textColor)
+        return FutarRoute(id = routeId, shortName = line, description = "", type = RouteType.Subway, color = colors.color, textColor = colors.textColor)
     }
 
     fun selectStop(stopId: String) {

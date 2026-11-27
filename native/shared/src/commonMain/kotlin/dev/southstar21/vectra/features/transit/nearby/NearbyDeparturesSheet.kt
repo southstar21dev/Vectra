@@ -96,6 +96,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import dev.southstar21.vectra.core.designsystem.theme.tappable
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 private const val SheetFraction = 0.72f
 private const val PeekVisibleFraction = 0.3f
@@ -104,10 +105,10 @@ private data class ModeChip(val id: String, val label: String)
 
 private val ModeChips = listOf(
     ModeChip("ALL", "All"),
-    ModeChip("SUBWAY", "Metro"),
-    ModeChip("TRAM", "Tram"),
-    ModeChip("BUS", "Bus"),
-    ModeChip("TROLLEYBUS", "Trolley"),
+    ModeChip(RouteType.Subway, "Metro"),
+    ModeChip(RouteType.Tram, "Tram"),
+    ModeChip(RouteType.Bus, "Bus"),
+    ModeChip(RouteType.Trolleybus, "Trolley"),
 )
 
 @Immutable
