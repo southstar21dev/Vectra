@@ -139,6 +139,9 @@ fun DateField(
 /** A [LocalDate] as its ISO text, which a saved instance state can hold. */
 internal val LocalDateSaver = Saver<LocalDate, String>(save = { it.toString() }, restore = LocalDate::parse)
 
+/** Like [LocalDateSaver], for a day that may not be picked yet (empty text). */
+private val NullableLocalDateSaver = Saver<LocalDate?, String>(save = { it?.toString().orEmpty() }, restore = { it.takeIf(String::isNotEmpty)?.let(LocalDate::parse) })
+
 /** "Fri, 30 Oct 2026". */
 fun formatLongDate(date: LocalDate): String =
     "${WeekdayShort[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number).take(3)} ${date.year}"
@@ -172,7 +175,7 @@ fun DatePickerSheet(
         haptics.tick()
         month = if (months > 0) month.plus(DatePeriod(months = months)) else month.minus(DatePeriod(months = -months))
     }
-    var picked by rememberSaveable(open, stateSaver = LocalDateSaver) { mutableStateOf(selected ?: today) }
+    var picked by rememberSaveable(open, stateSaver = NullableLocalDateSaver) { mutableStateOf(selected) }
     VSheet(open, onDismiss, title = title) {
         SheetHeader(title, onDismiss)
         Column(Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 8.dp)) {
@@ -249,7 +252,7 @@ fun DatePickerSheet(
                 if (onClear != null) VButton("Clear", onClear, variant = ButtonVariant.Ghost)
                 VButton("Today", { picked = today; month = LocalDate(today.year, today.month, 1) }, variant = ButtonVariant.Outline)
             },
-            primary = { VButton("Done", { onPick(picked) }) },
+            primary = { VButton("Done", { picked?.let(onPick) }, enabled = picked != null) },
         )
     }
 }
