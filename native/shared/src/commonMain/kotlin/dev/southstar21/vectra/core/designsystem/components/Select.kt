@@ -101,7 +101,7 @@ fun <T> VSelect(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) VIcon(icon, tint = lerp(c.textMuted, c.accentPrimary, lit))
-        VText(selected?.label.orEmpty(), Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textPrimary, maxLines = 1)
+        VText(selected?.label.orEmpty(), Modifier.weight(1f), vtext(TypeScale.BodyLarge), c.textPrimary, maxLines = 1)
         VIcon(
             RemixIcons.ArrowDownSLine,
             Modifier.rotate(chevron),
