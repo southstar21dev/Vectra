@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
@@ -45,7 +44,6 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 @Immutable
 class SetupItem(
     val icon: ImageVector,
-    val tint: Color,
     val title: String,
     val subtitle: String,
     val done: Boolean?,
@@ -125,7 +123,7 @@ private fun SetupRow(item: SetupItem, primary: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { VIcon(item.icon, size = 18.dp, tint = item.tint) }
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { VIcon(item.icon, size = 18.dp, tint = c.textSecondary) }
         Column(Modifier.weight(1f)) {
             VText(item.title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
             VText(item.subtitle, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption), c.textSecondary)

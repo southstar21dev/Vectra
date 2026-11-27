@@ -65,10 +65,31 @@ private final class PassthroughView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard let tabs else { return nil }
+        // iOS 26 lets the tap that dismisses a menu through to what's underneath; swallow it.
+        if tabs.menuOpen { return self }
         guard tabs.isInteractive else { return nil }
         let bar = tabs.tabBar
         guard bar.point(inside: convert(point, to: bar), with: event) || tabs.sideActionButtonHit(convert(point, to: tabs.view)) else { return nil }
         return super.hitTest(point, with: event)
+    }
+
+    // The swallowed tap is the one that dismissed the menu; once it ends, the app takes touches again.
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { tabs?.menuOpen = false }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { tabs?.menuOpen = false }
+}
+
+/// A button whose menu reports when it opens and closes, so the host can shield the app from the dismissing tap.
+private final class MenuButton: UIButton {
+    var onMenuVisibility: ((Bool) -> Void)?
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+        super.contextMenuInteraction(interaction, willDisplayMenuFor: configuration, animator: animator)
+        onMenuVisibility?(true)
+    }
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+        super.contextMenuInteraction(interaction, willEndFor: configuration, animator: animator)
+        onMenuVisibility?(false)
     }
 }
 
@@ -95,19 +116,32 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
             return
         }
         items = newItems
+        imagesSelection = nil
         mainTabs = newItems.enumerated().map { index, item in
-            let tab = UITab(title: item.label, image: UIImage(systemName: item.sfSymbol), identifier: "tab.\(index).\(item.label)") { _ in ClearPage() }
-            Self.applySelectedImage(to: tab, symbol: item.sfSymbol)
-            return tab
+            UITab(title: item.label, image: Self.tabImage(item.sfSymbol, selected: false), identifier: "tab.\(index).\(item.label)") { _ in ClearPage() }
         }
     }
 
-    /// One rule for every tab: the outline symbol while idle, its filled variant (`<name>.fill`) when selected,
-    /// the outline again for a symbol that has no fill. UITab.selectedImage is iOS 26.1 API and CI may build
-    /// with an older SDK, so it is set by key where the tab has it; before that the bar fills symbols on its own.
-    private static func applySelectedImage(to tab: UITab, symbol: String) {
-        let selected = UIImage(systemName: symbol + ".fill") ?? UIImage(systemName: symbol)
-        if tab.responds(to: NSSelectorFromString("setSelectedImage:")) { tab.setValue(selected, forKey: "selectedImage") }
+    /// One rule for every tab: the outline symbol while idle, its filled variant (`<name>.fill`) when
+    /// selected, the outline again for a symbol that has no fill. The images are flattened to template
+    /// bitmaps: the iOS 26 tab bar swaps a live SF Symbol for its fill variant in every state.
+    private static func tabImage(_ symbol: String, selected: Bool) -> UIImage? {
+        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular, scale: .large)
+        let live = (selected ? UIImage(systemName: symbol + ".fill", withConfiguration: config) : nil)
+            ?? UIImage(systemName: symbol, withConfiguration: config)
+        guard let live = live?.withTintColor(.black, renderingMode: .alwaysOriginal) else { return nil }
+        let flat = UIGraphicsImageRenderer(size: live.size, format: live.imageRendererFormat).image { _ in live.draw(at: .zero) }
+        return flat.withRenderingMode(.alwaysTemplate)
+    }
+
+    private var imagesSelection: Int?
+
+    private func refreshTabImages(selected: Int) {
+        guard imagesSelection != selected else { return }
+        imagesSelection = selected
+        for (index, tab) in mainTabs.enumerated() where items.indices.contains(index) {
+            tab.image = Self.tabImage(items[index].sfSymbol, selected: index == selected)
+        }
     }
 
     /// The + sits apart from the bar, in the slot iOS gives a search tab; it opens the page's actions.
@@ -131,14 +165,15 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
     /// Down the side the + is a glass button of the app's own, just above the tabs. As a system tab it
     /// would shove the whole bar up or down each time it comes and goes with the page, and iOS draws
     /// that tab's glass where it can't be faded; this one simply fades in and out.
-    private lazy var sideActionButton: UIButton = {
+    private lazy var sideActionButton: MenuButton = {
         var config: UIButton.Configuration
         if #available(iOS 26.0, *) { config = .glass() } else { config = .gray() }
         config.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold))
         config.baseForegroundColor = .label
         config.cornerStyle = .capsule
-        let button = UIButton(configuration: config)
+        let button = MenuButton(configuration: config)
         button.showsMenuAsPrimaryAction = true
+        button.onMenuVisibility = { [weak self] open in self?.menuVisibilityChanged(open) }
         button.accessibilityLabel = actionTab.title
         button.accessibilityHint = "Shows what you can add on this page"
         button.alpha = 0
@@ -148,13 +183,26 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
 
     /// An invisible button over the + tab. A system tab can't carry a menu, so the tap on it lands here and
     /// opens the same native menu the side + shows.
-    private lazy var actionMenuAnchor: UIButton = {
-        let button = UIButton(type: .custom)
+    private lazy var actionMenuAnchor: MenuButton = {
+        let button = MenuButton(type: .custom)
+        button.onMenuVisibility = { [weak self] open in self?.menuVisibilityChanged(open) }
         button.showsMenuAsPrimaryAction = true
         button.isAccessibilityElement = false
         button.isHidden = true
         return button
     }()
+
+    /// The + menu is up, or just left: the overlay then shields the app from the tap that dismissed it.
+    var menuOpen = false
+
+    private func menuVisibilityChanged(_ open: Bool) {
+        if open {
+            menuOpen = true
+        } else {
+            // The shielded tap's end releases it; this covers a dismissal that has no tap (an action ran).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.menuOpen = false }
+        }
+    }
 
     var isInteractive: Bool { !hidden && covered < 0.01 && state != nil }
 
@@ -263,7 +311,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
             setTabs(wanted, animated: animated)
         }
         showSideActionButton(vertical && !state.actions.isEmpty, animated: animated)
-        let menu = Self.actionsMenu(state.actions)
+        let menu = Self.actionsMenu(state.actions, accent: Self.color(argb: state.accentArgb))
         sideActionButton.menu = menu
         actionMenuAnchor.menu = menu
         placeActionMenuAnchor()
@@ -271,6 +319,7 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
         if mainTabs.indices.contains(index), selectedTab !== mainTabs[index] {
             selectedTab = mainTabs[index]
         }
+        refreshTabImages(selected: index)
 
         view.tintColor = Self.color(argb: state.accentArgb)
         view.overrideUserInterfaceStyle = state.dark ? .dark : .light
@@ -388,11 +437,13 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
 
     /// The + menu as a native UIMenu. The shared list runs from the least to the most important action; a menu
     /// that opens above its button lists its first element nearest the button, so the primary one goes first.
-    private static func actionsMenu(_ actions: [SystemNavbarAction]) -> UIMenu {
+    private static func actionsMenu(_ actions: [SystemNavbarAction], accent: UIColor) -> UIMenu {
         UIMenu(children: actions.reversed().map { action in
             UIAction(
                 title: action.label,
-                image: UIImage(systemName: action.sfSymbol),
+                image: UIImage(systemName: action.sfSymbol)?.withTintColor(
+                    action.id == actions.last?.id ? accent : .label, renderingMode: .alwaysOriginal
+                ),
                 attributes: action.disabled ? .disabled : []
             ) { _ in IosTabBar.shared.runAction(id: action.id) }
         })
