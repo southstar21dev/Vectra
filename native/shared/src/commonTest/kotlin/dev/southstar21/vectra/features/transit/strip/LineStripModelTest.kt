@@ -202,16 +202,17 @@ class LineStripModelTest {
 
     @Test
     fun anExtraHeadingIsARowLikeTheOthersWithItsOwnTimes() {
-        val dirs = listOf(dir("Újbuda", 4, 1.0), dir("Móricz", 9, 2.0), dir("Széll Kálmán tér", 1, 1.5).copy(later = listOf(arrival(14, true, "S"))))
+        val dirs = listOf(dir("Újbuda", 4, 1.0).copy(later = listOf(arrival(14, true, "Ú"))), dir("Móricz", 9, 2.0), dir("Széll Kálmán tér", 1, 1.5))
         val m = buildStripModel(dirs, now, metro = false, frozen = false)
         val extra = extraRows(extraDirections(dirs), now, metro = false, frozen = false)
         val rows = slimDirectionEntries(m, extra, showNext = true)
         assertEquals(3, rows.size)
         val last = rows.last()
         assertEquals(extra.single().destination, last.destination)
-        assertEquals("9'", last.vehicle.label)
+        assertEquals("4'", last.vehicle.label)
         // A row with fewer departures leaves its later columns empty.
-        assertTrue(last.nextTimes.size <= SlimLaterColumns)
+        assertEquals(listOf("14'"), last.nextTimes.map { it.label })
+        assertTrue(rows.take(2).all { it.nextTimes.size <= SlimLaterColumns })
         assertEquals(StripTimeKind.Live, last.vehicle.kind)
     }
 

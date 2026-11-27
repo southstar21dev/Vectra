@@ -370,17 +370,29 @@ private fun StopsSection(tracker: TransitTracker, routeColor: String, stopId: St
     var showAll by rememberSaveable(tracker.id) { mutableStateOf(false) }
     val dirIndex = directionTabIndex(directions.map(::directionLabel), picked)
     Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 24.dp)) {
+        val labels = directions.map(::directionLabel)
+        val stacked = directions.size > 1 && directionTabsStacked(labels)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             VText("Stops", style = vtext(20.sp to 24.sp, Weight.Bold), color = c.textPrimary)
             Spacer(Modifier.weight(1f))
-            if (directions.size > 1) {
+            if (directions.size > 1 && !stacked) {
                 VTabs(
                     selected = dirIndex,
                     options = directions.indices.toList(),
-                    onSelect = { picked = directionLabel(directions[it]) },
+                    onSelect = { picked = labels[it] },
                     modifier = Modifier.widthIn(max = 230.dp),
-                ) { i, _ -> VText(directionLabel(directions[i]), maxLines = 1) }
+                ) { i, _ -> VText(labels[i], maxLines = 1) }
             }
+        }
+        // Names too long for two-up tabs: one option per row, the full name on each.
+        if (stacked) {
+            VTabs(
+                selected = dirIndex,
+                options = directions.indices.toList(),
+                onSelect = { picked = labels[it] },
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                columns = 1,
+            ) { i, _ -> VText(labels[i], maxLines = 2) }
         }
         val d = directions.getOrNull(dirIndex)
         when {
