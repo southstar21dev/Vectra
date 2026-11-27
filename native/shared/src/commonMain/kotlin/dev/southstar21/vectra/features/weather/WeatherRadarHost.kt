@@ -7,7 +7,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.CardGrowOverlay
-import dev.southstar21.vectra.core.maps.releaseRadarTileCache
 import dev.southstar21.vectra.navigation.AppNavigator
 
 /**

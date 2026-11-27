@@ -34,7 +34,6 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.features.transit.data.DeviceLocation
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
-import dev.southstar21.vectra.features.transit.demo.DemoSeedEffect
 import dev.southstar21.vectra.features.transit.nearby.NearbyDeparturesList
 import dev.southstar21.vectra.features.transit.nearby.RadarDepartureItem
 import dev.southstar21.vectra.features.transit.nearby.groupByLine
@@ -72,7 +71,7 @@ internal fun TransitDashboardWidget(
     val modeFilter = remember(profile?.preferences) { parseModeFilter(profile?.preferences) }
     val hasPinned = favorites.isNotEmpty()
     val nearby = rememberNearbyData(repo, deviceLocation, modeFilter, departures = !hasPinned)
-    val offline = !rememberOnline(repo.connectivity)
+    val offline = !rememberOnline(repo.online)
     val navigator = LocalNavigator.current
     val openNearby = { navigator.nearbyMap = CardLaunch(null) }
 
@@ -158,6 +157,5 @@ internal fun TransitSectionHeader(title: String, action: String?, modifier: Modi
 internal fun rememberFavoriteTrackers(repo: TransitRepository): List<TransitTracker> {
     val state = repo.trackersQuery.collect(Unit)
     val trackers = state.data.orEmpty()
-    DemoSeedEffect(repo, trackers, state.isFetched && state.data != null)
     return remember(trackers) { trackers.filter { it.isFavorite } }
 }

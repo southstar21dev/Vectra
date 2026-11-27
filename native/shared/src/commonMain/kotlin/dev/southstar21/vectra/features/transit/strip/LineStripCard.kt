@@ -57,6 +57,7 @@ import dev.southstar21.vectra.features.transit.parseAlerts
 import dev.southstar21.vectra.features.transit.rememberNowMillis
 import dev.southstar21.vectra.features.transit.rememberOnline
 import kotlinx.coroutines.delay
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 internal val StripCardShape = Radius.Card
 
@@ -109,11 +110,11 @@ internal fun divertedDestination(savedHeadsign: String?, arrivals: List<Arrival>
 
 @Composable
 internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker, stops: List<TrackerStop>, stop: TrackerStop, now: Long, offline: Boolean): StopStrip {
-    val live = rememberLiveRoute(repo, tracker, stops, stop, now)
+    val live = rememberLiveRoute(repo.feeds, tracker, stops, stop, now)
     val q = live.arrivalsQuery
     val updatedAt = q.dataUpdatedAt.takeIf { it > 0 }
     val frozen = isArrivalsStale(updatedAt, now, offline)
-    val metro = tracker.routeType == "SUBWAY"
+    val metro = tracker.routeType == RouteType.Subway
     // Enriched: the metro, which reports no GPS, gets its timetable-estimated position.
     val dirs = remember(live.enriched) { live.enriched.map { it.toStripDirection() } }
     val model = remember(dirs, now, metro, frozen) { buildStripModel(dirs, now, metro, frozen) }
@@ -155,7 +156,7 @@ internal fun LineStripCard(
     revealIndex: Int = 0,
 ) {
     val now = rememberNowMillis(5_000)
-    val offline = !rememberOnline(repo.connectivity)
+    val offline = !rememberOnline(repo.online)
     val stops = remember(tracker) { getTrackerStops(tracker) }
     val strips = stops.map { stop -> key(stop.stopId) { rememberStopStrip(repo, tracker, stops, stop, now, offline) } }
 

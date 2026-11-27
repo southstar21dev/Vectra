@@ -119,7 +119,8 @@ private fun TodaySection(graph: AppGraph, topGap: Dp = 16.dp) {
     val scope = rememberCoroutineScope()
     val schedule = graph.scheduleRepository
     // Debug builds: the transit demo account gets a made-up week of classes.
-    DemoScheduleSeedEffect(schedule, graph.transitRepository.userEmail, graph.transitRepository.demoFeed)
+    val session by graph.auth.session.collectAsStateWithLifecycle()
+    DemoScheduleSeedEffect(schedule, session?.email, graph.config.isDebug)
     val events by schedule.events.collectAsStateWithLifecycle()
     val itemsState by schedule.itemsState.collectAsStateWithLifecycle()
     val conflicts by schedule.conflicts.collectAsStateWithLifecycle()

@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
 /**
  * Recolouring behind the `doppler://` scheme: RainViewer's tiles (it serves only its

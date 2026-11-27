@@ -227,7 +227,7 @@ private const val PeekChipStops = 3
 internal fun rememberPeekChips(repo: TransitRepository, nearby: NearbyStopsState): List<NearbyChip> {
     val located = nearby.status == NearbyLocationStatus.Tracking && nearby.position != null
     val stops = androidx.compose.runtime.remember(nearby.stops, located) { if (located) nearby.stops.take(PeekChipStops) else emptyList() }
-    val arrivals = rememberBatchStopArrivals(repo, stops.map { it.id })
+    val arrivals = rememberBatchStopArrivals(repo.feeds, stops.map { it.id })
     val routes = rememberCatalogRoutes(repo)
     val now = rememberNowMillis(30_000)
     return androidx.compose.runtime.remember(stops, arrivals, routes.data, now) {

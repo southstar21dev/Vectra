@@ -18,6 +18,7 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** A catalog stop with its straight-line distance from the anchor (meters). */
 internal data class NearbyStop(
@@ -247,11 +248,11 @@ internal fun buildExplorerMapStops(
     return out
 }
 
-/** Route-board order used when grouping boards at an individual stop. */
-private val BoardTypePriority = listOf("SUBWAY", "TRAM", "TROLLEYBUS", "BUS", "RAIL", "FERRY")
-
-/** Departure-sheet order: trams first, then metro, bus, trolley, etc. */
-private val RadarModePriority = listOf("TRAM", "SUBWAY", "BUS", "TROLLEYBUS", "RAIL", "FERRY")
+/**
+ * Departure-sheet order: trams first, then metro, bus, trolley, etc. Deliberately not [RouteType.Priority],
+ * which puts the metro first.
+ */
+private val RadarModePriority = listOf(RouteType.Tram, RouteType.Subway, RouteType.Bus, RouteType.Trolleybus, RouteType.Rail, RouteType.Ferry)
 
 /**
  * Natural route-name order: case/diacritic-insensitive, digit runs compared
@@ -359,8 +360,8 @@ internal fun parseAllNearbyBoards(data: FutarArrivalsResponse?, catalogRoutes: M
         )
     }
     return rows.sortedWith { a, b ->
-        val pa = BoardTypePriority.indexOf(a.routeType)
-        val pb = BoardTypePriority.indexOf(b.routeType)
+        val pa = RouteType.Priority.indexOf(a.routeType)
+        val pb = RouteType.Priority.indexOf(b.routeType)
         if (pa != pb) (if (pa == -1) 99 else pa) - (if (pb == -1) 99 else pb)
         else localeCompare(a.shortName, b.shortName)
     }

@@ -14,7 +14,7 @@ import dev.southstar21.vectra.features.transit.collect
 import dev.southstar21.vectra.features.transit.data.FutarRouteVariant
 import dev.southstar21.vectra.features.transit.data.FutarStop
 import dev.southstar21.vectra.features.transit.data.TrackerStop
-import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitFeeds
 import dev.southstar21.vectra.features.transit.rememberMultiStopArrivals
 import dev.southstar21.vectra.features.transit.route.RoutePreviewVehicle
 
@@ -83,10 +83,10 @@ internal fun rememberTrackerDraft(base: List<TrackerStop> = emptyList()): Tracke
  * nothing shows. Polls while [routeId] is set.
  */
 @Composable
-internal fun rememberPreviewVehicles(repo: TransitRepository, routeId: String?, stops: List<TrackerStop>): List<RoutePreviewVehicle> {
-    val vehiclesQuery = repo.vehicles.collect(routeId)
+internal fun rememberPreviewVehicles(feeds: TransitFeeds, routeId: String?, stops: List<TrackerStop>): List<RoutePreviewVehicle> {
+    val vehiclesQuery = feeds.vehicles.collect(routeId)
     val stopIds = remember(stops) { stops.map { it.stopId } }
-    val arrivals = rememberMultiStopArrivals(repo, stopIds)
+    val arrivals = rememberMultiStopArrivals(feeds, stopIds)
     val relevantTripIds = remember(stops, arrivals, routeId) { relevantTripIdsFor(routeId.orEmpty(), stops, arrivals) }
     return remember(vehiclesQuery.data, relevantTripIds) { previewVehiclesFrom(vehiclesQuery.data, relevantTripIds) }
 }

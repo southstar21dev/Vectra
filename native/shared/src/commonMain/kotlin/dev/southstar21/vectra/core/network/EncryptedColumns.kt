@@ -28,7 +28,13 @@ class EncryptedColumns(val names: List<String>) {
     /** Encrypts [values], which must hold exactly the declared columns, all at once. */
     suspend fun encrypt(values: Map<String, String?>, encrypt: suspend (String?) -> String?): Map<String, String?> {
         require(values.keys == names.toSet()) { "Columns written differ from the declared ones" }
-        return coroutineScope { names.map { name -> async { name to encrypt(values.getValue(name)) } }.awaitAll().toMap() }
+        return encryptSome(values, encrypt)
+    }
+
+    /** Like [encrypt] for an update that rewrites only some of the declared columns. */
+    suspend fun encryptSome(values: Map<String, String?>, encrypt: suspend (String?) -> String?): Map<String, String?> {
+        require(names.containsAll(values.keys)) { "Columns written are not all declared" }
+        return coroutineScope { values.map { (name, value) -> async { name to encrypt(value) } }.awaitAll().toMap() }
     }
 }
 

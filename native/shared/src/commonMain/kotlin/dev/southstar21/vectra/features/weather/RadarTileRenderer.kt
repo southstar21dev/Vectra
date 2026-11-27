@@ -1,5 +1,6 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.maps.decodeImage
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get

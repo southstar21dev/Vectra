@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.time.formatBudapestHm
 import dev.southstar21.vectra.features.transit.data.Arrival
 import dev.southstar21.vectra.features.transit.etaMinutes
 import kotlin.math.ceil
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Stops drawn on each side of your stop. */
 internal const val StripSideStops = 3
@@ -223,10 +224,10 @@ private fun placedVehicle(dist: Double, heading: Int, label: String, kind: Strip
 
 /** What the line's vehicles are called, for "No trams coming right now"; null for a generic line. */
 internal fun vehicleNoun(routeType: String?): String? = when (routeType) {
-    "TRAM" -> "trams"
-    "BUS", "COACH" -> "buses"
-    "TROLLEYBUS" -> "trolleybuses"
-    "SUBWAY", "RAIL", "SUBURBAN_RAILWAY" -> "trains"
-    "FERRY" -> "boats"
+    RouteType.Tram -> "trams"
+    RouteType.Bus, RouteType.Coach -> "buses"
+    RouteType.Trolleybus -> "trolleybuses"
+    RouteType.Subway, RouteType.Rail, RouteType.SuburbanRailway -> "trains"
+    RouteType.Ferry -> "boats"
     else -> null
 }

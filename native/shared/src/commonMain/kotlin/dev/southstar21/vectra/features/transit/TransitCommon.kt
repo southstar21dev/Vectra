@@ -53,11 +53,11 @@ import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import dev.southstar21.vectra.core.platform.Connectivity
+import kotlinx.coroutines.flow.StateFlow
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
 import dev.southstar21.vectra.features.transit.data.StopArrivalsEntry
-import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitFeeds
 import dev.southstar21.vectra.features.transit.data.toEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -99,7 +99,7 @@ internal val Vectra.monitor: MonitorInk
 internal fun rememberNowMillis(intervalMs: Long = 1000): Long = rememberPageClock(intervalMs, ::nowMs)
 
 @Composable
-internal fun rememberOnline(connectivity: Connectivity): Boolean = connectivity.online.collectAsStateWithLifecycle().value
+internal fun rememberOnline(online: StateFlow<Boolean>): Boolean = online.collectAsStateWithLifecycle().value
 
 /** Observe one query key (null = disabled). */
 @Composable
@@ -110,15 +110,15 @@ internal fun <K, T> LiveQuery<K, T>.collect(key: K?): QueryState<T> {
 
 /** Arrivals for several stops: one shared entry per stop; the network side batches. */
 @Composable
-internal fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<String?>, limit: Int? = null, enabled: Boolean = true): Map<String, StopArrivalsEntry> {
+internal fun rememberMultiStopArrivals(feeds: TransitFeeds, stopIds: List<String?>, limit: Int? = null, enabled: Boolean = true): Map<String, StopArrivalsEntry> {
     val ids = remember(stopIds) { stopIds.filterNotNull().filter { it.isNotEmpty() }.distinct() }
-    val flow: Flow<Map<String, QueryState<FutarArrivalsResponse>>> = remember(repo, ids, limit, enabled) {
+    val flow: Flow<Map<String, QueryState<FutarArrivalsResponse>>> = remember(feeds, ids, limit, enabled) {
         if (!enabled) flowOf(emptyMap())
         else if (limit != null) {
-            combine(ids.map { id -> repo.deepArrivals.observe(id to limit) }.ifEmpty { listOf(flowOf(QueryState())) }) { arr ->
+            combine(ids.map { id -> feeds.deepArrivals.observe(id to limit) }.ifEmpty { listOf(flowOf(QueryState())) }) { arr ->
                 if (ids.isEmpty()) emptyMap() else ids.zip(arr.toList()).toMap()
             }
-        } else repo.arrivals.observeMany(ids)
+        } else feeds.arrivals.observeMany(ids)
     }
     val states = flow.collectAsStateWithLifecycle(initialValue = emptyMap()).value
     return remember(ids, states) { ids.associateWith { (states[it] ?: QueryState()).toEntry() } }
@@ -130,10 +130,10 @@ internal fun rememberMultiStopArrivals(repo: TransitRepository, stopIds: List<St
  * still in view don't blank out and pop back.
  */
 @Composable
-internal fun rememberBatchStopArrivals(repo: TransitRepository, stopIds: List<String?>): Map<String, StopArrivalsEntry> {
+internal fun rememberBatchStopArrivals(feeds: TransitFeeds, stopIds: List<String?>): Map<String, StopArrivalsEntry> {
     val ids = remember(stopIds) { stopIds.filterNotNull().filter { it.isNotEmpty() }.distinct() }
     val key = remember(ids) { ids.sorted().joinToString(",") }
-    val q = repo.batchArrivals.collect(key.ifEmpty { null })
+    val q = feeds.batchArrivals.collect(key.ifEmpty { null })
     val last = remember { LastArrivals() }
     return remember(ids, q) {
         val loading = isBatchLoading(q, ids.isNotEmpty())

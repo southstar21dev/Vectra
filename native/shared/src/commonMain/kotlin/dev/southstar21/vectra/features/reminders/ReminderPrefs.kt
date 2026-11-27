@@ -5,6 +5,7 @@ import dev.southstar21.vectra.core.network.OneOrManySerializer
 import dev.southstar21.vectra.features.transit.findCombinedGroup
 import dev.southstar21.vectra.features.transit.formatRouteDisplayName
 import kotlinx.serialization.Serializable
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Settings saved when each leg held a single line. */
 object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
@@ -74,7 +75,7 @@ data class CommuteLeg(
     val query: DepartureQuery get() = DepartureQuery(stopId, stopName, routeId, headsign?.ifEmpty { null }, lineLabel)
 
     companion object {
-        private val LineTypeLabels = mapOf("TRAM" to "Tram", "BUS" to "Bus", "TROLLEYBUS" to "Trolley", "FERRY" to "Boat")
+        private val LineTypeLabels = mapOf(RouteType.Tram to "Tram", RouteType.Bus to "Bus", RouteType.Trolleybus to "Trolley", RouteType.Ferry to "Boat")
         private val SelfDescribing = Regex("^[MH]\\d+[A-Z]?$")
     }
 }
