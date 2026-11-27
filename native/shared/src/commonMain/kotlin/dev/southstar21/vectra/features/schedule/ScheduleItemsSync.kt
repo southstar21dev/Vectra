@@ -8,6 +8,7 @@ import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.util.exponentialBackoffMs
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -181,10 +182,10 @@ internal class ScheduleItemsSync(
                         }
                     }
                     if (merged != null) itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Throwable) {
-                    // Failed to load schedule items; the local cache stays on screen.
+                } catch (e: Throwable) {
+                    // Failed to load schedule items (or the shared class fetch was cancelled by someone
+                    // else); the local cache stays on screen.
+                    rethrowIfOwnCancellation(e)
                 }
             } finally {
                 _itemsLoading.value = false
@@ -368,9 +369,9 @@ internal class ScheduleItemsSync(
             syncRetryCount = 0
             retryJob?.cancel()
             return hasNewer
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: Throwable) {
+            // A cancelled shared class fetch is a failed pass to retry; only this pass's own cancellation ends it.
+            rethrowIfOwnCancellation(e)
             _itemSyncError.value = e.message ?: "Schedule changes are waiting to sync."
             // A refused app version won't pass sooner for retrying: wait the longest, queue kept.
             syncRetryCount = if (e is PocketBaseException && e.isUpdateRequired) MaxRetryShift else syncRetryCount + 1
@@ -528,9 +529,9 @@ internal class ScheduleItemsSync(
                     // Every read raced a commit: check against the newest local state, which has them.
                     current = currentLocal()
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
+            } catch (e: Throwable) {
+                // The check awaits a class fetch other callers share: its cancellation is not this save's.
+                rethrowIfOwnCancellation(e)
                 error("Could not check your latest schedule. Please try again or save while offline.")
             }
         }

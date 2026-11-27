@@ -4,6 +4,7 @@ import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.auth.SessionScope
 import dev.southstar21.vectra.core.network.isCiphertext
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import kotlinx.coroutines.CancellationException
@@ -197,9 +198,9 @@ class CourseTrackerRepository(
             // Local edits made while uploads were blocked, or kept from a session that expired
             // before they uploaded (the cache holds trackers newer than the cloud's): push the merged copy.
             if (gate.takeHeldBack(uid) || reconciled.trackers != parsed.trackers) pushMerged(uid, reconciled)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            // The write gate hands every waiter the outcome of the run that replaced its own.
+            rethrowIfOwnCancellation(e)
             // Keep the offline cache.
         }
     }
@@ -216,9 +217,8 @@ class CourseTrackerRepository(
         try {
             val enc = cipher.encrypt(serializeTrackerData(reconciled))
             gate.enqueue { cloud.upsert(uid, enc) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            rethrowIfOwnCancellation(e)
             gate.noteHeldBack(uid)
         }
     }
@@ -264,9 +264,8 @@ class CourseTrackerRepository(
                     }
                 }
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            rethrowIfOwnCancellation(e)
             // Stays in the offline cache; the next save or refresh carries it.
         } finally {
             _isSaving.value = false
@@ -398,9 +397,9 @@ class CourseTrackerRepository(
             if (uid != null && result.changed) {
                 try {
                     upload(uid, result.data, result.dropKeys)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Throwable) {
+                } catch (e: Throwable) {
+                    // The upload shares the write gate's outcome; a failure stays in the cache for the next one.
+                    rethrowIfOwnCancellation(e)
                 }
             }
         }

@@ -7,12 +7,12 @@ import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.network.PocketBaseException
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -262,10 +262,9 @@ class AuthRepository(
     suspend fun signOut() {
         try {
             withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } }
-        } catch (e: CancellationException) {
-            if (e !is TimeoutCancellationException) throw e
-        } catch (_: Throwable) {
-            // cleanup is best-effort
+        } catch (e: Throwable) {
+            // Cleanup is best-effort: a timeout or a listener's own failure still signs out.
+            rethrowIfOwnCancellation(e)
         }
         clear()
     }

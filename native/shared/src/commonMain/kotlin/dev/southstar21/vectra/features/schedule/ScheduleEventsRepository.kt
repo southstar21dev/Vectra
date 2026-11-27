@@ -12,6 +12,7 @@ import dev.southstar21.vectra.core.network.int
 import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.SessionScope
@@ -161,9 +162,9 @@ internal class ScheduleEventsRepository(
                 _events.value = fresh
                 _eventsError.value = null
                 eventsFetchedAt = Clock.System.now().toEpochMilliseconds()
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Throwable) {
+                // The fetch is shared: a cancellation that is not this load's own falls back to the cache like a failure.
+                rethrowIfOwnCancellation(e)
                 val cached = eventsCache.read(uid)
                 if (!cached.isNullOrEmpty()) _events.value = cached
                 else _eventsError.value = EVENTS_LOAD_FAILED
