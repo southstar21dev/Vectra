@@ -10,6 +10,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import dev.southstar21.vectra.core.designsystem.components.EmptyAction
+import dev.southstar21.vectra.core.designsystem.components.EmptyState
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.features.transit.data.DeviceLocation
 import dev.southstar21.vectra.features.transit.data.TransitRepository
@@ -67,7 +69,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -80,7 +81,6 @@ import dev.southstar21.vectra.core.designsystem.components.OfflineBanner
 import dev.southstar21.vectra.core.designsystem.components.Reveal
 import dev.southstar21.vectra.core.designsystem.components.SheetAction
 import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
-import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
@@ -358,21 +358,12 @@ private fun NoTrackersCard(onAdd: () -> Unit) {
     // What a tracker looks like: a greyed line with your stop and one vehicle on the way.
     val sample = remember { StripModel(vehicles = listOf(StripVehicle(1.4f, 1, null))) }
     val colors = stripColors(null, null, rememberDayColors().card, grey = true)
-    Column(
-        Modifier.fillMaxWidth().stripCardSurface().padding(horizontal = 20.dp, vertical = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        LineStrip(sample, colors, Modifier.padding(bottom = 6.dp), labels = false)
-        VText("No trackers yet", style = vtext(TypeScale.Title17, Weight.Bold), color = c.textPrimary)
-        VText(
-            "Pick a line and a stop, and it shows up here with its vehicles on the way.",
-            style = vtext(TypeScale.Meta13),
-            color = c.textSecondary,
-            align = TextAlign.Center,
-        )
-        VButton("Add a tracker", onClick = onAdd, Modifier.padding(top = 8.dp), icon = RemixIcons.AddLine)
-    }
+    EmptyState(
+        art = { LineStrip(sample, colors, labels = false) },
+        title = "No trackers yet",
+        body = "Pick a line and a stop, and it shows up here with its vehicles on the way.",
+        primary = EmptyAction("Add a tracker", onAdd, RemixIcons.AddLine),
+    )
 }
 
 /**
