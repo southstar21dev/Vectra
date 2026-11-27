@@ -11,13 +11,16 @@ class WidgetListsTest {
     private val tomorrow = "2026-11-11"
     private val midnight = 1_000 * 24 * HourMs
 
+    // 2026-11-10 07:00 in Budapest: the day the snapshot was written, so it still covers `today`.
+    private val generated = 1_794_290_400_000L
+
     private fun at(h: Double) = midnight + (h * HourMs).toLong()
 
     private fun session(title: String, from: Double, to: Double, kind: WidgetKind = WidgetKind.Lecture, day: String = today) =
         WidgetSession(title, "C.203", kind, at(from), at(to), day)
 
     private fun snapshot(vararg sessions: WidgetSession) =
-        WidgetSnapshot(generatedAtMs = midnight, signedIn = true, sessions = sessions.toList())
+        WidgetSnapshot(generatedAtMs = generated, signedIn = true, sessions = sessions.toList())
 
     private val done = session("Statistics", 8.0, 9.0)
     private val micro = session("Microeconomics", 10.0, 11.0)
