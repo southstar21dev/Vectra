@@ -321,7 +321,7 @@ private fun TitlePlacard(tracker: TransitTracker, stopName: String, isLive: Bool
     ) {
         RouteBadge(formatRouteDisplayName(tracker.routeShortName, tracker.routeId), tracker.routeColor, tracker.routeTextColor, size = RouteBadgeSize.Md)
         Column(Modifier.weight(1f, fill = false)) {
-            VText(stopName, style = vtext(15.sp to 19.sp, Weight.Bold), color = c.textPrimary, maxLines = 2)
+            VText(stopName, style = vtext(15.sp to 19.sp, Weight.Bold), color = c.textPrimary, maxLines = 6)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (isLive) {
                     LiveSignalIcon(size = 10.dp, tint = c.tints.emerald.text)

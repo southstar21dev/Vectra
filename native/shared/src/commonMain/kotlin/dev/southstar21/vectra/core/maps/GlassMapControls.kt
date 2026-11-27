@@ -25,7 +25,7 @@ import dev.southstar21.vectra.core.designsystem.theme.specularBorder
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 
 /**
- * Glass over a map that stays solid: the elevated glass colour at 99%, so the map's labels do not read
+ * Glass over a map that stays solid: the elevated glass colour, opaque, so the map's labels do not read
  * through a panel the way they do through plain [glass].
  */
 @Composable
@@ -33,7 +33,7 @@ fun Modifier.solidMapGlass(shape: Shape): Modifier {
     val c = Vectra.colors
     return this
         .boxShadow(shape, c.glassShadow.filter { !it.inset })
-        .background(c.glassBgElevated.copy(alpha = 0.99f), shape)
+        .background(c.glassBgElevated.copy(alpha = 1f), shape)
         .specularBorder(shape, c.glassBorder, c.glassBorderSpecular)
 }
 
