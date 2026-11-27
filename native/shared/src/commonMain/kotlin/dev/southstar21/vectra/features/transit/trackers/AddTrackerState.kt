@@ -173,8 +173,8 @@ internal class AddTrackerState(
 
     suspend fun loadCatalog() {
         try {
-            val r = repo.catalog.routes()
-            val s = repo.catalog.stops()
+            val r = repo.withCatalog { routes() }
+            val s = repo.withCatalog { stops() }
             catalogRoutes = r
             catalogStops = s
         } catch (e: CancellationException) {

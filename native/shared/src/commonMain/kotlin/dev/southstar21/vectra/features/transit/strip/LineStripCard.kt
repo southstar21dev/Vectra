@@ -109,7 +109,7 @@ internal fun divertedDestination(savedHeadsign: String?, arrivals: List<Arrival>
 
 @Composable
 internal fun rememberStopStrip(repo: TransitRepository, tracker: TransitTracker, stops: List<TrackerStop>, stop: TrackerStop, now: Long, offline: Boolean): StopStrip {
-    val live = rememberLiveRoute(repo, tracker, stops, stop, now)
+    val live = rememberLiveRoute(repo.feeds, tracker, stops, stop, now)
     val q = live.arrivalsQuery
     val updatedAt = q.dataUpdatedAt.takeIf { it > 0 }
     val frozen = isArrivalsStale(updatedAt, now, offline)
@@ -155,7 +155,7 @@ internal fun LineStripCard(
     revealIndex: Int = 0,
 ) {
     val now = rememberNowMillis(5_000)
-    val offline = !rememberOnline(repo.connectivity)
+    val offline = !rememberOnline(repo.online)
     val stops = remember(tracker) { getTrackerStops(tracker) }
     val strips = stops.map { stop -> key(stop.stopId) { rememberStopStrip(repo, tracker, stops, stop, now, offline) } }
 

@@ -27,6 +27,8 @@ object AppStartup {
         runSuspendCatching { graph.updateGate.loadStored() }
         startup.restored = true
         graph.watchdog.trigger()
+        // Debug builds only: gives the demo accounts their trackers whichever screen opens first.
+        graph.demoSeeder.start()
         // Neptun auto-sync starts from the repository's init, so it can't wait for a screen to ask.
         // A process started in the background (alarm, widget) never got here, so the timetable
         // refetch and the auto-sync it held back start now.

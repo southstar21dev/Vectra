@@ -152,9 +152,9 @@ internal fun AddTrackerScreen(repo: TransitRepository, onBack: () -> Unit) {
     val pane = state.pane
     val lineRoute = (pane as? AddTrackerPane.Line)?.route
     // Polled while the line view is open.
-    val previewVehicles = rememberPreviewVehicles(repo, lineRoute?.id, draft.stops)
+    val previewVehicles = rememberPreviewVehicles(repo.feeds, lineRoute?.id, draft.stops)
     val lineStopIds = remember(draft.stops, lineRoute) { if (lineRoute == null) emptyList() else draft.stops.map { it.stopId } }
-    val lineStopArrivals = rememberMultiStopArrivals(repo, lineStopIds)
+    val lineStopArrivals = rememberMultiStopArrivals(repo.feeds, lineStopIds)
     val now = rememberNowMillis(30_000)
 
     // Deeper panes enter from the right, Back brings the previous one in from the left.

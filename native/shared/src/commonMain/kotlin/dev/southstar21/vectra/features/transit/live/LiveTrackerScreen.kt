@@ -20,7 +20,7 @@ import dev.southstar21.vectra.features.transit.data.FutarTripStopTime
 import dev.southstar21.vectra.features.transit.data.FutarVehicle
 import dev.southstar21.vectra.features.transit.data.FutarVehiclesForRouteResponse
 import dev.southstar21.vectra.features.transit.data.TrackerStop
-import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitFeeds
 import dev.southstar21.vectra.features.transit.data.TransitTracker
 import dev.southstar21.vectra.features.transit.data.tripDetailsKey
 import dev.southstar21.vectra.features.transit.followingArrivals
@@ -108,10 +108,10 @@ internal class LiveRoute(
  * when nothing is departing), with live — or, on the metro, schedule-approximated — vehicles.
  */
 @Composable
-internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?, trackerStops: List<TrackerStop>, activeStop: TrackerStop?, now: Long): LiveRoute {
-    val arrivalsQuery = repo.arrivals.collect(activeStop?.stopId?.takeIf { it.isNotEmpty() })
-    val vehiclesQuery = repo.vehicles.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
-    val routeQuery = repo.routeDetails.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
+internal fun rememberLiveRoute(feeds: TransitFeeds, tracker: TransitTracker?, trackerStops: List<TrackerStop>, activeStop: TrackerStop?, now: Long): LiveRoute {
+    val arrivalsQuery = feeds.arrivals.collect(activeStop?.stopId?.takeIf { it.isNotEmpty() })
+    val vehiclesQuery = feeds.vehicles.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
+    val routeQuery = feeds.routeDetails.collect(tracker?.routeId?.takeIf { it.isNotEmpty() })
     val stopRefs = routeQuery.data?.data?.references?.stops.orEmpty()
     val routeVariants = routeQuery.data?.data?.entry?.variants.orEmpty()
     val targetDirectionId = remember(activeStop?.headsign, activeStop?.stopId, routeVariants, stopRefs) {
@@ -138,7 +138,7 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
         )
     }
     // While replacement buses stand in for the line, their positions come from their own route.
-    val replacementQuery = repo.vehicles.collect(remember(arrivals) { arrivals.firstOrNull { it.isReplacementBus }?.routeId })
+    val replacementQuery = feeds.vehicles.collect(remember(arrivals) { arrivals.firstOrNull { it.isReplacementBus }?.routeId })
     val routeVehicles = remember(vehiclesQuery.data, replacementQuery.data) {
         vehiclesQuery.data?.data?.list.orEmpty() + replacementQuery.data?.data?.list.orEmpty()
     }
@@ -162,9 +162,9 @@ internal fun rememberLiveRoute(repo: TransitRepository, tracker: TransitTracker?
     // Geometry: the tracked trips, with the route's variants as the fallback
     // (no departure, trip-details missing, …). Each trip is asked for on its own service day.
     fun tripKey(tripId: String?) = if (hasTrip) tripDetailsKey(tripId, arrivals.firstOrNull { it.tripId == tripId }?.serviceDate) else null
-    val tripQueryA = repo.tripDetails.collect(tripKey(leadTripId))
-    val tripQueryB = repo.tripDetails.collect(tripKey(otherTripId))
-    val tripQueryC = repo.tripDetails.collect(tripKey(thirdTripId))
+    val tripQueryA = feeds.tripDetails.collect(tripKey(leadTripId))
+    val tripQueryB = feeds.tripDetails.collect(tripKey(otherTripId))
+    val tripQueryC = feeds.tripDetails.collect(tripKey(thirdTripId))
 
     // Direction-aware fallback geometry for an arrival's headsign.
     fun variantEntryForArrival(arr: Arrival?, fallbackIdx: Int = 0): GeoEntry? {

@@ -32,6 +32,11 @@ import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.ReminderScheduler
 import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
 import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.FutarApi
+import dev.southstar21.vectra.features.transit.data.FutarSource
+import dev.southstar21.vectra.features.transit.data.RealFutarSource
+import dev.southstar21.vectra.features.transit.demo.DemoFutarSource
+import dev.southstar21.vectra.features.transit.demo.DemoSeeder
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.widgets.WidgetPublisher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
@@ -79,6 +84,7 @@ interface AppGraph {
     val courseTrackerRepository: CourseTrackerRepository
     val courseTrackerHooks: ScheduleCourseTrackerHooks
     val transitRepository: TransitRepository
+    val demoSeeder: DemoSeeder
     val deviceLocation: DeviceLocation
     val weatherRepository: WeatherRepository
     val reminders: ReminderScheduler
@@ -267,23 +273,34 @@ interface AppGraph {
         pb: PocketBaseClient,
         crypto: CryptoClient,
         kv: KeyValueStore,
+        auth: AuthRepository,
         connectivity: Connectivity,
-        location: LocationProvider,
         http: HttpClient,
         config: VectraConfig,
         catalogCache: CatalogDiskCache,
         scope: CoroutineScope,
-    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope, demoFeed = config.isDebug)
+    ): TransitRepository {
+        // The one place that decides whether the Futar feed is real or the demo one.
+        val live: FutarSource = RealFutarSource(FutarApi(pb), scope)
+        val source = if (config.isDebug) DemoFutarSource(live) else live
+        return TransitRepository(pb, crypto, kv, auth, connectivity, source, http, config.catalogOrigin, catalogCache, scope)
+    }
+
+    /** Debug builds seed the demo accounts' trackers; started from `AppStartup`, does nothing in release. */
+    @SingleIn(AppScope::class)
+    @Provides
+    fun provideDemoSeeder(auth: AuthRepository, transit: TransitRepository, scope: CoroutineScope, config: VectraConfig): DemoSeeder =
+        DemoSeeder(auth, transit, scope, enabled = config.isDebug)
 
     @SingleIn(AppScope::class)
     @Provides
     fun provideDeviceLocation(
-        transit: TransitRepository,
+        location: LocationProvider,
         kv: KeyValueStore,
         pb: PocketBaseClient,
         scope: CoroutineScope,
         weather: WeatherRepository,
-    ): DeviceLocation = DeviceLocation(transit.location, kv, scope, canPersist = { pb.auth.current != null }).apply {
+    ): DeviceLocation = DeviceLocation(location, kv, scope, canPersist = { pb.auth.current != null }).apply {
         // A grant from the Nearby map or its "Allow" button turns the Settings location switch on too.
         onUserGrant = weather::adoptDeviceGrant
     }

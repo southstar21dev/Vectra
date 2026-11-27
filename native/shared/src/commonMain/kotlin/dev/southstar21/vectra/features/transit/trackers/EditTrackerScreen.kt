@@ -129,8 +129,8 @@ internal fun EditTrackerScreen(repo: TransitRepository, trackerId: String, onBac
     }
 
     val stopIds = remember(stops) { stops.map { it.stopId } }
-    val stopArrivals = rememberMultiStopArrivals(repo, stopIds)
-    val previewVehicles = rememberPreviewVehicles(repo, routeId?.takeIf { it.isNotEmpty() }, stops)
+    val stopArrivals = rememberMultiStopArrivals(repo.feeds, stopIds)
+    val previewVehicles = rememberPreviewVehicles(repo.feeds, routeId?.takeIf { it.isNotEmpty() }, stops)
     val now = rememberNowMillis(30_000)
 
     val c = Vectra.colors
