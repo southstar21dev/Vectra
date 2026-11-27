@@ -130,11 +130,17 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
         let live = (selected ? UIImage(systemName: symbol + ".fill", withConfiguration: config) : nil)
             ?? UIImage(systemName: symbol, withConfiguration: config)
         guard let live = live?.withTintColor(.black, renderingMode: .alwaysOriginal) else { return nil }
-        let flat = UIGraphicsImageRenderer(size: live.size, format: live.imageRendererFormat).image { _ in live.draw(at: .zero) }
+        // A fixed scale: the symbol's own scale follows the traits it is created under, which are not
+        // settled before the bar's first layout, and a wrong one draws the icons oversized.
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 3
+        format.opaque = false
+        let flat = UIGraphicsImageRenderer(size: live.size, format: format).image { _ in live.draw(at: .zero) }
         return flat.withRenderingMode(.alwaysTemplate)
     }
 
     private var imagesSelection: Int?
+    private var settledImages = false
 
     private func refreshTabImages(selected: Int) {
         guard imagesSelection != selected else { return }
@@ -320,6 +326,16 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
             selectedTab = mainTabs[index]
         }
         refreshTabImages(selected: index)
+        // The first layout of the bar sizes the icons before it has settled (oversized, labels dropped);
+        // giving the tabs fresh images once it has makes it measure them again.
+        if !settledImages {
+            settledImages = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self else { return }
+                self.imagesSelection = nil
+                self.refreshTabImages(selected: Int(self.state?.selectedIndex ?? 0))
+            }
+        }
 
         view.tintColor = Self.color(argb: state.accentArgb)
         view.overrideUserInterfaceStyle = state.dark ? .dark : .light
