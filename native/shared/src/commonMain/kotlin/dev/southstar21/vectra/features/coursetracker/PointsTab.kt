@@ -68,23 +68,36 @@ import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import androidx.compose.runtime.setValue
 
 /**
- * One hue per grade everywhere a grade is drawn. [zone] is the scale bar's band: the grade's ink at a
- * light alpha, so every band keeps its own hue on a dark card instead of the 500 fill going maroon or ochre.
+ * One hue per grade everywhere a grade is drawn. [zone] is the scale bar's band: on a dark card the
+ * grade's light ink almost opaque, on a light card a clean mid hue, so no band turns maroon or ochre.
  */
 internal data class GradeTone(val fill: Color, val dim: Color, val zone: Color, val text: Color)
 
 internal fun gradeTone(grade: Int, c: VectraColors): GradeTone {
-    val (fill, tint) = when (grade) {
-        5 -> Fills.Emerald500 to c.tints.emerald
-        4 -> Fills.Sky500 to c.tints.sky
-        3 -> Fills.Amber500 to c.tints.amber
-        2 -> Fills.Orange500 to c.tints.orange
-        else -> Fills.Red500 to c.tints.red
+    val dark = c.isDark
+    val fill = when (grade) {
+        5 -> Fills.Emerald500
+        4 -> Fills.Sky500
+        3 -> Fills.Amber500
+        2 -> Fills.Orange500
+        else -> Fills.Red500
     }
-    return GradeTone(fill, fill.copy(alpha = 0.45f), tint.text.copy(alpha = ZoneAlpha), tint.text)
+    // Light mode: amber's shared ink is too close to orange's, so grade 3 reads in a mustard of its own.
+    val ink = when (grade) {
+        5 -> c.tints.emerald.text
+        4 -> c.tints.sky.text
+        3 -> if (dark) c.tints.amber.text else GradeThreeLightInk
+        2 -> c.tints.orange.text
+        else -> c.tints.red.text
+    }
+    val zone = if (dark) ink.copy(alpha = DarkZoneAlpha) else if (grade == 3) GradeThreeLightBand else fill.copy(alpha = LightZoneAlpha)
+    return GradeTone(fill, fill.copy(alpha = 0.45f), zone, ink)
 }
 
-private const val ZoneAlpha = 0.6f
+internal val GradeThreeLightInk = Color(0xFF7A5A00)
+private val GradeThreeLightBand = Color(0xFFEAB308)
+private const val DarkZoneAlpha = 0.9f
+private const val LightZoneAlpha = 0.9f
 
 /** Rounded to two decimals, printed without a trailing `.0`. */
 internal fun formatScore(value: Double): String = formatNumber(round(value * 100) / 100)
