@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
 /** Pixels faint enough to be edge antialiasing don't start a mix band. */
 private const val MixMinAlpha = 40

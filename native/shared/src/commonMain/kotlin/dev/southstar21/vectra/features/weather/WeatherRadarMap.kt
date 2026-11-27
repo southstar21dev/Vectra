@@ -1,8 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
 import androidx.compose.animation.core.RepeatMode
-import dev.southstar21.vectra.core.maps.RadarRenderMaxZoom
-import dev.southstar21.vectra.core.maps.dopplerTileUrl
 import dev.southstar21.vectra.core.maps.drawInPage
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
