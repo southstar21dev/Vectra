@@ -116,37 +116,8 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
             return
         }
         items = newItems
-        imagesSelection = nil
         mainTabs = newItems.enumerated().map { index, item in
-            UITab(title: item.label, image: Self.tabImage(item.sfSymbol, selected: false), identifier: "tab.\(index).\(item.label)") { _ in ClearPage() }
-        }
-    }
-
-    /// One rule for every tab: the outline symbol while idle, its filled variant (`<name>.fill`) when
-    /// selected, the outline again for a symbol that has no fill. The images are flattened to template
-    /// bitmaps: the iOS 26 tab bar swaps a live SF Symbol for its fill variant in every state.
-    private static func tabImage(_ symbol: String, selected: Bool) -> UIImage? {
-        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular, scale: .large)
-        let live = (selected ? UIImage(systemName: symbol + ".fill", withConfiguration: config) : nil)
-            ?? UIImage(systemName: symbol, withConfiguration: config)
-        guard let live = live?.withTintColor(.black, renderingMode: .alwaysOriginal) else { return nil }
-        // A fixed scale: the symbol's own scale follows the traits it is created under, which are not
-        // settled before the bar's first layout, and a wrong one draws the icons oversized.
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 3
-        format.opaque = false
-        let flat = UIGraphicsImageRenderer(size: live.size, format: format).image { _ in live.draw(at: .zero) }
-        return flat.withRenderingMode(.alwaysTemplate)
-    }
-
-    private var imagesSelection: Int?
-    private var settledImages = false
-
-    private func refreshTabImages(selected: Int) {
-        guard imagesSelection != selected else { return }
-        imagesSelection = selected
-        for (index, tab) in mainTabs.enumerated() where items.indices.contains(index) {
-            tab.image = Self.tabImage(items[index].sfSymbol, selected: index == selected)
+            UITab(title: item.label, image: UIImage(systemName: item.sfSymbol), identifier: "tab.\(index).\(item.label)") { _ in ClearPage() }
         }
     }
 
@@ -324,17 +295,6 @@ final class TabBarHost: UITabBarController, UITabBarControllerDelegate, UIGestur
         let index = Int(state.selectedIndex)
         if mainTabs.indices.contains(index), selectedTab !== mainTabs[index] {
             selectedTab = mainTabs[index]
-        }
-        refreshTabImages(selected: index)
-        // The first layout of the bar sizes the icons before it has settled (oversized, labels dropped);
-        // giving the tabs fresh images once it has makes it measure them again.
-        if !settledImages {
-            settledImages = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                guard let self else { return }
-                self.imagesSelection = nil
-                self.refreshTabImages(selected: Int(self.state?.selectedIndex ?? 0))
-            }
         }
 
         view.tintColor = Self.color(argb: state.accentArgb)
