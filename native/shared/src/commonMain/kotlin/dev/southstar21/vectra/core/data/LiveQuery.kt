@@ -1,16 +1,16 @@
 package dev.southstar21.vectra.core.data
 
 import dev.southstar21.vectra.core.util.exponentialBackoffMs
+import dev.southstar21.vectra.core.util.BackoffPolicy
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
+import dev.southstar21.vectra.core.util.retrying
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.time.nowMs
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -29,22 +29,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.Volatile
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
-
-/** One cached query's state. */
-data class QueryState<T>(
-    val data: T? = null,
-    /** First load with no data yet. */
-    val isLoading: Boolean = false,
-    /** Any request in flight (initial or background). */
-    val isFetching: Boolean = false,
-    val isError: Boolean = false,
-    val error: Throwable? = null,
-    /** When the current data landed (epoch ms), 0 when never. */
-    val dataUpdatedAt: Long = 0,
-    /** At least one fetch settled (success or failure). */
-    val isFetched: Boolean = false,
-)
 
 /** The longest a failing query waits between polls. */
 const val MaxPollBackoffMs = 5 * 60_000L
@@ -52,8 +36,7 @@ const val MaxPollBackoffMs = 5 * 60_000L
 /** The wait between polls: [intervalMs] when healthy, doubling per consecutive failed poll up to [MaxPollBackoffMs]. */
 fun pollIntervalMs(intervalMs: Long, consecutiveFailures: Int): Long {
     if (consecutiveFailures <= 0) return intervalMs
-    val backedOff = intervalMs.toDouble() * 2.0.pow(min(consecutiveFailures, 16))
-    return max(intervalMs, min(backedOff, MaxPollBackoffMs.toDouble()).toLong())
+    return max(intervalMs, exponentialBackoffMs(min(consecutiveFailures, 16), intervalMs, MaxPollBackoffMs))
 }
 
 /**
@@ -86,7 +69,8 @@ class LiveQuery<K, T>(
         val state = MutableStateFlow(QueryState<T>())
         var observers = 0
         var poll: Job? = null
-        var inflight: Deferred<T>? = null
+        /** The request in flight, shared by everyone who asks meanwhile. */
+        val flight = SingleFlight<Unit, T>()
         var invalidated = false
         /** Bumped by every invalidate, so a fetch that began before one cannot clear its flag. */
         var invalidations = 0
@@ -110,7 +94,7 @@ class LiveQuery<K, T>(
 
     private fun evictIdle() {
         val cap = maxIdleEntries ?: return
-        val idle = entries.entries.filter { it.value.observers == 0 && it.value.inflight == null }
+        val idle = entries.entries.filter { it.value.observers == 0 && it.value.flight.running == null }
         if (idle.size <= cap) return
         entries = entries - idle.sortedBy { it.value.lastUsed }.take(idle.size - cap).map { it.key }.toSet()
     }
@@ -137,10 +121,9 @@ class LiveQuery<K, T>(
         return combine(distinct.map { observe(it) }) { states -> distinct.zip(states.toList()).toMap() }
     }
 
-    private fun isStale(e: Entry): Boolean {
-        val s = e.state.value
-        return e.invalidated || s.dataUpdatedAt == 0L || clock() - s.dataUpdatedAt >= staleTimeMs
-    }
+    private val staleGate = StaleGate(staleTimeMs, clock)
+
+    private fun isStale(e: Entry): Boolean = staleGate.isStale(e.state.value.dataUpdatedAt, e.invalidated)
 
     private fun acquire(key: K): Entry {
         val e = entry(key)
@@ -202,52 +185,36 @@ class LiveQuery<K, T>(
     }
 
     /**
-     * Only ever called on [confined], so the job cannot start before [Entry.inflight] is set.
-     * The job clears that itself rather than its awaiter: one awaiter leaving must not hide
-     * a fetch that is still running from [clear].
+     * Only ever called on [confined]. The job resets the fetching flag itself rather than its awaiter:
+     * one awaiter leaving must not hide a fetch that is still running from [clear].
      */
-    private suspend fun fetchEntry(key: K, e: Entry): T {
-        e.inflight?.let { return it.await() }
-        val job = scope.async(confined) {
+    private suspend fun fetchEntry(key: K, e: Entry): T =
+        e.flight.join(Unit, scope, confined) {
             try {
                 fetchWithRetry(key, e)
             } finally {
-                if (e.inflight === coroutineContext[Job]) {
-                    e.inflight = null
-                    // A cancelled fetch must not leave the flag set.
-                    e.state.update { it.copy(isFetching = false, isLoading = false) }
-                }
+                // A cancelled fetch must not leave the flag set, nor touch a newer one's.
+                if (e.flight.isCurrent(coroutineContext[Job])) e.state.update { it.notFetching() }
             }
-        }
-        e.inflight = job
-        return job.await()
-    }
+        }.await()
 
     private suspend fun fetchWithRetry(key: K, e: Entry): T {
-        e.state.update { it.copy(isFetching = true, isLoading = it.data == null) }
+        e.state.update { it.fetching() }
         val invalidationsAtStart = e.invalidations
-        var attempt = 0
-        while (true) {
-            try {
-                val value = fetcher(key)
-                // An invalidate that arrived mid-flight is newer than this response.
-                e.invalidated = e.invalidations != invalidationsAtStart
-                e.failures = 0
-                e.lastSettledAt = clock()
-                e.state.value = QueryState(data = value, dataUpdatedAt = e.lastSettledAt, isFetched = true)
-                return value
-            } catch (c: CancellationException) {
-                throw c
-            } catch (t: Throwable) {
-                if (attempt >= retry || !shouldRetry(t)) {
-                    e.failures++
-                    e.lastSettledAt = clock()
-                    e.state.update { it.copy(isFetching = false, isLoading = false, isError = true, error = t, isFetched = true) }
-                    throw t
-                }
-                delay(exponentialBackoffMs(attempt, 1000L, 30_000L))
-                attempt++
-            }
+        try {
+            val value = retrying(BackoffPolicy.exponential(retry + 1, 1000L, 30_000L), retryIf = shouldRetry) { fetcher(key) }
+            // An invalidate that arrived mid-flight is newer than this response.
+            e.invalidated = e.invalidations != invalidationsAtStart
+            e.failures = 0
+            e.lastSettledAt = clock()
+            e.state.value = succeededState(value, e.lastSettledAt)
+            return value
+        } catch (t: Throwable) {
+            rethrowIfOwnCancellation(t)
+            e.failures++
+            e.lastSettledAt = clock()
+            e.state.update { it.failed(t) }
+            throw t
         }
     }
 
@@ -266,7 +233,7 @@ class LiveQuery<K, T>(
         scope.launch(confined) {
             val e = entry(key)
             e.failures = 0
-            e.state.update { it.copy(data = value, dataUpdatedAt = updatedAt, isError = false, error = null) }
+            e.state.update { it.seeded(value, updatedAt) }
         }
     }
 
@@ -287,7 +254,7 @@ class LiveQuery<K, T>(
             if (e.observers > 0) {
                 // A fetch already running may have read the server before the change that
                 // caused this invalidate: let it finish, then fetch again.
-                e.inflight?.let { runSuspendCatching { it.await() } }
+                e.flight.running?.let { runSuspendCatching { it.await() } }
                 if (e.invalidated && e.observers > 0) runSuspendCatching { fetchEntry(key, e) }
             }
         }
@@ -315,8 +282,7 @@ class LiveQuery<K, T>(
     fun clear() {
         scope.launch(confined) {
             entries.values.forEach {
-                it.inflight?.cancel()
-                it.inflight = null
+                it.flight.cancel()
                 it.state.value = QueryState()
             }
         }
