@@ -148,4 +148,16 @@ class ScheduleParityTest {
             assertEquals(shown, reminded, "reminders on $day")
         }
     }
+
+    @Test fun anIntensiveWeeklyClassBeforeWeekOneStillOccurs() {
+        val events = listOf(intensive, term)
+        val day = "2026-09-07"
+        assertTrue(classOccursOnDate(intensive, day, events), "schedule")
+        assertFalse(classOccursOnDate(intensive, "2026-09-14", events), "after its range")
+        val noon = LocalDateTime(LocalDate.parse(day), LocalTime(12, 0)).toInstant(Budapest)
+        assertTrue(scheduleTodayEvents(events, noon).any { it.id == "intensive" }, "today")
+        val reminded = expandSessions(events, emptyList(), includeItems = false, from = LocalDate.parse(day), days = 1)
+            .map { it.key.substringBefore('@') }
+        assertTrue("intensive" in reminded, "reminders")
+    }
 }
