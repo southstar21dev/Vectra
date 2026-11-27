@@ -2,7 +2,6 @@ package dev.southstar21.vectra.features.transit.nearby
 
 import dev.southstar21.vectra.core.designsystem.components.trackpadMomentum
 import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
-import dev.southstar21.vectra.features.navbar.dockMaterial
 
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
@@ -67,9 +66,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.NativeSegmentedControl
+import dev.southstar21.vectra.core.designsystem.components.VTabs
 import dev.southstar21.vectra.core.designsystem.components.VIcon
-import dev.southstar21.vectra.core.designsystem.components.hasNativeSegmentedControl
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.BoxShadow
@@ -81,14 +79,15 @@ import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.isRenderEffectSupported
-import dev.southstar21.vectra.features.navbar.liquid.LiquidTabs
 import dev.southstar21.vectra.features.transit.LiveSignalIcon
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.formatPrimeCountdown
+import dev.southstar21.vectra.features.transit.strip.StripTimeKind
+import dev.southstar21.vectra.features.transit.strip.timeTone
+import dev.southstar21.vectra.features.transit.strip.timeToneColor
+import dev.southstar21.vectra.features.transit.trackers.LineBadgeSlot
+import dev.southstar21.vectra.features.transit.trackers.LineRowText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -484,53 +483,19 @@ private fun Modifier.topFadeMask(fadeDp: Float): Modifier = this
         )
     }
 
-/**
- * The mode switcher as Liquid Glass tabs, like the dock: a drop of glass you tap or drag between
- * All, Metro, Tram, Bus and Trolley. The glass refracts a recording of the sheet beneath it.
- */
+/** The mode switcher: the same tabs as Course Hub and Add tracker. */
 @Composable
 private fun ModeTabs(modeFilter: List<String>, onToggleMode: (String) -> Unit, modifier: Modifier) {
-    val selected = if (modeFilter.isEmpty()) 0 else ModeChips.indexOfFirst { it.id in modeFilter }.coerceAtLeast(0)
-    // iOS: the system segmented control (Liquid Glass on iOS 26) instead of the Compose glass tabs.
-    if (hasNativeSegmentedControl) {
-        NativeSegmentedControl(
-            labels = ModeChips.map { it.label },
-            selectedIndex = selected,
-            onSelect = { index -> onToggleMode(ModeChips[index].id) },
-            modifier = modifier.height(36.dp),
-        )
-        return
-    }
-    val c = Vectra.colors
-    val haptics = Vectra.haptics
-    val frosted = !isRenderEffectSupported()
-    val backdrop = rememberLayerBackdrop()
-    Box(modifier) {
-        // What the glass sees: the sheet's own surface, recorded beside (not inside) the tabs.
-        Box(Modifier.matchParentSize().layerBackdrop(backdrop).background(c.surfaceSecondary))
-        LiquidTabs(
-            count = ModeChips.size,
-            selectedIndex = selected,
-            onSelect = { index -> onToggleMode(ModeChips[index].id) },
-            onCross = { haptics.frequentTick() },
-            backdrop = backdrop,
-            accent = c.accentPrimary,
-            // The navbar's own look: its dock material, and iOS's neutral grey selection pill
-            // (only the label takes the accent).
-            selection = if (c.isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f),
-            container = dockMaterial(),
-            modifier = Modifier.fillMaxWidth(),
-            height = 48.dp,
-            frosted = frosted,
-        ) { index, tinted ->
-            VText(
-                ModeChips[index].label,
-                Modifier.semantics { contentDescription = ModeChips[index].label },
-                style = vtext(12.sp to 16.sp, Weight.Semibold),
-                color = if (tinted) c.accentPrimary else c.textPrimary,
-                maxLines = 1,
-            )
-        }
+    val selected = ModeChips.firstOrNull { it.id in modeFilter }?.id ?: ModeChips.first().id
+    VTabs(
+        selected = selected,
+        options = ModeChips.map { it.id },
+        onSelect = onToggleMode,
+        modifier = modifier,
+        triggerHeight = 36.dp,
+    ) { id, _ ->
+        val label = ModeChips.first { it.id == id }.label
+        VText(label, Modifier.semantics { contentDescription = label }, maxLines = 1)
     }
 }
 
@@ -570,7 +535,7 @@ private fun FeedContent(content: SheetFeed, onSelect: (RadarDepartureItem) -> Un
                         val isSelected = selection != null && items.any {
                             selection.stopId == it.stopId && selection.routeId == it.routeId && selection.headsign == it.headsign
                         }
-                        if (i > 0) Box(Modifier.padding(start = 60.dp, end = 8.dp).fillMaxWidth().height(1.dp).background(c.borderSubtle))
+                        if (i > 0) Box(Modifier.padding(start = 68.dp, end = 8.dp).fillMaxWidth().height(1.dp).background(c.borderSubtle))
                         DepartureRow(items, isSelected) { onSelect(items[0]) }
                     }
                 }
@@ -600,8 +565,9 @@ private fun FeedNote(text: String) {
 }
 
 /**
- * One line, stop and direction: the badge, where it goes and from which stop, and
- * the next departure with the two after it.
+ * One line, stop and direction: the badge, where it goes and from which stop, and its next
+ * departures inline in fixed columns, the first larger and the two after it quieter, as on a
+ * tracker card.
  */
 @Composable
 private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, onClick: () -> Unit) {
@@ -620,52 +586,48 @@ private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, o
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // At least the badge's square, but wide names (28/28A, 240E) widen it instead of clipping.
-        Box(Modifier.widthIn(min = 40.dp), contentAlignment = Alignment.Center) {
-            RouteBadge(item.shortName, item.color, item.textColor, size = RouteBadgeSize.Md)
+        LineBadgeSlot { RouteBadge(item.shortName, item.color, item.textColor, size = RouteBadgeSize.Md) }
+        Column(Modifier.weight(1f)) {
+            LineRowText(
+                title = item.headsign.ifEmpty { "Any direction" },
+                meta = { VText("from ${item.stopName}", style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 2) },
+            )
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textSecondary)
-                VText(item.headsign.ifEmpty { "Any direction" }, style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, maxLines = 1)
-            }
-            VText(item.stopName, style = vtext(TypeScale.Caption, Weight.Medium), color = c.textMuted, maxLines = 1)
+        EtaColumns(items)
+    }
+}
+
+private val EtaFirstColumn = 52.dp
+private val EtaLaterColumn = 32.dp
+
+/** The next departures in one row: the first with its mark in the colour rule, the later two plain and small. */
+@Composable
+private fun EtaColumns(items: List<RadarDepartureItem>) {
+    val c = Vectra.colors
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.widthIn(min = EtaFirstColumn), contentAlignment = Alignment.CenterEnd) {
+            val first = items[0]
+            NearbyEtaRow(first.isPredicted, formatPrimeCountdown(first.countdownMinutes))
         }
-        // The next three, one under another; each with its own live or timetable mark.
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            items.take(3).forEachIndexed { i, d ->
-                if (i == 0) {
-                    NearbyEtaRow(d.isPredicted, formatPrimeCountdown(d.countdownMinutes))
-                } else {
-                    LaterEta(d)
+        for (i in 1..2) {
+            Box(Modifier.width(EtaLaterColumn), contentAlignment = Alignment.CenterEnd) {
+                items.getOrNull(i)?.let {
+                    VText(formatPrimeCountdown(it.countdownMinutes), style = vtext(11.sp to 15.sp, Weight.Medium, mono = true), color = c.textMuted, maxLines = 1, softWrap = false)
                 }
             }
         }
     }
 }
 
-/** A later departure under the first: the same mark and time, a size down and quieter. */
-@Composable
-private fun LaterEta(d: RadarDepartureItem) {
-    val c = Vectra.colors
-    val tone = if (d.isPredicted) c.tints.emerald.text.copy(alpha = 0.8f) else c.textMuted
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
-            if (d.isPredicted) LiveSignalIcon(size = 11.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 11.dp, tint = tone)
-        }
-        VText(formatPrimeCountdown(d.countdownMinutes), style = vtext(12.sp to 15.sp, Weight.Bold, mono = true), color = tone, maxLines = 1, softWrap = false)
-    }
-}
-
-/** The live/scheduled icon and the countdown as one unit. */
+/** The live/scheduled mark and the countdown as one unit, coloured by the one minutes rule. */
 @Composable
 internal fun NearbyEtaRow(isPredicted: Boolean, text: String) {
-    val c = Vectra.colors
-    val tone = if (isPredicted) c.tints.emerald.text else c.textPrimary.copy(alpha = 0.8f)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(14.dp), contentAlignment = Alignment.Center) {
-            if (isPredicted) LiveSignalIcon(size = 14.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 14.dp, tint = tone)
+    val kind = if (isPredicted) StripTimeKind.Live else StripTimeKind.Scheduled
+    val tone = timeToneColor(timeTone(kind, arriving = false, label = text))
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(13.dp), contentAlignment = Alignment.Center) {
+            if (isPredicted) LiveSignalIcon(size = 13.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 12.dp, tint = tone)
         }
-        VText(text, style = vtext(TypeScale.Body.first to TypeScale.Body.first, Weight.Black, Tracking.Tight, mono = true), color = tone, maxLines = 1, softWrap = false)
+        VText(text, style = vtext(13.sp to 17.sp, Weight.Extrabold, mono = true), color = tone, maxLines = 1, softWrap = false)
     }
 }

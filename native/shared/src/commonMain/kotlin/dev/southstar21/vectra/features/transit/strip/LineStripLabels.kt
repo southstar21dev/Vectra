@@ -73,18 +73,31 @@ internal fun PlacedLabel(v: StripVehicle, x: Dp, frac: Float, mid: Dp) {
     Box(Modifier.offset(x = left).width(LabelW).height(mid - 14.dp), contentAlignment = boxAlign) { VehicleLabel(v, align) }
 }
 
+/** How a departure's minutes read: the one rule every transit list follows. */
+internal enum class TimeTone { Arriving, Live, Scheduled, Faded }
+
+/**
+ * Green when it is (nearly) here, the board's amber when it is a live prediction, its grey when it
+ * is only the timetable. [label] is the minutes as printed ("NOW", "1'"); out-of-date data fades.
+ */
+internal fun timeTone(kind: StripTimeKind, arriving: Boolean, label: String?, faded: Boolean = false): TimeTone = when {
+    faded -> TimeTone.Faded
+    arriving || label == "NOW" || (kind == StripTimeKind.Live && label == "1'") -> TimeTone.Arriving
+    kind == StripTimeKind.Scheduled -> TimeTone.Scheduled
+    else -> TimeTone.Live
+}
+
+@Composable
+internal fun timeToneColor(tone: TimeTone): Color = when (tone) {
+    TimeTone.Faded -> Vectra.colors.textMuted
+    TimeTone.Arriving -> Vectra.colors.tints.emerald.text
+    TimeTone.Scheduled -> Vectra.monitor.sched
+    TimeTone.Live -> Vectra.monitor.live
+}
+
 /** A vehicle's time colour: green when it is (nearly) here, the board's ink otherwise. */
 @Composable
-internal fun stripTimeColor(v: StripVehicle): Color {
-    val c = Vectra.colors
-    val ink = Vectra.monitor
-    return when {
-        v.faded -> c.textMuted
-        v.arriving || (v.kind == StripTimeKind.Live && v.label == "1'") -> c.tints.emerald.text
-        v.kind == StripTimeKind.Scheduled -> ink.sched
-        else -> ink.live
-    }
-}
+internal fun stripTimeColor(v: StripVehicle): Color = timeToneColor(timeTone(v.kind, v.arriving, v.label, v.faded))
 
 /** Live signal, timetable clock, or nothing for faded (out-of-date) vehicles. */
 @Composable
