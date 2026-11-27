@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit.nearby
 
+import dev.southstar21.vectra.features.transit.strip.departureColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -95,11 +96,9 @@ internal fun NearbyDeparturesList(
                 RouteBadge(group.shortName, group.color, group.textColor, size = RouteBadgeSize.Md)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (departure in group.directions) {
-                        val tone = when {
-                            departure.countdownMinutes <= 0 -> c.tints.emerald.text
-                            departure.feasibility == Feasibility.Hurry -> c.tints.amber.text
-                            else -> c.textPrimary
-                        }
+                        val countdown = formatPrimeCountdown(departure.countdownMinutes)
+                        val tone = if (departure.feasibility == Feasibility.Hurry && departure.countdownMinutes > 0) c.tints.amber.text
+                        else departureColor(departure.isPredicted, countdown)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             VText(
                                 "→ ${departure.headsign}",
@@ -109,10 +108,10 @@ internal fun NearbyDeparturesList(
                                 maxLines = 1,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = c.tints.emerald.text)
-                                else VIcon(RemixIcons.TimeLine, size = 16.dp, tint = c.textMuted)
+                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = tone)
+                                else VIcon(RemixIcons.TimeLine, size = 16.dp, tint = tone)
                                 VText(
-                                    formatPrimeCountdown(departure.countdownMinutes),
+                                    countdown,
                                     style = vtext(18.sp to 18.sp, Weight.Extrabold, mono = true),
                                     color = tone,
                                     maxLines = 1,

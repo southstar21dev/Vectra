@@ -61,7 +61,6 @@ private fun StripHeadline(s: StopStrip, noun: String?) {
         s.noDepartures && s.replaced ->
             StripNote(RemixIcons.BusLine, "No ${noun ?: "vehicles"} stop here for now, replacement buses instead", c.textSecondary)
         s.noDepartures || s.loading -> Unit
-        s.model.fork != null -> ForkEndRow(s.model.fork, s.model.forkTimes)
     }
 }
 
