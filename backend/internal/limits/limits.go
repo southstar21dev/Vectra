@@ -45,9 +45,6 @@ var (
 	// PasskeyLoginStart caps public login ceremonies begun per client IP.
 	PasskeyLoginStart = Limit{Max: 30, Window: time.Minute}
 
-	// PushSend caps /push/send calls per non-superuser caller.
-	PushSend = Limit{Max: 20, Window: time.Minute}
-
 	// FutarPerIP caps Futár proxy calls per client IP; FutarUpstream is the
 	// process-wide ceiling on calls to the Futár API, whoever asks
 	// (600 a minute; FUTAR_UPSTREAM_PER_MINUTE overrides it).

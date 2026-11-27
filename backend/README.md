@@ -27,11 +27,9 @@ needs it answers 500 and `/api/health` stays green.
 
 | Variable | Required | Used by | Production value | Dev value (Coolify) |
 |---|---|---|---|---|
-| `NEPTUN_ENCRYPTION_KEY` | yes | `/crypto`, `/neptun/replace`, old `vc2:` data upgrade | the production secret (`openssl rand -hex 32`) | a new random value, never production's |
+| `NEPTUN_ENCRYPTION_KEY` | yes | `/crypto`, `/neptun/replace` | the production secret (`openssl rand -hex 32`) | a new random value, never production's |
 | `FUTAR_API_KEY` | yes | `/futar`, the transit catalog builder | the BKK Futár key | production's key is fine |
 | `FUTAR_UPSTREAM_PER_MINUTE` | no | `/futar` | process-wide ceiling on calls to BKK per minute, default `600` (BKK documents no limit); over it the route answers 503 with `Retry-After`; the log gets one `futar: N of M upstream calls used` line per minute when more than half was used | unset |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | yes | `/push/send` | the production pair | a new pair |
-| `VAPID_SUBJECT` | no | `/push/send` | a `mailto:` address; defaults to a placeholder | `mailto:support@southstar21.dev` |
 | `WEBAUTHN_RP_ID` | yes | passkeys | `vectra.southstar21.dev` | `vectra.southstar21.dev` |
 | `WEBAUTHN_RP_ORIGINS` | yes | passkeys, comma-separated | the web origin plus the `android:apk-key-hash:` origin of the release signing key | web origin plus the debug key hash |
 | `WEBAUTHN_RP_DISPLAY_NAME` | yes | passkeys | the app name shown in the passkey prompt | `Vectra Dev` |
@@ -97,8 +95,6 @@ on `/app/pb_data`, port 8090, but branch `dev` and the domain above. Environment
 |---|---|
 | `NEPTUN_ENCRYPTION_KEY` | a new random value (`openssl rand -hex 32`), **never production's** |
 | `FUTAR_API_KEY` | production's key is fine (it only reads public BKK data); the dev backend builds its own catalog with it |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | a new pair (`npx web-push generate-vapid-keys`) |
-| `VAPID_SUBJECT` | `mailto:support@southstar21.dev` |
 | `WEBAUTHN_RP_ID` | `vectra.southstar21.dev` |
 | `WEBAUTHN_RP_ORIGINS` | `https://vectra.southstar21.dev` (web-only: remove with web/), `android:apk-key-hash:M9YYBpGvvIdH0GaiNQ1OCuk5ZeyNXjRvYENq2JfWpfE` (the debug signing key) |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Vectra Dev` |
@@ -114,7 +110,7 @@ SMTP off, or point it at a mailbox that isn't users', so dev never mails anyone;
 application URL to the dev domain.
 
 The test account is copied from production, re-encrypted with the dev key, by a one-off script
-(record ids are kept; passkeys and push subscriptions are not copied).
+(record ids are kept; passkeys are not copied).
 
 ## Client IP and the reverse proxy (`TRUSTED_PROXY`)
 
@@ -152,7 +148,6 @@ its limiter from it. State is in memory, so it resets on every restart or deploy
 | `CryptoValues` | `/crypto` values per window | user |
 | `NeptunReplace` | `/neptun/replace` | user |
 | `PasskeyLoginStart` | public passkey login start | IP |
-| `PushSend` | `/push/send` (superusers exempt) | user |
 | `FutarPerIP` / `FutarUpstream` | Futár proxy per IP / calls to the Futár API overall | IP, process |
 
 **PocketBase's own limiter** (dashboard, Settings > Application > Rate limiting). Migrations 9 and 12

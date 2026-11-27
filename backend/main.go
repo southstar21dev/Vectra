@@ -14,7 +14,6 @@ import (
 	"vectra/pb/internal/config"
 	"vectra/pb/internal/passkeys"
 	"vectra/pb/internal/proxytrust"
-	"vectra/pb/internal/push"
 	"vectra/pb/internal/reauth"
 	"vectra/pb/internal/routes"
 	"vectra/pb/internal/schema"
@@ -32,9 +31,6 @@ func main() {
 	schema.RegisterTimestamps(app)
 	// Per-user row caps so a free account cannot fill the disk.
 	schema.RegisterRowQuotas(app)
-	// Reject push subscriptions whose endpoint is not a known push service, so
-	// the send path can never be aimed at an arbitrary host.
-	push.RegisterSubscriptionValidation(app)
 
 	// Reclaim expired passkey challenges (the public login/start writes one per
 	// call and authentication challenges have no user, so cascade delete never

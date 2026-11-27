@@ -9,15 +9,13 @@ import (
 	"vectra/pb/internal/futar"
 	"vectra/pb/internal/neptun"
 	"vectra/pb/internal/passkeys"
-	"vectra/pb/internal/push"
 	"vectra/pb/internal/resetpage"
 )
 
 // Register binds the /api/vectra routes. Auth convention: a route for signed-in
 // users binds apis.RequireAuth("users"), so a superuser token is refused with a
-// 403 before the handler runs; a route that superusers may call says so
-// explicitly in its binding (push send). Public routes carry no binding and
-// say why. Every route lives on the /api/vectra group. The handlers keep a
+// 403 before the handler runs; a route that superusers may call would say so
+// explicitly in its binding. Public routes carry no binding and say why. Every route lives on the /api/vectra group. The handlers keep a
 // nil-Auth guard so they stay safe when called directly.
 func Register(se *core.ServeEvent) {
 	g := se.Router.Group("/api/vectra")
@@ -26,10 +24,6 @@ func Register(se *core.ServeEvent) {
 	// Futár API key server-side; the endpoint whitelist + param coercion are
 	// the abuse control, so this route is intentionally not auth-bound.
 	g.POST("/futar", futar.Handler)
-	// JWT-gated; superuser-capable on purpose (internal service-role caller):
-	// the handler itself enforces that the caller is the target user or a
-	// superuser.
-	g.POST("/push/send", push.Handler).Bind(apis.RequireAuth("users", core.CollectionNameSuperusers))
 	// JWT-gated; verifies the current password, then deletes only the caller's own data.
 	g.POST("/account/delete", account.Handler).Bind(apis.RequireAuth("users"))
 	// JWT-gated; verifies the current password and switches the caller's own

@@ -55,15 +55,6 @@ func TestRouteBindings(t *testing.T) {
 			BeforeTestFunc:  register,
 		},
 		{
-			Name:            "push send requires auth",
-			Method:          http.MethodPost,
-			URL:             "/api/vectra/push/send",
-			Body:            strings.NewReader(`{"user_id":"x","title":"t","body":"b"}`),
-			ExpectedStatus:  http.StatusUnauthorized,
-			ExpectedContent: []string{`"status":401`},
-			BeforeTestFunc:  register,
-		},
-		{
 			Name:            "neptun replace requires auth",
 			Method:          http.MethodPost,
 			URL:             "/api/vectra/neptun/replace",
@@ -136,8 +127,7 @@ func TestRouteBindings(t *testing.T) {
 }
 
 // TestSuperuserBindings enforces the auth convention: routes for signed-in
-// users refuse a superuser token (403), and push send, the one route
-// superusers may call, lets it through to the handler.
+// users refuse a superuser token (403). No route currently lets superusers in.
 func TestSuperuserBindings(t *testing.T) {
 	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) { routes.Register(e) }
 	super := func(t testing.TB, app *tests.TestApp) {
@@ -178,7 +168,6 @@ func TestSuperuserBindings(t *testing.T) {
 		{"account email", http.MethodPost, "/api/vectra/account/email", http.StatusForbidden},
 		{"neptun replace", http.MethodPost, "/api/vectra/neptun/replace", http.StatusForbidden},
 		{"passkeys list", http.MethodGet, "/api/vectra/passkeys", http.StatusForbidden},
-		{"push send is superuser-capable", http.MethodPost, "/api/vectra/push/send", http.StatusBadRequest},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {

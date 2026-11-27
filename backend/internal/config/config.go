@@ -26,9 +26,6 @@ var Vars = []Var{
 	{"NEPTUN_ENCRYPTION_KEY", true, "/crypto, /neptun/replace, legacy vc2 upgrade"},
 	{"FUTAR_API_KEY", true, "/futar and the /catalog/*.json builder"},
 	{"FUTAR_UPSTREAM_PER_MINUTE", false, "/futar (process-wide upstream calls per minute, default 600)"},
-	{"VAPID_PUBLIC_KEY", true, "/push/send"},
-	{"VAPID_PRIVATE_KEY", true, "/push/send"},
-	{"VAPID_SUBJECT", false, "/push/send (defaults to a placeholder address)"},
 	{"WEBAUTHN_RP_ID", true, "passkeys"},
 	{"WEBAUTHN_RP_ORIGINS", true, "passkeys (comma-separated)"},
 	{"WEBAUTHN_RP_DISPLAY_NAME", true, "passkeys"},
@@ -38,7 +35,7 @@ var Vars = []Var{
 
 // watchedPrefixes are the prefixes of our own variables; a variable with one of
 // them that is not in Vars is almost certainly a typo.
-var watchedPrefixes = []string{"NEPTUN_", "FUTAR_", "VAPID_", "WEBAUTHN_", "TRUSTED_PROXY", "CATALOG_"}
+var watchedPrefixes = []string{"NEPTUN_", "FUTAR_", "WEBAUTHN_", "TRUSTED_PROXY", "CATALOG_"}
 
 // Problem is one finding of Check.
 type Problem struct {
