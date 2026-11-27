@@ -27,9 +27,7 @@ import (
 )
 
 const (
-	v2Prefix = "vc2:"
-	// v3Prefix marks the user-bound format: the same AES-256-GCM scheme and
-	// key as vc2, but the owning user's id is the GCM additional authenticated
+	// v3Prefix marks the user-bound format: AES-256-GCM under the server key, but the owning user's id is the GCM additional authenticated
 	// data. A vc3 value copied into another account's rows therefore fails to
 	// decrypt there, so one user cannot use the shared server key to read
 	// another user's ciphertext through the crypto route.
@@ -38,9 +36,7 @@ const (
 	iter     = 100_000
 	keyLen   = 32
 
-	// DigestPrefix marks a per-user keyed digest (see bindDigest). Stored
-	// transit_trackers.dedupe_key values without it are the old global
-	// digests, which internal/dedupekey rewrites.
+	// DigestPrefix marks a per-user keyed digest (see bindDigest).
 	DigestPrefix = "dk2:"
 	// digestKeyInfo separates the digest subkey from the encryption key.
 	digestKeyInfo = "vectra-dedupe-digest-v2"
@@ -129,19 +125,6 @@ func unseal(key []byte, body string, aad []byte) (string, error) {
 	return string(pt), nil
 }
 
-// encryptValue produces a legacy, unbound `vc2:` ciphertext. The route no
-// longer emits or accepts it; it remains for fixtures and the
-// cross-implementation vector.
-func encryptValue(key []byte, plain string) (string, error) {
-	return seal(key, v2Prefix, plain, nil)
-}
-
-// decryptValue opens a `vc2:` ciphertext (no AAD). Only the one-off vc2 to vc3
-// upgrade (internal/legacyvc2) uses it, through DecryptValue; the route never does.
-func decryptValue(key []byte, value string) (string, error) {
-	return unseal(key, value[len(v2Prefix):], nil)
-}
-
 // encryptValueFor produces a `vc3:` ciphertext bound to userID.
 func encryptValueFor(key []byte, plain, userID string) (string, error) {
 	if userID == "" {
@@ -151,9 +134,8 @@ func encryptValueFor(key []byte, plain, userID string) (string, error) {
 }
 
 // decryptValueFor opens a `vc3:` ciphertext for userID, failing for any other
-// user. Legacy `vc2:` values are refused: they are not bound to an owner, so
-// opening them here would let any account read another account's vc2 blob.
-// Migration 1700000013 re-encrypts stored vc2 values to vc3.
+// user. Anything that is not a vc3 value is refused (legacy unbound vc2 values
+// included; migration 1700000013 fails if a database still holds any).
 func decryptValueFor(key []byte, value, userID string) (string, error) {
 	switch {
 	case strings.HasPrefix(value, v3Prefix):
@@ -161,27 +143,28 @@ func decryptValueFor(key []byte, value, userID string) (string, error) {
 			return "", errors.New("crypto: vc3 decryption requires a user id")
 		}
 		return unseal(key, value[len(v3Prefix):], []byte(userID))
-	case strings.HasPrefix(value, v2Prefix):
-		return "", fmt.Errorf("crypto: legacy %q ciphertext is no longer accepted", v2Prefix)
 	default:
 		return "", fmt.Errorf("crypto: value is not a %q ciphertext", v3Prefix)
 	}
 }
 
-// isCiphertext reports whether value carries one of the ciphertext prefixes.
-// vc2 stays in the list so the route reports a vc2 value as a failed entry
-// (echoed, index in `errors`) instead of passing it through as plaintext.
+// isCiphertext reports whether value carries the ciphertext prefix.
 func isCiphertext(value string) bool {
-	return strings.HasPrefix(value, v2Prefix) || strings.HasPrefix(value, v3Prefix)
+	return strings.HasPrefix(value, v3Prefix)
 }
 
-// digestValue is the digest the route returned before dk2:
-// SHA256(password | part | part ...). It is now only the inner value of the
-// per-user digest and never leaves the server. A `|` or `\` inside a part is
-// escaped first, so different part lists no longer collide (["a|b"] used to
-// equal ["a","b"]); parts without either character hash exactly as before,
-// which is what lets internal/dedupekey rewrite stored keys without knowing
-// their parts.
+// digestValue is the inner digest, SHA256(password | part | part ...), the
+// value the route returned before the per-user dk2 digest existed. It never
+// leaves the server any more, but it must never change: every stored
+// transit_trackers.dedupe_key is HMAC(bindDigest) of this exact value, so
+// altering it (the hash, the separator, the escaping, or the key it starts
+// from, which is the raw NEPTUN_ENCRYPTION_KEY and not the derived key) would
+// give every existing tracker a new key, and the same tracker could be added
+// twice until all keys were rewritten. That is why the raw key stays in memory
+// (keyPassword) for the life of the process. Changing the scheme needs a full
+// rekey migration of dedupe_key, not a code edit. A `|` or `\` inside a part is
+// escaped first, so different part lists do not collide (["a|b"] used to equal
+// ["a","b"]); parts without either character hash as they always did.
 func digestValue(password string, parts []string) string {
 	h := sha256.New()
 	io.WriteString(h, password)
@@ -212,43 +195,15 @@ func bindDigest(dkey []byte, userID, inner string) string {
 // Exported helpers
 //
 // The /api/vectra/crypto route is the only place these primitives are used at
-// runtime, but the one-off upgrades (internal/legacyvc2, internal/dedupekey)
-// and their tests need the *exact* same code path. These thin wrappers expose
-// that path without changing the route's behaviour.
+// runtime; the helpers below expose the same code path to tests and the
+// migrations without changing the route's behaviour.
 // ---------------------------------------------------------------------------
-
-// V2Prefix marks a legacy, unbound AES-256-GCM ciphertext (the format the
-// Supabase-era web client's Web Crypto implementation produced).
-const V2Prefix = v2Prefix
 
 // V3Prefix marks an AES-256-GCM ciphertext bound to its owning user's id.
 const V3Prefix = v3Prefix
 
-// EncryptionKeyFromEnv derives the AES-256-GCM key from NEPTUN_ENCRYPTION_KEY.
-// It is the same key the crypto route uses (memoised exactly like the route).
-func EncryptionKeyFromEnv() ([]byte, error) {
-	return encryptionKey()
-}
-
-// DecryptValue decrypts a single legacy `vc2:` ciphertext with key. A value
-// without the `vc2:` prefix is rejected rather than mis-sliced. The route no
-// longer opens vc2; this stays for the vc2 to vc3 upgrade (internal/legacyvc2).
-func DecryptValue(key []byte, value string) (string, error) {
-	if len(value) < len(V2Prefix) || value[:len(V2Prefix)] != V2Prefix {
-		return "", fmt.Errorf("crypto: value is not a %q ciphertext", V2Prefix)
-	}
-	return decryptValue(key, value)
-}
-
-// EncryptValue encrypts plain with key, producing a `vc2:` ciphertext. Exposed
-// alongside DecryptValue so callers can build fixtures through the same path.
-func EncryptValue(key []byte, plain string) (string, error) {
-	return encryptValue(key, plain)
-}
-
 // DecryptValueFor decrypts a `vc3:` ciphertext owned by userID, exactly as the
-// route does. Legacy `vc2:` values and anything else are rejected; use
-// DecryptValue for vc2.
+// route does. Anything that is not a vc3 value is rejected.
 func DecryptValueFor(key []byte, value, userID string) (string, error) {
 	return decryptValueFor(key, value, userID)
 }
@@ -257,26 +212,6 @@ func DecryptValueFor(key []byte, value, userID string) (string, error) {
 // to userID.
 func EncryptValueFor(key []byte, plain, userID string) (string, error) {
 	return encryptValueFor(key, plain, userID)
-}
-
-// DigestKeyFromEnv returns the digest subkey derived from
-// NEPTUN_ENCRYPTION_KEY (memoised with the encryption key).
-func DigestKeyFromEnv() ([]byte, error) {
-	if _, err := encryptionKey(); err != nil {
-		return nil, err
-	}
-	return digestKey, nil
-}
-
-// UpgradeDigest maps a stored pre-dk2 digest (what the route used to return,
-// digestValue of the parts) to the dk2 value the route now returns for the
-// same parts and owner. A value that already carries DigestPrefix is returned
-// unchanged with false.
-func UpgradeDigest(dkey []byte, userID, stored string) (string, bool) {
-	if strings.HasPrefix(stored, DigestPrefix) {
-		return stored, false
-	}
-	return bindDigest(dkey, userID, stored), true
 }
 
 type request struct {
