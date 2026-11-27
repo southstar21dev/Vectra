@@ -39,7 +39,7 @@ private fun BannerTone.tint(): Tint {
 
 /**
  * The one inline message: tint background, tint border and tint ink at the Panel radius, a bold
- * first line and an optional body. [trailing] is a chevron ([BannerChevron]) or a small button;
+ * first line (bold only when a body follows) and an optional body. [trailing] is a chevron ([BannerChevron]) or a small button;
  * [onClick] makes the whole banner tappable.
  */
 @Composable
@@ -66,7 +66,7 @@ fun Banner(
     ) {
         if (icon != null) VIcon(icon, tint = tint.text)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            VText(title, style = vtext(TypeScale.Caption, Weight.Bold), color = tint.text)
+            VText(title, style = vtext(TypeScale.Caption, if (body != null) Weight.Bold else Weight.Normal), color = tint.text)
             if (body != null) VText(body, style = vtext(TypeScale.Caption), color = tint.text)
         }
         trailing?.invoke()
