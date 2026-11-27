@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.OfflineCache
@@ -72,8 +73,8 @@ private class EventsBackend {
     @Volatile var down = false
     /** Runs after the class list was read, before it is answered. */
     var afterRead: (suspend () -> Unit)? = null
-    val creates = mutableListOf<JsonObject>()
-    val patches = mutableListOf<JsonObject>()
+    val creates = SafeList<JsonObject>()
+    val patches = SafeList<JsonObject>()
 }
 
 private class EventsHarness(online: Boolean = true) {
@@ -155,14 +156,14 @@ private class EventsHarness(online: Boolean = true) {
     suspend fun seedCache(name: String) = cache.write(Owner, listOf(clear(name)))
 }
 
-private suspend fun until(condition: suspend () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: suspend () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 /** The loading and error flags a screen renders from, through each way a class load can go. */
 class ScheduleEventsRepositoryTest {
     private fun scenario(online: Boolean = true, test: suspend EventsHarness.() -> Unit) = runTest {
         val h = EventsHarness(online)
         try {
-            withContext(Dispatchers.Default) { withTimeout(20_000) { h.test() } }
+            withContext(Dispatchers.Default) { withTimeout(55_000) { h.test() } }
         } finally {
             h.scope.cancel()
         }

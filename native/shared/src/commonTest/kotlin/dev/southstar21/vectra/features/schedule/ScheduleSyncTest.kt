@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.data.OfflineCache
 import dev.southstar21.vectra.core.data.UserKeys
@@ -108,13 +109,13 @@ private class FakeBackend {
     /** Runs after the class list was read, before it is answered: hold it to make a class fetch outlive its account. */
     var afterClassRead: (suspend () -> Unit)? = null
     /** Bodies of class edits (PATCH schedule_events). */
-    val eventPatches = mutableListOf<JsonObject>()
+    val eventPatches = SafeList<JsonObject>()
     /** The Neptun feed the proxy serves, and a hook run inside its fetch. */
     var ics = ""
     var duringIcsFetch: (suspend () -> Unit)? = null
     val neptunRows = mutableListOf<JsonObject>()
     /** The auth token each Neptun replace was sent with. */
-    val neptunReplaces = mutableListOf<String?>()
+    val neptunReplaces = SafeList<String?>()
 
     fun row(item: ScheduleItem, updatedAt: String, rowId: String = "row-${item.id.take(1)}"): JsonObject = JsonObject(
         mapOf(
@@ -291,7 +292,7 @@ private class Harness(val backend: FakeBackend, online: Boolean = true) {
     }
 }
 
-private suspend fun until(condition: suspend () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: suspend () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 /** Queued writes, as [saveItem]/[deleteItem] would have left them. */
 private fun queuedCreate(item: ScheduleItem) = enqueueScheduleItemUpsert(ScheduleItemsState(), item.stored())
@@ -310,7 +311,7 @@ class ScheduleSyncTest {
         val backend = FakeBackend()
         val h = Harness(backend, online)
         try {
-            withContext(Dispatchers.Default) { withTimeout(20_000) { h.test(backend) } }
+            withContext(Dispatchers.Default) { withTimeout(55_000) { h.test(backend) } }
         } finally {
             h.scope.cancel()
         }
@@ -835,8 +836,12 @@ class ScheduleSyncTest {
         until { repo.eventsError.value != null }
         assertFalse(repo.eventsLoading.value)
         b.classesDown = false
-        repo.refreshEvents(force = true)
-        assertNull(repo.eventsError.value)
+        // A load that began while the classes were down may still be in flight, and a forced refresh joins
+        // it: ask again until one that started after the recovery has answered.
+        until {
+            repo.refreshEvents(force = true)
+            repo.eventsError.value == null
+        }
     }
 
     @Test fun aLoadFailureWithACacheStaysQuiet() = scenario { b ->

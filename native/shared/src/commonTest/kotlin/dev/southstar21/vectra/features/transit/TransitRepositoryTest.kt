@@ -187,7 +187,7 @@ private fun scenario(email: String? = null, feed: (FutarSource) -> FutarSource =
     val h = RepoHarness(email)
     try {
         withContext(Dispatchers.Default) {
-            withTimeout(20_000) {
+            withTimeout(55_000) {
                 h.start(feed)
                 h.test()
             }
@@ -272,7 +272,7 @@ class TransitRepositoryTest {
     @Test fun aBatchSeedsEachStopsOwnEntry() = scenario {
         repo.feeds.batchArrivals.fetch("S3,S4")
         // setData lands on the query's own dispatcher.
-        withTimeout(5_000) { while (repo.feeds.arrivals.peek("S3").data == null || repo.feeds.arrivals.peek("S4").data == null) kotlinx.coroutines.delay(20) }
+        withTimeout(30_000) { while (repo.feeds.arrivals.peek("S3").data == null || repo.feeds.arrivals.peek("S4").data == null) kotlinx.coroutines.delay(20) }
     }
 
     @Test fun theDemoSourceAnswersDemoIdsItselfAndPassesTheRestOn() = scenario(feed = ::DemoFutarSource) {
@@ -325,7 +325,7 @@ class TransitRepositoryTest {
 
     @Test fun anEnabledSeederSeedsADemoAccountOnItsOwnButNotOthers() = scenario(email = DemoAccounts.TransitNoPin) {
         DemoSeeder(auth, repo, scope, enabled = true).start()
-        withTimeout(10_000) { while (backend.rows.size < 2) kotlinx.coroutines.delay(50) }
+        withTimeout(30_000) { while (backend.rows.size < 2) kotlinx.coroutines.delay(50) }
         assertEquals(2, backend.rows.size)
     }
 

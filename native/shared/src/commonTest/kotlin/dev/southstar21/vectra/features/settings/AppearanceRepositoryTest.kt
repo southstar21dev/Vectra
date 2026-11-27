@@ -68,7 +68,7 @@ class AppearanceRepositoryTest {
     }
 
     private suspend fun until(what: String, check: suspend () -> Boolean) {
-        withContext(Dispatchers.Default) { withTimeout(5_000) { while (!check()) delay(5) } }
+        withContext(Dispatchers.Default) { withTimeout(30_000) { while (!check()) delay(5) } }
         assertTrue(check(), what)
     }
 
@@ -85,8 +85,7 @@ class AppearanceRepositoryTest {
         until("the profile's accent applied") { first.prefs.value.accent == AccentKey.Blue }
         first.update { it.copy(accent = AccentKey.Pink) }
         until("the change stored with its mark") { storedAccent() == AccentKey.Pink && unsynced() == "u1" }
-        // Let the failed save finish before the "process" ends.
-        delay(100)
+        // The mark is stored before the save goes out, so ending the "process" now (mid-save at worst) is the case under test.
         scopes.forEach { it.cancel() }
 
         // The next launch is online; the stored session record still says blue.

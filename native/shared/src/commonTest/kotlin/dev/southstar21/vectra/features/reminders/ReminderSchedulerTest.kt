@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.reminders
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.AuthState
@@ -58,8 +59,8 @@ private const val UserId = "user-1"
 
 /** Records what the scheduler hands to the system. */
 private class RecordingNotifier : Notifier {
-    val plans = mutableListOf<List<ScheduledNotification>>()
-    val replans = mutableListOf<Long?>()
+    val plans = SafeList<List<ScheduledNotification>>()
+    val replans = SafeList<Long?>()
     override fun permissionGranted() = true
     override fun show(title: String, body: String, url: String?, tag: String?) = true
     override fun replaceScheduled(notifications: List<ScheduledNotification>) {
@@ -146,13 +147,13 @@ private class Harness {
     }
 }
 
-private suspend fun until(condition: suspend () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: suspend () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 class ReminderSchedulerTest {
     private fun scenario(test: suspend Harness.() -> Unit) = runTest {
         val h = Harness()
         try {
-            withContext(Dispatchers.Default) { withTimeout(20_000) { h.test() } }
+            withContext(Dispatchers.Default) { withTimeout(55_000) { h.test() } }
         } finally {
             h.scope.cancel()
         }

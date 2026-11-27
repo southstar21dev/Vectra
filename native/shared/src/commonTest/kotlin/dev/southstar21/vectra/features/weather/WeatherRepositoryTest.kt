@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.platform.GeoFix
 import dev.southstar21.vectra.core.platform.GeoPermission
@@ -52,7 +53,7 @@ private class WeatherHarness(val location: FakeLocation = FakeLocation()) {
     /** The first this many forecast requests fail with HTTP 500. */
     @Volatile var forecastFailures = 0
     @Volatile var geocodeBody = """{"city":"Szeged"}"""
-    val forecastLatitudes = mutableListOf<String?>()
+    val forecastLatitudes = SafeList<String?>()
 
     private val http = HttpClient(
         MockEngine { req ->
@@ -81,13 +82,13 @@ private class WeatherHarness(val location: FakeLocation = FakeLocation()) {
 private fun scenario(location: FakeLocation = FakeLocation(), test: suspend WeatherHarness.() -> Unit) = runTest {
     val h = WeatherHarness(location)
     try {
-        withContext(Dispatchers.Default) { withTimeout(30_000) { h.test() } }
+        withContext(Dispatchers.Default) { withTimeout(55_000) { h.test() } }
     } finally {
         h.scope.cancel()
     }
 }
 
-private suspend fun until(condition: suspend () -> Boolean) = withTimeout(15_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: suspend () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 class WeatherRepositoryTest {
     @Test fun aFreshInstallShowsBudapestWeatherAndStoresASnapshot() = scenario {

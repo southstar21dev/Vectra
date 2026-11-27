@@ -21,7 +21,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -271,11 +273,12 @@ class WeatherRepository(
         if (!force && fresh) {
             // Switched back before another place's fetch landed: drop that fetch, or its result
             // would replace the conditions for the place now on screen.
-            weatherFlight.running?.takeIf { weatherFlight.running(cityKey(coords)) == null }?.let { other ->
-                other.cancel()
-                _weather.update { it.copy(isFetching = false) }
-            }
-            return
+            if (weatherFlight.running == null || weatherFlight.running(cityKey(coords)) != null) return
+            weatherFlight.cancel()
+            _weather.update { it.copy(isFetching = false) }
+            // The cancelled fetch may have landed just before it was cancelled: then the data for this
+            // place is gone and must be fetched after all.
+            if (_weather.value.dataCoords?.let { coordsMatch(it, coords) } == true) return
         }
         // A fetch for the same place already runs: refreshNow joins it. Another place replaces it.
         weatherFlight.join(cityKey(coords), scope, cancelReplaced = true) {
@@ -284,8 +287,14 @@ class WeatherRepository(
                 // Exponential backoff: 1s, 2s, 4s.
                 val data = retrying(BackoffPolicy.exponential(attempts = 4, baseMs = 1000L)) { fetchWeather(http, coords) }
                 val fetchedAt = nowMs()
-                _weather.value = WeatherState(data, coords, fetchedAt)
-                writeSnapshot(coords, data, fetchedAt)
+                val me = currentCoroutineContext()[Job]
+                // Only the fetch still in flight may publish: one replaced or cancelled meanwhile must not.
+                var published = false
+                _weather.update { cur ->
+                    published = weatherFlight.isCurrent(me)
+                    if (published) WeatherState(data, coords, fetchedAt) else cur
+                }
+                if (published) writeSnapshot(coords, data, fetchedAt)
             } catch (e: Throwable) {
                 rethrowIfOwnCancellation(e)
                 fail(e)

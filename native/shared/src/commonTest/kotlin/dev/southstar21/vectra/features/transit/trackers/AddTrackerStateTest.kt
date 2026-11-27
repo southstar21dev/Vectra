@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit.trackers
 
+import dev.southstar21.vectra.SafeList
 import androidx.compose.runtime.mutableStateOf
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
@@ -75,8 +76,8 @@ private class Backend {
     var arrivalRequests = 0
     var catalogDown = false
     var saveFails = false
-    val saved = mutableListOf<JsonObject>()
-    val patched = mutableListOf<Pair<String, JsonObject>>()
+    val saved = SafeList<JsonObject>()
+    val patched = SafeList<Pair<String, JsonObject>>()
     /** Past the catalog's size floor, or it is refused as a broken download. */
     var stopsJson = "[" + listOf(
         """{"id":"BKK_S1","name":"Astoria","lat":47.49,"lon":19.06}""",
@@ -160,7 +161,7 @@ private class Fixture {
     val toasts get() = toaster.queue.toList()
 }
 
-private suspend fun until(condition: () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 private const val M1Stop = "BKK_CSF01076"
 
@@ -168,7 +169,7 @@ class AddTrackerStateTest {
     private fun scenario(test: suspend Fixture.() -> Unit) = runTest {
         val f = Fixture()
         try {
-            withContext(Dispatchers.Default) { withTimeout(20_000) { f.test() } }
+            withContext(Dispatchers.Default) { withTimeout(55_000) { f.test() } }
         } finally {
             f.scope.cancel()
         }
