@@ -35,7 +35,6 @@ private fun RemoveNeptunLinkRow(repo: ScheduleRepository, auth: AuthRepository) 
     var busy by remember { mutableStateOf(false) }
     SettingsRow(
         RemixIcons.LinkUnlinkM,
-        c.tints.red.text,
         "Remove Neptun link",
         if (linked) "Stops syncing and removes the classes it imported" else "Nothing linked yet",
         danger = true,
@@ -68,7 +67,6 @@ private fun ClearClassesRow(repo: ScheduleRepository, auth: AuthRepository) {
     var clearing by remember { mutableStateOf(false) }
     SettingsRow(
         RemixIcons.DeleteBinLine,
-        c.tints.red.text,
         "Clear all classes",
         "Synced and manual classes; work shifts and tasks stay",
         danger = true,

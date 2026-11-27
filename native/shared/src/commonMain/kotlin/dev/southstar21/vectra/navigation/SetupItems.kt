@@ -62,7 +62,7 @@ fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): Lis
             done = prefs.toUni.isNotEmpty() || prefs.backHome.isNotEmpty(), actionLabel = "Pick",
         ) { scrollTo(SettingsAnchor.Commute) },
         SetupItem(
-            RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey sign-in", BiometricCopy.setupSubtitle(),
+            RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey", BiometricCopy.setupSubtitle(),
             done = passkeys?.isNotEmpty(), actionLabel = "Set up",
             // The Account section below has its own "Set up" link for it.
             canBeButton = false,

@@ -63,11 +63,11 @@ internal fun FormLabel(text: String) = VText(text, style = vtext(TypeScale.Capti
 private fun EditButton(label: String, onClick: () -> Unit) = SettingsLink(label, onClick)
 
 @Composable
-private fun EditActions(saving: Boolean, onCancel: () -> Unit, onSave: () -> Unit) {
+internal fun EditActions(saving: Boolean, onCancel: () -> Unit, confirmText: String = "Save", onSave: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
         VButton("Cancel", onCancel, variant = ButtonVariant.Ghost, size = ButtonSize.Sm, enabled = !saving)
         VButton(onClick = onSave, variant = ButtonVariant.Primary, size = ButtonSize.Sm, enabled = !saving) {
-            if (saving) InlineLoader(size = 14.dp) else VText("Save")
+            if (saving) InlineLoader(size = 14.dp) else VText(confirmText)
         }
     }
 }
@@ -104,7 +104,7 @@ private fun NameRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.UserLine, c.tints.blue.text, profile?.fullName ?: "Not set", "Full name") {
+        SettingsRow(RemixIcons.UserLine, profile?.fullName ?: "Not set", "Full name") {
             EditButton("Edit") { value = profile?.fullName.orEmpty(); error = null; editing = true }
         }
     }
@@ -145,7 +145,7 @@ private fun EmailRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.MailLine, c.tints.purple.text, profile?.email ?: "N/A", "Email address") {
+        SettingsRow(RemixIcons.MailLine, profile?.email ?: "N/A", "Email address") {
             EditButton("Change") { email = profile?.email.orEmpty(); current = ""; error = null; editing = true }
         }
     }
@@ -189,7 +189,7 @@ private fun PasswordRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.LockLine, c.tints.sky.text, "Password", "Change your password") {
+        SettingsRow(RemixIcons.LockLine, "Password", "Change your password") {
             EditButton("Change") { current = ""; next = ""; confirm = ""; error = null; editing = true }
         }
     }
@@ -206,7 +206,7 @@ internal fun DeleteAccountRow(auth: AuthRepository) {
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf(false) }
-    SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.text, "Delete account", "Permanently delete your account and data", danger = true, onClick = { text = ""; password = ""; error = null; open = true })
+    SettingsRow(RemixIcons.DeleteBinLine, "Delete account", "Permanently delete your account and data", danger = true, onClick = { text = ""; password = ""; error = null; open = true })
     val close = { if (!deleting) { open = false; text = ""; password = ""; error = null } }
     VDialog(open, close, showClose = false, title = "Delete account?") {
         DialogHeader(Modifier.padding(top = 4.dp)) {

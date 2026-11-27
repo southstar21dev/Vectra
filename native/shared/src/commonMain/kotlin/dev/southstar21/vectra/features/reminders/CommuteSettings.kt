@@ -56,7 +56,7 @@ private fun DeparturesRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.RouteLine, c.tints.emerald.text, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
+    SettingsRow(RemixIcons.RouteLine, "Departure times", "When you head in or leave, breaks of 2 h+ too") {
         VToggle(prefs.departures, { on ->
             if (on) enable { scheduler.update { it.copy(departures = true) } } else scheduler.update { it.copy(departures = false) }
         }, label = "Departure times")
