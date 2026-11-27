@@ -79,19 +79,50 @@ var upstreamClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
-// limiter is the per-IP limiter for Handler. It is a var so tests can
-// substitute a fresh one.
-var limiter = ratelimit.New(limits.FutarPerIP.Max, limits.FutarPerIP.Window)
-
-// limits.FutarUpstream is the process-wide ceiling on calls to Futár, whoever
-// asks (default 600 a minute, FUTAR_UPSTREAM_PER_MINUTE overrides it). BKK
+// Proxy is the Futár proxy: the per-IP limiter for Handler and the
+// process-wide upstream budget, with the counters that log real load. main
+// builds one and shares it with the catalog builder, which spends the same
+// Futár quota (WaitUpstream); tests build their own.
+//
+// perIP (limits.FutarPerIP) caps proxy calls per client IP. The route is
+// public and every call fans out to the keyed upstream, so an unbounded caller
+// could burn the shared Futár quota. Every request costs one unit, and a
+// stop-arrivals batch additionally costs one unit per stop it has to fetch
+// upstream (cache hits are free), so a batch cannot buy up to maxBatchStops
+// upstream calls for the price of one. The cap is generous because campus/CGNAT
+// networks put many students behind one address and the app polls every few
+// seconds.
+//
+// The upstream budget (limits.FutarUpstream, 600 a minute, overridden by
+// FUTAR_UPSTREAM_PER_MINUTE) is the ceiling on calls to Futár whoever asks. BKK
 // documents no limit for the key, so this keeps the total at a level that
 // cannot get it in trouble. The per-IP limiter cannot bound the shared key
 // against many source addresses (an IPv6 /48 is 65,536 buckets), so the budget
-// turns excess load into a 503 instead of a throttled or revoked key for
-// every user.
-// upstreamBudget is a var so tests can substitute a fresh one.
-var upstreamBudget = ratelimit.New(budgetMax, limits.FutarUpstream.Window)
+// turns excess load into a 503 instead of a throttled or revoked key for every
+// user.
+type Proxy struct {
+	perIP       *ratelimit.Limiter
+	upstream    *ratelimit.Limiter
+	upstreamMax int
+	usage       usageMeter
+}
+
+// NewProxy returns a Proxy with perIP as its per-client limiter and a fresh
+// upstream budget of upstreamMax calls per limits.FutarUpstream.Window.
+func NewProxy(perIP *ratelimit.Limiter, upstreamMax int) *Proxy {
+	return &Proxy{
+		perIP:       perIP,
+		upstream:    ratelimit.New(upstreamMax, limits.FutarUpstream.Window),
+		upstreamMax: upstreamMax,
+		usage:       usageMeter{window: limits.FutarUpstream.Window},
+	}
+}
+
+// DefaultProxy builds the production Proxy from internal/limits and the
+// FUTAR_UPSTREAM_PER_MINUTE override (an invalid value logs once).
+func DefaultProxy() *Proxy {
+	return NewProxy(limits.FutarPerIP.New(), upstreamBudgetMax(os.Getenv("FUTAR_UPSTREAM_PER_MINUTE")))
+}
 
 // upstreamBudgetMax parses the env override; empty or invalid means the default.
 func upstreamBudgetMax(raw string) int {
@@ -107,14 +138,8 @@ func upstreamBudgetMax(raw string) int {
 	return n
 }
 
-// budgetMax is the budget's ceiling, read once (an invalid value logs once).
-var budgetMax = upstreamBudgetMax(os.Getenv("FUTAR_UPSTREAM_PER_MINUTE"))
-
 // errUpstreamBusy is the message returned when the budget is spent.
 const errUpstreamBusy = "Transit data is busy, try again shortly"
-
-// usage counts upstream calls per minute so the real load shows in the logs.
-var usage = usageMeter{window: limits.FutarUpstream.Window}
 
 var usageLogf = log.Printf
 
@@ -147,10 +172,10 @@ func (u *usageMeter) record(now time.Time, ok bool, max int) {
 	}
 }
 
-func upstreamAllowed() bool {
+func (p *Proxy) upstreamAllowed() bool {
 	now := time.Now()
-	ok := upstreamBudget.Allow("upstream", now)
-	usage.record(now, ok, budgetMax)
+	ok := p.upstream.Allow("upstream", now)
+	p.usage.record(now, ok, p.upstreamMax)
 	return ok
 }
 
@@ -160,11 +185,11 @@ func isClientError(status int) bool { return status >= 400 && status < 500 }
 // call (or ctx ends). The catalog builder spends the same Futár quota as the
 // proxy, so its calls are counted against the same ceiling. Waiting is not a
 // refusal, so only the granted call is recorded in the usage log.
-func WaitUpstream(ctx context.Context) error {
+func (p *Proxy) WaitUpstream(ctx context.Context) error {
 	for {
 		now := time.Now()
-		if upstreamBudget.Allow("upstream", now) {
-			usage.record(now, true, budgetMax)
+		if p.upstream.Allow("upstream", now) {
+			p.usage.record(now, true, p.upstreamMax)
 			return nil
 		}
 		select {
@@ -545,7 +570,7 @@ type upstreamResult struct {
 // into response bodies (the total-failure 502 and the per-stop `error` field
 // of a partial-failure 200). Only fixed messages and the upstream's own
 // error/text fields are ever returned here — never a Go transport error.
-func fetchStopArrivalsUpstream(ctx context.Context, stopID string, minutesBefore, minutesAfter int, apiKey string) (map[string]any, string) {
+func (p *Proxy) fetchStopArrivalsUpstream(ctx context.Context, stopID string, minutesBefore, minutesAfter int, apiKey string) (map[string]any, string) {
 	cacheKey := stopArrivalsCacheKey(stopID, minutesBefore, minutesAfter)
 	if hit, ok := cacheGet(cacheKey); ok {
 		return hit.response, hit.errMsg
@@ -554,7 +579,7 @@ func fetchStopArrivalsUpstream(ctx context.Context, stopID string, minutesBefore
 	// it, so it is detached from that caller's cancellation (upstreamClient's
 	// timeout still bounds it); each caller stops waiting on its own context.
 	ch := inflight.DoChan(cacheKey, func() (any, error) {
-		response, errMsg := doFetchStopArrivals(context.WithoutCancel(ctx), cacheKey, stopID, minutesBefore, minutesAfter, apiKey)
+		response, errMsg := p.doFetchStopArrivals(context.WithoutCancel(ctx), cacheKey, stopID, minutesBefore, minutesAfter, apiKey)
 		return upstreamResult{response: response, errMsg: errMsg}, nil
 	})
 	select {
@@ -566,14 +591,14 @@ func fetchStopArrivalsUpstream(ctx context.Context, stopID string, minutesBefore
 	}
 }
 
-func doFetchStopArrivals(ctx context.Context, cacheKey, stopID string, minutesBefore, minutesAfter int, apiKey string) (map[string]any, string) {
+func (p *Proxy) doFetchStopArrivals(ctx context.Context, cacheKey, stopID string, minutesBefore, minutesAfter int, apiKey string) (map[string]any, string) {
 	// A concurrent flight may have filled the cache between the caller's
 	// check and this flight starting.
 	if hit, ok := cacheGet(cacheKey); ok {
 		return hit.response, hit.errMsg
 	}
 
-	if !upstreamAllowed() {
+	if !p.upstreamAllowed() {
 		return nil, errUpstreamBusy
 	}
 	u, err := url.Parse(futarBase + "/arrivals-and-departures-for-stop.json")
@@ -731,7 +756,7 @@ func buildStopArrivalsBatch(results []stopResult) map[string]any {
 // allStopsFailedCode marks the batch 502 sent when every stop failed upstream.
 const allStopsFailedCode = "all_stops_failed"
 
-func handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) error {
+func (p *Proxy) handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) error {
 	bp, err := normalizeBatchParams(params)
 	if err != nil {
 		return e.BadRequestError(err.Error(), nil)
@@ -745,7 +770,7 @@ func handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) err
 			misses++
 		}
 	}
-	if !limiter.AllowN(ratelimit.ClientIP(e), misses, time.Now()) {
+	if !p.perIP.AllowN(ratelimit.ClientIP(e), misses, time.Now()) {
 		return e.TooManyRequestsError("Too many transit requests. Please wait a moment and try again.", nil)
 	}
 
@@ -755,7 +780,7 @@ func handleBatch(e *core.RequestEvent, params map[string]any, apiKey string) err
 		wg.Add(1)
 		go func(i int, stopID string) {
 			defer wg.Done()
-			response, errMsg := fetchStopArrivalsUpstream(e.Request.Context(), stopID, bp.minutesBefore, bp.minutesAfter, apiKey)
+			response, errMsg := p.fetchStopArrivalsUpstream(e.Request.Context(), stopID, bp.minutesBefore, bp.minutesAfter, apiKey)
 			if errMsg != "" {
 				results[i] = stopResult{stopID: stopID, errMsg: errMsg}
 				return
@@ -797,12 +822,12 @@ type body struct {
 
 // Handler implements POST /api/vectra/futar (public). It proxies whitelisted
 // BKK Futár endpoints, injecting the server-side FUTAR_API_KEY.
-func Handler(e *core.RequestEvent) error {
+func (p *Proxy) Handler(e *core.RequestEvent) error {
 	apiKey := os.Getenv("FUTAR_API_KEY")
 	if apiKey == "" {
 		return e.InternalServerError("FUTAR_API_KEY is not configured", nil)
 	}
-	if !limiter.Allow(ratelimit.ClientIP(e), time.Now()) {
+	if !p.perIP.Allow(ratelimit.ClientIP(e), time.Now()) {
 		return e.TooManyRequestsError("Too many transit requests. Please wait a moment and try again.", nil)
 	}
 	var b body
@@ -810,14 +835,14 @@ func Handler(e *core.RequestEvent) error {
 		return e.BadRequestError("Invalid request body", err)
 	}
 	if b.Endpoint == "stop-arrivals" {
-		return handleBatch(e, b.Params, apiKey)
+		return p.handleBatch(e, b.Params, apiKey)
 	}
 	params, err := normalizeParams(b.Endpoint, b.Params)
 	if err != nil {
 		return e.BadRequestError(err.Error(), nil)
 	}
 
-	res := fetchProxied(e.Request.Context(), b.Endpoint, params, apiKey)
+	res := p.fetchProxied(e.Request.Context(), b.Endpoint, params, apiKey)
 	switch {
 	case res.busy:
 		e.Response.Header().Set("Retry-After", "10")
@@ -874,13 +899,13 @@ func proxyCacheKey(endpoint string, params map[string]string) string {
 // fetchProxied serves a whitelisted endpoint from the cache, or fetches it
 // once however many callers ask at the same time. Successful answers and 4xx
 // answers are cached; 5xx and transport failures are not.
-func fetchProxied(ctx context.Context, endpoint string, params map[string]string, apiKey string) proxied {
+func (p *Proxy) fetchProxied(ctx context.Context, endpoint string, params map[string]string, apiKey string) proxied {
 	key := proxyCacheKey(endpoint, params)
 	if hit, ok := cacheGet(key); ok {
 		return proxied{status: hit.status, body: hit.body}
 	}
 	ch := inflight.DoChan(key, func() (any, error) {
-		return doFetchProxied(context.WithoutCancel(ctx), key, endpoint, params, apiKey), nil
+		return p.doFetchProxied(context.WithoutCancel(ctx), key, endpoint, params, apiKey), nil
 	})
 	select {
 	case res := <-ch:
@@ -890,11 +915,11 @@ func fetchProxied(ctx context.Context, endpoint string, params map[string]string
 	}
 }
 
-func doFetchProxied(ctx context.Context, key, endpoint string, params map[string]string, apiKey string) proxied {
+func (p *Proxy) doFetchProxied(ctx context.Context, key, endpoint string, params map[string]string, apiKey string) proxied {
 	if hit, ok := cacheGet(key); ok {
 		return proxied{status: hit.status, body: hit.body}
 	}
-	if !upstreamAllowed() {
+	if !p.upstreamAllowed() {
 		return proxied{busy: true}
 	}
 	u, err := url.Parse(futarBase + "/" + endpoint + ".json")

@@ -26,7 +26,7 @@ import (
 
 	"vectra/pb/internal/ratelimit"
 	"vectra/pb/internal/schema"
-	"vectra/pb/internal/reauth/reauthtest"
+	"vectra/pb/internal/reauth"
 	_ "vectra/pb/migrations"
 )
 
@@ -49,11 +49,19 @@ func setWebAuthnEnv(t *testing.T) {
 	t.Setenv("WEBAUTHN_RP_DISPLAY_NAME", testRPName)
 }
 
+// registrationStartRoomy and loginStartRoomy run the handlers with fresh,
+// generous limiters: the real budgets would trip on the many calls one test
+// makes from a single IP. Tests of the limits build their own.
+func registrationStartRoomy(e *core.RequestEvent) error {
+	return RegistrationStartHandler(reauth.NewGuard(ratelimit.New(1000, time.Minute), ratelimit.New(1000, time.Minute)))(e)
+}
+
+func loginStartRoomy(e *core.RequestEvent) error {
+	return LoginStartHandler(ratelimit.New(1000, time.Minute))(e)
+}
+
 func newTestUser(t *testing.T, app *tests.TestApp, email, legacyID string) *core.Record {
 	t.Helper()
-	// Roomy re-auth limiters: the real ones would trip on the many
-	// register/start calls made from one test IP.
-	reauthtest.Use(t, 1000, 1000)
 	users, err := app.FindCollectionByNameOrId("users")
 	require.NoError(t, err)
 	u := core.NewRecord(users)
@@ -341,18 +349,16 @@ func TestLoginStartRateLimited(t *testing.T) {
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	old := loginStartLimiter
-	loginStartLimiter = ratelimit.New(2, time.Minute)
-	defer func() { loginStartLimiter = old }()
+	limited := LoginStartHandler(ratelimit.New(2, time.Minute))
 
 	for i := 0; i < 2; i++ {
 		e, w := requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-		require.NoError(t, LoginStartHandler(e))
+		require.NoError(t, limited(e))
 		require.Equal(t, http.StatusOK, w.Code)
 	}
 
 	e, _ := requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-	err = LoginStartHandler(e)
+	err = limited(e)
 	apiErr, ok := err.(*router.ApiError)
 	require.True(t, ok, "expected *router.ApiError, got %T", err)
 	require.Equal(t, http.StatusTooManyRequests, apiErr.Status)
@@ -458,7 +464,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 
 			// register/start
 			e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
-			require.NoError(t, RegistrationStartHandler(e))
+			require.NoError(t, registrationStartRoomy(e))
 			require.Equal(t, http.StatusOK, w.Code)
 			start := decodeStart(t, w.Body.Bytes())
 
@@ -474,7 +480,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 
 			// login/start (public: no auth)
 			e, w = requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-			require.NoError(t, LoginStartHandler(e))
+			require.NoError(t, loginStartRoomy(e))
 			require.Equal(t, http.StatusOK, w.Code)
 			login := decodeStart(t, w.Body.Bytes())
 
@@ -513,7 +519,7 @@ func TestRegistrationAndLoginCeremony(t *testing.T) {
 func registerAndStartLogin(t *testing.T, app *tests.TestApp, user *core.Record, auth *testAuthenticator) startResponse {
 	t.Helper()
 	e, w := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
-	require.NoError(t, RegistrationStartHandler(e))
+	require.NoError(t, registrationStartRoomy(e))
 	start := decodeStart(t, w.Body.Bytes())
 
 	regBody := mustJSON(t, map[string]any{
@@ -524,7 +530,7 @@ func registerAndStartLogin(t *testing.T, app *tests.TestApp, user *core.Record, 
 	require.NoError(t, RegistrationVerifyHandler(e), w.Body.String())
 
 	e, w = requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-	require.NoError(t, LoginStartHandler(e))
+	require.NoError(t, loginStartRoomy(e))
 	return decodeStart(t, w.Body.Bytes())
 }
 
@@ -548,7 +554,7 @@ func TestRegistrationChallengeBoundToCaller(t *testing.T) {
 	auth := newTestAuthenticator(t)
 
 	e, w := requestEvent(t, app, alice, http.MethodPost, "/api/vectra/passkeys/register/start", startBody, nil)
-	require.NoError(t, RegistrationStartHandler(e))
+	require.NoError(t, registrationStartRoomy(e))
 	start := decodeStart(t, w.Body.Bytes())
 
 	regBody := mustJSON(t, map[string]any{
@@ -598,7 +604,7 @@ func TestLoginRejectsCloneWarning(t *testing.T) {
 
 	// A clone replays counter 1 (assertionCredential increments, so rewind).
 	e, w := requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-	require.NoError(t, LoginStartHandler(e))
+	require.NoError(t, loginStartRoomy(e))
 	login = decodeStart(t, w.Body.Bytes())
 	auth.signCount = 0
 	err = loginVerify(t, app, login.ChallengeID, auth.assertionCredential(t, login.Challenge, webAuthnID(user)))
@@ -614,7 +620,7 @@ func TestRegisterStartRequiresAuth(t *testing.T) {
 	defer app.Cleanup()
 
 	e, _ := requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/register/start", "", nil)
-	require.Error(t, RegistrationStartHandler(e))
+	require.Error(t, registrationStartRoomy(e))
 }
 
 // --- helpers ----------------------------------------------------------------

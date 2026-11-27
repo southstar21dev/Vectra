@@ -5,7 +5,8 @@
 # change, so a PR that only touches web/ doesn't build the native app. Release.yml passes
 # all-jobs, which runs every job regardless: a skipped job proves nothing, and the path filter
 # diffs a push against the default branch (dev) or the previous push (master), so it can skip
-# a component that changed since the last release.
+# a component that changed since the last release. The deprecated web job is the exception: it
+# runs on pull requests only, so a web failure never blocks a release.
 name: CI
 
 on:
@@ -79,9 +80,10 @@ jobs:
 
       - run: shellcheck .github/scripts/*.sh scripts/*.sh
 
+  # Deprecated: only checked on pull requests that touch web/, never gates a release.
   web:
     needs: changes
-    if: inputs.all-jobs || needs.changes.outputs.web == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

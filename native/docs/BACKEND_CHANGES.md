@@ -54,15 +54,16 @@ iOS entry. The app side is done: `iosApp/iosApp/iosApp.entitlements` claims
 
 ## 2. Native push (FCM)
 
-The server sends Web Push only (`backend/internal/push/push.go`), and migration `…06` removed the
-old `transport='fcm'` rows. The app registers rows as:
+The backend no longer has any push code: the Web Push package, its route and the browser-endpoint
+validation hook were removed, and migration `…06` removed the old `transport='fcm'` rows. The
+`push_subscriptions` collection stays (10 rows per user, set in `schema.RowQuotas`) so the app can
+register rows as:
 
 ```json
 { "user": "<id>", "transport": "fcm", "device_name": "Mobile", "subscription": { "token": "<FCM registration token>" } }
 ```
 
-**a. Validation** — in `RegisterSubscriptionValidation`, branch on transport before the
-endpoint allowlist:
+**a. Validation**: add a hook on `push_subscriptions` that checks the token:
 
 ```go
 if e.Record.GetString("transport") == "fcm" {
@@ -74,24 +75,16 @@ if e.Record.GetString("transport") == "fcm" {
 }
 ```
 
-`pruneSubscriptions`/the per-endpoint dedupe should key FCM rows by token.
+Dedupe rows by token.
 
-**b. Delivery** — `delivery.send` dispatches by transport:
+**b. Delivery**: add a `/push/send` route and an FCM sender (design it fresh with a transport
+interface; nothing exists to extend).
 
-```go
-func (d *delivery) send(rec *core.Record) map[string]any {
-    if rec.GetString("transport") == "fcm" {
-        return d.sendFCM(rec)
-    }
-    return d.sendWebPush(rec)
-}
-```
-
-`sendFCM` uses `firebase.google.com/go/v4/messaging` with a service account from a new env
+The FCM sender uses `firebase.google.com/go/v4/messaging` with a service account from a new env
 var (e.g. `FIREBASE_SERVICE_ACCOUNT_JSON`), sending
 `messaging.Message{Token, Notification{Title, Body}, Data{"url", "tag"}, Android{Notification{Tag, ChannelID: "vectra"}}}`,
 and deletes the row on `messaging.IsUnregistered(err)` (the equivalent of 404/410 pruning).
-Add tests beside the existing push tests.
+Add tests with it.
 
 **c. App side** — create a Firebase project for `dev.southstar21.vectra`, drop
 `google-services.json` into `native/androidApp/`, add the `com.google.gms.google-services`
