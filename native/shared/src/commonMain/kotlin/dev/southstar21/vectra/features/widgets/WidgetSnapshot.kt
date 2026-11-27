@@ -1,8 +1,13 @@
 package dev.southstar21.vectra.features.widgets
 
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.core.time.nowInBudapest
+import dev.southstar21.vectra.core.time.ymd
 import dev.southstar21.vectra.features.reminders.ReminderSession
 import dev.southstar21.vectra.features.reminders.SessionKind
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -96,6 +101,23 @@ fun updateRequiredSnapshot(nowMs: Long, hour12: Boolean = false) =
     WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true, hour12 = hour12)
 
 const val UpdateRequiredWidgetMessage = "Update Vectra to keep using it."
+
+/** What a widget says when its snapshot has run out (same wording as StaleMessage in Model.swift). */
+const val StaleWidgetMessage = "Open Vectra to refresh your schedule."
+
+/**
+ * False once [today] is past the last day the snapshot covers ([aheadDays] after the day it was
+ * generated, in Budapest). It can no longer tell an empty day from one it never saw, so the widgets
+ * ask for the app instead of saying "No classes". Same rule as `Snapshot.covers` in Model.swift.
+ */
+fun WidgetSnapshot.covers(today: String): Boolean {
+    val generated = nowInBudapest(Instant.fromEpochMilliseconds(generatedAtMs)).date
+    val last = generated.plus(DatePeriod(days = aheadDays)).ymd()
+    return today <= last
+}
+
+/** Signed in, but the snapshot no longer reaches [today]. */
+fun WidgetSnapshot?.isStale(today: String): Boolean = this != null && signedIn && !covers(today)
 
 /** A widget's empty-state line: the update prompt while locked, else [signedOut]. */
 fun WidgetSnapshot?.emptyMessage(signedOut: String): String =

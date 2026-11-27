@@ -24,6 +24,9 @@ sealed interface NextUp {
     /** Signed out, or the app hasn't written a snapshot yet. */
     data object NoData : NextUp
 
+    /** Signed in, but the snapshot ended before today: the app has not run for two weeks. */
+    data object Stale : NextUp
+
     data class InClass(val session: WidgetSession) : NextUp
 
     data class Upcoming(val session: WidgetSession) : NextUp
@@ -36,6 +39,7 @@ sealed interface NextUp {
 
 fun WidgetSnapshot?.nextUp(nowMs: Long, today: String): NextUp {
     val snap = this?.takeIf { it.signedIn } ?: return NextUp.NoData
+    if (!snap.covers(today)) return NextUp.Stale
     val timed = snap.sessions.filter { it.kind.isTimed }
     val current = timed.firstOrNull { it.day == today && it.startMs <= nowMs && nowMs < it.endMs }
     val upcoming = timed.firstOrNull { it.day == today && it.startMs > nowMs }
@@ -56,7 +60,7 @@ val NextUp.featured: WidgetSession?
         is NextUp.Upcoming -> session
         is NextUp.ExamSoon -> exam
         is NextUp.DayDone -> next
-        NextUp.NoData -> null
+        NextUp.NoData, NextUp.Stale -> null
     }
 
 /** Everything on [today], in order. */
@@ -109,6 +113,10 @@ fun WidgetSnapshot?.examThisWeek(today: String): WidgetSession? {
 /**
  * When the widgets should redraw next: the next session start or end, every minute while a ring
  * counts down (a class under way, or one starting within twelve hours), and midnight at the latest.
+ *
+ * This is Android's cadence. iOS keeps its own (`refreshDates` in Model.swift): every minute for 180
+ * minutes when a session starts within 24 hours, because WidgetKit budgets reloads. The two differ
+ * on purpose; do not align them.
  */
 fun WidgetSnapshot?.nextRefreshMs(nowMs: Long, midnightMs: Long): Long {
     val sessions = this?.sessions.orEmpty().filter { it.kind.isTimed }

@@ -1,7 +1,8 @@
 import Foundation
 
 // The snapshot the app writes (shared/…/features/widgets/WidgetSnapshot.kt) and the rules that pick
-// what each widget shows (WidgetModel.kt, WidgetLabels.kt). Keep the three in step.
+// what each widget shows (WidgetModel.kt, WidgetLabels.kt). Keep the three in step: VectraWidgetsTests and the Kotlin WidgetFixturesTest
+// run the same cases (VectraWidgetsTests/Fixtures/widget-cases.json), so a rule changed on one side fails the other.
 
 struct Snapshot: Decodable {
     let version: Int
@@ -262,6 +263,10 @@ extension Optional where Wrapped == Snapshot {
     /// The moments a widget's text changes: each start and end ahead, and midnight.
     /// Every minute for the next three hours while a class runs or one starts within a day (the
     /// rings and minute counts are drawn per entry), then each start and end and midnight.
+    ///
+    /// This is iOS's own cadence: WidgetKit budgets timeline reloads, so it ticks for 180 minutes
+    /// at most and only when a session starts within 24 hours. Android (`nextRefreshMs` in
+    /// WidgetModel.kt) ticks every minute within 12 hours. The two differ on purpose; do not align them.
     func refreshDates(after now: Date) -> [Date] {
         let edges = live.flatMap { [$0.start, $0.end] }.filter { $0 > now }
         let horizon = now.addingTimeInterval(36 * 3600)

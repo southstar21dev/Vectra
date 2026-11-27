@@ -29,7 +29,9 @@ import androidx.glance.text.Text
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.FootNote
 import dev.southstar21.vectra.features.widgets.FootNoteType
+import dev.southstar21.vectra.features.widgets.StaleWidgetMessage
 import dev.southstar21.vectra.features.widgets.footNotes
+import dev.southstar21.vectra.features.widgets.isStale
 import dev.southstar21.vectra.features.widgets.nextDayNote
 import dev.southstar21.vectra.features.widgets.taskNote
 import dev.southstar21.vectra.features.widgets.SpineRow
@@ -69,6 +71,10 @@ private fun AgendaContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
     if (snap?.signedIn != true) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see today here."))
+        return
+    }
+    if (snap.isStale(frame.today)) {
+        EmptyState(context, StaleWidgetMessage)
         return
     }
     val day = snap.dayShown(frame.today)

@@ -1,0 +1,331 @@
+{
+ "note": "Shared by shared/src/androidHostTest WidgetFixturesTest and VectraWidgetsTests; both assert the same expectations.",
+ "cases": [
+  {
+   "name": "in class",
+   "nowMs": 1794303000000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     },
+     {
+      "title": "Microeconomics",
+      "location": "C.203",
+      "kind": "seminar",
+      "startMs": 1794301200000,
+      "endMs": 1794306600000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "inClass",
+    "stale": false,
+    "weekClassCount": 2,
+    "title": "Microeconomics"
+   }
+  },
+  {
+   "name": "upcoming",
+   "nowMs": 1794299700000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     },
+     {
+      "title": "Microeconomics",
+      "location": "C.203",
+      "kind": "seminar",
+      "startMs": 1794301200000,
+      "endMs": 1794306600000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "upcoming",
+    "stale": false,
+    "weekClassCount": 2,
+    "title": "Microeconomics"
+   }
+  },
+  {
+   "name": "tasks are not next",
+   "nowMs": 1794312000000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     },
+     {
+      "title": "Problem set 3",
+      "location": "C.203",
+      "kind": "task",
+      "startMs": 1794315600000,
+      "endMs": 1794315660000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "dayDone",
+    "stale": false,
+    "weekClassCount": 1,
+    "hadToday": true
+   }
+  },
+  {
+   "name": "exam heads-up",
+   "nowMs": 1794308400000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     },
+     {
+      "title": "Accounting midterm",
+      "location": "C.203",
+      "kind": "exam",
+      "startMs": 1794488400000,
+      "endMs": 1794495600000,
+      "day": "2026-11-12",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "examSoon",
+    "stale": false,
+    "weekClassCount": 1,
+    "title": "Accounting midterm",
+    "examThisWeek": "Accounting midterm"
+   }
+  },
+  {
+   "name": "next day",
+   "nowMs": 1794308400000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     },
+     {
+      "title": "Law",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794384000000,
+      "endMs": 1794389400000,
+      "day": "2026-11-11",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "dayDone",
+    "stale": false,
+    "weekClassCount": 2,
+    "title": "Law",
+    "hadToday": true
+   }
+  },
+  {
+   "name": "signed out",
+   "nowMs": 1794301200000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": false,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "noData",
+    "stale": false,
+    "weekClassCount": 0
+   }
+  },
+  {
+   "name": "covered on the last day",
+   "nowMs": 1795518000000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "dayDone",
+    "stale": false,
+    "weekClassCount": 0,
+    "hadToday": false
+   }
+  },
+  {
+   "name": "stale after the horizon",
+   "nowMs": 1795593600000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "stale",
+    "stale": true,
+    "weekClassCount": 0
+   }
+  },
+  {
+   "name": "longer horizon still covers",
+   "nowMs": 1795593600000,
+   "snapshot": {
+    "version": 1,
+    "generatedAtMs": 1794290400000,
+    "signedIn": true,
+    "sessions": [
+     {
+      "title": "Business Statistics",
+      "location": "C.203",
+      "kind": "lecture",
+      "startMs": 1794294000000,
+      "endMs": 1794299400000,
+      "day": "2026-11-10",
+      "color": "",
+      "teacher": "",
+      "group": ""
+     }
+    ],
+    "aheadDays": 21,
+    "updateRequired": false,
+    "hour12": false
+   },
+   "expect": {
+    "nextUp": "dayDone",
+    "stale": false,
+    "weekClassCount": 0,
+    "hadToday": false
+   }
+  }
+ ]
+}

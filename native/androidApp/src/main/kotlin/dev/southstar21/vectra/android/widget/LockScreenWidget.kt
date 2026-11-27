@@ -79,6 +79,10 @@ private fun LockScreenContent(context: Context, frame: WidgetFrame) {
                     Clock("${dayDistanceLabel(frame.today, it.day)} ${frame.clock(it.startMs)}")
                 }
             }
+            NextUp.Stale -> {
+                Headline("Vectra")
+                Detail("Open Vectra to refresh")
+            }
             NextUp.NoData -> {
                 Headline("Vectra")
                 Detail(frame.snapshot.emptyMessage("Sign in to see your classes"))

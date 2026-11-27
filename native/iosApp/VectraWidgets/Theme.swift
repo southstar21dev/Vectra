@@ -46,30 +46,8 @@ struct Palette {
     var dark: Bool { look != .light }
     var accented: Bool { look == .accented }
 
-    var text: Color { switch look { case .dark: Color(hex: 0xF8FAFC); case .light: Color(hex: 0x0F172A); case .accented: .white } }
-    var secondary: Color { switch look { case .dark: Color(hex: 0x94A3B8); case .light: Color(hex: 0x334155); case .accented: .white.opacity(0.72) } }
-    var muted: Color { switch look { case .dark: Color(hex: 0x7C8AA0); case .light: Color(hex: 0x64748B); case .accented: .white.opacity(0.55) } }
-    var soft: Color { switch look { case .dark: Color(hex: 0xCBD5E1); case .light: Color(hex: 0x334155); case .accented: .white.opacity(0.86) } }
-    var hairline: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.08) : .white.opacity(accented ? 0.2 : 0.08) }
-    var line: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.14) : .white.opacity(accented ? 0.3 : 0.16) }
-    var track: Color { look == .light ? Color(hex: 0x0F172A, alpha: 0.08) : .white.opacity(accented ? 0.22 : 0.08) }
-    var accent: Color { switch look { case .dark: Color(hex: 0x38BDF8); case .light: Color(hex: 0x0284C7); case .accented: .white } }
-    var pill: Color { switch look { case .dark: Color(hex: 0x38BDF8); case .light: Color(hex: 0x0274B3); case .accented: .white } }
-    var onPill: Color { switch look { case .dark: Color(hex: 0x04121B); case .light: .white; case .accented: .black } }
-    var check: Color { switch look { case .dark: Color(hex: 0x34D399); case .light: Color(hex: 0x059669); case .accented: .white } }
-    var onCheck: Color { switch look { case .dark: Color(hex: 0x052E1F); case .light: .white; case .accented: .black } }
-
-    /// The app's session tones: lecture sky, seminar emerald, lab purple, exam violet, task amber.
-    func tone(_ kind: Kind) -> Color {
-        if accented { return .white }
-        switch kind {
-        case .lecture, .other: return accent
-        case .seminar: return dark ? Color(hex: 0x34D399) : Color(hex: 0x059669)
-        case .lab, .shift: return dark ? Color(hex: 0xC084FC) : Color(hex: 0x7C3AED)
-        case .exam: return dark ? Color(hex: 0xC4B5FD) : Color(hex: 0x6D28D9)
-        case .task: return dark ? Color(hex: 0xFBBF24) : Color(hex: 0xB45309)
-        }
-    }
+    // The colour values (text, secondary, ..., tone) are generated into Tokens.swift from
+    // native/tools/widget-tokens.json, the table the Android plate drawables also come from.
 }
 
 struct PaletteKey: EnvironmentKey {
@@ -124,11 +102,11 @@ struct Plate: View {
     var body: some View {
         let dark = scheme == .dark
         ZStack {
-            LinearGradient(colors: dark ? [Color(hex: 0x14151C), Color(hex: 0x0D0E13)] : [.white, Color(hex: 0xF4F6FA)],
+            LinearGradient(colors: dark ? [PlateTokens.darkTop, PlateTokens.darkBottom] : [PlateTokens.lightTop, PlateTokens.lightBottom],
                            startPoint: .top, endPoint: .bottom)
             ContainerRelativeShape()
-                .strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(dark ? 0.12 : 0.9), location: 0),
-                                                     .init(color: dark ? .white.opacity(0.06) : Color(hex: 0x0F172A, alpha: 0.05), location: 0.3)],
+                .strokeBorder(LinearGradient(stops: [.init(color: dark ? PlateTokens.darkRimTop : PlateTokens.lightRimTop, location: 0),
+                                                     .init(color: dark ? PlateTokens.darkRimMid : PlateTokens.lightRimMid, location: 0.3)],
                                              startPoint: .top, endPoint: .bottom), lineWidth: 1)
         }
     }

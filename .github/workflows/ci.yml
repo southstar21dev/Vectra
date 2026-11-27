@@ -180,6 +180,12 @@ jobs:
             exit 1
           fi
 
+      # The widget colours come from one table (native/tools/widget-tokens.json); the Swift tokens
+      # and the Android plate drawables are generated from it and checked in.
+      - name: Check the generated widget tokens are up to date
+        if: runner.os == 'Linux'
+        run: node native/tools/generate-widget-tokens.mjs --check
+
       - name: Verify
         working-directory: native
         run: ./gradlew ${{ matrix.tasks }}
@@ -196,4 +202,17 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # The widget rules in Swift, against the same JSON cases the Kotlin WidgetFixturesTest runs.
+      # No Gradle phase and no app: only Model.swift is compiled, so it takes a few seconds.
+      - name: Test the iOS widget rules
+        if: runner.os == 'macOS'
+        run: |
+          udid=$(xcrun simctl list devices available | grep -m1 'iPhone' | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
+          xcodebuild test \
+            -project native/iosApp/iosApp.xcodeproj \
+            -scheme VectraWidgetsTests \
+            -destination "platform=iOS Simulator,id=$udid" \
+            -derivedDataPath "$RUNNER_TEMP/dd-tests" \
             CODE_SIGNING_ALLOWED=NO

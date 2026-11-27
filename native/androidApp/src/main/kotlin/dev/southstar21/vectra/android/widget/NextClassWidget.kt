@@ -22,6 +22,7 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import dev.southstar21.vectra.android.R
 import dev.southstar21.vectra.features.widgets.NextUp
 import dev.southstar21.vectra.features.widgets.Budget
+import dev.southstar21.vectra.features.widgets.StaleWidgetMessage
 import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.stackedSideTime
 import dev.southstar21.vectra.features.widgets.WidgetKind
@@ -64,6 +65,7 @@ private fun NextClassContent(context: Context, frame: WidgetFrame) {
     val now = frame.nowMs
     when (val up = frame.snapshot.nextUp(now, frame.today)) {
         NextUp.NoData -> EmptyState(context, frame.snapshot.emptyMessage("Open Vectra and sign in to see your classes here."))
+        NextUp.Stale -> EmptyState(context, StaleWidgetMessage)
         is NextUp.InClass -> {
             val s = up.session
             val (value, unit) = ringLabel(s.endMs - now, "LEFT")
