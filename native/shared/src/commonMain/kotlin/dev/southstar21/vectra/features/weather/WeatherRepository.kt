@@ -6,7 +6,11 @@ import dev.southstar21.vectra.core.platform.GeoFix
 import dev.southstar21.vectra.core.platform.GeoPermission
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.LocationProvider
-import dev.southstar21.vectra.core.util.exponentialBackoffMs
+import dev.southstar21.vectra.core.data.SingleFlight
+import dev.southstar21.vectra.core.data.StaleGate
+import dev.southstar21.vectra.core.util.BackoffPolicy
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
+import dev.southstar21.vectra.core.util.retrying
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
@@ -16,11 +20,8 @@ import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,7 +78,10 @@ class WeatherRepository(
     /** Successful geocodes keyed "lat,lon"; failures are not stored so a later read retries. */
     private val cityCache = mutableMapOf<String, String>()
     private var locating = false
-    private var weatherJob: Job? = null
+    /** The one conditions fetch in flight, keyed by the place it is for. */
+    private val weatherFlight = SingleFlight<String, Unit>()
+    private val weatherStale = StaleGate(StaleMs, nowMs)
+    private val radarStale = StaleGate(RadarStaleMs, nowMs)
     private val snapshotLock = Mutex()
 
     init {
@@ -128,7 +132,7 @@ class WeatherRepository(
     }
 
     /** City name for coordinates; null on any failure or when no name exists. */
-    private suspend fun fetchCityName(coords: WeatherCoords): String? = try {
+    private suspend fun fetchCityName(coords: WeatherCoords): String? = runSuspendCatching {
         val res = withTimeout(8_000) {
             http.get(GeocodeUrl) {
                 parameter("latitude", formatCompactNumber(coords.latitude))
@@ -138,11 +142,7 @@ class WeatherRepository(
             }
         }
         if (!res.status.isSuccess()) null else parseGeoCity(VectraJson.parseToJsonElement(res.bodyAsText()))
-    } catch (e: CancellationException) {
-        if (e is TimeoutCancellationException) null else throw e
-    } catch (_: Throwable) {
-        null
-    }
+    }.getOrNull()
 
     private fun applyPosition(fix: GeoFix) {
         // Rounded to ~1 km: all the forecast and city name need, and all that goes to third parties.
@@ -181,7 +181,8 @@ class WeatherRepository(
                 applyPosition(fix)
             } catch (e: Throwable) {
                 locating = false
-                if (e is CancellationException && e !is TimeoutCancellationException) throw e
+                // A timeout is a failed fix (below); only this coroutine's own cancellation ends it.
+                rethrowIfOwnCancellation(e)
                 val code = geoErrorCode(e)
                 _location.update { it?.let { prev -> applyErrorState(prev, code) } }
             }
@@ -255,7 +256,7 @@ class WeatherRepository(
     /** Pull to refresh: refetches now and returns when the new conditions have landed. */
     suspend fun refreshNow() {
         refreshWeather(force = true)
-        weatherJob?.join()
+        weatherFlight.running?.join()
     }
 
     /**
@@ -266,27 +267,19 @@ class WeatherRepository(
     fun refreshWeather(coords: WeatherCoords = currentCoords, force: Boolean = false) {
         val s = _weather.value
         val sameCoords = s.dataCoords?.let { coordsMatch(it, coords) } == true
-        if (!force && sameCoords && s.data != null && nowMs() - s.fetchedAt < StaleMs) return
-        if (s.isFetching && sameCoords && weatherJob?.isActive == true) return
-        weatherJob?.cancel()
-        weatherJob = scope.launch {
+        if (!force && sameCoords && s.data != null && !weatherStale.isStale(s.fetchedAt)) return
+        // A fetch for the same place already runs: refreshNow joins it. Another place replaces it.
+        weatherFlight.join(cityKey(coords), scope, cancelReplaced = true) {
             _weather.update { it.copy(isFetching = true) }
-            var attempt = 0
-            while (true) {
-                try {
-                    val data = fetchWeather(http, coords)
-                    val fetchedAt = nowMs()
-                    _weather.value = WeatherState(data, coords, fetchedAt)
-                    writeSnapshot(coords, data, fetchedAt)
-                    return@launch
-                } catch (e: CancellationException) {
-                    if (e !is TimeoutCancellationException) throw e
-                    if (attempt++ >= 3) { fail(e); return@launch }
-                } catch (e: Throwable) {
-                    if (attempt++ >= 3) { fail(e); return@launch }
-                }
+            try {
                 // Exponential backoff: 1s, 2s, 4s.
-                delay(exponentialBackoffMs(attempt - 1, 1000L))
+                val data = retrying(BackoffPolicy.exponential(attempts = 4, baseMs = 1000L)) { fetchWeather(http, coords) }
+                val fetchedAt = nowMs()
+                _weather.value = WeatherState(data, coords, fetchedAt)
+                writeSnapshot(coords, data, fetchedAt)
+            } catch (e: Throwable) {
+                rethrowIfOwnCancellation(e)
+                fail(e)
             }
         }
     }
@@ -307,16 +300,14 @@ class WeatherRepository(
     fun loadRadar(force: Boolean = false) {
         val s = _radar.value
         if (s.isFetching) return
-        if (!force && s.data != null && nowMs() - s.fetchedAt < RadarStaleMs) return
+        if (!force && s.data != null && !radarStale.isStale(s.fetchedAt)) return
         _radar.update { it.copy(isFetching = true, error = if (force) null else it.error) }
         scope.launch {
             try {
                 val data = fetchRainViewerData(http)
                 _radar.value = RadarState(data, nowMs())
-            } catch (e: CancellationException) {
-                if (e !is TimeoutCancellationException) throw e
-                _radar.update { it.copy(isFetching = false, error = e) }
             } catch (e: Throwable) {
+                rethrowIfOwnCancellation(e)
                 _radar.update { it.copy(isFetching = false, error = e) }
             }
         }
