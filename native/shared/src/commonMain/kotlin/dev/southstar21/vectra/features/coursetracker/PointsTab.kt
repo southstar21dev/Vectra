@@ -95,7 +95,7 @@ internal fun gradeTone(grade: Int, c: VectraColors): GradeTone {
 }
 
 internal val GradeThreeLightInk = Color(0xFF7A5A00)
-private val GradeThreeLightBand = Color(0xFFEAB308)
+private val GradeThreeLightBand = Color(0xFFCA8A04)
 private const val DarkZoneAlpha = 0.9f
 private const val LightZoneAlpha = 0.9f
 
