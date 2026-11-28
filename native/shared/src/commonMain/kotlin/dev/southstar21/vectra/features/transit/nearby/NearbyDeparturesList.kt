@@ -109,7 +109,7 @@ internal fun NearbyDeparturesList(
                                 maxLines = 1,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = tone)
+                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = c.tints.emerald.text)
                                 else VIcon(RemixIcons.TimeLine, size = 16.dp, tint = tone)
                                 VText(
                                     countdown,

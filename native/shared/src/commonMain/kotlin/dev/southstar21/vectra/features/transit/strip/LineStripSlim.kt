@@ -30,6 +30,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.haversineMeters
 import dev.southstar21.vectra.features.schedule.rememberDayColors
+import dev.southstar21.vectra.features.transit.LiveSignalIcon
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.data.TransitRepository
@@ -129,8 +130,10 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry) {
             if (entry.other) OtherDirectionNote()
         }
         Row(Modifier.widthIn(min = FirstTimeColumn), horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            if (entry.vehicle.kind == StripTimeKind.Scheduled && !entry.vehicle.faded && entry.vehicle.label != null) {
-                VIcon(RemixIcons.TimeLine, size = 11.dp, tint = stripTimeColor(entry.vehicle))
+            // The mark before the next time, as on Nearby: a clock for the timetable, the live signal otherwise.
+            if (!entry.vehicle.faded && entry.vehicle.label != null) {
+                if (entry.vehicle.kind == StripTimeKind.Scheduled) VIcon(RemixIcons.TimeLine, size = 12.dp, tint = stripTimeColor(entry.vehicle))
+                else LiveSignalIcon(size = 15.dp, tint = if (entry.vehicle.metro) c.tints.purple.text else c.tints.emerald.text)
             }
             VText(
                 entry.vehicle.label.orEmpty(),

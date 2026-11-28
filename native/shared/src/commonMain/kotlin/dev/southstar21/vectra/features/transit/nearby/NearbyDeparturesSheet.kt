@@ -619,14 +619,15 @@ private fun EtaColumns(items: List<RadarDepartureItem>) {
     }
 }
 
-/** The live/scheduled mark and the countdown as one unit, coloured by the one minutes rule. */
+/** The live/scheduled mark and the countdown as one unit: the countdown by the one minutes rule, the live signal always green. */
 @Composable
 internal fun NearbyEtaRow(isPredicted: Boolean, text: String) {
     val kind = if (isPredicted) StripTimeKind.Live else StripTimeKind.Scheduled
     val tone = timeToneColor(timeTone(kind, arriving = false, label = text))
     Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(13.dp), contentAlignment = Alignment.Center) {
-            if (isPredicted) LiveSignalIcon(size = 13.dp, tint = tone) else VIcon(RemixIcons.TimeLine, size = 12.dp, tint = tone)
+        // The live glyph is drawn at 45 degrees and looks small at the text's size, so it gets a larger box.
+        Box(Modifier.size(15.dp), contentAlignment = Alignment.Center) {
+            if (isPredicted) LiveSignalIcon(size = 15.dp, tint = Vectra.colors.tints.emerald.text) else VIcon(RemixIcons.TimeLine, size = 12.dp, tint = tone)
         }
         VText(text, style = vtext(13.sp to 17.sp, Weight.Extrabold, mono = true), color = tone, maxLines = 1, softWrap = false)
     }
