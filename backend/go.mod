@@ -3,7 +3,7 @@ module vectra/pb
 go 1.27.2
 
 require (
-	ganigeorgiev.com/pocketbase/dbx v1.13.0
+	ganigeorgiev.com/pocketbase/dbx v1.14.0
 	ganigeorgiev.com/pocketbase/ozzo-validation/v4 v4.4.1
 	ganigeorgiev.com/pocketbase/pocketbase v0.42.3
 	github.com/go-webauthn/webauthn v0.18.2
