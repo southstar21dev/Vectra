@@ -30,6 +30,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.maps.haversineMeters
 import dev.southstar21.vectra.features.schedule.rememberDayColors
+import dev.southstar21.vectra.features.transit.LiveSignalIcon
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.data.TransitRepository
@@ -45,7 +46,7 @@ private val SlimCardShape = RoundedCornerShape(18.dp)
 /** Room for the widest usual badge ("200E", "M3"), so every slim card lines up. */
 internal val SlimBadgeSlot = 48.dp
 
-/** One headsign row of a card: its arrow, vehicle, name and the times in their columns. */
+/** One headsign row of a card: its arrow, vehicle, name and its times on one line at the end. */
 internal data class SlimDirectionEntry(
     val arrowRight: Boolean,
     val destination: String,
@@ -55,7 +56,7 @@ internal data class SlimDirectionEntry(
     val other: Boolean = false,
 )
 
-/** The later times each row has room for, in fixed columns so the rows line up. */
+/** The later times each row lists after its next one. */
 internal const val SlimLaterColumns = 2
 
 /**
@@ -102,18 +103,20 @@ internal fun SlimDirectionRows(
                 VText(fallback.orEmpty(), style = vtext(13.sp to 17.sp, Weight.Bold), color = c.textMuted)
             }
         } else {
-            // As many columns as the fullest row needs, so a short row leaves its later ones empty.
-            val columns = entries.maxOf { it.nextTimes.size }
-            for (entry in entries) SlimDirectionRow(entry, columns)
+            for (entry in entries) SlimDirectionRow(entry)
         }
     }
 }
 
-private val FirstTimeColumn = 40.dp
-private val LaterTimeColumn = 34.dp
+private val FirstTimeColumn = 26.dp
+private val LaterTimeColumn = 24.dp
 
+/**
+ * The arrow and name, then the times on one line ending at the row's right edge: a row with
+ * fewer later times than another leaves no empty columns behind it.
+ */
 @Composable
-private fun SlimDirectionRow(entry: SlimDirectionEntry, laterColumns: Int) {
+private fun SlimDirectionRow(entry: SlimDirectionEntry) {
     val c = Vectra.colors
     Row(
         Modifier.fillMaxWidth(),
@@ -127,8 +130,10 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry, laterColumns: Int) {
             if (entry.other) OtherDirectionNote()
         }
         Row(Modifier.widthIn(min = FirstTimeColumn), horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            if (entry.vehicle.kind == StripTimeKind.Scheduled && !entry.vehicle.faded && entry.vehicle.label != null) {
-                VIcon(RemixIcons.TimeLine, size = 11.dp, tint = stripTimeColor(entry.vehicle))
+            // The mark before the next time, as on Nearby: a clock for the timetable, the live signal otherwise.
+            if (!entry.vehicle.faded && entry.vehicle.label != null) {
+                if (entry.vehicle.kind == StripTimeKind.Scheduled) VIcon(RemixIcons.TimeLine, size = 12.dp, tint = stripTimeColor(entry.vehicle))
+                else LiveSignalIcon(size = 15.dp, tint = if (entry.vehicle.metro) c.tints.purple.text else c.tints.emerald.text)
             }
             VText(
                 entry.vehicle.label.orEmpty(),
@@ -138,11 +143,9 @@ private fun SlimDirectionRow(entry: SlimDirectionEntry, laterColumns: Int) {
                 align = TextAlign.End,
             )
         }
-        for (i in 0 until laterColumns) {
+        for (later in entry.nextTimes) {
             Box(Modifier.width(LaterTimeColumn), contentAlignment = Alignment.CenterEnd) {
-                entry.nextTimes.getOrNull(i)?.let {
-                    VText(it.label, style = vtext(11.sp to 15.sp, Weight.Medium, mono = true).tnum(), color = c.textMuted, maxLines = 1, softWrap = false, align = TextAlign.End)
-                }
+                VText(later.label, style = vtext(11.sp to 15.sp, Weight.Medium, mono = true).tnum(), color = c.textMuted, maxLines = 1, softWrap = false, align = TextAlign.End)
             }
         }
     }

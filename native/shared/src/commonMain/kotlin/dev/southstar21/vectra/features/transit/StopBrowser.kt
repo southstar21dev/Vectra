@@ -228,9 +228,9 @@ private fun DepartureChip(t: Arrival, timeFormat: TimeFormat) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Live in the board's amber, timetable in its grey with a clock.
+        // A green live signal before a live time in the board's amber; timetable in its grey with a clock.
         val tone = if (t.isPredicted) Vectra.monitor.live else Vectra.monitor.sched
-        if (t.isPredicted) LiveSignalIcon(size = 10.dp, tint = tone)
+        if (t.isPredicted) LiveSignalIcon(size = 10.dp, tint = c.tints.emerald.text)
         else VIcon(RemixIcons.TimeLine, size = 10.dp, tint = tone)
         VText(
             formatClock(t.arrivalMs, timeFormat),

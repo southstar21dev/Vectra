@@ -27,6 +27,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.roundHalfUpToLong
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.features.transit.LiveSignalIcon
+import dev.southstar21.vectra.features.transit.NearbyBadgeWidth
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.formatPrimeCountdown
@@ -93,7 +94,7 @@ internal fun NearbyDeparturesList(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                RouteBadge(group.shortName, group.color, group.textColor, size = RouteBadgeSize.Md)
+                RouteBadge(group.shortName, group.color, group.textColor, size = RouteBadgeSize.Md, width = NearbyBadgeWidth)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (departure in group.directions) {
                         val countdown = formatPrimeCountdown(departure.countdownMinutes)
@@ -108,7 +109,7 @@ internal fun NearbyDeparturesList(
                                 maxLines = 1,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = tone)
+                                if (departure.isPredicted) LiveSignalIcon(size = 16.dp, tint = c.tints.emerald.text)
                                 else VIcon(RemixIcons.TimeLine, size = 16.dp, tint = tone)
                                 VText(
                                     countdown,

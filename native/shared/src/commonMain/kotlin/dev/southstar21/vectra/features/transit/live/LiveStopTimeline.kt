@@ -2,6 +2,7 @@ package dev.southstar21.vectra.features.transit.live
 
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.VButton
@@ -166,7 +167,7 @@ private fun DrawScope.drawTimelineMarker(m: TimelineMarker, colors: StripColors)
             drawVehicleToken(
                 at, 11.dp.toPx(), colors.marker, colors.markerInk,
                 // Straight on the line: a cut-out ring in the card's colour reads as a gap on the glass sheet.
-                headingDeg = 180f, ring = colors.ring,
+                headingDeg = 180f, ring = colors.ring.takeOrElse { colors.marker }, point = colors.point,
             )
         }
         m.isYou -> {

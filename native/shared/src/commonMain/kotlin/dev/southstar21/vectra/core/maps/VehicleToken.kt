@@ -10,7 +10,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Dp
@@ -31,7 +30,7 @@ private const val NubHalfBase = 0.46f
 
 /**
  * A token of [radius] px centred on [center]. [headingDeg] is the way it points, as on a compass
- * (0 up, 90 right); null draws no point. [gap] cuts it out of whatever it sits on (the line, a
+ * (0 up, 90 right); null draws no point. [gap] cuts the disc out of whatever it sits on (the line, a
  * card) by [gapWidth] px.
  */
 internal fun DrawScope.drawVehicleToken(
@@ -44,16 +43,18 @@ internal fun DrawScope.drawVehicleToken(
     gap: Color? = null,
     gapWidth: Float = 0f,
     alpha: Float = 1f,
+    /** The heading point's colour; the ring's unless the card needs it darker. */
+    point: Color = ring,
 ) {
     if (gap != null && gapWidth > 0f) drawCircle(gap, radius + gapWidth, center)
-    if (headingDeg != null) drawHeadingPoint(center, radius, headingDeg, ring.copy(alpha = ring.alpha * alpha), gap, gapWidth)
+    if (headingDeg != null) drawHeadingPoint(center, radius, headingDeg, point.copy(alpha = point.alpha * alpha))
     drawCircle(ring.copy(alpha = ring.alpha * alpha), radius, center)
     drawCircle(fill.copy(alpha = fill.alpha * alpha), radius * (1f - RingShare), center)
     drawVehicleGlyph(center, radius * 1.02f, ink.copy(alpha = ink.alpha * alpha), fill.copy(alpha = fill.alpha * alpha))
 }
 
-/** The white point on the ring, turned to [headingDeg]; outlined in [gap] so it reads on the line. */
-private fun DrawScope.drawHeadingPoint(center: Offset, radius: Float, headingDeg: Float, color: Color, gap: Color?, gapWidth: Float) {
+/** The point on the ring, turned to [headingDeg]. No outline: one in the card's colour cut a second, white arrow into the line. */
+private fun DrawScope.drawHeadingPoint(center: Offset, radius: Float, headingDeg: Float, color: Color) {
     rotate(headingDeg, pivot = center) {
         val tipY = center.y - radius * (1f + NubReach)
         val baseY = center.y - radius * 0.62f
@@ -63,9 +64,6 @@ private fun DrawScope.drawHeadingPoint(center: Offset, radius: Float, headingDeg
             lineTo(center.x + half, baseY)
             lineTo(center.x - half, baseY)
             close()
-        }
-        if (gap != null && gapWidth > 0f) {
-            drawPath(point, gap, style = Stroke(gapWidth * 2f))
         }
         drawPath(point, color)
     }
@@ -112,6 +110,6 @@ internal class VehicleTokenPointPainter(private val alpha: Float) : Painter() {
     override val intrinsicSize: Size get() = Size.Unspecified
     override fun DrawScope.onDraw() {
         val r = size.minDimension / 2f / 1.6f
-        drawHeadingPoint(center, r, 0f, Color.White.copy(alpha = alpha), gap = null, gapWidth = 0f)
+        drawHeadingPoint(center, r, 0f, Color.White.copy(alpha = alpha))
     }
 }

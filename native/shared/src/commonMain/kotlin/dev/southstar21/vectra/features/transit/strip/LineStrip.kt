@@ -16,6 +16,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -132,7 +134,8 @@ internal fun DrawScope.drawStripParts(
     val yc = Offset(stripX(StripSideStops.toFloat()), mid)
     if (xs.none { abs(it - yc.x) < half / 2 }) {
         val yr = YouRadius.toPx()
-        drawCircle(colors.card, yr + 4.dp.toPx(), yc)
+        // The card-coloured cut around it is for dark cards only; on a light card it is a white blot on the line.
+        if (colors.ring.isSpecified) drawCircle(colors.card, yr + 4.dp.toPx(), yc)
         drawCircle(colors.youRing, yr, yc)
         drawCircle(colors.youFill, yr - YouRing.toPx(), yc)
     }
@@ -218,8 +221,10 @@ private fun DrawScope.drawMarkers(markers: List<Mark>, colors: StripColors, mid:
             fill = fill,
             ink = ink,
             headingDeg = if (v.heading > 0) 90f else 270f,
-            ring = colors.ring,
-            gap = colors.card,
+            ring = colors.ring.takeOrElse { fill },
+            point = colors.point,
+            // No cut-out around a ringless token: it sits straight on the line.
+            gap = colors.card.takeIf { colors.ring.isSpecified },
             gapWidth = halo * m.scale,
             alpha = (if (v.faded) 0.35f else 1f) * m.alpha,
         )
