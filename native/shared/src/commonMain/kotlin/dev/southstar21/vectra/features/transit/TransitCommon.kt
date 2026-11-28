@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -194,6 +195,8 @@ internal fun RouteBadge(
     size: RouteBadgeSize = RouteBadgeSize.Md,
     /** A glyph instead of the name, for a badge that stands for a group rather than a line. */
     icon: ImageVector? = null,
+    /** One width for every badge in a list, so "908" and "908A" line up; the name gets tighter padding to fit. */
+    width: Dp? = null,
 ) {
     val c = Vectra.colors
     val formatted = name.replace(SpacedSlash, "/")
@@ -219,9 +222,9 @@ internal fun RouteBadge(
                 if (outline) c.textSecondary else if (c.isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.15f),
                 shape,
             )
-            .defaultMinSize(minWidth = spec.minW)
+            .then(if (width != null) Modifier.width(width) else Modifier.defaultMinSize(minWidth = spec.minW))
             .height(spec.h)
-            .padding(horizontal = spec.padX),
+            .padding(horizontal = if (width != null) FixedBadgePadX else spec.padX),
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {
@@ -237,6 +240,12 @@ internal fun RouteBadge(
         }
     }
 }
+
+/** A fixed-width badge's side padding: enough room for a six-character name at its smallest size. */
+private val FixedBadgePadX = 4.dp
+
+/** The width every badge in a nearby list shares: a four-character name ("908A") at the medium size. */
+internal val NearbyBadgeWidth = 56.dp
 
 /** A line coloured (near) black: BKK's night lines. */
 internal fun isNightLineColor(color: Color): Boolean = color.luminance() < 0.03f

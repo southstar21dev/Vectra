@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,6 +79,7 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.features.transit.LiveSignalIcon
+import dev.southstar21.vectra.features.transit.NearbyBadgeWidth
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.formatPrimeCountdown
@@ -567,8 +567,8 @@ private fun FeedNote(text: String) {
 
 /**
  * One line, stop and direction: the badge, where it goes and from which stop, and its next
- * departures inline in fixed columns, the first larger and the two after it quieter, as on a
- * tracker card.
+ * departures stacked at the row's end: the first larger, the two after it quieter underneath, so every
+ * row's next time sits on the same right edge.
  */
 @Composable
 private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, onClick: () -> Unit) {
@@ -587,7 +587,7 @@ private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, o
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LineBadgeSlot { RouteBadge(item.shortName, item.color, item.textColor, size = RouteBadgeSize.Md) }
+        LineBadgeSlot { RouteBadge(item.shortName, item.color, item.textColor, size = RouteBadgeSize.Md, width = NearbyBadgeWidth) }
         Column(Modifier.weight(1f)) {
             LineRowText(
                 title = item.headsign.ifEmpty { "Any direction" },
@@ -598,24 +598,23 @@ private fun DepartureRow(items: List<RadarDepartureItem>, isSelected: Boolean, o
     }
 }
 
-private val EtaFirstColumn = 52.dp
-private val EtaLaterColumn = 32.dp
+private val EtaColumn = 52.dp
 
-/** The next departures in one row: the first with its mark in the colour rule, the later two plain and small. */
+/** The next departures stacked and right-aligned: the first with its mark in the colour rule, the later two plain and small under it, one per line. */
 @Composable
 private fun EtaColumns(items: List<RadarDepartureItem>) {
     val c = Vectra.colors
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.widthIn(min = EtaFirstColumn), contentAlignment = Alignment.CenterEnd) {
-            val first = items[0]
-            NearbyEtaRow(first.isPredicted, formatPrimeCountdown(first.countdownMinutes))
-        }
-        for (i in 1..2) {
-            Box(Modifier.width(EtaLaterColumn), contentAlignment = Alignment.CenterEnd) {
-                items.getOrNull(i)?.let {
-                    VText(formatPrimeCountdown(it.countdownMinutes), style = vtext(11.sp to 15.sp, Weight.Medium, mono = true), color = c.textMuted, maxLines = 1, softWrap = false)
-                }
-            }
+    Column(Modifier.widthIn(min = EtaColumn), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        val first = items[0]
+        NearbyEtaRow(first.isPredicted, formatPrimeCountdown(first.countdownMinutes))
+        for (later in items.drop(1).take(2)) {
+            VText(
+                formatPrimeCountdown(later.countdownMinutes),
+                style = vtext(11.sp to 15.sp, Weight.Medium, mono = true),
+                color = c.textMuted,
+                maxLines = 1,
+                softWrap = false,
+            )
         }
     }
 }

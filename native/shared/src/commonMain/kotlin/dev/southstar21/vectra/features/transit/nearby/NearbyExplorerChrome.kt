@@ -37,6 +37,7 @@ import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.features.transit.NearbyBadgeWidth
 import dev.southstar21.vectra.features.transit.RouteBadge
 import dev.southstar21.vectra.features.transit.RouteBadgeSize
 import dev.southstar21.vectra.features.transit.formatPrimeCountdown
@@ -120,7 +121,7 @@ internal fun FollowedDeparture(selection: ExplorerSelection, countdown: Int, onS
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LineBadgeSlot { RouteBadge(selection.shortName, selection.color, selection.textColor, size = RouteBadgeSize.Md) }
+            LineBadgeSlot { RouteBadge(selection.shortName, selection.color, selection.textColor, size = RouteBadgeSize.Md, width = NearbyBadgeWidth) }
             Column(Modifier.weight(1f)) {
                 LineRowText(
                     title = selection.headsign.ifEmpty { "Any direction" },
