@@ -36,6 +36,7 @@ import dev.southstar21.vectra.features.transit.etaMinutes
 import dev.southstar21.vectra.features.transit.monitor
 import dev.southstar21.vectra.features.transit.strip.OtherDirectionNote
 import dev.southstar21.vectra.features.transit.strip.StripDirection
+import dev.southstar21.vectra.features.transit.strip.directionArrowTint
 import dev.southstar21.vectra.features.transit.strip.drawnDirections
 import dev.southstar21.vectra.features.transit.strip.toStripDirection
 
@@ -77,9 +78,9 @@ private fun DepartureColumn(d: StripDirection, now: Long, right: Boolean, reserv
     Column(modifier, horizontalAlignment = side, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 6.dp), horizontalAlignment = side) {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
+                if (!right) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = directionArrowTint(c))
                 VText(d.destination, Modifier.weight(1f, fill = false), vtext(12.sp to 16.sp, Weight.Semibold), c.textSecondary, maxLines = 2, align = if (right) TextAlign.End else TextAlign.Start)
-                if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
+                if (right) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = directionArrowTint(c))
             }
             if (d.otherDirection) OtherDirectionNote(align = if (right) TextAlign.End else TextAlign.Start)
             // Same line height as the note in sp, so the columns stay aligned at any font scale.

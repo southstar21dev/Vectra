@@ -195,7 +195,7 @@ private fun AlignedEndColumn(data: AlignedEndData, modifier: Modifier = Modifier
     val align = if (data.alignEnd) Alignment.End else Alignment.Start
     Column(modifier, horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!data.arrowRight) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = c.textMuted)
+            if (!data.arrowRight) VIcon(RemixIcons.ArrowLeftLine, size = 13.dp, tint = directionArrowTint(c))
             if (data.bus) VIcon(RemixIcons.BusLine, size = 13.dp, tint = BusBlue)
             VText(
                 data.destination,
@@ -205,7 +205,7 @@ private fun AlignedEndColumn(data: AlignedEndData, modifier: Modifier = Modifier
                 maxLines = 2,
                 align = if (data.alignEnd) TextAlign.End else TextAlign.Start,
             )
-            if (data.arrowRight) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = c.textMuted)
+            if (data.arrowRight) VIcon(RemixIcons.ArrowRightLine, size = 13.dp, tint = directionArrowTint(c))
         }
         val v = data.vehicle
         if (v?.label != null) {

@@ -25,15 +25,17 @@ internal class StripColors(
     /** Replacement buses: BKK's bus blue, whatever the line's colour. */
     val bus: Color = BusBlue,
     val busInk: Color = Color.White,
-    /** The ring around a vehicle token and its heading point. */
+    /** The ring around a vehicle token; unspecified on a light card, where the token is one solid disc on the line. */
     val ring: Color = Color.White,
     /** The ring around your stop on the line strip; the line's colour unless a theme sets it apart. */
     val youRing: Color = line,
     /** Your stop's centre on the line strip. */
     val youFill: Color = you,
+    /** A vehicle token's heading point: white like its ring, ink on a light card where white vanishes. */
+    val point: Color = ring,
 ) {
     /** The same, with the line drawn in [line] (the route map's own colour, say). */
-    fun withLine(line: Color) = StripColors(line, marker, markerInk, card, you, track, bus, busInk, ring, if (youRing == this.line) line else youRing, youFill)
+    fun withLine(line: Color) = StripColors(line, marker, markerInk, card, you, track, bus, busInk, ring, if (youRing == this.line) line else youRing, youFill, point)
 }
 
 /** BKK's bus blue, for replacement buses. */
@@ -45,7 +47,10 @@ internal fun stripColors(routeColor: String?, routeTextColor: String?, card: Col
     val c = Vectra.colors
     val dark = c.isDark
     val track = if (dark) Color.White.copy(alpha = 0.12f) else Color(0xFF0F172A).copy(alpha = 0.12f)
-    if (grey) return StripColors(c.textMuted, track, c.textMuted, card, track, track)
+    val point = if (dark) Color.White else c.textPrimary
+    // A white ring and the card-coloured cut around it read as white blots on the line of a light card.
+    val ring = if (dark) Color.White else Color.Unspecified
+    if (grey) return StripColors(c.textMuted, track, c.textMuted, card, track, track, ring = ring, point = point)
     val route = parseHexColor(routeColor?.takeIf { it.isNotEmpty() }) ?: Palette.Blue500
     val ink = parseHexColor(routeTextColor?.takeIf { it.isNotEmpty() }) ?: Color.White
     val l = route.luminance()
@@ -64,7 +69,7 @@ internal fun stripColors(routeColor: String?, routeTextColor: String?, card: Col
     // a pale line on the white card. Dark keeps the line colour around an ink centre.
     val youRing = if (dark) line else c.textPrimary
     val youFill = if (dark) c.textPrimary else card
-    return StripColors(line, marker, markerInk, card, c.textPrimary, track, youRing = youRing, youFill = youFill)
+    return StripColors(line, marker, markerInk, card, c.textPrimary, track, ring = ring, youRing = youRing, youFill = youFill, point = point)
 }
 
 /** The arrow before a direction's name: ink on a light card, where the muted grey fades into it. */

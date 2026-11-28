@@ -43,6 +43,7 @@ internal fun lerpStrip(from: StripColors, to: StripColors, t: Float): StripColor
     bus = to.bus,
     busInk = to.busInk,
     ring = to.ring,
+    point = to.point,
     youRing = lerp(from.youRing, to.youRing, t),
     youFill = lerp(from.youFill, to.youFill, t),
 )
