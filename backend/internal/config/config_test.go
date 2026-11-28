@@ -31,7 +31,7 @@ func TestCheckCompleteEnvironmentIsClean(t *testing.T) {
 func TestCheckMissingRequiredIsFatalOptionalIsNot(t *testing.T) {
 	m := full()
 	delete(m, "WEBAUTHN_RP_ORIGINS")
-	delete(m, "VAPID_SUBJECT")
+	delete(m, "FUTAR_UPSTREAM_PER_MINUTE")
 	get, env := envFrom(m)
 	var fatal, soft []string
 	for _, p := range Check(get, env) {
@@ -44,7 +44,7 @@ func TestCheckMissingRequiredIsFatalOptionalIsNot(t *testing.T) {
 	if len(fatal) != 1 || !strings.Contains(fatal[0], "WEBAUTHN_RP_ORIGINS") {
 		t.Fatalf("fatal = %v", fatal)
 	}
-	if len(soft) != 1 || !strings.Contains(soft[0], "VAPID_SUBJECT") {
+	if len(soft) != 1 || !strings.Contains(soft[0], "FUTAR_UPSTREAM_PER_MINUTE") {
 		t.Fatalf("soft = %v", soft)
 	}
 }

@@ -164,7 +164,7 @@ internal fun LineStripSlimCard(
 ) {
     val c = Vectra.colors
     val now = rememberNowMillis(5_000)
-    val offline = !rememberOnline(repo.connectivity)
+    val offline = !rememberOnline(repo.online)
     val stops = remember(tracker) { getTrackerStops(tracker) }
     // The stop nearest you, else the first.
     val coords = rememberCatalogStopsById(repo).data

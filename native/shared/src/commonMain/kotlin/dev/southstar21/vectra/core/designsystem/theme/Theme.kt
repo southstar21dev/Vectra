@@ -17,28 +17,28 @@ import dev.southstar21.vectra.core.preferences.AppearancePrefs
 import dev.southstar21.vectra.core.preferences.ThemeMode
 import dev.southstar21.vectra.core.preferences.isDark
 
-val LocalVectraColors = staticCompositionLocalOf { VectraColors.dark(AppearancePrefs.Default.accent) }
-val LocalVectraFonts = staticCompositionLocalOf<VectraFonts> { error("VectraTheme missing") }
-val LocalAppearance = compositionLocalOf { AppearancePrefs.Default }
-val LocalReduceMotion = staticCompositionLocalOf { false }
-val LocalContentColor = compositionLocalOf { Color.Unspecified }
-val LocalTextStyle = compositionLocalOf { VType.Body }
+internal val LocalVectraColors = staticCompositionLocalOf { VectraColors.dark(AppearancePrefs.Default.accent) }
+internal val LocalVectraFonts = staticCompositionLocalOf<VectraFonts> { error("VectraTheme missing") }
+internal val LocalAppearance = compositionLocalOf { AppearancePrefs.Default }
+internal val LocalReduceMotion = staticCompositionLocalOf { false }
+internal val LocalContentColor = compositionLocalOf { Color.Unspecified }
+internal val LocalTextStyle = compositionLocalOf { VType.Body }
 
 object Vectra {
     val colors: VectraColors
         @Composable @ReadOnlyComposable get() = LocalVectraColors.current
-    val fonts: VectraFonts
+    internal val fonts: VectraFonts
         @Composable @ReadOnlyComposable get() = LocalVectraFonts.current
-    val appearance: AppearancePrefs
+    internal val appearance: AppearancePrefs
         @Composable @ReadOnlyComposable get() = LocalAppearance.current
     val reduceMotion: Boolean
         @Composable @ReadOnlyComposable get() = LocalReduceMotion.current
-    val haptics: VectraHaptics
+    internal val haptics: VectraHaptics
         @Composable @ReadOnlyComposable get() = LocalVectraHaptics.current
 }
 
 /** Tint laid over a pressed element ([PressHighlight]). */
-val VectraColors.pressOverlay: Color
+internal val VectraColors.pressOverlay: Color
     get() = if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
 
 @Composable

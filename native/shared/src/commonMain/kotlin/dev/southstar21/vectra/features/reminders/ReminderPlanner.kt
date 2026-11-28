@@ -6,7 +6,7 @@ import dev.southstar21.vectra.core.platform.ScheduledNotification
 import dev.southstar21.vectra.core.time.formatBudapestHm
 
 /** "Next class" fires this long before the current one ends. */
-const val NextClassWarningMinutes = 5
+internal const val NextClassWarningMinutes = 5
 
 /**
  * Every reminder [sessions] call for under [prefs], from [nowMs] on. Per stretch of the day
@@ -15,7 +15,7 @@ const val NextClassWarningMinutes = 5
  * departures when it's over. Kinds switched off in [prefs] are left out entirely: no class reminder
  * and no commute around them either.
  */
-fun planReminders(sessions: List<ReminderSession>, prefs: ReminderPrefs, nowMs: Long): List<ScheduledNotification> {
+internal fun planReminders(sessions: List<ReminderSession>, prefs: ReminderPrefs, nowMs: Long): List<ScheduledNotification> {
     // Paired lines (28 / 28A) picked at one stop are fetched together already: one line of times.
     val toUni = if (prefs.departures) prefs.toUni.distinctBy { it.pickKey }.map { it.query } else emptyList()
     val backHome = if (prefs.departures) prefs.backHome.distinctBy { it.pickKey }.map { it.query } else emptyList()

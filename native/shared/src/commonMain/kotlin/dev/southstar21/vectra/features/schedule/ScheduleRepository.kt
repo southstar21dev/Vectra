@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,7 +27,7 @@ import kotlin.time.Instant
  * ([ScheduleItemsSync]) and Neptun ([NeptunSyncService]) each live in their own class; this
  * ties them to the session and the connection, and works out what needs all of them.
  */
-class ScheduleRepository(
+internal class ScheduleRepository(
     pb: PocketBaseClient,
     crypto: CryptoClient,
     kv: KeyValueStore,
@@ -39,9 +38,9 @@ class ScheduleRepository(
     neptunSync: NeptunSyncListener,
 ) {
     private val session = ScheduleSession(auth, connectivity)
-    private val classes = ScheduleEventsRepository(pb, crypto, kv, session, scope)
+    private val classes = ScheduleEventsRepository(pb, crypto, kv, session)
     private val itemsSync = ScheduleItemsSync(pb, crypto, kv, session, classes, scope)
-    private val neptun = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, scope, neptunSync, ::onScheduleReplaced)
+    private val neptun = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, neptunSync, ::onScheduleReplaced)
 
     val isOnline: StateFlow<Boolean> get() = connectivity.online
 
@@ -72,7 +71,7 @@ class ScheduleRepository(
 
     init {
         scope.launch {
-            auth.session.map { it?.userId?.ifEmpty { null } }.distinctUntilChanged().collect { uid -> onUserChanged(uid) }
+            auth.currentUserId.collect { uid -> onUserChanged(uid) }
         }
         // Read now, not in the collector: a reconnect before it subscribes would otherwise
         // arrive as its first value and be skipped, leaving the offline queue unsent.
@@ -81,10 +80,10 @@ class ScheduleRepository(
             connectivity.online.collect { isOnline ->
                 val reconnected = isOnline && !wasOnline
                 wasOnline = isOnline
-                if (reconnected && session.userId != null) {
+                val uid = session.userId
+                if (reconnected && uid != null) {
                     // Refetch on reconnect, and replay whatever was queued while offline.
-                    launch { runSuspendCatching { classes.refreshEvents(force = true) } }
-                    launch { itemsSync.refreshItems(force = true); itemsSync.executeSync() }
+                    refreshAll(uid, replay = true)
                 }
             }
         }
@@ -106,9 +105,18 @@ class ScheduleRepository(
         // A process started for an alarm or a widget only reads the caches: the forced refetches and the
         // Neptun auto-sync wait until a screen is shown ([onForeground]).
         if (!foreground) return
-        scope.launch { runSuspendCatching { classes.refreshEvents(force = true) } }
-        scope.launch { itemsSync.refreshItems(force = true) }
+        refreshAll(uid)
         maybeAutoSync()
+    }
+
+    /** The forced refetch of classes and items for [uid], dropped if that account signs out meanwhile. */
+    private fun refreshAll(uid: String, replay: Boolean = false) {
+        val sessions = session.sessions
+        sessions.launchFor(uid) { runSuspendCatching { classes.refreshEvents(force = true) } }
+        sessions.launchFor(uid) {
+            itemsSync.refreshItems(force = true)
+            if (replay) itemsSync.executeSync()
+        }
     }
 
     @Volatile private var foreground = false
@@ -124,9 +132,8 @@ class ScheduleRepository(
     fun onForeground() {
         if (foreground) return
         foreground = true
-        if (session.userId == null) return
-        scope.launch { runSuspendCatching { classes.refreshEvents(force = true) } }
-        scope.launch { itemsSync.refreshItems(force = true) }
+        val uid = session.userId ?: return
+        refreshAll(uid)
         neptun.maybeAutoSync()
     }
 
@@ -138,8 +145,9 @@ class ScheduleRepository(
 
     /** Classes were replaced wholesale, which also changes what the items clash with. */
     private fun onScheduleReplaced() {
-        scope.launch { classes.invalidateEvents() }
-        scope.launch {
+        val uid = session.userId ?: return
+        session.sessions.launchFor(uid) { classes.invalidateEvents() }
+        session.sessions.launchFor(uid) {
             itemsSync.refreshItems(force = true)
             if (session.online) itemsSync.executeSync()
         }
@@ -198,7 +206,7 @@ class ScheduleRepository(
  * Today's classes that actually meet today
  * (odd/even weeks, date ranges, holidays). The dashboard's timeline input.
  */
-fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.now()): List<ScheduleEvent> {
+internal fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.now()): List<ScheduleEvent> {
     val now = nowInBudapest(at)
     val index = ScheduleEventIndex(events)
     return events.filter { it.dayOfWeek == now.dayOfWeek }
@@ -206,5 +214,5 @@ fun scheduleTodayEvents(events: List<ScheduleEvent>, at: Instant = Clock.System.
 }
 
 /** Unique semesters, chronologically. */
-fun scheduleSemesters(events: List<ScheduleEvent>): List<String> =
+internal fun scheduleSemesters(events: List<ScheduleEvent>): List<String> =
     events.map { it.semester }.filter { it.isNotEmpty() }.distinct().sorted()

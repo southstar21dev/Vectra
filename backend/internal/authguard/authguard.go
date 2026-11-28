@@ -21,19 +21,27 @@ import (
 // they come from) and per client address (IPv4, or IPv6 /64), sign-ups and
 // reset mails per client address. The values live in internal/limits.
 //
-// Limiters are vars so tests can substitute fresh ones.
-var (
-	IdentityFailures = ratelimit.New(limits.AuthIdentityFailures.Max, limits.AuthIdentityFailures.Window)
-	IPFailures       = ratelimit.New(limits.AuthIPFailures.Max, limits.AuthIPFailures.Window)
-	Signups          = ratelimit.New(limits.AuthSignups.Max, limits.AuthSignups.Window)
-	Resets           = ratelimit.New(limits.AuthResets.Max, limits.AuthResets.Window)
-)
+// Limiters are the four budgets the guards spend. main builds them with
+// NewLimiters; tests build their own.
+type Limiters struct {
+	IdentityFailures, IPFailures, Signups, Resets *ratelimit.Limiter
+}
+
+// NewLimiters builds the limiters from the values in internal/limits.
+func NewLimiters() Limiters {
+	return Limiters{
+		IdentityFailures: limits.AuthIdentityFailures.New(),
+		IPFailures:       limits.AuthIPFailures.New(),
+		Signups:          limits.AuthSignups.New(),
+		Resets:           limits.AuthResets.New(),
+	}
+}
 
 // Register binds every guard.
-func Register(app core.App) {
-	registerLoginFailureLimit(app)
-	registerSignupLimit(app)
-	registerResetLimit(app)
+func Register(app core.App, l Limiters) {
+	registerLoginFailureLimit(app, l)
+	registerSignupLimit(app, l)
+	registerResetLimit(app, l)
 	registerDisabledEmailFlows(app)
 }
 
@@ -42,35 +50,35 @@ func Register(app core.App) {
 // used up its failure budget. Only failures count, so a legitimate login is
 // never spent against the budget; a blocked request skips the bcrypt check
 // entirely.
-func registerLoginFailureLimit(app core.App) {
+func registerLoginFailureLimit(app core.App, l Limiters) {
 	app.OnRecordAuthWithPasswordRequest().BindFunc(func(e *core.RecordAuthWithPasswordRequestEvent) error {
 		now := time.Now()
 		ip := ratelimit.ClientIP(e.RequestEvent)
 		identity := e.Collection.Name + ":" + strings.ToLower(strings.TrimSpace(e.Identity))
-		if IPFailures.Exhausted(ip, now) || IdentityFailures.Exhausted(identity, now) {
+		if l.IPFailures.Exhausted(ip, now) || l.IdentityFailures.Exhausted(identity, now) {
 			return e.TooManyRequestsError("Too many failed attempts. Please wait a while and try again.", nil)
 		}
 		err := e.Next()
 		if err != nil {
-			IPFailures.Allow(ip, now)
-			IdentityFailures.Allow(identity, now)
+			l.IPFailures.Allow(ip, now)
+			l.IdentityFailures.Allow(identity, now)
 		}
 		return err
 	})
 }
 
-func registerSignupLimit(app core.App) {
+func registerSignupLimit(app core.App, l Limiters) {
 	app.OnRecordCreateRequest("users").BindFunc(func(e *core.RecordRequestEvent) error {
-		if e.RequestEvent != nil && !Signups.Allow(ratelimit.ClientIP(e.RequestEvent), time.Now()) {
+		if e.RequestEvent != nil && !l.Signups.Allow(ratelimit.ClientIP(e.RequestEvent), time.Now()) {
 			return e.TooManyRequestsError("Too many sign-ups. Please wait a while and try again.", nil)
 		}
 		return e.Next()
 	})
 }
 
-func registerResetLimit(app core.App) {
+func registerResetLimit(app core.App, l Limiters) {
 	app.OnRecordRequestPasswordResetRequest("users").BindFunc(func(e *core.RecordRequestPasswordResetRequestEvent) error {
-		if !Resets.Allow(ratelimit.ClientIP(e.RequestEvent), time.Now()) {
+		if !l.Resets.Allow(ratelimit.ClientIP(e.RequestEvent), time.Now()) {
 			return e.TooManyRequestsError("Too many requests. Please wait a while and try again.", nil)
 		}
 		return e.Next()

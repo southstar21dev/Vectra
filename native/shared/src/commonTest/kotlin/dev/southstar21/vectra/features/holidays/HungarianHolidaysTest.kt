@@ -14,6 +14,8 @@ import kotlin.time.Instant
 /** Midnight Budapest time on the given date ([month0] is 0-based). */
 private fun budapest(year: Int, month0: Int, day: Int): Instant = LocalDateTime(year, month0 + 1, day, 0, 0).toBudapestInstant()
 
+private fun nextHoliday(now: Instant, maxDaysAhead: Int = 14): UpcomingHoliday? = getUpcomingHolidays(now, maxDaysAhead).firstOrNull()
+
 class HungarianHolidaysTest {
     @Test fun returns13HolidaysFor2026() = assertEquals(13, getHungarianHolidays(2026).size)
 
@@ -50,42 +52,42 @@ class HungarianHolidaysTest {
     }
 
     @Test fun todayIsAHoliday() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 0, 1)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 0, 1)))
         assertEquals("New Year's Day", r.holiday.name); assertEquals(0, r.daysUntil)
     }
 
     @Test fun nextWithin14Days() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 2, 5)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 2, 5)))
         assertEquals("Revolution of 1848", r.holiday.name); assertEquals(10, r.daysUntil)
     }
 
-    @Test fun nullBeyond14Days() = assertNull(getNextHoliday(budapest(2026, 1, 10)))
+    @Test fun nullBeyond14Days() = assertNull(nextHoliday(budapest(2026, 1, 10)))
 
     @Test fun yearBoundary() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 11, 27)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 11, 27)))
         assertEquals("New Year's Day", r.holiday.name); assertEquals(5, r.daysUntil)
     }
 
     @Test fun christmasToday() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 11, 25)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 11, 25)))
         assertEquals("Christmas Day", r.holiday.name); assertEquals(0, r.daysUntil)
     }
 
     @Test fun tomorrow() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 11, 24)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 11, 24)))
         assertEquals("Christmas Day", r.holiday.name); assertEquals(1, r.daysUntil)
     }
 
     @Test fun goodFriday2026() {
-        val r = assertNotNull(getNextHoliday(budapest(2026, 2, 25)))
+        val r = assertNotNull(nextHoliday(budapest(2026, 2, 25)))
         assertEquals("Good Friday", r.holiday.name); assertEquals(4, r.holiday.month); assertEquals(3, r.holiday.day); assertEquals(9, r.daysUntil)
     }
 
     @Test fun easterAndPentecostTransitions() {
-        getNextHoliday(budapest(2026, 3, 4)).let { assertEquals("Easter Sunday", it?.holiday?.name); assertEquals(1, it?.daysUntil) }
-        getNextHoliday(budapest(2026, 3, 6)).let { assertEquals("Easter Monday", it?.holiday?.name); assertEquals(0, it?.daysUntil) }
-        getNextHoliday(budapest(2026, 3, 20)).let { assertEquals("Labour Day", it?.holiday?.name); assertEquals(11, it?.daysUntil) }
-        getNextHoliday(budapest(2026, 4, 15)).let { assertEquals("Whit Sunday", it?.holiday?.name); assertEquals(9, it?.daysUntil) }
+        nextHoliday(budapest(2026, 3, 4)).let { assertEquals("Easter Sunday", it?.holiday?.name); assertEquals(1, it?.daysUntil) }
+        nextHoliday(budapest(2026, 3, 6)).let { assertEquals("Easter Monday", it?.holiday?.name); assertEquals(0, it?.daysUntil) }
+        nextHoliday(budapest(2026, 3, 20)).let { assertEquals("Labour Day", it?.holiday?.name); assertEquals(11, it?.daysUntil) }
+        nextHoliday(budapest(2026, 4, 15)).let { assertEquals("Whit Sunday", it?.holiday?.name); assertEquals(9, it?.daysUntil) }
     }
 
     @Test fun multipleWithinEasterSeason() {
@@ -100,7 +102,7 @@ class HungarianHolidaysTest {
 
     @Test fun countsFromBudapestDate() {
         // 23:30 UTC on Oct 22 is already Oct 23 in Budapest.
-        val r = assertNotNull(getNextHoliday(Instant.parse("2026-10-22T23:30:00Z")))
+        val r = assertNotNull(nextHoliday(Instant.parse("2026-10-22T23:30:00Z")))
         assertEquals(10, r.holiday.month); assertEquals(23, r.holiday.day); assertEquals(0, r.daysUntil)
     }
 

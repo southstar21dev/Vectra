@@ -28,12 +28,12 @@ private const val OpenFreeMapStyleBase = "https://tiles.openfreemap.org/styles"
  * tiles, built with OpenMapTiles from OpenStreetMap data (whose licence asks for "© OpenStreetMap
  * contributors" and a way to its copyright page, [OpenStreetMapCopyrightUrl]).
  */
-const val OpenFreeMapAttribution = "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
+internal const val OpenFreeMapAttribution = "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
 
 /** Where a tap on the map credits goes: OpenStreetMap's copyright and licence page. */
-const val OpenStreetMapCopyrightUrl = "https://www.openstreetmap.org/copyright"
+internal const val OpenStreetMapCopyrightUrl = "https://www.openstreetmap.org/copyright"
 
-fun openFreeMapStyleUrl(isLight: Boolean, nowMs: Long = Clock.System.now().toEpochMilliseconds()): String {
+internal fun openFreeMapStyleUrl(isLight: Boolean, nowMs: Long = Clock.System.now().toEpochMilliseconds()): String {
     // A daily cache-buster defeats caches that kept a broken provider style.
     val day = nowMs / 86_400_000L
     return "$OpenFreeMapStyleBase/${if (isLight) "positron" else "dark"}?v=3&d=$day"
@@ -60,7 +60,7 @@ internal fun nullSafeExpr(value: JsonElement): JsonElement {
 }
 
 /** Null-safe filters, no missing pattern sprites, Noto Sans glyphs. */
-fun sanitizeOpenFreeMapStyle(style: JsonObject): JsonObject {
+internal fun sanitizeOpenFreeMapStyle(style: JsonObject): JsonObject {
     val layers = (style["layers"] as? JsonArray)?.map { layerEl ->
         val layer = layerEl as? JsonObject ?: return@map layerEl
         val out = layer.toMutableMap()
@@ -87,7 +87,7 @@ fun sanitizeOpenFreeMapStyle(style: JsonObject): JsonObject {
  * applyOpenFreeMapParkColors, applied to the style document: exact-filter
  * water and park fills inserted below the first road (or label) layer.
  */
-fun withParkColors(style: JsonObject, isLight: Boolean): JsonObject {
+internal fun withParkColors(style: JsonObject, isLight: Boolean): JsonObject {
     val sources = style["sources"] as? JsonObject ?: return style
     val vectorSourceId = sources.entries.firstOrNull { (it.value as? JsonObject)?.get("type")?.let { t -> (t as? JsonPrimitive)?.content } == "vector" }?.key
         ?: return style
@@ -129,7 +129,7 @@ fun withParkColors(style: JsonObject, isLight: Boolean): JsonObject {
  * The style is a few hundred KB of JSON and the maps fetch it from a composable's effect on
  * the main thread, so parsing and re-serializing happen on [work] (audit 03 #16).
  */
-suspend fun prepareOpenFreeMapStyle(text: String, isLight: Boolean, work: CoroutineContext = Dispatchers.Default): String =
+internal suspend fun prepareOpenFreeMapStyle(text: String, isLight: Boolean, work: CoroutineContext = Dispatchers.Default): String =
     withContext(work) {
         val style = VectraJson.parseToJsonElement(text) as? JsonObject ?: error("OpenFreeMap style is not an object")
         withParkColors(sanitizeOpenFreeMapStyle(style), isLight).toString()

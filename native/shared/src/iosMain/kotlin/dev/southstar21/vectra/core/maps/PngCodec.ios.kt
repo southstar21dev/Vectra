@@ -11,7 +11,7 @@ import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Surface
 
-actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? = runCatching {
+internal actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? = runCatching {
     val source = Image.makeFromEncoded(bytes)
     val surface = Surface.makeRaster(ImageInfo(size, size, ColorType.BGRA_8888, ColorAlphaType.UNPREMUL))
     surface.canvas.drawImageRect(source, Rect.makeWH(size.toFloat(), size.toFloat()))
@@ -26,7 +26,7 @@ actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? = runCatching {
     ArgbImage(size, size, px)
 }.getOrNull()
 
-actual fun encodePng(image: ArgbImage): ByteArray? = runCatching {
+internal actual fun encodePng(image: ArgbImage): ByteArray? = runCatching {
     val raw = ByteArray(image.pixels.size * 4)
     image.pixels.forEachIndexed { i, p ->
         val o = i * 4
@@ -39,7 +39,7 @@ actual fun encodePng(image: ArgbImage): ByteArray? = runCatching {
     Image.makeRaster(info, raw, image.width * 4).encodeToData(EncodedImageFormat.PNG)?.bytes
 }.getOrNull()
 
-actual fun ArgbImage.toImageBitmap(): ImageBitmap {
+internal actual fun ArgbImage.toImageBitmap(): ImageBitmap {
     val raw = ByteArray(pixels.size * 4)
     pixels.forEachIndexed { i, p ->
         val o = i * 4

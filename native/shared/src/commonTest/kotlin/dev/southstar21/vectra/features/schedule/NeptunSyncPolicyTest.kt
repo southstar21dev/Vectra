@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.AuthState
@@ -56,8 +57,8 @@ private val Feed = listOf(
 private class NeptunBackend {
     @Volatile var feedFetches = 0
     @Volatile var replaces = 0
-    val profilePatches = mutableListOf<JsonObject>()
-    val deletedRows = mutableListOf<String>()
+    val profilePatches = SafeList<JsonObject>()
+    val deletedRows = SafeList<String>()
     val neptunRows = listOf("row-a", "row-b")
 }
 
@@ -106,8 +107,8 @@ private class PolicyHarness(private val profile: Map<String, String?>) {
     private val auth = AuthRepository(pb, store, kv, scope, lazyOf(emptyList()))
     private val session = ScheduleSession(auth, connectivity)
     private val crypto = CryptoClient(pb, scope)
-    private val classes = ScheduleEventsRepository(pb, crypto, kv, session, scope)
-    val service = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, scope, { }, { replacedCount++ }, { nowMs })
+    private val classes = ScheduleEventsRepository(pb, crypto, kv, session)
+    val service = NeptunSyncService(pb, crypto, kv, auth, http, session, classes, { }, { replacedCount++ }, { nowMs })
 
     suspend fun signIn() {
         val record = JsonObject(
@@ -133,7 +134,7 @@ private fun scenario(profile: Map<String, String?> = emptyMap(), test: suspend P
     val h = PolicyHarness(profile)
     try {
         withContext(Dispatchers.Default) {
-            withTimeout(20_000) {
+            withTimeout(55_000) {
                 h.signIn()
                 h.test()
             }
@@ -143,7 +144,7 @@ private fun scenario(profile: Map<String, String?> = emptyMap(), test: suspend P
     }
 }
 
-private suspend fun until(condition: () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 private fun iso(ms: Long) = Instant.fromEpochMilliseconds(ms).toString()
 

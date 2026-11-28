@@ -33,7 +33,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * The flag clears when the move completes, with a 1.2s fallback for moves
  * that never settle — safe for animated fits.
  */
-class ProgrammaticGuard internal constructor(private val scope: CoroutineScope) {
+internal class ProgrammaticGuard internal constructor(private val scope: CoroutineScope) {
     internal var onUserMove: (() -> Unit)? = null
     private var programmatic = false
     private var job: Job? = null
@@ -84,7 +84,7 @@ class ProgrammaticGuard internal constructor(private val scope: CoroutineScope) 
 }
 
 @Composable
-fun rememberProgrammaticGuard(onUserMove: (() -> Unit)? = null): ProgrammaticGuard {
+internal fun rememberProgrammaticGuard(onUserMove: (() -> Unit)? = null): ProgrammaticGuard {
     val scope = rememberCoroutineScope()
     val guard = remember(scope) { ProgrammaticGuard(scope) }
     val latest = rememberUpdatedState(onUserMove)
@@ -104,7 +104,7 @@ private fun Bounds.box() = BoundingBox(west = minLon, south = minLat, east = max
  * [bottomInset]: the map's bottom part is out of sight (a map taller than the box showing it), so
  * the fit keeps clear of it. Null leaves the camera's own padding as it is.
  */
-suspend fun MapState.fitBounds(bounds: Bounds, padding: Dp, maxZoom: Double? = null, animate: Boolean = false, bottomInset: Dp? = null) {
+internal suspend fun MapState.fitBounds(bounds: Bounds, padding: Dp, maxZoom: Double? = null, animate: Boolean = false, bottomInset: Dp? = null) {
     val degenerate = bounds.minLat == bounds.maxLat && bounds.minLon == bounds.maxLon
     // A point is centred in the visible part through the camera's padding; a box through the fit's.
     val camPadding = when {
@@ -130,26 +130,26 @@ suspend fun MapState.fitBounds(bounds: Bounds, padding: Dp, maxZoom: Double? = n
 }
 
 /** `map.easeTo({ center, zoom })`: [jumpTo], gliding there. */
-suspend fun MapState.easeTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
+internal suspend fun MapState.easeTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
     val padding = if (bottomInset == null) cameraPosition.padding else DpPadding(bottom = bottomInset)
     animateCamera(CameraUpdate(center = center.position, zoom = zoom, padding = padding), DefaultEase)
 }
 
 /** `map.jumpTo({ center, zoom })`; [bottomInset] as in [fitBounds]. */
-fun MapState.jumpTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
+internal fun MapState.jumpTo(center: LatLon, zoom: Double, bottomInset: Dp? = null) {
     val padding = if (bottomInset == null) cameraPosition.padding else DpPadding(bottom = bottomInset)
     setCameraPosition(cameraPosition.copy(center = center.position, zoom = zoom, padding = padding))
 }
 
 /** `map.getBounds().contains(p)` against the last rendered viewport (false before one exists). */
-fun MapState.boundsContain(p: LatLon): Boolean {
+internal fun MapState.boundsContain(p: LatLon): Boolean {
     val b = viewport?.visibleBounds ?: return false
     return p.lon >= b.southwest.longitude && p.lon <= b.northeast.longitude &&
         p.lat >= b.southwest.latitude && p.lat <= b.northeast.latitude
 }
 
 /** One button in [GlassMapControls]. */
-data class MapControlButton(
+internal data class MapControlButton(
     val id: String,
     val title: String,
     val icon: ImageVector,

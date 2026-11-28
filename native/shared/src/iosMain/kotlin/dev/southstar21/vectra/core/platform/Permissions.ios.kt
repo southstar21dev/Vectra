@@ -16,7 +16,7 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 @Composable
-actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequester = remember(kind) {
+internal actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequester = remember(kind) {
     when (kind) {
         PermissionKind.Location -> PermissionRequester(locationPrompt::request)
         PermissionKind.Notifications -> PermissionRequester(::requestNotifications)

@@ -37,7 +37,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * device, so reminders fire offline and with the app closed.
  * [prefs] are kept on the device and in the profile by [ReminderPrefsStore].
  */
-class ReminderScheduler(
+class ReminderScheduler internal constructor(
     kv: KeyValueStore,
     private val schedule: ScheduleRepository,
     private val courseTracker: CourseTrackerRepository,
@@ -49,7 +49,7 @@ class ReminderScheduler(
     crypto: CryptoClient,
 ) : SessionListener {
     private val store = ReminderPrefsStore(kv, auth, scope, crypto)
-    val prefs: StateFlow<ReminderPrefs> = store.prefs
+    internal val prefs: StateFlow<ReminderPrefs> = store.prefs
 
     private val loaded = CompletableDeferred<Unit>()
     private val replanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -90,7 +90,7 @@ class ReminderScheduler(
         replanRequests.tryEmit(Unit)
     }
 
-    fun update(transform: (ReminderPrefs) -> ReminderPrefs) = store.update(transform)
+    internal fun update(transform: (ReminderPrefs) -> ReminderPrefs) = store.update(transform)
 
     /**
      * For a cold start with no screen (boot, background refresh): waits for the cached schedule,
@@ -167,7 +167,7 @@ class ReminderScheduler(
      * reminder firing now. [LiveDepartures.firstMs] is the latest of the lines' next departures, so
      * the times stay fresh while any of them can still be caught.
      */
-    suspend fun liveDepartures(queries: List<DepartureQuery>, budgetMs: Long = LiveDeparturesBudgetMs): LiveDepartures {
+    internal suspend fun liveDepartures(queries: List<DepartureQuery>, budgetMs: Long = LiveDeparturesBudgetMs): LiveDepartures {
         // Bounded, so a stalled network still leaves the caller time to post the reminder itself:
         // past the budget every line falls back to "tap for departures".
         val times = withTimeoutOrNull(budgetMs) {

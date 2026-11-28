@@ -9,9 +9,10 @@
 # pass is the tag and GitHub release created, so a failed build or test never leaves a release.
 #
 # A push to master whose tree is identical to dev's head, where CI already passed, skips CI: the
-# promotion merge changes nothing that was tested. CI here always runs every job (all-jobs), so
-# "passed" means each of web, backend and native succeeded on that exact commit; a skipped job
-# never counts.
+# promotion merge changes nothing that was tested. CI here always runs every release job
+# (all-jobs), so "passed" means each of backend and native succeeded on that exact commit; a
+# skipped job never counts. The deprecated web job is not part of the gate: it runs on pull
+# requests only (see ci.yml), so a web failure never blocks a release.
 #
 # The release APK is also launched on an emulator first (android-launch.yml), so a crash that only
 # the shrunk release build has stops the release.
@@ -28,7 +29,8 @@
 # Run the workflow by hand (gh workflow run release.yml --ref master) to republish them without
 # releasing, e.g. after editing a release's notes.
 #
-# The web app and the backend deploy from master through Coolify; they aren't built here.
+# The web app and the backend deploy from master through Coolify; they aren't built here, and
+# only the backend is tested before a release.
 #
 # Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (Android signing).
 # iOS is archived once (the ios job, signed with the CI development certificate). The IPA made from
@@ -82,17 +84,18 @@ jobs:
             echo "Tree differs from dev ($DEV_SHA); running CI." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          # Dev's CI runs every job (all-jobs), so web, backend and native must each have a run on
+          # Dev's CI runs every release job (all-jobs), so backend and native must each have a run on
           # dev's head, and every CI run there must have succeeded. Skipped is not green: it means
           # the job never ran (an older dev run with a path filter, or a failed dependency).
-          # Anything still running, failed, skipped or missing means CI runs here.
+          # Anything still running, failed, skipped or missing means CI runs here. The web job is
+          # left out on purpose: it only runs on pull requests, so on a push it is always skipped.
           # $ci and $job are jq variables, not shell ones.
           # shellcheck disable=SC2016
           GREEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$DEV_SHA/check-runs?per_page=100" --jq '
-            [.check_runs[] | select(.name | startswith("ci / "))] as $ci
+            [.check_runs[] | select((.name | startswith("ci / ")) and (.name | startswith("ci / web") | not))] as $ci
             | ($ci | length > 0)
               and ($ci | all(.conclusion == "success"))
-              and (["ci / web", "ci / backend", "ci / native"] | all(. as $job | $ci | any(.name | startswith($job))))')"
+              and (["ci / backend", "ci / native"] | all(. as $job | $ci | any(.name | startswith($job))))')"
           if [ "$GREEN" = true ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Same tree as dev ($DEV_SHA), where CI passed; skipping CI." >> "$GITHUB_STEP_SUMMARY"
@@ -478,7 +481,7 @@ jobs:
           node-version: 22
 
       # Only the two build jobs' artifacts: a pattern, so an artifact another job of the run uploaded
-      # (the reusable CI web job, say) is never merged into the release.
+      # (a reusable CI job, say) is never merged into the release.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: release-assets

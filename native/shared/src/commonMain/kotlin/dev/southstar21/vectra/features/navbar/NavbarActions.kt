@@ -12,9 +12,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 
 /** Colour of a navbar FAB action. */
-enum class NavbarActionVariant { Primary, Emerald, Blue, Gray, Secondary }
+internal enum class NavbarActionVariant { Primary, Emerald, Blue, Gray, Secondary }
 
-data class NavbarAction(
+internal data class NavbarAction(
     val id: String,
     val label: String,
     val icon: ImageVector,
@@ -23,10 +23,10 @@ data class NavbarAction(
     val onClick: () -> Unit,
 )
 
-data class NavbarActionConfig(val icon: ImageVector? = null, val actions: List<NavbarAction>)
+internal data class NavbarActionConfig(val icon: ImageVector? = null, val actions: List<NavbarAction>)
 
 @Stable
-class NavbarActions {
+internal class NavbarActions {
     var config by mutableStateOf<NavbarActionConfig?>(null)
         internal set
 
@@ -38,14 +38,14 @@ class NavbarActions {
     }
 }
 
-val LocalNavbarActions = staticCompositionLocalOf { NavbarActions() }
+internal val LocalNavbarActions = staticCompositionLocalOf { NavbarActions() }
 
 /**
  * A page registers its FAB actions while it is the page on screen. Tabs stay
  * composed while hidden, so registering whenever composed let whichever tab composed last own the +.
  */
 @Composable
-fun RegisterNavbarActions(config: NavbarActionConfig) {
+internal fun RegisterNavbarActions(config: NavbarActionConfig) {
     val actions = LocalNavbarActions.current
     val active = LocalPageActive.current
     SideEffect { if (active) config.actions.forEach { actions.handlers[it.id] = it.onClick } }

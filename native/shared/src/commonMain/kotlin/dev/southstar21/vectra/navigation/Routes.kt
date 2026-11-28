@@ -18,7 +18,7 @@ import kotlinx.serialization.json.Json
 
 /** The four tabs of the signed-in app. */
 @Serializable
-sealed interface Route : NavKey {
+internal sealed interface Route : NavKey {
     @Serializable data object Dashboard : Route
     @Serializable data object Schedule : Route
     @Serializable data object Transit : Route
@@ -30,7 +30,7 @@ sealed interface Route : NavKey {
  * tab shell underneath; everything above it slides in from the side.
  */
 @Serializable
-sealed interface Screen : NavKey {
+internal sealed interface Screen : NavKey {
     @Serializable data object Tabs : Screen
     @Serializable data object WeatherRadar : Screen
 
@@ -51,7 +51,7 @@ sealed interface Screen : NavKey {
 }
 
 /** On a wide window this screen opens as a centred card over the tabs; maps keep the whole window. */
-val Screen.opensAsCard: Boolean
+internal val Screen.opensAsCard: Boolean
     get() = when (this) {
         Screen.Tabs, Screen.WeatherRadar, Screen.NearbyExplorer -> false
         else -> true
@@ -61,7 +61,7 @@ val Screen.opensAsCard: Boolean
  * One primary tab. [sfSymbol] is the SF Symbol the iOS system tab bar draws; [holdable] tabs open something when
  * held (the iOS bar then swallows the selection the lift of the finger would deliver).
  */
-data class NavItem(
+internal data class NavItem(
     val route: Route,
     val label: String,
     val icon: ImageVector,
@@ -70,21 +70,21 @@ data class NavItem(
     val holdable: Boolean = false,
 )
 
-val PrimaryNavItems: List<NavItem> = listOf(
+internal val PrimaryNavItems: List<NavItem> = listOf(
     NavItem(Route.Dashboard, "Dashboard", RemixIcons.DashboardLine, RemixIcons.DashboardFill, "square.grid.2x2"),
     NavItem(Route.Schedule, "Schedule", RemixIcons.Calendar2Line, RemixIcons.Calendar2Fill, "calendar"),
     NavItem(Route.Transit, "Transit", RemixIcons.TrainLine, RemixIcons.TrainFill, "tram", holdable = true),
     NavItem(Route.Settings, "Settings", RemixIcons.Settings3Line, RemixIcons.Settings3Fill, "gearshape"),
 )
 
-val PrimaryRoutes: List<Route> = PrimaryNavItems.map { it.route }
+internal val PrimaryRoutes: List<Route> = PrimaryNavItems.map { it.route }
 
 /** The live tracker sheet's subject; [stopId] picks which of a multi-stop tracker's stops shows. */
 @Serializable
-data class LiveTrackerSheet(val trackerId: String, val stopId: String? = null)
+internal data class LiveTrackerSheet(val trackerId: String, val stopId: String? = null)
 
 /** Tabs whose navbar shows a + actions button. */
-val ActionRoutes: Set<Route> = setOf(Route.Transit, Route.Schedule)
+internal val ActionRoutes: Set<Route> = setOf(Route.Transit, Route.Schedule)
 
 /**
  * Two levels of navigation:
@@ -93,7 +93,7 @@ val ActionRoutes: Set<Route> = setOf(Route.Transit, Route.Schedule)
  * - Screens: a stack pushed over the tabs ([screens], rooted at [Screen.Tabs]).
  */
 @Stable
-class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listOf(Screen.Tabs)) {
+internal class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listOf(Screen.Tabs)) {
     val backStack = mutableStateListOf<Route>().apply {
         add(Route.Dashboard)
         if (start != Route.Dashboard) add(start)
@@ -219,4 +219,4 @@ class AppNavigator(start: Route = Route.Dashboard, screens: List<Screen> = listO
     }
 }
 
-val LocalNavigator = staticCompositionLocalOf<AppNavigator> { error("AppNavigator missing") }
+internal val LocalNavigator = staticCompositionLocalOf<AppNavigator> { error("AppNavigator missing") }

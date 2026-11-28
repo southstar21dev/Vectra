@@ -16,7 +16,6 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.features.transit.data.DeviceLocation
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
-import dev.southstar21.vectra.features.transit.demo.DemoSeedEffect
 import dev.southstar21.vectra.features.transit.nearby.NearbyMapStrip
 import dev.southstar21.vectra.features.transit.nearby.NearbyMapStripHeight
 import dev.southstar21.vectra.features.transit.nearby.PeekStop
@@ -198,7 +197,6 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
     val trackers = trackersState.data.orEmpty()
     // First ever fetch still in flight (no offline cache to seed from yet).
     val firstLoad = trackersState.isFetching && !trackersState.isFetched
-    DemoSeedEffect(repo, trackers, trackersState.isFetched && trackersState.data != null)
 
     val navigator = LocalNavigator.current
     var menuTracker by remember { mutableStateOf<TransitTracker?>(null) }
@@ -218,7 +216,7 @@ internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocati
     val inactiveTrackers = if (departuresSettled) trackers.filter { hasDepartures[it.id] == false } else emptyList()
     val allInactive = trackers.isNotEmpty() && activeTrackers.isEmpty() && inactiveTrackers.isNotEmpty()
 
-    val isOffline = !rememberOnline(repo.connectivity)
+    val isOffline = !rememberOnline(repo.online)
 
     RegisterNavbarActions(
         NavbarActionConfig(

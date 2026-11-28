@@ -103,7 +103,7 @@ private fun Modifier.narrowTo(compact: Dp, collapse: () -> Float): Modifier = la
  * actions pop out of the + as one glass panel.
  */
 @Composable
-fun LiquidNavbar(
+internal fun LiquidNavbar(
     current: Route,
     onNavigate: (Route) -> Unit,
     backdrop: Backdrop,

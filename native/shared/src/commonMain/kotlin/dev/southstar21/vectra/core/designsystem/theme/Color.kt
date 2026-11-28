@@ -9,10 +9,10 @@ import dev.southstar21.vectra.core.preferences.AccentKey
 internal fun rgba(r: Int, g: Int, b: Int, a: Float) = Color(r, g, b, (a * 255f + 0.5f).toInt())
 
 /** This colour at [percent]% of its opacity (mixed with transparent). */
-fun Color.mixTransparent(percent: Float): Color = copy(alpha = alpha * percent / 100f)
+internal fun Color.mixTransparent(percent: Float): Color = copy(alpha = alpha * percent / 100f)
 
 /** [percent]% of this colour mixed with [other] in sRGB. */
-fun Color.mix(percent: Float, other: Color): Color = lerp(other, this, percent / 100f)
+internal fun Color.mix(percent: Float, other: Color): Color = lerp(other, this, percent / 100f)
 
 /** One feature-chip tint: background wash, hairline and ink. */
 @Immutable
@@ -43,9 +43,9 @@ data class BoxShadow(
 )
 
 @Immutable
-data class AccentPreset(val key: AccentKey, val name: String, val dark: Color, val light: Color)
+internal data class AccentPreset(val key: AccentKey, val name: String, val dark: Color, val light: Color)
 
-val AccentPresets: List<AccentPreset> = listOf(
+internal val AccentPresets: List<AccentPreset> = listOf(
     AccentPreset(AccentKey.Blue, "Sky Blue", Color(0xFF38BDF8), Color(0xFF0284C7)),
     AccentPreset(AccentKey.Indigo, "Indigo", Color(0xFF818CF8), Color(0xFF4F46E5)),
     AccentPreset(AccentKey.Purple, "Violet", Color(0xFFA855F7), Color(0xFF7C3AED)),
@@ -249,7 +249,7 @@ object Palette {
  * `#rrggbb`, `rrggbb`, `#rgb` or `rrggbbaa` (hash optional) to a Color; null when unparsable.
  * With [opaque] an 8-digit value drops its alpha instead of honouring it.
  */
-fun parseHexColor(hex: String?, opaque: Boolean = false): Color? {
+internal fun parseHexColor(hex: String?, opaque: Boolean = false): Color? {
     val h = hex?.trim()?.removePrefix("#") ?: return null
     val v = when (h.length) {
         6 -> h.toLongOrNull(16)?.let { 0xFF000000 or it }

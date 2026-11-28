@@ -1,5 +1,6 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.maps.decodeImage
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -20,19 +21,19 @@ import kotlin.math.abs
 import kotlin.math.floor
 
 /** RainViewer serves radar tiles up to this zoom ("Zoom Level Not Supported" past it). */
-const val RadarDataMaxZoom = 7
+internal const val RadarDataMaxZoom = 7
 
 /** The deepest zoom [RadarTileRenderer] makes tiles for; MapLibre stretches those further. */
-const val RadarRenderMaxZoom = 10
+internal const val RadarRenderMaxZoom = 10
 
 /** RainViewer's HD tiles. */
-const val RadarTilePixels = 512
+internal const val RadarTilePixels = 512
 
 /** Raw tiles kept for neighbours and deeper zooms (1 MB each). */
 private const val CacheTiles = 24
 
 /** A RainViewer tile URL taken apart: `[prefix]/{z}/{x}/{y}[suffix]`. */
-class RadarTileRef(val prefix: String, val z: Int, val x: Int, val y: Int, val suffix: String) {
+internal class RadarTileRef(val prefix: String, val z: Int, val x: Int, val y: Int, val suffix: String) {
     fun url(z: Int, x: Int, y: Int): String = "$prefix/$z/$x/$y$suffix"
 
     companion object {
@@ -52,7 +53,7 @@ class RadarTileRef(val prefix: String, val z: Int, val x: Int, val y: Int, val s
  * map's blocky stretch. Raw tiles are cached, so neighbours the map loads anyway are fetched once.
  * [fetch] returns a tile's bytes, null when there is none, and throws when it can't be loaded.
  */
-class RadarTileRenderer(private val fetch: suspend (String) -> ByteArray?) {
+internal class RadarTileRenderer(private val fetch: suspend (String) -> ByteArray?) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
     private val cache = LinkedHashMap<String, Deferred<IntArray?>>()
@@ -142,7 +143,7 @@ class RadarTileRenderer(private val fetch: suspend (String) -> ByteArray?) {
 }
 
 /** A renderer fetching through [http]: 404/204 mean no tile, other failures throw. */
-fun radarTileRenderer(http: HttpClient): RadarTileRenderer = RadarTileRenderer { url ->
+internal fun radarTileRenderer(http: HttpClient): RadarTileRenderer = RadarTileRenderer { url ->
     val res = http.get(url)
     when {
         res.status == HttpStatusCode.NotFound || res.status == HttpStatusCode.NoContent -> null
@@ -250,10 +251,10 @@ private fun unpremultiply(acc: FloatArray): Int {
 }
 
 /** The `doppler://` scheme marks radar tiles the map resource provider recolours. */
-const val DopplerScheme = "doppler://"
+internal const val DopplerScheme = "doppler://"
 
 /** `https://…` → `doppler://…`. */
-fun dopplerTileUrl(httpsUrl: String): String = DopplerScheme + httpsUrl.removePrefix("https://")
+internal fun dopplerTileUrl(httpsUrl: String): String = DopplerScheme + httpsUrl.removePrefix("https://")
 
 /** `doppler://…` → the real `https://…` tile URL. */
-fun dopplerToHttps(url: String): String = "https://" + url.removePrefix(DopplerScheme)
+internal fun dopplerToHttps(url: String): String = "https://" + url.removePrefix(DopplerScheme)

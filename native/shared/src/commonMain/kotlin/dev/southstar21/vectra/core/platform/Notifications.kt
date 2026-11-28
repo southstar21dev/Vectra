@@ -58,7 +58,7 @@ data class DepartureQuery(
 )
 
 /** Alarms set before several lines were allowed carry a single query. */
-object DepartureQueryList : OneOrManySerializer<DepartureQuery>(DepartureQuery.serializer())
+internal object DepartureQueryList : OneOrManySerializer<DepartureQuery>(DepartureQuery.serializer())
 
 /**
  * Native push registration (FCM on Android). The backend's push route sends Web

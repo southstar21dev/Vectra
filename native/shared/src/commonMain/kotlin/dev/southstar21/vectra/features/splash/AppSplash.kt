@@ -80,7 +80,7 @@ private const val MaxFrameStepMs = 34L
  * [onPresented] fires as that starts, so the cards' reveals play underneath.
  */
 @Composable
-fun AppSplash(appReady: Boolean, version: String, onPresented: () -> Unit) {
+internal fun AppSplash(appReady: Boolean, version: String, onPresented: () -> Unit) {
     val c = Vectra.colors
     val reduce = Vectra.reduceMotion
     var minElapsed by remember { mutableStateOf(false) }

@@ -10,7 +10,7 @@ import dev.southstar21.vectra.core.platform.platformName
  * What the passkey rows call the unlock method: Face ID or Touch ID on an iPhone (whichever the
  * device has), the fingerprint on Android. The feature itself is always called "Passkey".
  */
-object BiometricCopy {
+internal object BiometricCopy {
     /** The unlock method inside a sentence: "Face ID", "your fingerprint". */
     fun method(platform: String = platformName, device: String = biometricName): String =
         if (platform == "ios") device else "your fingerprint"

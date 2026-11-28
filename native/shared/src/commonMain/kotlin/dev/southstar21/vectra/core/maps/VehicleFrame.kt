@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 
 /** One vehicle's rendered state for the current frame. */
 @Immutable
-data class VehicleFrame(
+internal data class VehicleFrame(
     val id: String,
     /** Where the marker sits now (snapped onto / gliding along the polyline). */
     val position: LatLon,

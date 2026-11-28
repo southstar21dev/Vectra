@@ -8,6 +8,9 @@ import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.SessionEndedException
+import dev.southstar21.vectra.core.util.BackoffPolicy
+import dev.southstar21.vectra.core.util.retrying
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -17,19 +20,17 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonArray
@@ -40,10 +41,10 @@ import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-enum class NeptunSyncStatus { Idle, Syncing, Success, Error }
+internal enum class NeptunSyncStatus { Idle, Syncing, Success, Error }
 
 /** One clean, DB-shaped Neptun event (sensitive fields still plaintext). */
-data class NeptunSyncEvent(
+internal data class NeptunSyncEvent(
     val courseName: String,
     val courseCode: String,
     val instructor: String,
@@ -58,7 +59,7 @@ data class NeptunSyncEvent(
     val eventType: String,
 )
 
-fun ParsedIcsEvent.toSyncEvent() = NeptunSyncEvent(
+internal fun ParsedIcsEvent.toSyncEvent() = NeptunSyncEvent(
     courseName, courseCode, instructor, location, dayOfWeek, startTime, endTime,
     color.ifEmpty { "#3B82F6" }, semester, semesterStart?.ifEmpty { null }, semesterEnd?.ifEmpty { null }, eventType.ifEmpty { "class" },
 )
@@ -74,7 +75,7 @@ internal fun NeptunSyncEvent.toScheduleEvent(owner: String) = ScheduleEvent(
  * Told after a Neptun sync or import persisted its events, with every class as it now stands
  * (the new Neptun rows and the manual ones). Failures never fail the sync.
  */
-fun interface NeptunSyncListener {
+internal fun interface NeptunSyncListener {
     suspend fun onNeptunEventsPersisted(events: List<ScheduleEvent>)
 }
 
@@ -97,13 +98,15 @@ internal class NeptunSyncService(
     private val http: HttpClient,
     private val session: ScheduleSession,
     private val classes: ScheduleEventsRepository,
-    private val scope: CoroutineScope,
     private val listener: NeptunSyncListener,
     private val onScheduleReplaced: () -> Unit,
     /** Wall clock in epoch milliseconds; a seam so the rate limit and the 24 h auto-sync gate can be tested. */
     private val clockMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val userId: String? get() = session.userId
+
+    /** Syncs, imports and the auto-sync check run in the signed-in account's session and end with it. */
+    private val sessions get() = session.sessions
 
     private val _neptunStatus = MutableStateFlow(NeptunSyncStatus.Idle)
     val neptunSyncStatus: StateFlow<NeptunSyncStatus> = _neptunStatus.asStateFlow()
@@ -121,8 +124,7 @@ internal class NeptunSyncService(
         syncEpoch++
     }
 
-    private fun requireCurrent(owner: String, epoch: Int) {
-        requireOwner(owner)
+    private fun requireEpoch(epoch: Int) {
         if (syncEpoch != epoch) throw SyncSupersededException()
     }
     private val autoSyncCheckRunning = MutableStateFlow(false)
@@ -144,23 +146,20 @@ internal class NeptunSyncService(
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
             error("Invalid URL format. Please provide a valid http:// or https:// URL.")
         }
-        for (attempt in 1..maxRetries) {
-            try {
-                val text = withTimeout(ICS_FETCH_TIMEOUT_MS) {
+        val policy = BackoffPolicy.linear(maxRetries, stepMs = RETRY_STEP_MS, attemptTimeoutMs = ICS_FETCH_TIMEOUT_MS)
+        if (maxRetries > 0) {
+            runSuspendCatching {
+                retrying(policy) {
                     val res = http.get(NEPTUN_ICS_PROXY_URL) {
                         parameter("url", clean)
                         // A sync must see the live feed, never the HTTP cache copy, and its URL carries the Neptun link: store nothing.
                         header(HttpHeaders.CacheControl, "no-cache, no-store")
                     }
-                    if (res.status.isSuccess()) res.bodyAsText() else null
+                    val text = if (res.status.isSuccess()) res.bodyAsText() else null
+                    if (text == null || !text.contains("BEGIN:VCALENDAR")) error("no calendar in the answer")
+                    text
                 }
-                if (text != null && text.contains("BEGIN:VCALENDAR")) return text
-            } catch (e: CancellationException) {
-                if (e !is TimeoutCancellationException) throw e
-            } catch (_: Throwable) {
-                // retried below
-            }
-            if (attempt < maxRetries) delay(1500L * attempt)
+            }.getOrNull()?.let { return it }
         }
         error(NEPTUN_FETCH_FAILED)
     }
@@ -195,12 +194,15 @@ internal class NeptunSyncService(
         events: List<NeptunSyncEvent>,
         owner: String = session.requireUserId(),
         epoch: Int = syncEpoch,
-    ) {
-        requireCurrent(owner, epoch)
+    ) = sessions.withSession(owner) {
+        requireEpoch(epoch)
         val encrypted = coroutineScope {
             events.map { e -> async { neptunRecord(e) { v -> crypto.encrypt(v) } } }.awaitAll()
         }
-        requireCurrent(owner, epoch)
+        requireEpoch(epoch)
+        // Kept: the replace is authenticated as whoever is signed in when it leaves, so the owner is
+        // checked at the last moment before it is sent, not just through the session scope.
+        requireOwner(owner)
         pb.send("/api/vectra/neptun/replace", HttpMethod.Post, buildJsonObject { put("events", JsonArray(encrypted)) })
     }
 
@@ -221,7 +223,7 @@ internal class NeptunSyncService(
     private suspend fun notifyListener(owner: String, persisted: List<NeptunSyncEvent>) {
         try {
             val fresh = runSuspendCatching { classes.fetchEventsFromCloud(owner) }.getOrNull()
-            requireOwner(owner)
+            currentCoroutineContext().ensureActive()
             if (fresh != null) classes.publish(fresh)
             listener.onNeptunEventsPersisted(fresh ?: (classes.events.value.filter { it.source != "neptun" } + persisted.map { it.toScheduleEvent(owner) }))
         } catch (e: CancellationException) {
@@ -244,11 +246,12 @@ internal class NeptunSyncService(
     /** Import the import wizard's confirmed preview. */
     suspend fun importNeptunEvents(events: List<NeptunSyncEvent>) {
         val owner = session.requireUserId()
-        persistNeptunEvents(events, owner)
-        notifyListener(owner, events)
-        requireOwner(owner)
-        stampLastSync(clockMs())
-        onScheduleReplaced()
+        sessions.withSession(owner) {
+            persistNeptunEvents(events, owner)
+            notifyListener(owner, events)
+            stampLastSync(clockMs())
+            onScheduleReplaced()
+        }
     }
 
     private suspend fun writeStoredSyncError(message: String?) {
@@ -268,27 +271,33 @@ internal class NeptunSyncService(
             // The fetch can take a minute and a half: pin the account it was started for.
             val owner = session.requireUserId()
             val epoch = syncEpoch
-            val text = fetchNeptunIcs(url)
-            val result = parseIcs(text)
-            if (result.valid.isEmpty()) error("No valid class events found in calendar feed.")
-            val semester = pickNeptunSyncSemester(result.valid) ?: error("No class events found for the current or upcoming semester.")
-            val clean = result.valid.filter { it.semester == semester }.map { it.toSyncEvent() }
-            persistNeptunEvents(clean, owner, epoch)
-            notifyListener(owner, clean)
-            requireCurrent(owner, epoch)
-            val nowMs = clockMs()
-            // Only successful manual syncs consume the rate-limit quota.
-            if (!isAutoSync) recordManualSync(nowMs)
-            stampLastSync(nowMs)
-            _neptunStatus.value = NeptunSyncStatus.Success
-            _neptunError.value = null
-            writeStoredSyncError(null)
-            onScheduleReplaced()
-            scope.launch {
-                delay(3000)
-                if (_neptunStatus.value == NeptunSyncStatus.Success) _neptunStatus.value = NeptunSyncStatus.Idle
+            sessions.withSession(owner) {
+                val text = fetchNeptunIcs(url)
+                val result = parseIcs(text)
+                if (result.valid.isEmpty()) error("No valid class events found in calendar feed.")
+                val semester = pickNeptunSyncSemester(result.valid) ?: error("No class events found for the current or upcoming semester.")
+                val clean = result.valid.filter { it.semester == semester }.map { it.toSyncEvent() }
+                persistNeptunEvents(clean, owner, epoch)
+                notifyListener(owner, clean)
+                requireEpoch(epoch)
+                val nowMs = clockMs()
+                // Only successful manual syncs consume the rate-limit quota.
+                if (!isAutoSync) recordManualSync(nowMs)
+                stampLastSync(nowMs)
+                _neptunStatus.value = NeptunSyncStatus.Success
+                _neptunError.value = null
+                writeStoredSyncError(null)
+                onScheduleReplaced()
+                sessions.launchFor(owner) {
+                    delay(3000)
+                    if (_neptunStatus.value == NeptunSyncStatus.Success) _neptunStatus.value = NeptunSyncStatus.Idle
+                }
+                semester
             }
-            semester
+        } catch (_: SessionEndedException) {
+            // The account signed in now never asked for this sync; it reports nothing.
+            _neptunStatus.value = NeptunSyncStatus.Idle
+            null
         } catch (e: CancellationException) {
             throw e
         } catch (_: SyncSupersededException) {
@@ -296,7 +305,7 @@ internal class NeptunSyncService(
             _neptunStatus.value = NeptunSyncStatus.Idle
             null
         } catch (_: AccountChangedException) {
-            // The account signed in now never asked for this sync; it reports nothing.
+            // Raised just before the replace was sent: the same case as a session that ended.
             _neptunStatus.value = NeptunSyncStatus.Idle
             null
         } catch (e: Throwable) {
@@ -353,16 +362,17 @@ internal class NeptunSyncService(
     /** Sync on launch when never synced or the last sync is over 24h old. */
     fun maybeAutoSync() {
         if (autoSyncAttempted) return
+        val uid = userId ?: return
         val profile = auth.profile.value ?: return
         val raw = profile.neptunIcsUrl?.trim()?.ifEmpty { null } ?: return
         // Reached from both the user and the profile collectors: one check at a time.
         if (!autoSyncCheckRunning.compareAndSet(expect = false, update = true)) return
-        scope.launch {
+        // Released on completion, not in a finally: a scope that is already cancelled never runs its body.
+        sessions.launchFor(uid) {
             try {
                 val url = crypto.decryptUrl(raw)
-                if (url.isNullOrEmpty() || autoSyncAttempted) return@launch
-                val last = profile.neptunLastSync?.let { runCatching { Instant.parse(it).toEpochMilliseconds() }.getOrNull() }
-                    ?: profile.neptunLastSync?.let { runCatching { Instant.parse(it.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull() }
+                if (url.isNullOrEmpty() || autoSyncAttempted) return@launchFor
+                val last = parseLastSyncMs(profile.neptunLastSync)
                 val now = clockMs()
                 if (last == null || now - last > 24 * ONE_HOUR_MS) {
                     autoSyncAttempted = true
@@ -372,10 +382,15 @@ internal class NeptunSyncService(
                 throw e
             } catch (_: Throwable) {
                 // The auto-sync check is best-effort.
-            } finally {
-                autoSyncCheckRunning.value = false
             }
-        }
+        }.invokeOnCompletion { autoSyncCheckRunning.value = false }
+    }
+
+    /** The profile's last-sync stamp as epoch ms; PocketBase writes it with a space, the app with a T. */
+    private fun parseLastSyncMs(stamp: String?): Long? {
+        stamp ?: return null
+        return runCatching { Instant.parse(stamp).toEpochMilliseconds() }.getOrNull()
+            ?: runCatching { Instant.parse(stamp.replace(' ', 'T')).toEpochMilliseconds() }.getOrNull()
     }
 
     companion object {
@@ -385,5 +400,7 @@ internal class NeptunSyncService(
         const val ONE_HOUR_MS = 60L * 60 * 1000
         private const val ICS_FETCH_TIMEOUT_MS = 30_000L
         private const val VERIFY_FETCH_ATTEMPTS = 2
+        /** Wait after the first failed download; each further one waits this much longer. */
+        private const val RETRY_STEP_MS = 1500L
     }
 }

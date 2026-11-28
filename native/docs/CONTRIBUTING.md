@@ -65,10 +65,31 @@ Material components; build on the primitives below.
   which gather several features); pass everything below it the repositories it uses.
 - **Sign-out**: anything holding per-user state in memory implements `SessionListener` and joins
   `AppGraph.provideSessionListeners`. Listeners don't register themselves, so one no screen has opened still runs.
+- **Per-user async work**: work that belongs to the signed-in account runs in `auth.sessionScope`
+  (`launchFor(uid)`, `asyncFor(uid)`, `withSession(uid)`), which is cancelled the moment the signed-in user is anyone else.
+  Don't re-check `userId == uid` after every await: a sign-out already ended the work at its next suspension point.
+  Keep a check only where a non-suspending write must be atomic with it (and say why in a comment), or where
+  the signed-out case (uid null) has no session to cancel. `withSession` throws `SessionEndedException` (a
+  `CancellationException`) in the caller; a collector that must survive it uses `withSessionOrNull`.
 - **Reaching up a dependency**: when a lower feature needs a higher one, it declares an interface, the higher
   feature implements it and `AppGraph` binds them (`ScheduleCourseTrackerHooks`, `NeptunSyncListener`).
 - **Startup**: once-per-process work goes in `AppStartup.run`, not in a composable.
 - **State**: plain classes exposing `StateFlow`s; collect with `collectAsStateWithLifecycle()`.
+- **Retries and cancellation**: retry with `retrying(BackoffPolicy.exponential(...) / .linear(...)) { }` from
+  `core/util`, never a hand-rolled loop. One attempt timeout, if any, is part of the policy and counts as a
+  failure. A `CancellationException` is only the end of the caller when the caller itself is cancelled; one that
+  comes from a cancelled shared `Deferred`, a write-gate waiter or a timeout is an ordinary failure. So wrap suspending
+  work in `runSuspendCatching`, or in a `catch (e: Throwable)` that starts with `rethrowIfOwnCancellation(e)`.
+  A plain `catch (e: CancellationException) { throw e }` is fine where nothing shared or timed is awaited inside.
+- **Shared request helpers** (`core/data/QueryHelpers.kt`): `StaleGate` (when data counts as stale), `SingleFlight`
+  (one request per key, everyone asking meanwhile joins it) and the `QueryState` transitions. `LiveQuery`,
+  `WeatherRepository` and `ScheduleEventsRepository` use them; new repositories should too.
+- **Two encryption models**: a collection with a few sensitive text columns declares them once as
+  `EncryptedColumns` (`core/network`) and uses that declaration to write and to read (`schedule_events`,
+  `neptun_schedule_events`). A collection that stores a whole document keeps one encrypted
+  `data`/`payload` blob per row, with the plain columns beside it (`CourseTrackerCloud` for the course tracker,
+  `ScheduleItemsSync` for personal items): the blob is encrypted and decrypted as one value, so there is
+  no per-column list to declare.
 - **Neptun ICS** must be fetched through the Google Apps Script proxy (`features/schedule/IcsParser.kt`):
   the university blocks datacenter IPs. Never fetch Neptun directly or via the backend.
 - **Colours**: themed colours come from `Vectra.colors`, fixed hues from `Palette`, map data colours from `MapColors`.

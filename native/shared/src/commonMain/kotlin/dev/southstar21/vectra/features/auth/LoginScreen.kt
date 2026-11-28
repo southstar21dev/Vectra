@@ -76,11 +76,11 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 /** The sign-in card stays card-sized on wide windows. */
 private val LoginCardWidth = 448.dp
 
-enum class AuthMode { Login, Signup }
+internal enum class AuthMode { Login, Signup }
 
 /** Sign-in / sign-up screen. */
 @Composable
-fun LoginScreen(auth: AuthRepository, passkeys: PasskeyActions? = null) {
+internal fun LoginScreen(auth: AuthRepository, passkeys: PasskeyActions? = null) {
     var mode by remember { mutableStateOf(AuthMode.Login) }
     // Set when the account was created but the sign-in after it failed: Sign in opens with this email.
     var createdEmail by remember { mutableStateOf<String?>(null) }
@@ -154,7 +154,7 @@ private fun AuthCard(
 }
 
 /** Optional passkey hooks (Credential Manager), wired in by the platform. */
-interface PasskeyActions {
+internal interface PasskeyActions {
     val isSupported: Boolean
     suspend fun signIn()
 

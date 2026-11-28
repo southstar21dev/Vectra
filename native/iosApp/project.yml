@@ -10,17 +10,47 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    # Swift 5 mode with the Swift 6 data-race checks on as warnings. The sources already build clean in Swift 6
-    # mode with Xcode 27; flip this to "6.0" once the hosts' main-thread callbacks have been checked on a device
-    # (Swift 6 turns the isolation of those callbacks into runtime checks).
-    SWIFT_VERSION: "5.0"
+    # Swift 6 language mode: data-race safety is checked at compile time and the isolation of the
+    # callbacks Kotlin makes on the main thread is checked at run time.
+    SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     # The Gradle phase reads the repo and writes the framework outside the sandbox's declared outputs.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+# Settings both the app and the widget extension need, written once. The app group is the Debug/Release
+# switch: Debug gets its own group and display name so a debug and a release install never share data.
+settingGroups:
+  VectraSigning:
+    DEVELOPMENT_TEAM: 3HNYQ2F575  # also listed in the site's apple-app-site-association for passkeys
+    CODE_SIGN_STYLE: Automatic
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+    # shared targets iosArm64 + iosSimulatorArm64 only (MapLibre ships no x64 simulator build).
+    "ARCHS[sdk=iphonesimulator*]": arm64
+    TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
+    # The version comes from gradle.properties' vectra.versionName, like androidApp's (scripts/version.sh).
+    INFOPLIST_PREPROCESS: YES
+    INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
+  VectraAppGroup:
+    VECTRA_APP_GROUP: group.dev.southstar21.vectra
+    VECTRA_DISPLAY_NAME: Vectra
+targetTemplates:
+  VectraApple:
+    platform: iOS
+    settings:
+      groups: [VectraSigning, VectraAppGroup]
+      configs:
+        Debug:
+          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
+          VECTRA_DISPLAY_NAME: Vectra Dev
+    preBuildScripts:
+      - name: Version from Gradle
+        basedOnDependencyAnalysis: false
+        shell: /bin/sh
+        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
+        path: scripts/version.sh
 targets:
   iosApp:
     type: application
-    platform: iOS
+    templates: [VectraApple]
     sources:
       - path: iosApp
       - path: Shared
@@ -75,19 +105,7 @@ targets:
       base:
         PRODUCT_NAME: Vectra
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra
-        VECTRA_APP_GROUP: group.dev.southstar21.vectra
-        VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # The version comes from gradle.properties' vectra.versionName, like androidApp's.
-        INFOPLIST_PREPROCESS: YES
-        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
-        # Apple Developer team that signs device and App Store builds (also listed in the site's apple-app-site-association for passkeys).
-        DEVELOPMENT_TEAM: 3HNYQ2F575
-        CODE_SIGN_STYLE: Automatic
-        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
-        # shared targets iosArm64 + iosSimulatorArm64 only (MapLibre ships no x64 simulator build).
-        "ARCHS[sdk=iphonesimulator*]": arm64
         # The shared Kotlin framework (static), built by the Gradle phase below.
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared", "-lsqlite3", "-lc++"]
@@ -96,14 +114,7 @@ targets:
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug
-          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
-          VECTRA_DISPLAY_NAME: Vectra Dev
     preBuildScripts:
-      - name: Version from Gradle
-        basedOnDependencyAnalysis: false
-        shell: /bin/sh
-        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        path: scripts/version.sh
       - name: Compile Kotlin framework
         basedOnDependencyAnalysis: false
         shell: /bin/sh
@@ -119,7 +130,7 @@ targets:
   # the App Group (shared/…/features/widgets) and never links the Kotlin framework.
   VectraWidgets:
     type: app-extension
-    platform: iOS
+    templates: [VectraApple]
     sources:
       - path: VectraWidgets
       - path: Shared
@@ -144,24 +155,24 @@ targets:
       base:
         PRODUCT_NAME: VectraWidgets
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgets
-        VECTRA_APP_GROUP: group.dev.southstar21.vectra
-        VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
-        INFOPLIST_PREPROCESS: YES
-        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
-        DEVELOPMENT_TEAM: 3HNYQ2F575
-        CODE_SIGN_STYLE: Automatic
-        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
-        "ARCHS[sdk=iphonesimulator*]": arm64
         SKIP_INSTALL: YES
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug.widgets
-          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
-          VECTRA_DISPLAY_NAME: Vectra Dev
-    preBuildScripts:
-      - name: Version from Gradle
-        basedOnDependencyAnalysis: false
-        shell: /bin/sh
-        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        path: scripts/version.sh
+
+  # Unit tests for the widget rules (Model.swift). They decode the same JSON cases the Kotlin
+  # WidgetFixturesTest runs, so the two implementations are held to one set of expectations.
+  # Not hosted by an app: the model files are compiled into the bundle.
+  VectraWidgetsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: VectraWidgetsTests
+      - path: VectraWidgets/Model.swift
+      - path: Shared/AppGroup.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgetstests
+        GENERATE_INFOPLIST_FILE: YES
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+        "ARCHS[sdk=iphonesimulator*]": arm64

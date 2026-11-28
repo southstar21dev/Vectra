@@ -403,8 +403,6 @@ class PointsCalcTest {
         assertEquals(1, s.estimatedGrade)
     }
 
-    @Test fun pointsToTarget() = assertEquals(37, calculatePointsToTarget(50.0, 100.0, 5, DefaultGradingScale))
-
     @Test fun rateStaysWithin100() {
         val s = calculatePointsSummary(listOf(a("1", "Quiz", 10.0, 10.0, completed = true), a("2", "Lab", 15.0, 20.0, completed = false)), totalPoints = 100.0)
         assertEquals(25.0, s.totalEarned)
@@ -416,7 +414,6 @@ class PointsCalcTest {
     @Test fun ignoresUnweightedInWeightedMode() {
         val s = calculatePointsSummary(listOf(a("1", "Midterm", 40.0, 50.0, 50.0), a("2", "Quiz", 10.0, 10.0)), true, totalPoints = 100.0)
         assertClose(40.0, s.overallPercentage, 5)
-        assertEquals(22, calculatePointsToTarget(s.overallPercentage, 100.0, 3))
     }
 
     @Test fun gradeForPercent() {

@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

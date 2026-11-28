@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.config.DemoAccounts
 import dev.southstar21.vectra.core.data.KeyValueStore
 import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
@@ -12,12 +14,20 @@ import dev.southstar21.vectra.core.network.int
 import dev.southstar21.vectra.core.network.json
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
-import dev.southstar21.vectra.core.platform.GeoFix
-import dev.southstar21.vectra.core.platform.GeoPermission
-import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.features.coursetracker.FakeDataStore
 import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.FutarRouteDetailsResponse
+import dev.southstar21.vectra.features.transit.data.FutarSource
+import dev.southstar21.vectra.features.transit.data.FutarTripDetailsResponse
+import dev.southstar21.vectra.features.transit.data.FutarVehiclesForRouteResponse
+import dev.southstar21.vectra.features.transit.data.StopArrivalsBatch
+import dev.southstar21.vectra.features.transit.demo.DemoFeed
+import dev.southstar21.vectra.features.transit.demo.DemoFutarSource
+import dev.southstar21.vectra.features.transit.demo.DemoLines
+import dev.southstar21.vectra.features.transit.demo.DemoSeeder
+import dev.southstar21.vectra.features.transit.demo.RealDemoTrackers
 import dev.southstar21.vectra.features.transit.data.NewTrackerInput
 import dev.southstar21.vectra.features.transit.data.NotSignedInException
 import dev.southstar21.vectra.features.transit.data.TrackerStop
@@ -32,9 +42,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -48,7 +56,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private const val Owner = "user-1"
@@ -125,27 +132,42 @@ private class TrackerBackend {
     }
 }
 
-private object NoLocation : LocationProvider {
-    override fun permission() = GeoPermission.Denied
-    override suspend fun current(): GeoFix = error("no location in tests")
-    override fun watch(): Flow<GeoFix> = emptyFlow()
+/** A feed that answers every call with an empty response and records which ids were asked for. */
+private class RecordingSource : FutarSource {
+    val calls = mutableListOf<String>()
+    override suspend fun arrivals(stopId: String) = FutarArrivalsResponse().also { calls += "arrivals:$stopId" }
+    override suspend fun arrivalsWithLimit(stopId: String, limit: Int) = FutarArrivalsResponse().also { calls += "arrivalsWithLimit:$stopId" }
+    override suspend fun stopArrivals(stopId: String, minutesAfter: Int) = FutarArrivalsResponse().also { calls += "stopArrivals:$stopId" }
+    override suspend fun arrivalsBatch(stopIds: List<String>, minutesAfter: Int) =
+        StopArrivalsBatch(stopIds.associateWith { FutarArrivalsResponse() }, emptyMap()).also { calls += "batch:${stopIds.joinToString(",")}" }
+    override suspend fun vehicles(routeId: String) = FutarVehiclesForRouteResponse().also { calls += "vehicles:$routeId" }
+    override suspend fun memberVehicles(routeId: String) = FutarVehiclesForRouteResponse().also { calls += "memberVehicles:$routeId" }
+    override suspend fun tripDetails(tripId: String, serviceDate: String?) = FutarTripDetailsResponse().also { calls += "trip:$tripId" }
+    override suspend fun routeDetails(routeId: String) = FutarRouteDetailsResponse().also { calls += "route:$routeId" }
 }
 
-private class RepoHarness {
+private class RepoHarness(email: String? = null) {
     val backend = TrackerBackend()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val kv = KeyValueStore(FakeDataStore())
     private val http = HttpClient(MockEngine { req -> backend.handle(this, req) })
     private val store = AuthStore(kv, PlainSecretCipher)
+    private val signedInAs = email
     suspend fun signOut() { store.clear() }
     private val pb = PocketBaseClient(createHttpClient(http), "https://pb.test", store)
+    val auth = AuthRepository(pb, store, kv, scope, lazyOf(emptyList()))
     private val connectivity = object : Connectivity { override val online = MutableStateFlow(true) }
+    val source = RecordingSource()
     lateinit var repo: TransitRepository
 
-    suspend fun start() {
-        store.save(AuthState("tok", JsonObject(mapOf("id" to JsonPrimitive(Owner)))))
+    suspend fun start(feed: (FutarSource) -> FutarSource = { it }) {
+        val record = buildMap {
+            put("id", JsonPrimitive(Owner))
+            signedInAs?.let { put("email", JsonPrimitive(it)) }
+        }
+        store.save(AuthState("tok", JsonObject(record)))
         repo = TransitRepository(
-            pb, CryptoClient(pb, scope), kv, connectivity, NoLocation, http, "https://web.test/",
+            pb, CryptoClient(pb, scope), kv, auth, connectivity, feed(source), http, "https://web.test/",
             CatalogDiskCache(Path("vectra-transit-repo-test-unused")), scope,
         )
     }
@@ -161,12 +183,12 @@ private class RepoHarness {
         ).id
 }
 
-private fun scenario(test: suspend RepoHarness.() -> Unit) = runTest {
-    val h = RepoHarness()
+private fun scenario(email: String? = null, feed: (FutarSource) -> FutarSource = { it }, test: suspend RepoHarness.() -> Unit) = runTest {
+    val h = RepoHarness(email)
     try {
         withContext(Dispatchers.Default) {
-            withTimeout(20_000) {
-                h.start()
+            withTimeout(55_000) {
+                h.start(feed)
                 h.test()
             }
         }
@@ -200,8 +222,117 @@ class TransitRepositoryTest {
         val id = repo.addTracker(
             NewTrackerInput("R9", "9", "Nine", "BUS", "000000", "FFFFFF", stops = listOf(TrackerStop("S9", "Stop 9", null))),
         ).id
-        assertNull(backend.row(id)["headsign"])
+        // Stored as an empty string, the same as an edit to a no-headsign stop writes.
+        assertEquals(JsonPrimitive(""), backend.row(id)["headsign"])
         assertEquals("d:R9|S9|", backend.row(id).string("dedupe_key"))
+    }
+
+    @Test fun anEmptyHeadsignReadsBackTheSameWhetherAddedOrEdited() = scenario {
+        val added = repo.addTracker(
+            NewTrackerInput("R9", "9", "Nine", "BUS", "000000", "FFFFFF", stops = listOf(TrackerStop("S9", "Stop 9", null))),
+        ).id
+        val edited = add(1, headsign = "North")
+        repo.updateTrackerStops(edited, listOf(TrackerStop("S1", "Stop S1", null)))
+        val list = repo.trackersQuery.fetch(Unit).associateBy { it.id }
+        assertEquals("", list.getValue(added).headsign)
+        assertEquals("", list.getValue(edited).headsign)
+        assertEquals(backend.row(added)["headsign"], backend.row(edited)["headsign"])
+    }
+
+    @Test fun anEditedTrackerRoundTripsEveryStopColumn() = scenario {
+        val id = add(1)
+        val stops = listOf(TrackerStop("S2", "Second", "South"), TrackerStop("S3", "Third", "West"))
+        repo.updateTrackerStops(id, stops)
+        val tracker = repo.trackersQuery.fetch(Unit).single()
+        assertEquals("S2", tracker.stopId)
+        assertEquals("Second", tracker.stopName)
+        assertEquals("South", tracker.headsign)
+        assertEquals(stops, tracker.stops)
+        // The route's own columns are untouched by an edit.
+        assertEquals("Line 1", tracker.routeLongName)
+    }
+
+    @Test fun theSignedInUserComesFromTheAuthRepository() = scenario {
+        val id = add(1)
+        assertEquals(Owner, backend.row(id).string("user"))
+        assertEquals(Owner, repo.trackersQuery.fetch(Unit).single().userId)
+    }
+
+    // ---- feeds and the demo source -------------------------------------------------------------
+
+    @Test fun feedsAskTheSourceForEachKindOfQuery() = scenario {
+        repo.feeds.arrivals.fetch("S1")
+        repo.feeds.vehicles.fetch("R1")
+        repo.feeds.routeDetails.fetch("R1")
+        repo.stopArrivals("S2", 30)
+        repo.feeds.batchArrivals.fetch("S3,S4")
+        assertEquals(listOf("arrivals:S1", "vehicles:R1", "route:R1", "stopArrivals:S2", "batch:S3,S4"), source.calls)
+    }
+
+    @Test fun aBatchSeedsEachStopsOwnEntry() = scenario {
+        repo.feeds.batchArrivals.fetch("S3,S4")
+        // setData lands on the query's own dispatcher.
+        withTimeout(30_000) { while (repo.feeds.arrivals.peek("S3").data == null || repo.feeds.arrivals.peek("S4").data == null) kotlinx.coroutines.delay(20) }
+    }
+
+    @Test fun theDemoSourceAnswersDemoIdsItselfAndPassesTheRestOn() = scenario(feed = ::DemoFutarSource) {
+        val demoStop = DemoLines.first().stops.first().stopId
+        assertTrue(DemoFeed.handles(demoStop))
+        repo.feeds.arrivals.fetch(demoStop)
+        repo.feeds.deepArrivals.fetch(demoStop to 10)
+        repo.stopArrivals(demoStop, 30)
+        assertEquals(emptyList(), source.calls)
+        repo.feeds.arrivals.fetch("S1")
+        assertEquals(listOf("arrivals:S1"), source.calls)
+    }
+
+    @Test fun theDemoSourceLeavesDemoStopsOutOfABatch() = scenario(feed = ::DemoFutarSource) {
+        val demoStop = DemoLines.first().stops.first().stopId
+        repo.feeds.batchArrivals.fetch("S1,$demoStop")
+        assertEquals(listOf("batch:S1"), source.calls)
+    }
+
+    @Test fun withoutTheDemoSourceDemoIdsGoToTheFeed() = scenario {
+        val demoStop = DemoLines.first().stops.first().stopId
+        repo.feeds.arrivals.fetch(demoStop)
+        assertEquals(listOf("arrivals:$demoStop"), source.calls)
+    }
+
+    // ---- demo seeding --------------------------------------------------------------------------
+
+    @Test fun theNoPinDemoAccountGetsTwoRealLinesAndNoPins() = scenario(email = DemoAccounts.TransitNoPin) {
+        DemoSeeder(auth, repo, scope, enabled = true).seed(DemoAccounts.TransitNoPin)
+        val trackers = repo.trackersQuery.fetch(Unit)
+        assertEquals(2, trackers.size)
+        assertTrue(trackers.none { it.isFavorite })
+    }
+
+    @Test fun theMainDemoAccountGetsItsEdgeCasesAndPinsAndSeedsOnlyOnce() = scenario(email = DemoAccounts.Transit) {
+        val seeder = DemoSeeder(auth, repo, scope, enabled = true)
+        seeder.seed(DemoAccounts.Transit)
+        val first = repo.trackersQuery.fetch(Unit)
+        assertEquals(DemoLines.size + RealDemoTrackers.size, first.size)
+        assertEquals(DemoLines.count { it.pinned }, first.count { it.isFavorite })
+        seeder.seed(DemoAccounts.Transit)
+        assertEquals(first.size, repo.trackersQuery.fetch(Unit).size)
+    }
+
+    @Test fun aDisabledSeederNeverStartsSeeding() = scenario(email = DemoAccounts.Transit) {
+        DemoSeeder(auth, repo, scope, enabled = false).start()
+        withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
+        assertTrue(backend.rows.isEmpty())
+    }
+
+    @Test fun anEnabledSeederSeedsADemoAccountOnItsOwnButNotOthers() = scenario(email = DemoAccounts.TransitNoPin) {
+        DemoSeeder(auth, repo, scope, enabled = true).start()
+        withTimeout(30_000) { while (backend.rows.size < 2) kotlinx.coroutines.delay(50) }
+        assertEquals(2, backend.rows.size)
+    }
+
+    @Test fun anAccountThatIsNotADemoOneIsLeftAlone() = scenario(email = "someone@test.com") {
+        DemoSeeder(auth, repo, scope, enabled = true).start()
+        withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
+        assertTrue(backend.rows.isEmpty())
     }
 
     @Test fun newTrackersGoToTheEndOfTheManualOrder() = scenario {

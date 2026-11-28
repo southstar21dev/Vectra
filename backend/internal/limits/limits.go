@@ -1,7 +1,8 @@
 // Package limits is the one table of the in-process rate limits of the
-// /api/vectra routes and the auth guards. Each owning package builds its
-// limiter from these values (the limiter itself stays a package var so tests
-// can swap it), so "what are the limits?" has a single answer here.
+// /api/vectra routes and the auth guards. main builds one limiter per entry
+// with Limit.New and hands it to the handler that owns it (handlers take their
+// limiter as a parameter, so tests build their own), so "what are the limits?"
+// has a single answer here.
 //
 // Not covered: PocketBase's own limiter rules, which live in the settings
 // table (seeded by migrations 9 and 12, then owned by the dashboard); see
@@ -9,13 +10,20 @@
 // in-process state is lost on restart or deploy.
 package limits
 
-import "time"
+import (
+	"time"
+
+	"vectra/pb/internal/ratelimit"
+)
 
 // Limit is a fixed-window budget: at most Max actions per key per Window.
 type Limit struct {
 	Max    int
 	Window time.Duration
 }
+
+// New returns a fresh in-process limiter with this budget.
+func (l Limit) New() *ratelimit.Limiter { return ratelimit.New(l.Max, l.Window) }
 
 var (
 	// ReauthUser / ReauthIP bound failed current-password checks (account
@@ -44,9 +52,6 @@ var (
 
 	// PasskeyLoginStart caps public login ceremonies begun per client IP.
 	PasskeyLoginStart = Limit{Max: 30, Window: time.Minute}
-
-	// PushSend caps /push/send calls per non-superuser caller.
-	PushSend = Limit{Max: 20, Window: time.Minute}
 
 	// FutarPerIP caps Futár proxy calls per client IP; FutarUpstream is the
 	// process-wide ceiling on calls to the Futár API, whoever asks

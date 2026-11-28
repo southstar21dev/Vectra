@@ -14,14 +14,10 @@ import (
 	"vectra/pb/internal/ratelimit"
 )
 
-// swapLimiters is reauthtest.Use, inlined because reauthtest imports this
-// package and these tests are internal to it (an import cycle otherwise).
-func swapLimiters(t testing.TB, perUser, perIP int) {
-	t.Helper()
-	prevUser, prevIP := UserLimiter, IPLimiter
-	UserLimiter = ratelimit.New(perUser, time.Minute)
-	IPLimiter = ratelimit.New(perIP, time.Minute)
-	t.Cleanup(func() { UserLimiter, IPLimiter = prevUser, prevIP })
+// newGuard returns a Guard allowing perUser failed checks per user and perIP
+// per client IP, per minute.
+func newGuard(perUser, perIP int) *Guard {
+	return NewGuard(ratelimit.New(perUser, time.Minute), ratelimit.New(perIP, time.Minute))
 }
 
 func newUser(t *testing.T, app *tests.TestApp, email string) *core.Record {
@@ -36,13 +32,13 @@ func newUser(t *testing.T, app *tests.TestApp, email string) *core.Record {
 }
 
 // checkAs runs Check for auth as a caller at the given socket address.
-func checkAs(app core.App, auth *core.Record, remoteAddr, password string) error {
+func checkAs(g *Guard, app core.App, auth *core.Record, remoteAddr, password string) error {
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.RemoteAddr = remoteAddr
 	e := &core.RequestEvent{App: app, Auth: auth}
 	e.Request = req
 	e.Response = httptest.NewRecorder()
-	return Check(e, password)
+	return g.Check(e, password)
 }
 
 func statusOf(t *testing.T, err error) int {
@@ -53,64 +49,69 @@ func statusOf(t *testing.T, err error) int {
 }
 
 func TestCheckNoSessionIs401(t *testing.T) {
-	swapLimiters(t, 5, 20)
+	t.Parallel()
+	g := newGuard(5, 20)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(app, nil, "192.0.2.1:1", "x")))
+	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(g, app, nil, "192.0.2.1:1", "x")))
 	blank := core.NewRecord(core.NewBaseCollection("users"))
-	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(app, blank, "192.0.2.1:1", "x")),
+	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(g, app, blank, "192.0.2.1:1", "x")),
 		"a record without an id is not a session")
 }
 
 func TestCheckEmptyPasswordIsRejectedAndCounted(t *testing.T) {
-	swapLimiters(t, 2, 100)
+	t.Parallel()
+	g := newGuard(2, 100)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 	u := newUser(t, app, "empty@test.local")
 
-	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(app, u, "192.0.2.1:1", "")))
-	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(app, u, "192.0.2.1:1", "")))
-	require.Equal(t, http.StatusTooManyRequests, statusOf(t, checkAs(app, u, "192.0.2.1:1", "password123")),
+	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(g, app, u, "192.0.2.1:1", "")))
+	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(g, app, u, "192.0.2.1:1", "")))
+	require.Equal(t, http.StatusTooManyRequests, statusOf(t, checkAs(g, app, u, "192.0.2.1:1", "password123")),
 		"empty passwords spend the user budget like any wrong guess")
 }
 
 func TestCheckSuccessDoesNotSpendBudget(t *testing.T) {
-	swapLimiters(t, 1, 1)
+	t.Parallel()
+	g := newGuard(1, 1)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 	u := newUser(t, app, "ok@test.local")
 
 	for i := 0; i < 5; i++ {
-		require.NoError(t, checkAs(app, u, "192.0.2.1:1", "password123"))
+		require.NoError(t, checkAs(g, app, u, "192.0.2.1:1", "password123"))
 	}
 }
 
 // TestCheckIPBucket: several users guessing from one address spend the IP
 // bucket although no single user budget is spent; another address is unaffected.
 func TestCheckIPBucket(t *testing.T) {
-	swapLimiters(t, 5, 3)
+	t.Parallel()
+	g := newGuard(5, 3)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 
 	for i := 0; i < 3; i++ {
 		u := newUser(t, app, "ip"+string(rune('a'+i))+"@test.local")
-		require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(app, u, "192.0.2.7:1", "wrong")))
+		require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(g, app, u, "192.0.2.7:1", "wrong")))
 	}
 	fresh := newUser(t, app, "ipfresh@test.local")
-	require.Equal(t, http.StatusTooManyRequests, statusOf(t, checkAs(app, fresh, "192.0.2.7:1", "password123")),
+	require.Equal(t, http.StatusTooManyRequests, statusOf(t, checkAs(g, app, fresh, "192.0.2.7:1", "password123")),
 		"the IP bucket is spent, so even a correct password is refused")
-	require.NoError(t, checkAs(app, fresh, "192.0.2.8:1", "password123"), "another IP is unaffected")
+	require.NoError(t, checkAs(g, app, fresh, "192.0.2.8:1", "password123"), "another IP is unaffected")
 }
 
 // TestCheckUsesStoredPassword: the record is reloaded, so a password changed
 // after the token was issued is the one checked, not the stale session copy.
 func TestCheckUsesStoredPassword(t *testing.T) {
-	swapLimiters(t, 5, 20)
+	t.Parallel()
+	g := newGuard(5, 20)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -121,18 +122,19 @@ func TestCheckUsesStoredPassword(t *testing.T) {
 	u.SetPassword("brandnewpass1")
 	require.NoError(t, app.Save(u))
 
-	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(app, stale, "192.0.2.1:1", "password123")),
+	require.Equal(t, http.StatusBadRequest, statusOf(t, checkAs(g, app, stale, "192.0.2.1:1", "password123")),
 		"the old password no longer works")
-	require.NoError(t, checkAs(app, stale, "192.0.2.1:1", "brandnewpass1"))
+	require.NoError(t, checkAs(g, app, stale, "192.0.2.1:1", "brandnewpass1"))
 }
 
 func TestCheckDeletedUserIs401(t *testing.T) {
-	swapLimiters(t, 5, 20)
+	t.Parallel()
+	g := newGuard(5, 20)
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 	u := newUser(t, app, "gone@test.local")
 	require.NoError(t, app.Delete(u))
 
-	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(app, u, "192.0.2.1:1", "password123")))
+	require.Equal(t, http.StatusUnauthorized, statusOf(t, checkAs(g, app, u, "192.0.2.1:1", "password123")))
 }

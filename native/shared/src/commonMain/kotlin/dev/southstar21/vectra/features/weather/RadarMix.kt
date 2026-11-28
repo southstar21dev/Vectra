@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
 /** Pixels faint enough to be edge antialiasing don't start a mix band. */
 private const val MixMinAlpha = 40
@@ -9,7 +9,7 @@ private const val MixMinAlpha = 40
  * rain and snow meet: full strength right at the edge, fading to nothing [radius] px away (round
  * distance, so the model's boxy snow areas get soft corners). [pixels] is a [width]-wide raw tile.
  */
-fun radarMixStrength(pixels: IntArray, width: Int, radius: Int): FloatArray {
+internal fun radarMixStrength(pixels: IntArray, width: Int, radius: Int): FloatArray {
     val height = pixels.size / width
     val snow = BooleanArray(pixels.size)
     val rain = BooleanArray(pixels.size)
@@ -65,7 +65,7 @@ private fun relax(d: FloatArray, width: Int, x: Int, y: Int, dir: Int) {
 }
 
 /** The mix band's half-width in tile px at [zoom] for 512 px tiles: about 10 km, whatever the zoom. */
-fun radarMixRadius(zoom: Int): Int {
+internal fun radarMixRadius(zoom: Int): Int {
     var r = 8.0
     if (zoom > 6) repeat(zoom - 6) { r *= 2 } else repeat(6 - zoom) { r /= 2 }
     return r.toInt().coerceAtLeast(1)

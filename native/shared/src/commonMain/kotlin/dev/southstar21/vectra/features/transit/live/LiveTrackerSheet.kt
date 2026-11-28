@@ -153,9 +153,9 @@ private fun ColumnScope.LiveTrackerSheetContent(
     }
     val activeStopId = liveStopIdFor(t, subject.stopId)
     val activeStop = remember(t, trackerStops, activeStopId) { liveStopFor(t, trackerStops, activeStopId) }
-    val live = rememberLiveRoute(repo, t, trackerStops, activeStop, now)
+    val live = rememberLiveRoute(repo.feeds, t, trackerStops, activeStop, now)
     val alerts = rememberStopAlerts(repo, t, activeStop, live, now)
-    val offline = !rememberOnline(repo.connectivity)
+    val offline = !rememberOnline(repo.online)
     val freshness = liveFreshness(live.arrivalsQuery.dataUpdatedAt, live.vehiclesQuery.dataUpdatedAt, now, offline)
     val noDepartures = live.arrivalsQuery.isSuccess && live.arrivals.isEmpty()
     val notice = liveMapNotice(freshness, live.arrivalsQuery.dataUpdatedAt, live.arrivalsQuery.isError, noDepartures)
@@ -208,7 +208,7 @@ private fun labelledVehicles(d: DirectionView, now: Long, live: Boolean): List<R
 private fun rememberStopAlerts(repo: TransitRepository, tracker: TransitTracker, stop: TrackerStop, live: LiveRoute, now: Long): List<TransitAlert> {
     val catalog by produceState<Map<String, CatalogRoute>?>(null, repo) {
         value = try {
-            repo.catalog.routeMap()
+            repo.withCatalog { routeMap() }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {

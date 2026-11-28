@@ -144,7 +144,7 @@ class IosHttpCache : HttpCache {
 
 /** NSURLSession allows 6 connections per host by default, which map tiles and the cold-start burst exceed. */
 @OptIn(ExperimentalForeignApi::class)
-fun createIosHttpClient(httpCache: IosHttpCache): HttpClient = createHttpClient(
+internal fun createIosHttpClient(httpCache: IosHttpCache): HttpClient = createHttpClient(
     HttpClient(Darwin) {
         engine {
             configureSession {
@@ -160,7 +160,7 @@ fun createIosHttpClient(httpCache: IosHttpCache): HttpClient = createHttpClient(
  * token never sits on disk in clear. The iOS counterpart of Android's KeystoreSecretCipher.
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-class KeychainSecretCipher : SecretCipher {
+internal class KeychainSecretCipher : SecretCipher {
     private val tag = "dev.southstar21.vectra.session"
     private val algorithm = kSecKeyAlgorithmECIESEncryptionCofactorVariableIVX963SHA256AESGCM
 

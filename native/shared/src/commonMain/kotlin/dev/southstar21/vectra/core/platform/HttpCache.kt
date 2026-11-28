@@ -9,6 +9,6 @@ fun interface HttpCache {
     fun clear()
 }
 
-object NoHttpCache : HttpCache {
+internal object NoHttpCache : HttpCache {
     override fun clear() = Unit
 }

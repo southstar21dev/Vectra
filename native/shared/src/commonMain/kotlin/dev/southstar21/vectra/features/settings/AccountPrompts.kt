@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
  * anyway when some of it could not be sent, since signing out deletes it from the device.
  */
 @Composable
-fun SignOutRow(auth: AuthRepository) {
+internal fun SignOutRow(auth: AuthRepository) {
     val c = Vectra.colors
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }

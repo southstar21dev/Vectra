@@ -56,12 +56,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-enum class ToastType { Default, Success, Error, Warning }
+internal enum class ToastType { Default, Success, Error, Warning }
 
 /** A single button on a toast (Undo). Tapping it dismisses the toast. */
-class ToastAction(val label: String, val onClick: () -> Unit)
+internal class ToastAction(val label: String, val onClick: () -> Unit)
 
-class Toast internal constructor(
+internal class Toast internal constructor(
     val id: Long,
     val type: ToastType,
     val title: String,
@@ -76,7 +76,7 @@ class Toast internal constructor(
  * queued actionable toasts all stay, so every Undo remains reachable.
  */
 @Stable
-class Toaster {
+internal class Toaster {
     internal val queue = mutableStateListOf<Toast>()
     private var nextId = 0L
 
@@ -106,11 +106,11 @@ class Toaster {
     }
 }
 
-val LocalToaster = staticCompositionLocalOf { Toaster() }
+internal val LocalToaster = staticCompositionLocalOf { Toaster() }
 
 /** Hosts the current toast at the bottom of the window, [bottomOffset] dp above the system bar. */
 @Composable
-fun ToasterHost(toaster: Toaster, modifier: Modifier = Modifier, bottomOffset: Int = 100) {
+internal fun ToasterHost(toaster: Toaster, modifier: Modifier = Modifier, bottomOffset: Int = 100) {
     val safeBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val current = toaster.queue.firstOrNull()
     Box(

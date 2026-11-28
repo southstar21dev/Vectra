@@ -22,7 +22,7 @@ import kotlinx.serialization.json.jsonObject
  * backend dropped `transport = 'fcm'` rows in migration 1700000006); the registration code below
  * stays for when a push transport returns, and nothing reaches the server until then.
  */
-class NotificationsRepository(
+internal class NotificationsRepository(
     private val pb: PocketBaseClient,
     private val auth: AuthRepository,
     private val kv: KeyValueStore,
@@ -44,21 +44,24 @@ class NotificationsRepository(
     suspend fun subscribe() {
         val token = push.token() ?: error("Push notifications are not available on this build")
         val user = auth.userId ?: error("Not authenticated")
-        val col = pb.collection("push_subscriptions")
-        // Same token → one row: delete existing rows for this token before creating it.
-        col.getFullList(filter = "user = '$user' && transport = 'fcm'").forEach { row ->
-            if ((row["subscription"] as? JsonObject)?.get("token") == JsonPrimitive(token)) col.delete(row["id"]!!.toString().trim('"'))
+        // In the account's session: a sign-out mid-request must not record its row or flag for the next one.
+        auth.sessionScope.withSession(user) {
+            val col = pb.collection("push_subscriptions")
+            // Same token → one row: delete existing rows for this token before creating it.
+            col.getFullList(filter = "user = '$user' && transport = 'fcm'").forEach { row ->
+                if ((row["subscription"] as? JsonObject)?.get("token") == JsonPrimitive(token)) col.delete(row["id"]!!.toString().trim('"'))
+            }
+            val row = col.create(
+                buildJsonObject {
+                    put("user", JsonPrimitive(user))
+                    put("subscription", buildJsonObject { put("token", JsonPrimitive(token)) })
+                    put("transport", JsonPrimitive("fcm"))
+                    put("device_name", JsonPrimitive("Mobile"))
+                },
+            )
+            kv.set(ROW_KEY, row["id"].toString().trim('"'))
+            _subscribed.value = true
         }
-        val row = col.create(
-            buildJsonObject {
-                put("user", JsonPrimitive(user))
-                put("subscription", buildJsonObject { put("token", JsonPrimitive(token)) })
-                put("transport", JsonPrimitive("fcm"))
-                put("device_name", JsonPrimitive("Mobile"))
-            },
-        )
-        kv.set(ROW_KEY, row["id"].toString().trim('"'))
-        _subscribed.value = true
     }
 
     suspend fun unsubscribe() {

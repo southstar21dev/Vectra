@@ -1,0 +1,44 @@
+{
+  "plate": {
+    "dark": {
+      "top": "#14151C", "bottom": "#0D0E13",
+      "ios": { "rimTop": "white@0.12", "rimMid": "white@0.06" },
+      "android": { "stroke": "#12FFFFFF", "highlight": "#1CFFFFFF" }
+    },
+    "light": {
+      "top": "#FFFFFF", "bottom": "#F4F6FA",
+      "ios": { "rimTop": "white@0.9", "rimMid": "#0F172A@0.05" },
+      "android": { "stroke": "#0F0F172A", "highlight": "#E6FFFFFF" }
+    },
+    "clear": {
+      "android": { "angle": 315, "start": "#5C14151C", "end": "#4014151C", "stroke": "#3DFFFFFF", "highlight": "#66FFFFFF" }
+    }
+  },
+  "androidFiles": [
+    { "path": "drawable/widget_plate.xml", "plate": "light", "comment": "System look, by day (drawable-night has the dark plate)." },
+    { "path": "drawable-night/widget_plate.xml", "plate": "dark", "comment": "System look, at night." },
+    { "path": "drawable/widget_plate_dark.xml", "plate": "dark", "comment": "The widget as one dark glass card: a soft gradient, a hairline rim and a brighter top edge." },
+    { "path": "drawable/widget_plate_light.xml", "plate": "light", "comment": "The widget as one light card." },
+    { "path": "drawable/widget_plate_clear.xml", "plate": "clear", "comment": "Clear: smoked see-through glass. Launchers can't blur behind a widget, so a light dark tint keeps white type readable on bright wallpapers." }
+  ],
+  "palette": {
+    "text":      { "dark": "#F8FAFC", "light": "#0F172A", "accented": "white" },
+    "secondary": { "dark": "#94A3B8", "light": "#334155", "accented": "white@0.72" },
+    "muted":     { "dark": "#7C8AA0", "light": "#64748B", "accented": "white@0.55" },
+    "soft":      { "dark": "#CBD5E1", "light": "#334155", "accented": "white@0.86" },
+    "hairline":  { "dark": "white@0.08", "light": "#0F172A@0.08", "accented": "white@0.2" },
+    "line":      { "dark": "white@0.16", "light": "#0F172A@0.14", "accented": "white@0.3" },
+    "track":     { "dark": "white@0.08", "light": "#0F172A@0.08", "accented": "white@0.22" },
+    "accent":    { "dark": "#38BDF8", "light": "#0284C7", "accented": "white" },
+    "pill":      { "dark": "#38BDF8", "light": "#0274B3", "accented": "white" },
+    "onPill":    { "dark": "#04121B", "light": "white", "accented": "black" },
+    "check":     { "dark": "#34D399", "light": "#059669", "accented": "white" },
+    "onCheck":   { "dark": "#052E1F", "light": "white", "accented": "black" }
+  },
+  "tones": {
+    "seminar": { "dark": "#34D399", "light": "#059669" },
+    "lab":     { "dark": "#C084FC", "light": "#7C3AED" },
+    "exam":    { "dark": "#C4B5FD", "light": "#6D28D9" },
+    "task":    { "dark": "#FBBF24", "light": "#B45309" }
+  }
+}

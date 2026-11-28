@@ -61,29 +61,29 @@ import dev.southstar21.vectra.navigation.LocalNavigator
 
 /** Shell-wide UI state pages report into (the scrolled flag drives the top fade). */
 @Stable
-class ShellState {
+internal class ShellState {
     var scrolled by mutableStateOf(false)
 
     /** The page on screen is being dragged or flung: heavy background work waits. */
     var scrolling by mutableStateOf(false)
 }
 
-val LocalShellState = staticCompositionLocalOf { ShellState() }
+internal val LocalShellState = staticCompositionLocalOf { ShellState() }
 
 /**
  * Whether this page's tab is the selected one. Unlike LocalPageActive it stays true under a pushed
  * screen, so a page can reset itself when the user moves to another tab but not on a quick push and pop.
  */
-val LocalTabSelected = compositionLocalOf { true }
+internal val LocalTabSelected = compositionLocalOf { true }
 
 /** Which side of a wide page its fixed pane sits on. */
-enum class PaneSide { Start, End }
+internal enum class PaneSide { Start, End }
 
 /**
  * A panel that stays put beside a wide page's scrolling column (the transit map, the class
  * beside the day list). [weight] is its share of the page's width.
  */
-class PagePane(val side: PaneSide, val weight: Float, val content: @Composable BoxScope.() -> Unit)
+internal class PagePane(val side: PaneSide, val weight: Float, val content: @Composable BoxScope.() -> Unit)
 
 /**
  * A tab page: a scrolling column that starts below the status bar and clears the floating
@@ -91,7 +91,7 @@ class PagePane(val side: PaneSide, val weight: Float, val content: @Composable B
  * a page can grow to [maxWidth] and keep a [pane] in place beside the scrolling column.
  */
 @Composable
-fun VectraPage(
+internal fun VectraPage(
     modifier: Modifier = Modifier,
     scroll: ScrollState = rememberScrollState(),
     spacing: Int = 16,

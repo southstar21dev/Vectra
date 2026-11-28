@@ -4,13 +4,13 @@ import androidx.compose.runtime.Composable
 import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
 
 /** What a schedule card shows for a session; the course tracker maps its own status onto it. */
-enum class CardAttendance { Present, Absent, Excused, Cancelled, Unmarked }
+internal enum class CardAttendance { Present, Absent, Excused, Cancelled, Unmarked }
 
 /**
  * The course tracker's touch points on the schedule: attendance on the cards and the
  * Course Hub. The course tracker implements this; the schedule never imports it.
  */
-interface ScheduleCourseTrackerHooks {
+internal interface ScheduleCourseTrackerHooks {
     /** Status of the session of [event] on [date] (the card's activeSession lookup). */
     @Composable
     fun attendanceStatus(event: ScheduleEvent, date: String): CardAttendance

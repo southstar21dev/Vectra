@@ -1,33 +1,48 @@
 package dev.southstar21.vectra.features.transit.demo
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.transit.data.NewTrackerInput
 import dev.southstar21.vectra.features.transit.data.TrackerStop
 import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.data.TransitTracker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** One seeding at a time, once per account and app run. */
-private val seedLock = Mutex()
-private val seeded = HashSet<String>()
-
 /**
- * Debug builds: the first time a demo account opens the dashboard or the Transit tab, its
- * trackers are created. [DemoFeed.DemoEmail] gets one tracker per edge case plus a few real
- * lines (three pinned); [DemoFeed.NoPinEmail] gets two real lines and no pins.
+ * Debug builds: the first time a demo account signs in during a run, its trackers are created.
+ * [DemoFeed.DemoEmail] gets one tracker per edge case plus a few real lines (three pinned);
+ * [DemoFeed.NoPinEmail] gets two real lines and no pins. Started once from `AppStartup`, so no
+ * screen has to be open for it, and it does nothing when [enabled] is false (release builds).
  */
-@Composable
-internal fun DemoSeedEffect(repo: TransitRepository, trackers: List<TransitTracker>, fetched: Boolean) {
-    val email = repo.userEmail?.lowercase()?.takeIf { repo.demoFeed && (it == DemoFeed.DemoEmail || it == DemoFeed.NoPinEmail) } ?: return
-    LaunchedEffect(email, fetched) {
-        if (!fetched) return@LaunchedEffect
-        seedLock.withLock {
-            if (!seeded.add(email)) return@withLock
-            runSuspendCatching { seedDemo(repo, email, trackers) }
+internal class DemoSeeder(
+    private val auth: AuthRepository,
+    private val transit: TransitRepository,
+    private val scope: CoroutineScope,
+    val enabled: Boolean,
+) {
+    /** One seeding at a time, once per account and app run. */
+    private val lock = Mutex()
+    private val seeded = HashSet<String>()
+
+    fun start() {
+        if (!enabled) return
+        scope.launch {
+            auth.session.map { it?.email?.lowercase() }.distinctUntilChanged().collect { email ->
+                if (email == DemoFeed.DemoEmail || email == DemoFeed.NoPinEmail) seed(email)
+            }
         }
+    }
+
+    /** Creates what [email]'s demo account is missing, once per run. A failure is left for the next run. */
+    suspend fun seed(email: String) = lock.withLock {
+        if (!seeded.add(email)) return@withLock
+        runSuspendCatching { seedDemo(transit, email, transit.trackersQuery.fetch(Unit)) }
+            .onFailure { seeded.remove(email) }
     }
 }
 

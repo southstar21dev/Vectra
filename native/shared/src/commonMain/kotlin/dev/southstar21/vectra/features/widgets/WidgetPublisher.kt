@@ -29,14 +29,14 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.plus
 
 /** Days after today the snapshot covers: next week's view at the weekend and an exam heads-up a week out. */
-const val SnapshotAheadDays = 14
+internal const val SnapshotAheadDays = 14
 
 /**
  * Keeps the home-screen widgets' snapshot current: rewrites it whenever the timetable, personal
  * items, "No class" marks or the signed-in account change. While the app is locked for an update
  * the widgets show only the update prompt.
  */
-class WidgetPublisher(
+class WidgetPublisher internal constructor(
     private val schedule: ScheduleRepository,
     private val courseTracker: CourseTrackerRepository,
     private val auth: AuthRepository,

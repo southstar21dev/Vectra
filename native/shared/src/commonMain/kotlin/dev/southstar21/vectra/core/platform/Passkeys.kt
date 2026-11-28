@@ -12,4 +12,4 @@ interface PasskeyAuthenticator {
 }
 
 /** User dismissed the system sheet. */
-class PasskeyCancelledException : Exception("cancelled")
+internal class PasskeyCancelledException : Exception("cancelled")

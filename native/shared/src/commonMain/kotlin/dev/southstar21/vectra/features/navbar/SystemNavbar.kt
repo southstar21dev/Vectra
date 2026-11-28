@@ -25,7 +25,7 @@ data class SystemNavbarState(
  * A tab bar drawn by the platform in place of [LiquidNavbar] (iOS: the system UITabBarController,
  * so the bar is the real Liquid Glass one). See [platformNavbar].
  */
-interface SystemNavbar {
+internal interface SystemNavbar {
     fun update(state: SystemNavbarState)
 
     /** How far a pushed screen covers the tabs, 0..1, every frame of a push or pop. */
@@ -42,4 +42,4 @@ interface SystemNavbar {
 }
 
 /** The platform tab bar, or null where the Compose [LiquidNavbar] draws (Android). */
-expect val platformNavbar: SystemNavbar?
+internal expect val platformNavbar: SystemNavbar?

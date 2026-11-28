@@ -5,7 +5,8 @@
 # change, so a PR that only touches web/ doesn't build the native app. Release.yml passes
 # all-jobs, which runs every job regardless: a skipped job proves nothing, and the path filter
 # diffs a push against the default branch (dev) or the previous push (master), so it can skip
-# a component that changed since the last release.
+# a component that changed since the last release. The deprecated web job is the exception: it
+# runs on pull requests only, so a web failure never blocks a release.
 name: CI
 
 on:
@@ -79,9 +80,10 @@ jobs:
 
       - run: shellcheck .github/scripts/*.sh scripts/*.sh
 
+  # Deprecated: only checked on pull requests that touch web/, never gates a release.
   web:
     needs: changes
-    if: inputs.all-jobs || needs.changes.outputs.web == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -180,6 +182,12 @@ jobs:
             exit 1
           fi
 
+      # The widget colours come from one table (native/tools/widget-tokens.json); the Swift tokens
+      # and the Android plate drawables are generated from it and checked in.
+      - name: Check the generated widget tokens are up to date
+        if: runner.os == 'Linux'
+        run: node native/tools/generate-widget-tokens.mjs --check
+
       - name: Verify
         working-directory: native
         run: ./gradlew ${{ matrix.tasks }}
@@ -196,4 +204,17 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # The widget rules in Swift, against the same JSON cases the Kotlin WidgetFixturesTest runs.
+      # No Gradle phase and no app: only Model.swift is compiled, so it takes a few seconds.
+      - name: Test the iOS widget rules
+        if: runner.os == 'macOS'
+        run: |
+          udid=$(xcrun simctl list devices available | grep -m1 'iPhone' | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
+          xcodebuild test \
+            -project native/iosApp/iosApp.xcodeproj \
+            -scheme VectraWidgetsTests \
+            -destination "platform=iOS Simulator,id=$udid" \
+            -derivedDataPath "$RUNNER_TEMP/dd-tests" \
             CODE_SIGNING_ALLOWED=NO

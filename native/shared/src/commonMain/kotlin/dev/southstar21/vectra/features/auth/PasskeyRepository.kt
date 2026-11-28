@@ -22,10 +22,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
-data class Passkey(val id: String, val friendlyName: String?, val createdAt: String, val lastUsedAt: String?)
+internal data class Passkey(val id: String, val friendlyName: String?, val createdAt: String, val lastUsedAt: String?)
 
 /** Passkey listing, registration and removal over the /api/vectra/passkeys routes. */
-class PasskeyRepository(
+internal class PasskeyRepository(
     private val pb: PocketBaseClient,
     private val auth: AuthRepository,
     private val authenticator: PasskeyAuthenticator,

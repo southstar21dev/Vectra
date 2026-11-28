@@ -84,7 +84,7 @@ private val WeekdayLong = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "
 
 /** Form-height field that shows a value and opens a picker sheet. */
 @Composable
-fun PickerField(
+internal fun PickerField(
     text: String,
     placeholder: Boolean,
     icon: ImageVector,
@@ -113,7 +113,7 @@ fun PickerField(
 
 /** A date as `yyyy-MM-dd` (or empty), picked from a month calendar in a sheet. */
 @Composable
-fun DateField(
+internal fun DateField(
     value: String,
     onChange: (String) -> Unit,
     /** The field's name, shown as the picker sheet's title. */
@@ -143,7 +143,7 @@ internal val LocalDateSaver = Saver<LocalDate, String>(save = { it.toString() },
 private val NullableLocalDateSaver = Saver<LocalDate?, String>(save = { it?.toString().orEmpty() }, restore = { it.takeIf(String::isNotEmpty)?.let(LocalDate::parse) })
 
 /** "Fri, 30 Oct 2026". */
-fun formatLongDate(date: LocalDate): String =
+internal fun formatLongDate(date: LocalDate): String =
     "${WeekdayShort[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number).take(3)} ${date.year}"
 
 /** A calendar day as a screen reader says it: "Friday, 30 October 2026", plus ", today". */
@@ -156,7 +156,7 @@ internal fun dayCellDescription(date: LocalDate, isToday: Boolean): String =
  * selects it, Done confirms. [title] is the field's name ("Date", "Due").
  */
 @Composable
-fun DatePickerSheet(
+internal fun DatePickerSheet(
     open: Boolean,
     title: String,
     selected: LocalDate?,
@@ -259,7 +259,7 @@ fun DatePickerSheet(
 
 /** A time as `HH:mm` (or empty), picked on wheels in a sheet. Follows the app's 12/24h setting. */
 @Composable
-fun TimeField(
+internal fun TimeField(
     value: String,
     onChange: (String) -> Unit,
     /** The field's name ("Starts", "Ends"), shown as the picker sheet's title. */
@@ -289,7 +289,7 @@ private fun formatHm(h: Int, m: Int, use12h: Boolean): String =
 
 /** Hour and minute wheels; [title] is the field's name ("Starts", "Ends"), never just "Time". */
 @Composable
-fun TimePickerSheet(
+internal fun TimePickerSheet(
     open: Boolean,
     title: String,
     hour: Int,

@@ -1,5 +1,7 @@
 package dev.southstar21.vectra.features.transit.trackers
 
+import dev.southstar21.vectra.features.transit.data.RouteType
+
 internal data class MetroFallbackColors(val color: String, val textColor: String)
 
 internal val MetroFallbackColorsByLine: Map<String, MetroFallbackColors> = mapOf(
@@ -26,4 +28,4 @@ internal enum class BrowseMode { Stop, Line }
 internal fun metroViewLabel(view: MetroView): String = if (view == MetroView.POPULAR) "Popular stops" else "Metro ${view.key}"
 
 /** Type chips shown above the By line catalog list. */
-internal val RouteTypeFilters = listOf("ALL", "SUBWAY", "TRAM", "TROLLEYBUS", "BUS", "RAIL", "FERRY", "COACH")
+internal val RouteTypeFilters = listOf("ALL", RouteType.Subway, RouteType.Tram, RouteType.Trolleybus, RouteType.Bus, RouteType.Rail, RouteType.Ferry, RouteType.Coach)

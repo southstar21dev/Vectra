@@ -17,21 +17,21 @@ import kotlinx.serialization.json.put
  */
 
 @Serializable
-data class LatLon(val lat: Double = 0.0, val lon: Double = 0.0)
+internal data class LatLon(val lat: Double = 0.0, val lon: Double = 0.0)
 
 /** Budapest centre: the fallback map anchor and initial camera. */
-val BudapestCenter = LatLon(47.4979, 19.0402)
+internal val BudapestCenter = LatLon(47.4979, 19.0402)
 
 private val EmptyProps = JsonObject(emptyMap())
 
-fun isValidLatLon(p: LatLon?): Boolean =
+internal fun isValidLatLon(p: LatLon?): Boolean =
     p != null && p.lat.isFinite() && p.lon.isFinite() && (p.lat != 0.0 || p.lon != 0.0)
 
 /** Overload for stop-like values. */
-fun isValidLatLon(lat: Double, lon: Double): Boolean = isValidLatLon(LatLon(lat, lon))
+internal fun isValidLatLon(lat: Double, lon: Double): Boolean = isValidLatLon(LatLon(lat, lon))
 
 /** True when both polylines contain exactly the same points in the same order. */
-fun samePoints(a: List<LatLon>, b: List<LatLon>): Boolean {
+internal fun samePoints(a: List<LatLon>, b: List<LatLon>): Boolean {
     if (a === b) return true
     if (a.size != b.size) return false
     for (i in a.indices) {
@@ -57,7 +57,7 @@ private fun featureCollection(features: List<JsonObject>): JsonObject = buildJso
 }
 
 /** FeatureCollection of LineStrings; polylines with <2 points are dropped (indices stay original). */
-fun lineFeatureCollection(
+internal fun lineFeatureCollection(
     polylines: List<List<LatLon>>,
     propertiesFor: ((index: Int) -> JsonObject?)? = null,
 ): JsonObject = featureCollection(
@@ -67,7 +67,7 @@ fun lineFeatureCollection(
 )
 
 /** FeatureCollection of stop Points with `id`, `name`, `kind`, `labelPriority` properties. */
-fun stopFeatureCollection(stops: List<MapStop>): JsonObject = featureCollection(
+internal fun stopFeatureCollection(stops: List<MapStop>): JsonObject = featureCollection(
     stops.filter { isValidLatLon(it.lat, it.lon) }.map { s ->
         buildJsonObject {
             put("type", "Feature")
@@ -86,7 +86,7 @@ fun stopFeatureCollection(stops: List<MapStop>): JsonObject = featureCollection(
 )
 
 /** A 64-segment closed Polygon Feature approximating a GPS accuracy circle; null when invalid. */
-fun accuracyCircleFeature(center: LatLon, radiusMeters: Double): JsonObject? {
+internal fun accuracyCircleFeature(center: LatLon, radiusMeters: Double): JsonObject? {
     if (!isValidLatLon(center) || !(radiusMeters > 0)) return null
     val points = 64
     val km = radiusMeters / 1000
@@ -108,7 +108,7 @@ fun accuracyCircleFeature(center: LatLon, radiusMeters: Double): JsonObject? {
 }
 
 /** The traveled prefix of `polyline` up to `distance` meters as a LineString Feature; null when <2 points. */
-fun cutLineFeature(
+internal fun cutLineFeature(
     polyline: List<LatLon>,
     dists: List<Double>,
     distance: Double,
@@ -120,9 +120,9 @@ fun cutLineFeature(
     return lineStringFeature(pts, properties)
 }
 
-data class Bounds(val minLat: Double, val minLon: Double, val maxLat: Double, val maxLon: Double)
+internal data class Bounds(val minLat: Double, val minLon: Double, val maxLat: Double, val maxLon: Double)
 
-fun boundsOf(points: List<LatLon>): Bounds? {
+internal fun boundsOf(points: List<LatLon>): Bounds? {
     if (points.isEmpty()) return null
     var minLat = points[0].lat
     var maxLat = points[0].lat

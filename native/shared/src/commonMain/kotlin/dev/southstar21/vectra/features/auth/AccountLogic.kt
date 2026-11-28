@@ -3,7 +3,7 @@ package dev.southstar21.vectra.features.auth
 import dev.southstar21.vectra.core.network.PocketBaseException
 
 /** Validation rules and limits for the account settings. */
-object AccountLogic {
+internal object AccountLogic {
     const val MIN_PASSWORD_LENGTH = 8
     const val FULL_NAME_MAX_LENGTH = 100
     const val DELETE_ACCOUNT_CONFIRM_TEXT = "DELETE"

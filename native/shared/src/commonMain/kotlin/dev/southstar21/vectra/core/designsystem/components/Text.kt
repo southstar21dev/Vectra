@@ -65,7 +65,7 @@ fun VText(
 
 /** A Remix icon tinted with the current content colour; default 16dp. */
 @Composable
-fun VIcon(
+internal fun VIcon(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     size: Dp = 16.dp,

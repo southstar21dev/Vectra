@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
  * `appearance` wins (and again whenever a newer record brings a different one), unless this device holds a change it never
  * managed to save there; changes apply instantly and sync to the profile in the background.
  */
-class AppearanceRepository(
+class AppearanceRepository internal constructor(
     private val kv: KeyValueStore,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
@@ -80,7 +80,8 @@ class AppearanceRepository(
             return
         }
         set(unsaved)
-        push(profile.id, unsaved)
+        // From the profile collector: a sign-out ends the save quietly instead of failing the collector.
+        auth.sessionScope.withSessionOrNull(profile.id) { push(profile.id, unsaved) }
     }
 
     private suspend fun set(next: AppearancePrefs) {
@@ -90,9 +91,14 @@ class AppearanceRepository(
 
     fun update(transform: (AppearancePrefs) -> AppearancePrefs) {
         val next = transform(_prefs.value)
-        scope.launch {
+        val uid = auth.userId
+        if (uid == null) {
+            scope.launch { set(next) }
+            return
+        }
+        // In the account's session: a sign-out mid-save must not write its prefs or mark after the wipe.
+        auth.sessionScope.launchFor(uid) {
             set(next)
-            val uid = auth.userId ?: return@launch
             // Marked before the request, so a process killed mid-save still knows.
             kv.set(UNSYNCED_KEY, uid)
             push(uid, next)
@@ -101,8 +107,8 @@ class AppearanceRepository(
 
     /** Saves [next] to [uid]'s profile; the mark goes once the newest change is saved. */
     private suspend fun push(uid: String, next: AppearancePrefs) {
-        if (auth.userId != uid) return
         val saved = runSuspendCatching { auth.updateProfile(mapOf("appearance" to next.toJson())) }.isSuccess
+        // Kept: clears the mark only if no newer change replaced [next] while the save ran.
         if (saved && _prefs.value == next && kv.get(UNSYNCED_KEY) == uid) kv.set(UNSYNCED_KEY, null)
     }
 

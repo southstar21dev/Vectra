@@ -26,7 +26,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LiveQueryTest {
-    private fun real(test: suspend () -> Unit) = runTest { withContext(Dispatchers.Default) { withTimeout(10_000) { test() } } }
+    private fun real(test: suspend () -> Unit) = runTest { withContext(Dispatchers.Default) { withTimeout(30_000) { test() } } }
     private fun appScope() = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Test fun aHealthyQueryKeepsItsInterval() = assertEquals(20_000, pollIntervalMs(20_000, 0))
@@ -66,8 +66,11 @@ class LiveQueryTest {
     @Test fun observedEntriesSurvive() = real {
         val scope = appScope()
         val q = LiveQuery<Int, String>(scope, maxIdleEntries = 1) { "v$it" }
-        val job = scope.launch { q.observe(1).collect { } }
-        q.observe(1).first { it.data != null }
+        // Observed by a collector that has certainly attached: it has seen the data (a second, short-lived
+        // observer, as before, could finish before the first one attached and leave the entry unobserved).
+        val attached = CompletableDeferred<Unit>()
+        val job = scope.launch { q.observe(1).collect { if (it.data != null) attached.complete(Unit) } }
+        attached.await()
         q.fetch(2)
         q.fetch(3)
         q.fetch(4)

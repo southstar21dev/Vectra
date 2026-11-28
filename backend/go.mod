@@ -6,7 +6,6 @@ require (
 	ganigeorgiev.com/pocketbase/dbx v1.13.0
 	ganigeorgiev.com/pocketbase/ozzo-validation/v4 v4.4.1
 	ganigeorgiev.com/pocketbase/pocketbase v0.42.3
-	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.59.0
@@ -27,6 +26,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/x v0.3.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

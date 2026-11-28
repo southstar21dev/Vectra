@@ -1,8 +1,5 @@
 package dev.southstar21.vectra.features.transit.data
 
-import dev.southstar21.vectra.features.transit.nearby.getCatalogRouteMap
-import dev.southstar21.vectra.features.transit.nearby.getCatalogStops
-import dev.southstar21.vectra.features.transit.nearby.getRouteVariants
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -101,22 +98,22 @@ class CatalogDataTest {
     @Test fun fetchesStops() = runTest {
         val server = Server { HttpStatusCode.OK to """[{"id":"BKK_CSF01108","name":"Astoria","lat":47.494479,"lon":19.060643}]""" }
         val c = catalog(server)
-        assertEquals(1, getCatalogStops(c).size)
+        assertEquals(1, c.stops().size)
         assertEquals(listOf("/catalog/stops.json"), server.drain())
     }
 
     @Test fun fetchesRouteVariants() = runTest {
         val server = Server { HttpStatusCode.OK to """{"BKK_3280":[{"h":"Blaha Lujza tér M","s":["teleki laszlo ter"]}]}""" }
         val c = catalog(server)
-        assertTrue("BKK_3280" in getRouteVariants(c))
+        assertTrue("BKK_3280" in c.routeVariants())
         assertEquals(listOf("/catalog/route-variants.json"), server.drain())
     }
 
     @Test fun mapsRoutesById() = runTest {
         val c = catalog(Server { HttpStatusCode.OK to "[$route]" })
-        val map = getCatalogRouteMap(c)
+        val map = c.routeMap()
         assertEquals("M4", map["BKK_5400"]?.shortName)
-        assertSame(map, getCatalogRouteMap(c))
+        assertSame(map, c.routeMap())
     }
 
     @Test fun aStaleCopyAnswersAtOnceAndRevalidates() = runTest {

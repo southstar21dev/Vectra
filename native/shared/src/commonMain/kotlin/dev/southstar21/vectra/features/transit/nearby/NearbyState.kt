@@ -33,8 +33,9 @@ internal data class CatalogQuery<T>(val data: T? = null, val isLoading: Boolean 
 
 @Composable
 private fun <T> rememberCatalogQuery(repo: TransitRepository, load: suspend TransitCatalog.() -> T): CatalogQuery<T> {
+    val currentLoad by rememberUpdatedState(load)
     val state by produceState(CatalogQuery<T>(), repo) {
-        val data = loadCatalogUntilLoaded(repo.connectivity.online, { repo.catalog.load() }) { value = CatalogQuery(null, false) }
+        val data = loadCatalogUntilLoaded(repo.online, { repo.withCatalog { currentLoad() } }) { value = CatalogQuery(null, false) }
         value = CatalogQuery(data, false)
     }
     return state
@@ -192,7 +193,7 @@ internal fun rememberNearbyData(
     // departures would pass them off as the user's surroundings.
     val located = nearby.status == NearbyLocationStatus.Tracking
     val candidateStopIds = remember(stops, departures, located) { if (departures && located) stops.map { it.id } else emptyList() }
-    val stopArrivalsResults = rememberBatchStopArrivals(repo, candidateStopIds)
+    val stopArrivalsResults = rememberBatchStopArrivals(repo.feeds, candidateStopIds)
 
     val boards = remember(stops, stopArrivalsResults, catalogRoutes.data) {
         stops.associate { stop -> stop.id to parseAllNearbyBoards(stopArrivalsResults[stop.id]?.data, catalogRoutes.data) }

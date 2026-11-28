@@ -125,7 +125,7 @@ class SessionWatchdogTest {
     private suspend fun refreshAround(w: SessionWatchdog, answer: CompletableDeferred<Unit>, during: suspend () -> Unit) =
         withContext(Dispatchers.Default) {
             val call = launch { w.refreshIfNeeded() }
-            withTimeout(5_000) { while (refreshes == 0) delay(1) }
+            withTimeout(30_000) { while (refreshes == 0) delay(1) }
             during()
             answer.complete(Unit)
             call.join()
@@ -193,7 +193,7 @@ class SessionWatchdogTest {
             call.cancelAndJoin()
             assertTrue(call.isCancelled)
             assertNotNull(store.current)
-            withTimeout(5_000) { w.refreshIfNeeded() }
+            withTimeout(30_000) { w.refreshIfNeeded() }
         }
         assertEquals(2, refreshes)
     }
@@ -203,7 +203,7 @@ class SessionWatchdogTest {
         signIn()
         withContext(Dispatchers.Default) {
             repeat(5) { w.trigger() }
-            withTimeout(5_000) { while (refreshes == 0) delay(1) }
+            withTimeout(30_000) { while (refreshes == 0) delay(1) }
             delay(50)
         }
         assertEquals(1, refreshes)

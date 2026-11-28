@@ -20,7 +20,7 @@ import kotlinx.serialization.json.JsonNull
  * The schedule's rows for the Settings Danger zone: unlinking Neptun and clearing every class.
  * Each asks first.
  */
-fun neptunDangerRows(repo: ScheduleRepository, auth: AuthRepository): List<@Composable () -> Unit> = listOf(
+internal fun neptunDangerRows(repo: ScheduleRepository, auth: AuthRepository): List<@Composable () -> Unit> = listOf(
     { RemoveNeptunLinkRow(repo, auth) },
     { ClearClassesRow(repo, auth) },
 )

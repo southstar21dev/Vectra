@@ -22,11 +22,13 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.compose.ui.unit.sp
+import dev.southstar21.vectra.features.widgets.StaleWidgetMessage
 import dev.southstar21.vectra.features.widgets.TodayEntry
 import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.WidgetKind
 import dev.southstar21.vectra.features.widgets.WidgetSession
 import dev.southstar21.vectra.features.widgets.emptyMessage
+import dev.southstar21.vectra.features.widgets.isStale
 import dev.southstar21.vectra.features.widgets.listedMs
 import dev.southstar21.vectra.features.widgets.fitRows
 import dev.southstar21.vectra.features.widgets.progress
@@ -53,6 +55,10 @@ private fun TodayContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
     if (snap?.signedIn != true) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see your day here."))
+        return
+    }
+    if (snap.isStale(frame.today)) {
+        EmptyState(context, StaleWidgetMessage)
         return
     }
     val items = snap.todayEntries(frame.today, frame.nowMs)

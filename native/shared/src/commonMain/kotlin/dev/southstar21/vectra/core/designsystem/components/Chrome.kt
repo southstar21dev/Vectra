@@ -81,13 +81,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  */
 
 /** Horizontal gutter of every screen and sheet section. */
-val SurfaceGutter = 20.dp
+internal val SurfaceGutter = 20.dp
 
-enum class BarLeading { Close, Back }
+internal enum class BarLeading { Close, Back }
 
 /** Round icon button used in top bars. */
 @Composable
-fun BarButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun BarButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(40.dp)
@@ -143,7 +143,7 @@ internal fun bottomEdgePadding(navigationBar: Dp, keyboard: Dp): Dp = (navigatio
  * action then takes the left slot. The bar grows a hairline once the body scrolls.
  */
 @Composable
-fun TopBar(
+internal fun TopBar(
     title: String,
     leading: BarLeading,
     onLeading: () -> Unit,
@@ -213,7 +213,7 @@ fun TopBar(
 }
 
 @Composable
-fun TopBarSubtitle(text: String) {
+internal fun TopBarSubtitle(text: String) {
     VText(text, style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary, maxLines = 1)
 }
 
@@ -224,7 +224,7 @@ private val EdgeFade = 24.dp
  * content under whichever edge it has scrolled past so cards dissolve instead of clipping.
  */
 @Composable
-fun ColumnScope.ScrollBody(
+internal fun ColumnScope.ScrollBody(
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
     onScrolledChange: ((Boolean) -> Unit)? = null,
@@ -255,7 +255,7 @@ fun ColumnScope.ScrollBody(
 
 /** [ScrollBody] for long or unbounded content: only the rows on screen are composed. */
 @Composable
-fun ColumnScope.LazyScrollBody(
+internal fun ColumnScope.LazyScrollBody(
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
     onScrolledChange: ((Boolean) -> Unit)? = null,
@@ -355,7 +355,7 @@ private fun rememberEdgeFades(
 
 /** Docked action area under the body. */
 @Composable
-fun BottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun BottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val c = Vectra.colors
     Column(
         modifier
@@ -369,7 +369,7 @@ fun BottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 
 /** Section heading inside a screen or sheet. */
 @Composable
-fun SectionTitle(
+internal fun SectionTitle(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = Vectra.colors.textPrimary,
@@ -385,7 +385,7 @@ fun SectionTitle(
 
 /** Title row for a compact sheet: title left, close on the right. */
 @Composable
-fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null) {
+internal fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null) {
     Row(
         modifier.fillMaxWidth().padding(start = SurfaceGutter, end = 12.dp, top = 4.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -404,7 +404,7 @@ fun SheetHeader(title: String, onClose: () -> Unit, modifier: Modifier = Modifie
  * secondary, the default variant for the primary).
  */
 @Composable
-fun SheetFooter(secondary: (@Composable () -> Unit)?, primary: @Composable () -> Unit, modifier: Modifier = Modifier) {
+internal fun SheetFooter(secondary: (@Composable () -> Unit)?, primary: @Composable () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier.fillMaxWidth().padding(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
@@ -421,7 +421,7 @@ fun SheetFooter(secondary: (@Composable () -> Unit)?, primary: @Composable () ->
  * a [ScrollBody] and optionally a [BottomBar] inside it.
  */
 @Composable
-fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     CompositionLocalProvider(LocalSurfaceEdgeToEdge provides !LocalScreenInCard.current) {
         Column(
             modifier.fillMaxSize().background(Vectra.colors.surfaceSecondary).imePadding(),

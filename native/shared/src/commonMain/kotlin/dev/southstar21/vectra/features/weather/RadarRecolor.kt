@@ -1,4 +1,4 @@
-package dev.southstar21.vectra.core.maps
+package dev.southstar21.vectra.features.weather
 
 /**
  * Recolouring behind the `doppler://` scheme: RainViewer's tiles (it serves only its
@@ -9,7 +9,7 @@ package dev.southstar21.vectra.core.maps
  * ([liftAlpha]) so light precipitation reads as colour, not a see-through smudge.
  * Pixels are ARGB ints, unpremultiplied, as Bitmap#getPixels returns them.
  */
-fun recolorRadarPixels(pixels: IntArray, mix: FloatArray? = null) {
+internal fun recolorRadarPixels(pixels: IntArray, mix: FloatArray? = null) {
     for (i in pixels.indices) {
         val p = pixels[i]
         val a = (p ushr 24) and 0xFF
@@ -85,10 +85,10 @@ private fun blendRgb(from: Int, to: Int, t: Float): Int {
  * Snow in RainViewer's tiles: pale cyan (light) to blue (heavy), always full blue with green
  * about 64 above red. Rain never matches: its only full-blue colour is magenta, green below red.
  */
-fun isRadarSnow(r: Int, g: Int, b: Int): Boolean = b >= 250 && g > r && (g - r) in 45..75
+internal fun isRadarSnow(r: Int, g: Int, b: Int): Boolean = b >= 250 && g > r && (g - r) in 45..75
 
 /** How heavy a snow pixel is, 0 (lightest, red about 200) to 1 (heaviest, red near 0). */
-fun radarSnowIntensity(r: Int): Float = (1f - r / 210f).coerceIn(0f, 1f)
+internal fun radarSnowIntensity(r: Int): Float = (1f - r / 210f).coerceIn(0f, 1f)
 
 private val SnowLight = intArrayOf(70, 190, 255)
 private val SnowHeavy = intArrayOf(20, 45, 240)

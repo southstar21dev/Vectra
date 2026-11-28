@@ -8,11 +8,11 @@ import org.maplibre.compose.map.MapUiOptions
  * lens (which redraws the page shifted, to refract it) dragged maps along, and
  * stretch overscroll or fades could not reach it.
  */
-expect fun MapUiOptions.Builder.drawInPage()
+internal expect fun MapUiOptions.Builder.drawInPage()
 
 /**
  * True where Compose overlays (`Modifier.placedAt`) move in step with the map. On iOS the map is
  * a separate native view that pans on its own frames, so overlays drift while it moves; markers
  * there are drawn as map layers instead ([MarkerLayers]).
  */
-expect val composeOverlaysTrackMap: Boolean
+internal expect val composeOverlaysTrackMap: Boolean

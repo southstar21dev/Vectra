@@ -20,7 +20,7 @@ import dev.southstar21.vectra.core.preferences.BackgroundKey
  * An elliptical radial glow (radii [rx]×[ry], fading to transparent at [stop]), drawn
  * by scaling a circular gradient.
  */
-fun DrawScope.ellipticalGlow(center: Offset, rx: Float, ry: Float, color: Color, stop: Float) {
+internal fun DrawScope.ellipticalGlow(center: Offset, rx: Float, ry: Float, color: Color, stop: Float) {
     if (rx <= 0f || ry <= 0f) return
     withTransform({ scale(1f, ry / rx, center) }) {
         drawRect(
@@ -36,7 +36,7 @@ fun DrawScope.ellipticalGlow(center: Offset, rx: Float, ry: Float, color: Color,
  * per the appearance setting, plus the three background glow orbs.
  */
 @Composable
-fun AppBackground(modifier: Modifier = Modifier, background: BackgroundKey = Vectra.appearance.background, glow: Boolean = true) {
+internal fun AppBackground(modifier: Modifier = Modifier, background: BackgroundKey = Vectra.appearance.background, glow: Boolean = true) {
     val c = Vectra.colors
     Canvas(modifier.fillMaxSize()) {
         drawRect(c.surfacePrimary)
@@ -52,7 +52,7 @@ fun AppBackground(modifier: Modifier = Modifier, background: BackgroundKey = Vec
     }
 }
 
-fun DrawScope.drawMesh(line: Color, cell: Float) {
+internal fun DrawScope.drawMesh(line: Color, cell: Float) {
     val px = 1.dp.toPx()
     var x = 0f
     while (x < size.width) { drawRect(line, Offset(x, 0f), Size(px, size.height)); x += cell }
@@ -80,7 +80,7 @@ private fun DrawScope.drawBackgroundGlow(c: VectraColors) {
 }
 
 /** Surface fade behind the nav and status bar. */
-fun navFadeBrush(surface: Color, toTop: Boolean): Brush {
+internal fun navFadeBrush(surface: Color, toTop: Boolean): Brush {
     val stops = arrayOf(
         0f to surface,
         0.30f to surface.mixTransparent(95f),

@@ -19,7 +19,7 @@ internal fun httpsHost(url: String): String? {
 internal fun isHostOrSubdomain(host: String, domain: String): Boolean = host == domain || host.endsWith(".$domain")
 
 /** A service alert's link is opened only when it is an `https` page on bkk.hu, the label the app puts on it. */
-fun isTrustedAlertUrl(url: String?): Boolean = url != null && httpsHost(url)?.let { isHostOrSubdomain(it, "bkk.hu") } == true
+internal fun isTrustedAlertUrl(url: String?): Boolean = url != null && httpsHost(url)?.let { isHostOrSubdomain(it, "bkk.hu") } == true
 
 /** Radar tiles are fetched only from RainViewer's own `https` hosts. */
-fun isTrustedRadarHost(host: String): Boolean = httpsHost(host)?.let { isHostOrSubdomain(it, "rainviewer.com") } == true
+internal fun isTrustedRadarHost(host: String): Boolean = httpsHost(host)?.let { isHostOrSubdomain(it, "rainviewer.com") } == true

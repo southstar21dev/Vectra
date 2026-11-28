@@ -10,7 +10,7 @@ object DeepLinks {
     val pending = MutableStateFlow<String?>(null)
 
     /** Section paths (from notification and app links) → routes; sub-paths render their section. */
-    fun routeFor(path: String): Route? {
+    internal fun routeFor(path: String): Route? {
         val p = path.substringBefore('?').substringBefore('#').trimEnd('/').ifEmpty { "/" }
         return when {
             p == "/" -> Route.Dashboard

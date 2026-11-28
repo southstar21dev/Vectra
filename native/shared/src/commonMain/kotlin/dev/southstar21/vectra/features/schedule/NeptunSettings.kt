@@ -159,7 +159,7 @@ private val RowTitle = vtext(TypeScale.Body, Weight.Semibold)
  * sync with the 3/hour limit, the link, and "Clear all classes").
  */
 @Composable
-fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
+internal fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()

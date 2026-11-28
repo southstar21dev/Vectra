@@ -17,26 +17,25 @@ import dev.southstar21.vectra.features.transit.data.TransitAlert
 import dev.southstar21.vectra.features.transit.data.TransitTracker
 import kotlin.math.ceil
 import kotlin.math.min
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 internal data class RouteTypeMeta(val label: String, val emoji: String, val icon: ImageVector)
 
 internal val RouteTypeMetaByType: Map<String, RouteTypeMeta> by lazy {
     mapOf(
-        "SUBWAY" to RouteTypeMeta("Metro", "🚇", RemixIcons.SubwayLine),
-        "TRAM" to RouteTypeMeta("Tram", "🚋", RemixIcons.TrainLine),
-        "BUS" to RouteTypeMeta("Bus", "🚌", RemixIcons.BusLine),
-        "TROLLEYBUS" to RouteTypeMeta("Trolleybus", "🚎", RemixIcons.Bus2Line),
-        "RAIL" to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
-        "SUBURBAN_RAILWAY" to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
-        "FERRY" to RouteTypeMeta("Ferry", "⛴️", RemixIcons.Ship2Line),
-        "COACH" to RouteTypeMeta("Coach", "🚌", RemixIcons.BusLine),
+        RouteType.Subway to RouteTypeMeta("Metro", "🚇", RemixIcons.SubwayLine),
+        RouteType.Tram to RouteTypeMeta("Tram", "🚋", RemixIcons.TrainLine),
+        RouteType.Bus to RouteTypeMeta("Bus", "🚌", RemixIcons.BusLine),
+        RouteType.Trolleybus to RouteTypeMeta("Trolleybus", "🚎", RemixIcons.Bus2Line),
+        RouteType.Rail to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
+        RouteType.SuburbanRailway to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
+        RouteType.Ferry to RouteTypeMeta("Ferry", "⛴️", RemixIcons.Ship2Line),
+        RouteType.Coach to RouteTypeMeta("Coach", "🚌", RemixIcons.BusLine),
     )
 }
 
 internal fun routeTypeMeta(type: String?): RouteTypeMeta =
     RouteTypeMetaByType[type.orEmpty()] ?: RouteTypeMeta(type?.takeIf { it.isNotEmpty() } ?: "Transit", "🚉", RemixIcons.TrainLine)
-
-private val TypePriority = listOf("SUBWAY", "TRAM", "TROLLEYBUS", "BUS", "RAIL", "FERRY")
 
 private fun parseFloatOr0(s: String): Double = parseLeadingNumber(s).let { if (it.isNaN()) 0.0 else it }
 
@@ -50,8 +49,8 @@ internal fun localeCompare(a: String, b: String): Int {
 
 /** Sort routes so metro/tram come first, then alphabetically-ish by short name. */
 internal fun sortRoutes(routes: List<FutarRoute>): List<FutarRoute> = routes.sortedWith { a, b ->
-    val pa = TypePriority.indexOf(a.type).let { if (it == -1) 99 else it }
-    val pb = TypePriority.indexOf(b.type).let { if (it == -1) 99 else it }
+    val pa = RouteType.Priority.indexOf(a.type).let { if (it == -1) 99 else it }
+    val pb = RouteType.Priority.indexOf(b.type).let { if (it == -1) 99 else it }
     if (pa != pb) return@sortedWith pa - pb
     val na = parseFloatOr0(a.shortName)
     val nb = parseFloatOr0(b.shortName)
@@ -495,8 +494,6 @@ internal fun addOrUpdateTrackerStop(stops: List<TrackerStop>, newStop: TrackerSt
     if (stops.size >= MaxTrackerStops) return stops
     return stops + newStop
 }
-
-internal fun removeTrackerStop(stops: List<TrackerStop>, stopId: String): List<TrackerStop> = stops.filter { it.stopId != stopId }
 
 internal fun splitRouteTitle(title: String?): List<String> =
     if (title.isNullOrEmpty()) emptyList() else title.split(RouteTitleSeparator).filter { it.isNotEmpty() }

@@ -7,7 +7,7 @@ interface SecretCipher {
 }
 
 /** Pass-through used by tests and platforms without a secure store yet. */
-object PlainSecretCipher : SecretCipher {
+internal object PlainSecretCipher : SecretCipher {
     override fun encrypt(plain: String) = plain
     override fun decrypt(cipher: String): String? = cipher
 }

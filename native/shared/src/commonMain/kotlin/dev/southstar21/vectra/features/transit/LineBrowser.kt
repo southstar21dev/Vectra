@@ -83,6 +83,7 @@ import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
 import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
 import dev.southstar21.vectra.features.transit.trackers.StopCountPill
 import dev.southstar21.vectra.features.transit.trackers.TrackedChip
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Let a row run past the sheet gutter on both sides (negative margin, with the gutter added back as padding). */
 internal fun Modifier.bleedHorizontally(gutter: Dp): Modifier = layout { measurable, constraints ->
@@ -133,7 +134,7 @@ internal fun searchableRoutes(catalog: List<FutarRoute>): List<SearchableRoute> 
     sortRoutes(catalog.distinctBy { it.id }).map { r ->
         SearchableRoute(
             route = r,
-            typeGroup = if (r.type == "SUBURBAN_RAILWAY") "RAIL" else r.type,
+            typeGroup = if (r.type == RouteType.SuburbanRailway) RouteType.Rail else r.type,
             searchText = listOf(r.shortName, r.description, r.type).map(::normalizeSearchText),
         )
     }

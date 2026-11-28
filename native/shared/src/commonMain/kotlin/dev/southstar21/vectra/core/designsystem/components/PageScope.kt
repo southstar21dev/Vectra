@@ -24,23 +24,23 @@ import kotlinx.coroutines.delay
 import kotlin.time.Clock
 
 /** False while the page is a hidden (kept-alive) tab or covered by a pushed screen: loops and clocks freeze. */
-val LocalPageActive = compositionLocalOf { true }
+internal val LocalPageActive = compositionLocalOf { true }
 
 /**
  * The lifecycle a map on this page follows, when that differs from the page's own: a tab
  * under a pushed screen stops polling, but a stopped map comes back blank on pop.
  */
-val LocalMapLifecycleOwner = compositionLocalOf<LifecycleOwner?> { null }
+internal val LocalMapLifecycleOwner = compositionLocalOf<LifecycleOwner?> { null }
 
 /** Frame cap for small decorative loops: nobody sees 120Hz on a 12dp pulse, but the battery does. */
-const val DecorativeLoopFps = 24
+internal const val DecorativeLoopFps = 24
 
 /**
  * Epoch millis, re-read on each [intervalMs] boundary while the page is on screen and
  * the app is started; a page coming back gets a fresh value at once.
  */
 @Composable
-fun rememberPageClock(intervalMs: Long, nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() }): Long {
+internal fun rememberPageClock(intervalMs: Long, nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() }): Long {
     var now by remember { mutableLongStateOf(nowMillis()) }
     val active = LocalPageActive.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -57,12 +57,12 @@ fun rememberPageClock(intervalMs: Long, nowMillis: () -> Long = { Clock.System.n
 }
 
 /** Holds whether a decorative element is in the window, for `rememberLoop(enabled = …)`. */
-fun Modifier.trackOnScreen(onScreen: MutableState<Boolean>): Modifier =
+internal fun Modifier.trackOnScreen(onScreen: MutableState<Boolean>): Modifier =
     onVisibilityChanged(minFractionVisible = 0.01f) { onScreen.value = it }
 
 /** Starts true: a loop begins at once and stops on the first report that it is off screen. */
 @Composable
-fun rememberOnScreen(): MutableState<Boolean> = remember { mutableStateOf(true) }
+internal fun rememberOnScreen(): MutableState<Boolean> = remember { mutableStateOf(true) }
 
 /**
  * A repeating 0→1 progress for decorative loops (spinners, pulses, shimmers).
@@ -70,7 +70,7 @@ fun rememberOnScreen(): MutableState<Boolean> = remember { mutableStateOf(true) 
  * inside draw / graphicsLayer lambdas so each tick redraws instead of recomposing.
  */
 @Composable
-fun rememberLoop(
+internal fun rememberLoop(
     periodMs: Int,
     easing: Easing = LinearEasing,
     reverse: Boolean = false,

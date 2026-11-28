@@ -81,7 +81,7 @@ private fun sessionsSignature(sessions: List<AttendanceSession>): String =
     sessions.map { "${it.date}|${it.startTime.orEmpty()}|${it.endTime.orEmpty()}|${it.sessionType.wire}|${it.status.name}" }.sorted().joinToString("\n")
 
 /** The class the Course Hub is about (the timetable fields it reconciles against). */
-data class CourseTrackerCourse(
+internal data class CourseTrackerCourse(
     val courseName: String,
     val courseCode: String = "",
     val semester: String = "",
@@ -129,7 +129,7 @@ data class CourseTrackerCourse(
  * it settles onto the window's edges.
  */
 @Composable
-fun CourseHubSheetHost(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, navigator: AppNavigator) {
+internal fun CourseHubSheetHost(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, navigator: AppNavigator) {
     val subject = navigator.courseHub
     // The last course stays while the sheet animates away.
     var shown by remember { mutableStateOf(subject) }
@@ -162,7 +162,7 @@ private enum class HubSurface { Sheet, Pane }
  * with a close X instead of back. [onClose] empties the pane.
  */
 @Composable
-fun CourseHubPane(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onClose: () -> Unit) {
+internal fun CourseHubPane(repo: CourseTrackerRepository, schedule: ScheduleRepository, connectivity: Connectivity, courseKey: String, onClose: () -> Unit) {
     CourseHubFor(repo, schedule, connectivity, courseKey, onClose, HubSurface.Pane)
 }
 

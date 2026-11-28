@@ -23,7 +23,7 @@ private fun copy(status: WeatherLocationStatus): String = when (status) {
 
 /** The Permissions › Location row: weather and nearby stops follow the device, or weather stays on Budapest. */
 @Composable
-fun LocationSettingRow(repo: WeatherRepository) {
+internal fun LocationSettingRow(repo: WeatherRepository) {
     val c = Vectra.colors
     val state by repo.location.collectAsStateWithLifecycle()
     // Settings stays composed in its tab, so re-read the OS permission on every resume.

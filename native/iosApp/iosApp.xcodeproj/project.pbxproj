@@ -12,7 +12,9 @@
 		0F217E46244124D5D0B36C7E /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
 		22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F543015C899423D4B01CEB2E /* Assets.xcassets */; };
 		307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668CECA83ACC03A83C85A623 /* iOSApp.swift */; };
+		373F226C4E50655E69901CDF /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B68CBCF9E0A279BBB868A43 /* Tokens.swift */; };
 		375FFF0A61FAE6816EFC83BF /* jetbrains_mono_variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CAB297C7C1221AC1E7A5E80A /* jetbrains_mono_variable.ttf */; };
+		3D939D4BB09A5E3E542ACBBB /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBEBBB1783F2F7051D6187E /* Model.swift */; };
 		4EEDC0B2CB8436DEAD01BCAF /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBEBBB1783F2F7051D6187E /* Model.swift */; };
 		6BC82F36E01D00FB758F883F /* VectraWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 233554DAFCA9B8DFE951680A /* VectraWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		736AF7C8DA78976E2FCDFBE2 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
@@ -21,8 +23,11 @@
 		874C9E1B46FD834B50323E4B /* Spine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB44364B443FAA94E860E9C /* Spine.swift */; };
 		87AF8551F9234A666DA6ED09 /* DayWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930F1BC906755445B7FE7AA /* DayWidgets.swift */; };
 		939028994CFCE9D4FC2E153D /* NextClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F4852FC8221AE0F7EE901B /* NextClass.swift */; };
+		A4762E14DBA25389CA58827B /* WidgetRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C5AD973E02656C22F3E448 /* WidgetRulesTests.swift */; };
 		AAC19793CF29621C09C7D6C5 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */; };
 		B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733197A7CAF9CB77355E077B /* VectraWidgets.swift */; };
+		B6D2E3EFE530396A3B23F705 /* widget-cases.json in Resources */ = {isa = PBXBuildFile; fileRef = 45906976D3B32C3493414AB1 /* widget-cases.json */; };
+		C3152A3687E84804D6F5ED38 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99CAC96177D06EE9613178 /* AppGroup.swift */; };
 		FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA668872F5CEDF745B4E7AC3 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,15 +57,19 @@
 
 /* Begin PBXFileReference section */
 		03F4852FC8221AE0F7EE901B /* NextClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextClass.swift; sourceTree = "<group>"; };
+		1B68CBCF9E0A279BBB868A43 /* Tokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokens.swift; sourceTree = "<group>"; };
 		233554DAFCA9B8DFE951680A /* VectraWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VectraWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VectraWidgets.entitlements; sourceTree = "<group>"; };
 		40F27D365D73FEFE0E40ADA4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		414F5282B43476C2812E8066 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		45906976D3B32C3493414AB1 /* widget-cases.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "widget-cases.json"; sourceTree = "<group>"; };
 		4B99CAC96177D06EE9613178 /* AppGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroup.swift; sourceTree = "<group>"; };
 		64B7F111600D0D41D6230059 /* inter_variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = inter_variable.ttf; sourceTree = "<group>"; };
 		668CECA83ACC03A83C85A623 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		733197A7CAF9CB77355E077B /* VectraWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectraWidgets.swift; sourceTree = "<group>"; };
+		74C5AD973E02656C22F3E448 /* WidgetRulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRulesTests.swift; sourceTree = "<group>"; };
 		86038AE1032E284E79B32AD6 /* iosApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		89DEF57915A46C970572454A /* VectraWidgetsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VectraWidgetsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FB44364B443FAA94E860E9C /* Spine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spine.swift; sourceTree = "<group>"; };
 		A930F1BC906755445B7FE7AA /* DayWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayWidgets.swift; sourceTree = "<group>"; };
 		AFACFD2D0E3070E0F7AE9D8D /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
@@ -105,6 +114,7 @@
 				E47A271F162A3E0AB4CF02C2 /* native */,
 				D729CB25B4FA03B3484F4F1E /* Shared */,
 				DD1225287C654684D6C4182F /* VectraWidgets */,
+				A10EEE34E67FB3EC15B50C28 /* VectraWidgetsTests */,
 				94C98B8B3A2BFC1966447269 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,13 +127,31 @@
 			path = composeResources;
 			sourceTree = "<group>";
 		};
+		79A11EDA9033F8C046A394A3 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				45906976D3B32C3493414AB1 /* widget-cases.json */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
 		94C98B8B3A2BFC1966447269 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				86038AE1032E284E79B32AD6 /* iosApp.app */,
 				233554DAFCA9B8DFE951680A /* VectraWidgets.appex */,
+				89DEF57915A46C970572454A /* VectraWidgetsTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10EEE34E67FB3EC15B50C28 /* VectraWidgetsTests */ = {
+			isa = PBXGroup;
+			children = (
+				74C5AD973E02656C22F3E448 /* WidgetRulesTests.swift */,
+				79A11EDA9033F8C046A394A3 /* Fixtures */,
+			);
+			path = VectraWidgetsTests;
 			sourceTree = "<group>";
 		};
 		B040C786A7FE4A1669F36626 /* commonMain */ = {
@@ -160,6 +188,7 @@
 				03F4852FC8221AE0F7EE901B /* NextClass.swift */,
 				9FB44364B443FAA94E860E9C /* Spine.swift */,
 				DA668872F5CEDF745B4E7AC3 /* Theme.swift */,
+				1B68CBCF9E0A279BBB868A43 /* Tokens.swift */,
 				248773E743F345EB3C78CD7D /* VectraWidgets.entitlements */,
 				733197A7CAF9CB77355E077B /* VectraWidgets.swift */,
 			);
@@ -207,6 +236,24 @@
 			productName = iosApp;
 			productReference = 86038AE1032E284E79B32AD6 /* iosApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1A27850E5A252A169852775 /* VectraWidgetsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 85123B96DDCFF6E2669AE3C6 /* Build configuration list for PBXNativeTarget "VectraWidgetsTests" */;
+			buildPhases = (
+				CFD46754436B87A92ADCD8AF /* Sources */,
+				45C805A91FDEDE0EDD45146F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VectraWidgetsTests;
+			packageProductDependencies = (
+			);
+			productName = VectraWidgetsTests;
+			productReference = 89DEF57915A46C970572454A /* VectraWidgetsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		A58BDD7B0C5B57E1AB6C3569 /* VectraWidgets */ = {
 			isa = PBXNativeTarget;
@@ -262,6 +309,7 @@
 			targets = (
 				78B53CC79860CBFC2F5543C6 /* iosApp */,
 				A58BDD7B0C5B57E1AB6C3569 /* VectraWidgets */,
+				A1A27850E5A252A169852775 /* VectraWidgetsTests */,
 			);
 		};
 /* End PBXProject section */
@@ -283,6 +331,14 @@
 				078A64CFC83369CE7BE11F53 /* Assets.xcassets in Resources */,
 				7A3E7A26A4B808BB39F0A259 /* inter_variable.ttf in Resources */,
 				375FFF0A61FAE6816EFC83BF /* jetbrains_mono_variable.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		45C805A91FDEDE0EDD45146F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B6D2E3EFE530396A3B23F705 /* widget-cases.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -372,7 +428,18 @@
 				939028994CFCE9D4FC2E153D /* NextClass.swift in Sources */,
 				874C9E1B46FD834B50323E4B /* Spine.swift in Sources */,
 				FB6EBE420C89DA9E1EC46D11 /* Theme.swift in Sources */,
+				373F226C4E50655E69901CDF /* Tokens.swift in Sources */,
 				B5FF08FDBFCA67605E94CF03 /* VectraWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFD46754436B87A92ADCD8AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C3152A3687E84804D6F5ED38 /* AppGroup.swift in Sources */,
+				3D939D4BB09A5E3E542ACBBB /* Model.swift in Sources */,
+				A4762E14DBA25389CA58827B /* WidgetRulesTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,6 +454,24 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		083C7B690B767C530E31266B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"ARCHS[sdk=iphonesimulator*]" = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.widgetstests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		11814011E7D6EC822BFBC66D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -441,7 +526,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -506,7 +591,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -630,6 +715,24 @@
 			};
 			name = Debug;
 		};
+		EAA3C1741211292028323EA7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"ARCHS[sdk=iphonesimulator*]" = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.southstar21.vectra.widgetstests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -638,6 +741,15 @@
 			buildConfigurations = (
 				9221A1FDC06803E8A2FC6E61 /* Debug */,
 				AF835BFF1220CA5AB5B867E4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		85123B96DDCFF6E2669AE3C6 /* Build configuration list for PBXNativeTarget "VectraWidgetsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				083C7B690B767C530E31266B /* Debug */,
+				EAA3C1741211292028323EA7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

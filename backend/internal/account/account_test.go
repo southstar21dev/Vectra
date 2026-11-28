@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
@@ -13,14 +14,14 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
 	"github.com/stretchr/testify/require"
 
-	"vectra/pb/internal/reauth/reauthtest"
+	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/reauth"
 	_ "vectra/pb/migrations"
 )
 
-// useLimiters swaps in fresh re-auth limiters allowing perUser checks per user.
-func useLimiters(t *testing.T, perUser int) {
-	t.Helper()
-	reauthtest.Use(t, perUser, 100)
+// newGuard returns a re-auth Guard allowing perUser failed checks per user.
+func newGuard(perUser int) *reauth.Guard {
+	return reauth.NewGuard(ratelimit.New(perUser, time.Minute), ratelimit.New(100, time.Minute))
 }
 
 func postAs(app *tests.TestApp, auth *core.Record, target, body string, handler func(*core.RequestEvent) error) (*httptest.ResponseRecorder, error) {
@@ -34,6 +35,7 @@ func postAs(app *tests.TestApp, auth *core.Record, target, body string, handler 
 }
 
 func TestDeleteAccountCascades(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -59,6 +61,7 @@ func TestDeleteAccountCascades(t *testing.T) {
 }
 
 func TestChangeEmail(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -96,6 +99,7 @@ func TestChangeEmail(t *testing.T) {
 // before saving, a malformed address is a validation error (400 in the
 // handler), and a missing user is not one (500).
 func TestChangeEmailTrimsAndClassifiesErrors(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -121,6 +125,7 @@ func TestChangeEmailTrimsAndClassifiesErrors(t *testing.T) {
 }
 
 func TestChangeEmailSameAddressKeepsVerified(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -140,11 +145,12 @@ func TestChangeEmailSameAddressKeepsVerified(t *testing.T) {
 }
 
 func TestEmailHandlerRateLimited(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	useLimiters(t, 2)
+	g := newGuard(2)
 
 	users, _ := app.FindCollectionByNameOrId("users")
 	u := core.NewRecord(users)
@@ -159,7 +165,7 @@ func TestEmailHandlerRateLimited(t *testing.T) {
 		e := &core.RequestEvent{App: app, Auth: u}
 		e.Request = req
 		e.Response = httptest.NewRecorder()
-		return EmailHandler(e)
+		return EmailHandler(g)(e)
 	}
 	for i := 0; i < 2; i++ {
 		apiErr, ok := call().(*router.ApiError)
@@ -175,10 +181,11 @@ func TestEmailHandlerRateLimited(t *testing.T) {
 // the account; a missing or wrong password is a 400 and deletes nothing, the
 // right one deletes the account.
 func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
-	useLimiters(t, 10)
+	g := newGuard(10)
 
 	users, _ := app.FindCollectionByNameOrId("users")
 	u := core.NewRecord(users)
@@ -187,7 +194,7 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 	require.NoError(t, app.Save(u))
 
 	for _, body := range []string{"", `{}`, `{"currentPassword":"wrong"}`} {
-		_, err := postAs(app, u, "/api/vectra/account/delete", body, Handler)
+		_, err := postAs(app, u, "/api/vectra/account/delete", body, Handler(g))
 		apiErr, ok := err.(*router.ApiError)
 		require.True(t, ok, "body %q", body)
 		require.Equal(t, http.StatusBadRequest, apiErr.Status, "body %q", body)
@@ -195,7 +202,7 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 		require.NoError(t, err, "a rejected delete must leave the account in place")
 	}
 
-	w, err := postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler)
+	w, err := postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler(g))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, w.Code)
 	_, err = app.FindRecordById("users", u.Id)
@@ -207,10 +214,11 @@ func TestDeleteHandlerRequiresCurrentPassword(t *testing.T) {
 // TestReauthSuccessesDoNotSpendBudget: only wrong passwords count, so many
 // successful checks (passkey enrolment retries) never lock the user out.
 func TestReauthSuccessesDoNotSpendBudget(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
-	useLimiters(t, 2)
+	g := newGuard(2)
 
 	users, _ := app.FindCollectionByNameOrId("users")
 	u := core.NewRecord(users)
@@ -219,16 +227,17 @@ func TestReauthSuccessesDoNotSpendBudget(t *testing.T) {
 	require.NoError(t, app.Save(u))
 
 	for i := 0; i < 6; i++ {
-		_, err = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"password123","newEmail":"okchecks@test.local"}`, EmailHandler)
+		_, err = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"password123","newEmail":"okchecks@test.local"}`, EmailHandler(g))
 		require.NoError(t, err, "successful check %d", i)
 	}
 }
 
 func TestReauthBucketIsShared(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
-	useLimiters(t, 2)
+	g := newGuard(2)
 
 	users, _ := app.FindCollectionByNameOrId("users")
 	u := core.NewRecord(users)
@@ -236,9 +245,9 @@ func TestReauthBucketIsShared(t *testing.T) {
 	u.SetPassword("password123")
 	require.NoError(t, app.Save(u))
 
-	_, _ = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"wrong","newEmail":"x@test.local"}`, EmailHandler)
-	_, _ = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"wrong"}`, Handler)
-	_, err = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler)
+	_, _ = postAs(app, u, "/api/vectra/account/email", `{"currentPassword":"wrong","newEmail":"x@test.local"}`, EmailHandler(g))
+	_, _ = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"wrong"}`, Handler(g))
+	_, err = postAs(app, u, "/api/vectra/account/delete", `{"currentPassword":"password123"}`, Handler(g))
 	apiErr, ok := err.(*router.ApiError)
 	require.True(t, ok)
 	require.Equal(t, http.StatusTooManyRequests, apiErr.Status)

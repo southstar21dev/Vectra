@@ -34,7 +34,7 @@ import dev.southstar21.vectra.core.designsystem.theme.rgba
 
 /** On/off switch. The thumb springs so a fast flick keeps its momentum. */
 @Composable
-fun VToggle(
+internal fun VToggle(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,

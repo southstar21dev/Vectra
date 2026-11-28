@@ -29,7 +29,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
  * through a panel the way they do through plain [glass].
  */
 @Composable
-fun Modifier.solidMapGlass(shape: Shape): Modifier {
+internal fun Modifier.solidMapGlass(shape: Shape): Modifier {
     val c = Vectra.colors
     return this
         .boxShadow(shape, c.glassShadow.filter { !it.inset })
@@ -39,7 +39,7 @@ fun Modifier.solidMapGlass(shape: Shape): Modifier {
 
 /** One glass column of map buttons (44dp each, hairlines between), like the map apps' control stacks. */
 @Composable
-fun GlassMapControls(buttons: List<MapControlButton>, modifier: Modifier = Modifier) {
+internal fun GlassMapControls(buttons: List<MapControlButton>, modifier: Modifier = Modifier) {
     if (buttons.isEmpty()) return
     val c = Vectra.colors
     val shape = RoundedCornerShape(22.dp)

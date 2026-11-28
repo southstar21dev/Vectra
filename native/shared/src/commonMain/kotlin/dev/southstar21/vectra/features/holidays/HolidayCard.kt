@@ -89,7 +89,7 @@ private fun holidayGlyph(holiday: Holiday): HolidayGlyph {
 
 /** Upcoming Hungarian holidays within two weeks; renders nothing otherwise. */
 @Composable
-fun HolidayCard(modifier: Modifier = Modifier) {
+internal fun HolidayCard(modifier: Modifier = Modifier) {
     // Minute clock so the countdown rolls over at midnight while the app is open.
     val now = rememberNowInstant(60_000)
     val upcoming = remember(now) { getUpcomingHolidays(now) }

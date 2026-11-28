@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonElement
  * Shared contract: the schedule, dashboard and course-tracker features all read it.
  */
 @Serializable
-data class ScheduleEvent(
+internal data class ScheduleEvent(
     val id: String,
     @SerialName("user_id") val userId: String = "",
     @SerialName("course_name") val courseName: String = "",

@@ -75,7 +75,7 @@ internal fun EditActions(saving: Boolean, onCancel: () -> Unit, confirmText: Str
 private fun messageOf(e: Throwable, fallback: String) = AccountLogic.fieldErrorMessage(e) ?: e.message?.takeIf { it.isNotBlank() } ?: fallback
 
 /** The editable name, email and password rows. */
-fun accountRows(auth: AuthRepository): List<@Composable () -> Unit> = listOf({ NameRow(auth) }, { EmailRow(auth) }, { PasswordRow(auth) })
+internal fun accountRows(auth: AuthRepository): List<@Composable () -> Unit> = listOf({ NameRow(auth) }, { EmailRow(auth) }, { PasswordRow(auth) })
 
 @Composable
 private fun NameRow(auth: AuthRepository) {

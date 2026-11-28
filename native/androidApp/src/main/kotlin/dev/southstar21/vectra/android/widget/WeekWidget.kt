@@ -29,6 +29,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import dev.southstar21.vectra.core.time.nowInBudapest
+import dev.southstar21.vectra.features.widgets.StaleWidgetMessage
 import dev.southstar21.vectra.features.widgets.WeekBlock
 import dev.southstar21.vectra.features.widgets.WeekColumn
 import dev.southstar21.vectra.features.widgets.WeekGrid
@@ -38,6 +39,7 @@ import dev.southstar21.vectra.features.widgets.hourAxisLabel
 import dev.southstar21.vectra.features.widgets.classCount
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.examThisWeek
+import dev.southstar21.vectra.features.widgets.isStale
 import dev.southstar21.vectra.features.widgets.week
 import dev.southstar21.vectra.features.widgets.weekGrid
 import dev.southstar21.vectra.features.widgets.weekdayLabel
@@ -65,6 +67,10 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
     val snap = frame.snapshot
     if (snap?.signedIn != true) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see your week here."))
+        return
+    }
+    if (snap.isStale(frame.today)) {
+        EmptyState(context, StaleWidgetMessage)
         return
     }
     val p = LocalWPalette.current

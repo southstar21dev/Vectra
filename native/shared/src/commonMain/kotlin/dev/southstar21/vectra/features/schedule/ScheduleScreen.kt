@@ -64,7 +64,7 @@ import androidx.compose.runtime.setValue
  * screen of its own.
  */
 @Composable
-fun ScheduleScreen(
+internal fun ScheduleScreen(
     repo: ScheduleRepository,
     tracker: ScheduleCourseTrackerHooks,
     classPane: (@Composable (courseKey: String, onClose: () -> Unit) -> Unit)? = null,

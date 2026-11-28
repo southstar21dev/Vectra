@@ -20,10 +20,10 @@ import kotlinx.serialization.json.intOrNull
  */
 
 @Serializable
-data class ScheduleItemSyncConflict(val serverItem: ScheduleItem?, val serverUpdatedAt: String?)
+internal data class ScheduleItemSyncConflict(val serverItem: ScheduleItem?, val serverUpdatedAt: String?)
 
 @Serializable
-data class StoredScheduleItem(
+internal data class StoredScheduleItem(
     val id: String,
     val type: String,
     val title: String,
@@ -41,12 +41,12 @@ data class StoredScheduleItem(
     fun toItem() = ScheduleItem(id, type, title, date, startTime, endTime, location, completed, acknowledgedConflictKeys, continuation)
 }
 
-fun ScheduleItem.stored(updatedAt: String? = null, pendingSync: Boolean? = null, syncConflict: ScheduleItemSyncConflict? = null) =
+internal fun ScheduleItem.stored(updatedAt: String? = null, pendingSync: Boolean? = null, syncConflict: ScheduleItemSyncConflict? = null) =
     StoredScheduleItem(id, type, title, date, startTime, endTime, location, completed, acknowledgedConflictKeys, continuation, updatedAt, pendingSync, syncConflict)
 
 /** kind: 'upsert' (item set, base nullable) | 'delete' (base required). */
 @Serializable
-data class ScheduleItemMutation(
+internal data class ScheduleItemMutation(
     val kind: String,
     val id: String,
     val item: StoredScheduleItem? = null,
@@ -63,20 +63,20 @@ data class ScheduleItemMutation(
 }
 
 @Serializable
-data class ScheduleItemsState(
+internal data class ScheduleItemsState(
     val version: Int = 1,
     val items: List<StoredScheduleItem> = emptyList(),
     val queue: List<ScheduleItemMutation> = emptyList(),
 )
 
-const val ScheduleItemsCacheBaseKey = UserKeys.SCHEDULE_ITEMS
+internal const val ScheduleItemsCacheBaseKey = UserKeys.SCHEDULE_ITEMS
 
-fun getScheduleItemsStorageKey(userId: String?): String {
+internal fun getScheduleItemsStorageKey(userId: String?): String {
     val scope = userId?.trim()?.ifEmpty { null } ?: "anonymous"
     return "${ScheduleItemsCacheBaseKey}_$scope"
 }
 
-fun createEmptyScheduleItemsState() = ScheduleItemsState()
+internal fun createEmptyScheduleItemsState() = ScheduleItemsState()
 
 // ---- Validation ---------------------------------------------------------------
 
@@ -155,7 +155,7 @@ private fun parseMutation(el: JsonElement?): ScheduleItemMutation? {
  * Validate the envelope, then each item and queued change on its own: one entry
  * written by another build must not discard every offline item along with it.
  */
-fun parseScheduleItemsState(raw: String?): ScheduleItemsState? {
+internal fun parseScheduleItemsState(raw: String?): ScheduleItemsState? {
     if (raw.isNullOrEmpty()) return null
     return try {
         val env = VectraJson.parseToJsonElement(raw) as? JsonObject ?: return null
@@ -176,12 +176,12 @@ fun parseScheduleItemsState(raw: String?): ScheduleItemsState? {
 }
 
 /** stateSchema check before a write: refuse to persist an invalid state. */
-fun isValidScheduleItemsState(state: ScheduleItemsState): Boolean =
+internal fun isValidScheduleItemsState(state: ScheduleItemsState): Boolean =
     state.version == 1 &&
         state.items.all { parseStoredItem(VectraJson.encodeToJsonElement(StoredScheduleItem.serializer(), it)) != null } &&
         state.queue.all { parseMutation(VectraJson.encodeToJsonElement(ScheduleItemMutation.serializer(), it)) != null }
 
-fun encodeScheduleItemsState(state: ScheduleItemsState): String =
+internal fun encodeScheduleItemsState(state: ScheduleItemsState): String =
     VectraJson.encodeToString(ScheduleItemsState.serializer(), state)
 
 // ---- reducers -------------------------------------------------------------------
@@ -190,7 +190,7 @@ private fun upsertItem(items: List<StoredScheduleItem>, item: StoredScheduleItem
     if (items.none { it.id == item.id }) items + item else items.map { if (it.id == item.id) item else it }
 
 /** Coalesce local writes while preserving the server version first read. */
-fun enqueueScheduleItemUpsert(state: ScheduleItemsState, item: StoredScheduleItem, baseUpdatedAt: String? = null): ScheduleItemsState {
+internal fun enqueueScheduleItemUpsert(state: ScheduleItemsState, item: StoredScheduleItem, baseUpdatedAt: String? = null): ScheduleItemsState {
     val previous = state.queue.firstOrNull { it.id == item.id }
     val existing = state.items.firstOrNull { it.id == item.id }
     val base = previous?.baseUpdatedAt ?: baseUpdatedAt ?: existing?.updatedAt ?: item.updatedAt
@@ -204,12 +204,12 @@ fun enqueueScheduleItemUpsert(state: ScheduleItemsState, item: StoredScheduleIte
  * sync still treats it as a create, and a delete queued on top of it deletes the row wherever it
  * turns up instead of being dropped, which brought the row back on the next refresh (audit 04 #19).
  */
-const val UnconfirmedCreateBase = "unconfirmed-create"
+internal const val UnconfirmedCreateBase = "unconfirmed-create"
 
 /** A create: never sent ([baseUpdatedAt] null) or sent without an answer. */
-val ScheduleItemMutation.isCreate: Boolean get() = isUpsert && (baseUpdatedAt == null || baseUpdatedAt == UnconfirmedCreateBase)
+internal val ScheduleItemMutation.isCreate: Boolean get() = isUpsert && (baseUpdatedAt == null || baseUpdatedAt == UnconfirmedCreateBase)
 
-fun enqueueScheduleItemDelete(state: ScheduleItemsState, id: String, baseUpdatedAt: String? = null): ScheduleItemsState {
+internal fun enqueueScheduleItemDelete(state: ScheduleItemsState, id: String, baseUpdatedAt: String? = null): ScheduleItemsState {
     val previous = state.queue.firstOrNull { it.id == id }
     val base = previous?.baseUpdatedAt ?: baseUpdatedAt ?: state.items.firstOrNull { it.id == id }?.updatedAt
     val items = state.items.filter { it.id != id }
@@ -218,13 +218,13 @@ fun enqueueScheduleItemDelete(state: ScheduleItemsState, id: String, baseUpdated
     return ScheduleItemsState(1, items, queue + ScheduleItemMutation(ScheduleItemMutation.DELETE, id, null, base))
 }
 
-fun removeQueuedScheduleItemMutation(state: ScheduleItemsState, id: String, serverItem: StoredScheduleItem? = null): ScheduleItemsState {
+internal fun removeQueuedScheduleItemMutation(state: ScheduleItemsState, id: String, serverItem: StoredScheduleItem? = null): ScheduleItemsState {
     val queue = state.queue.filter { it.id != id }
     val items = if (serverItem != null) upsertItem(state.items, serverItem.copy(pendingSync = false, syncConflict = null)) else state.items
     return ScheduleItemsState(1, items, queue)
 }
 
-fun markScheduleItemSyncConflict(
+internal fun markScheduleItemSyncConflict(
     state: ScheduleItemsState,
     id: String,
     serverItem: StoredScheduleItem?,
@@ -240,7 +240,7 @@ fun markScheduleItemSyncConflict(
 }
 
 /** 'server' adopts the server copy; 'local' rebases the local intent on the server version. */
-fun resolveScheduleItemSyncConflict(state: ScheduleItemsState, id: String, resolution: String): ScheduleItemsState {
+internal fun resolveScheduleItemSyncConflict(state: ScheduleItemsState, id: String, resolution: String): ScheduleItemsState {
     val op = state.queue.firstOrNull { it.id == id } ?: return state
     val conflict = op.syncConflict ?: return state
     if (resolution == "server" || (op.isDelete && conflict.serverItem == null)) {
@@ -259,7 +259,7 @@ fun resolveScheduleItemSyncConflict(state: ScheduleItemsState, id: String, resol
 }
 
 /** Overlay pending local intent over the latest server snapshot. */
-fun mergeScheduleItemsState(local: ScheduleItemsState, cloudItems: List<StoredScheduleItem>): ScheduleItemsState {
+internal fun mergeScheduleItemsState(local: ScheduleItemsState, cloudItems: List<StoredScheduleItem>): ScheduleItemsState {
     val items = LinkedHashMap<String, StoredScheduleItem>()
     cloudItems.forEach { items[it.id] = it.copy(pendingSync = false) }
     for (op in local.queue) {
@@ -281,7 +281,7 @@ fun mergeScheduleItemsState(local: ScheduleItemsState, cloudItems: List<StoredSc
 }
 
 /** validateScheduleItem: the payload schema plus the calendar/time rules. */
-fun validateScheduleItem(item: ScheduleItem): ScheduleItem? {
+internal fun validateScheduleItem(item: ScheduleItem): ScheduleItem? {
     val parsed = parsePayload(VectraJson.encodeToJsonElement(ScheduleItem.serializer(), item) as JsonObject) ?: return null
     if (parsed.title.isBlank()) return null
     if (!isValidCalendarDate(parsed.date)) return null

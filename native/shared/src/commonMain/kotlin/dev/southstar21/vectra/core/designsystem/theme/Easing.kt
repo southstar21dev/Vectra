@@ -10,23 +10,23 @@ import kotlin.math.sin
  */
 
 /** Hermite smoothstep: 0 at or below [a], 1 at or above [b], smooth between. */
-fun smoothstep(a: Float, b: Float, x: Float): Float {
+internal fun smoothstep(a: Float, b: Float, x: Float): Float {
     val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
     return u * u * (3 - 2 * u)
 }
 
 /** Cubic ease-in-out of [u] (0..1, not clamped). */
-fun easeInOutCubic(u: Float): Float = if (u < 0.5f) 4 * u * u * u else 1 - (-2 * u + 2).pow(3) / 2
+internal fun easeInOutCubic(u: Float): Float = if (u < 0.5f) 4 * u * u * u else 1 - (-2 * u + 2).pow(3) / 2
 
 /** Ease-out that overshoots by [overshoot] before settling: a spring's feel in a fixed time. */
-fun backOut(u: Float, overshoot: Float = 1.70158f): Float {
+internal fun backOut(u: Float, overshoot: Float = 1.70158f): Float {
     if (u <= 0f) return 0f
     val v = u.coerceAtMost(1f) - 1
     return 1 + (overshoot + 1) * v.pow(3) + overshoot * v.pow(2)
 }
 
 /** The classic GLSL sine hash: a stable pseudo-random 0..1 from two numbers. */
-fun sineHash(a: Double, b: Double): Double {
+internal fun sineHash(a: Double, b: Double): Double {
     val h = sin(a * 12.9898 + b * 78.233) * 43758.5453
     return h - floor(h)
 }

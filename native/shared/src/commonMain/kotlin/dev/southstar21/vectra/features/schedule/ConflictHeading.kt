@@ -1,7 +1,7 @@
 package dev.southstar21.vectra.features.schedule
 
 /** The editor's clash title, naming what the item overlaps: "Clashes with a task", "Clashes with 2 classes", "Clashes with 3 items". */
-fun conflictHeading(conflicts: List<ScheduleConflict>): String {
+internal fun conflictHeading(conflicts: List<ScheduleConflict>): String {
     val types = conflicts.map { it.otherType }.distinct()
     val n = conflicts.size
     // A class and an exam are both "classes" on the schedule.

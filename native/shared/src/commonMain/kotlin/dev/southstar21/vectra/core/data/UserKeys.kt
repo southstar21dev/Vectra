@@ -5,14 +5,14 @@ package dev.southstar21.vectra.core.data
  * [large] values are stored one file each instead of in DataStore; [keepOnInvoluntarySignOut]
  * keeps the key so the same account can replay writes this device has not uploaded yet.
  */
-class UserKey(val base: String, val large: Boolean = false, val keepOnInvoluntarySignOut: Boolean = false)
+internal class UserKey(val base: String, val large: Boolean = false, val keepOnInvoluntarySignOut: Boolean = false)
 
 /**
  * The single registry of per-user keys. `core` cannot import features, so the base names live here
  * as constants and the features refer to them (e.g. `WeatherSnapshotKey = UserKeys.WEATHER_SNAPSHOT`).
  * A new per-user snapshot is added here once and the sign-out wipe and blob storage follow.
  */
-object UserKeys {
+internal object UserKeys {
     const val SCHEDULE_EVENTS = "vectra_schedule_cache_events"
     const val SCHEDULE_ITEMS = "vectra_schedule_items"
     const val TRANSIT_TRACKERS = "vectra_transit_trackers_cache"

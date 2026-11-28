@@ -142,7 +142,7 @@ private class PullState(
  * glass indicator; releasing past the threshold runs [onRefresh] while it spins.
  */
 @Composable
-fun PullToRefresh(onRefresh: suspend () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun PullToRefresh(onRefresh: suspend () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val scope = rememberCoroutineScope()
     val haptics = Vectra.haptics
     val density = LocalDensity.current

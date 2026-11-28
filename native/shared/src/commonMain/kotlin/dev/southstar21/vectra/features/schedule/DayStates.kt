@@ -119,7 +119,7 @@ internal fun DayDoneCard(summary: String, d: DayColors) {
  * so it sits in the Today list like a card.
  */
 @Composable
-fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = Modifier, title: String? = null) {
+internal fun NothingScheduledCard(backOn: String?, backAt: String?, modifier: Modifier = Modifier, title: String? = null) {
     val d = rememberDayColors()
     Row(
         modifier
@@ -149,7 +149,7 @@ internal fun backOnPrefix(backOn: String): String = if (backOn == "tomorrow") "B
 
 /** First load with nothing cached: two cards in the real shape, no shimmer. */
 @Composable
-fun DayListLoading(modifier: Modifier = Modifier) {
+internal fun DayListLoading(modifier: Modifier = Modifier) {
     val d = rememberDayColors()
     Column(modifier.fillMaxWidth().semantics { contentDescription = "Loading today's schedule" }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         PlaceholderCard(d)
@@ -190,7 +190,7 @@ private fun PlaceholderCard(d: DayColors) {
 
 /** A day's title ("Today", "Monday") with its date on the right, above the day's cards. */
 @Composable
-fun DayListHeader(title: String, date: String, modifier: Modifier = Modifier) {
+internal fun DayListHeader(title: String, date: String, modifier: Modifier = Modifier) {
     val c = Vectra.colors
     Row(
         modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() },
@@ -223,10 +223,10 @@ internal fun daySummary(classes: Int, shifts: Int, tasks: Int, checkedIn: Int, t
 }
 
 /** The first thing on after an empty day: [day] is "tomorrow" or a weekday name, [time] "HH:mm", [title] its name. */
-data class NextStart(val day: String, val time: String, val title: String?)
+internal data class NextStart(val day: String, val time: String, val title: String?)
 
 /** When things start again after an empty day: the first class or item in the next two weeks, or null when there is none. */
-fun nextScheduledStart(events: List<ScheduleEvent>, items: List<ScheduleItem>, today: String): NextStart? {
+internal fun nextScheduledStart(events: List<ScheduleEvent>, items: List<ScheduleItem>, today: String): NextStart? {
     val start = parseYmd(today) ?: return null
     val index = ScheduleEventIndex(events)
     return (1..14).asSequence().mapNotNull { offset -> firstStartOn(start.plus(DatePeriod(days = offset)), offset, events, items, index) }.firstOrNull()

@@ -30,7 +30,7 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
  * ends in a chevron. [enabled] false greys it out (an action with nothing to act on).
  */
 @Composable
-fun SettingsRow(
+internal fun SettingsRow(
     icon: ImageVector,
     title: String,
     subtitle: String? = null,
@@ -67,7 +67,7 @@ fun SettingsRow(
 
 /** A row's action as a text link in the accent ("Edit", "Change", "Set up"): quieter than a button. */
 @Composable
-fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, busy: Boolean = false) {
+internal fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, busy: Boolean = false) {
     val c = Vectra.colors
     Box(
         modifier
@@ -86,7 +86,7 @@ fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
  * not a row of its own.
  */
 @Composable
-fun SettingsFooterLink(icon: ImageVector, text: String, caption: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
+internal fun SettingsFooterLink(icon: ImageVector, text: String, caption: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     val c = Vectra.colors
     Row(
         modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),

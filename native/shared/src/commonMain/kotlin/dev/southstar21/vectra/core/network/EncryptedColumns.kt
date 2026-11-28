@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonObject
  * Values are addressed by column name; the position in [names] only matters for the batched
  * `decryptAll` round trip, where [ciphertexts] and [clear] share it.
  */
-class EncryptedColumns(val names: List<String>) {
+internal class EncryptedColumns(val names: List<String>) {
     init {
         require(names.toSet().size == names.size) { "Duplicate encrypted column" }
     }
@@ -28,12 +28,18 @@ class EncryptedColumns(val names: List<String>) {
     /** Encrypts [values], which must hold exactly the declared columns, all at once. */
     suspend fun encrypt(values: Map<String, String?>, encrypt: suspend (String?) -> String?): Map<String, String?> {
         require(values.keys == names.toSet()) { "Columns written differ from the declared ones" }
-        return coroutineScope { names.map { name -> async { name to encrypt(values.getValue(name)) } }.awaitAll().toMap() }
+        return encryptSome(values, encrypt)
+    }
+
+    /** Like [encrypt] for an update that rewrites only some of the declared columns. */
+    suspend fun encryptSome(values: Map<String, String?>, encrypt: suspend (String?) -> String?): Map<String, String?> {
+        require(names.containsAll(values.keys)) { "Columns written are not all declared" }
+        return coroutineScope { values.map { (name, value) -> async { name to encrypt(value) } }.awaitAll().toMap() }
     }
 }
 
 /** One row's decrypted columns, by name. */
-class ClearColumns(private val values: Map<String, String?>) {
+internal class ClearColumns(private val values: Map<String, String?>) {
     operator fun get(name: String): String? = values.getValue(name)
 
     /** Whether any column came back still encrypted (the key could not be used). */

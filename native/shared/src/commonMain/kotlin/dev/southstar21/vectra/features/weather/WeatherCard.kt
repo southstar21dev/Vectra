@@ -129,7 +129,7 @@ private fun alertIcon(key: WeatherAlertKey) = when (key) {
  * live radar. Hides itself when the first fetch fails with nothing to show.
  */
 @Composable
-fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
+internal fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
     val location by repo.location.collectAsStateWithLifecycle()
     val weather by repo.weather.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current

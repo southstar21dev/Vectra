@@ -54,7 +54,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 private val EmptyStateTextWidth = 448.dp
 
 /** True once the boot splash has cleared; reveals wait for it. */
-val LocalAppPresented = staticCompositionLocalOf { true }
+internal val LocalAppPresented = staticCompositionLocalOf { true }
 
 /**
  * One card's entrance on a page's first load: fades and rises into place, staggered by
@@ -62,7 +62,7 @@ val LocalAppPresented = staticCompositionLocalOf { true }
  * shows the page as it was left.
  */
 @Composable
-fun Reveal(index: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun Reveal(index: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     if (Vectra.reduceMotion) {
         Box(modifier) { content() }
         return
@@ -91,7 +91,7 @@ private val AnimatableSaver = Saver<Animatable<Float, AnimationVector1D>, Float>
  * is drawn offscreen and clipped to its bounds, which would cut off the outer shadows cards
  * draw past their edges until the fade ends.
  */
-fun Modifier.fadeLayer(bleed: Dp = 32.dp, block: GraphicsLayerScope.() -> Unit): Modifier = this
+internal fun Modifier.fadeLayer(bleed: Dp = 32.dp, block: GraphicsLayerScope.() -> Unit): Modifier = this
     .layout { measurable, constraints ->
         val b = bleed.roundToPx()
         val p = measurable.measure(constraints.offset(2 * b, 2 * b))
@@ -139,7 +139,7 @@ fun PostageStamp(
 }
 
 /** A button an [EmptyState] offers: [primary] is the default variant, [secondary] an outline. */
-class EmptyAction(val label: String, val onClick: () -> Unit, val icon: ImageVector? = null)
+internal class EmptyAction(val label: String, val onClick: () -> Unit, val icon: ImageVector? = null)
 
 /**
  * What a list or page shows with nothing in it: a planner card holding a drawing ([art]) made of
@@ -147,7 +147,7 @@ class EmptyAction(val label: String, val onClick: () -> Unit, val icon: ImageVec
  * [secondary] outline button. No emoji, no tile, no glow.
  */
 @Composable
-fun EmptyState(
+internal fun EmptyState(
     art: @Composable () -> Unit,
     title: String,
     body: String,
@@ -171,7 +171,7 @@ fun EmptyState(
 
 /** Banner shown while the device is offline and cached data is on screen. */
 @Composable
-fun OfflineBanner(
+internal fun OfflineBanner(
     modifier: Modifier = Modifier,
     message: String = "No internet connection: operating in cached offline mode",
     badgeLabel: String = "Offline mode",

@@ -22,7 +22,7 @@ import dev.southstar21.vectra.features.schedule.NeptunImportScreen
 
 /** The page shown for each tab. */
 @Composable
-fun TabPage(graph: AppGraph, route: Route) {
+internal fun TabPage(graph: AppGraph, route: Route) {
     when (route) {
         Route.Dashboard -> DashboardScreen(graph)
         Route.Schedule -> ScheduleScreen(graph.scheduleRepository, graph.courseTrackerHooks) { courseKey, onClose ->
@@ -41,7 +41,7 @@ fun TabPage(graph: AppGraph, route: Route) {
 
 /** The content of each pushed screen. */
 @Composable
-fun PushedScreen(graph: AppGraph, navigator: AppNavigator, screen: Screen) {
+internal fun PushedScreen(graph: AppGraph, navigator: AppNavigator, screen: Screen) {
     val back = { navigator.pop(); Unit }
     when (screen) {
         Screen.Tabs -> Unit

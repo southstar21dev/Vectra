@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.Volatile
 
 /**
  * The reminder settings, on the device and in the profile (`preferences.reminders`): a device that
@@ -36,14 +37,20 @@ internal class ReminderPrefsStore(
     /** The account whose profile was compared with [prefs] in this process. */
     private var syncedFor: String? = null
 
+    /** Whether [update] ran yet, so a late [load] does not put the stored settings over it. */
+    @Volatile private var edited = false
+
     /** Reads the stored settings, then keeps them in step with the signed-in profile. */
     suspend fun load(onLoaded: () -> Unit) {
-        _prefs.value = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
+        val stored = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
+        // A change made before the stored settings were read is newer than them: keep it.
+        _prefs.update { if (edited) it else stored }
         onLoaded()
         auth.profile.collect { profile -> if (profile != null) runSuspendCatching { syncWith(profile) } }
     }
 
     fun update(transform: (ReminderPrefs) -> ReminderPrefs) {
+        edited = true
         _prefs.update(transform)
         scope.launch {
             persist()

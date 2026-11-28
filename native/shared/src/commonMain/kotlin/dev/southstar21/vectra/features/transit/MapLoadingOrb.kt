@@ -9,7 +9,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.southstar21.vectra.core.designsystem.components.CoverClock
 import dev.southstar21.vectra.core.designsystem.components.LocalPageActive
 import dev.southstar21.vectra.core.designsystem.components.OrbEngine
 import dev.southstar21.vectra.core.designsystem.components.VText
@@ -81,8 +81,7 @@ private class OrbCover(loading: Boolean) {
     val plan = MeltPlan(engine.count)
     var phase by mutableStateOf(if (loading) CoverPhase.Loading else CoverPhase.Gone)
         private set
-    private var frame by mutableLongStateOf(0L)
-    private var meltStart by mutableLongStateOf(0L)
+    private val clock = CoverClock(engine)
 
     /** Loading while [visible]; dropping it starts the melt. */
     fun follow(visible: Boolean) {
@@ -96,17 +95,14 @@ private class OrbCover(loading: Boolean) {
      */
     suspend fun run(pageActive: Boolean, reduced: Boolean, reveal: MapReveal?) {
         if (phase == CoverPhase.Loading && (reduced || !pageActive)) return
-        if (phase == CoverPhase.Melting) meltStart = 0L
+        if (phase == CoverPhase.Melting) clock.restart()
         while (phase != CoverPhase.Gone) {
             withFrameNanos { nanos ->
-                frame = nanos
+                clock.tick(nanos)
                 if (phase == CoverPhase.Melting) {
-                    if (meltStart == 0L) {
-                        meltStart = nanos
-                        plan.prepare(engine)
-                    }
+                    if (clock.begin(nanos)) plan.prepare(engine)
                     reveal?.advance(if (reduced) 1f else progress(reduced))
-                    if (nanos - meltStart >= span(reduced) * 1_000_000) {
+                    if (clock.elapsedNanos() >= span(reduced) * 1_000_000) {
                         reveal?.advance(1f)
                         phase = CoverPhase.Gone
                     }
@@ -116,12 +112,12 @@ private class OrbCover(loading: Boolean) {
     }
 
     /** The orb's clock (a still frame at 0.6). */
-    fun orbTime(reduced: Boolean): Double = if (reduced || frame == 0L) 0.6 else frame / 1e9 * engine.speed
+    fun orbTime(reduced: Boolean): Double = clock.orbTime(reduced)
 
     /** Melt progress 0..1 (0 while loading). */
     fun progress(reduced: Boolean): Float =
-        if (phase != CoverPhase.Melting || meltStart == 0L) 0f
-        else ((frame - meltStart) / (span(reduced) * 1e6)).toFloat().coerceIn(0f, 1f)
+        if (phase != CoverPhase.Melting || !clock.started) 0f
+        else (clock.elapsedNanos() / (span(reduced) * 1e6)).toFloat().coerceIn(0f, 1f)
 
     private fun span(reduced: Boolean) = if (reduced) FadeMs else MeltMs
 }

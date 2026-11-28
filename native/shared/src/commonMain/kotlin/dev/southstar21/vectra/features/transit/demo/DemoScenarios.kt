@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.transit.demo
 
 import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /*
  * Debug builds only: the transit demo accounts on the dev backend. Each DEMO_ tracker shows one
@@ -55,7 +56,7 @@ internal class DemoLine(
 
     /** Shaped like BKK's replacement routes (BKK_VP28), so the app takes it for one. */
     val replacementRouteId get() = "${DemoFeed.Prefix}VP_$key"
-    val replacementRoute get() = FutarRoute(replacementRouteId, shortName, "Replacement bus", type = "BUS", color = BusBlueHex, textColor = White)
+    val replacementRoute get() = FutarRoute(replacementRouteId, shortName, "Replacement bus", type = RouteType.Bus, color = BusBlueHex, textColor = White)
     val hasReplacement get() = stops.any { s -> s.directions.any { it.replacement } }
 }
 
@@ -90,88 +91,88 @@ private val Steady = two(listOf(DemoTrip(3.0, 1.4), DemoTrip(11.0, 4.5)), listOf
 
 /** The demo trackers, in the order they are created. */
 internal val DemoLines: List<DemoLine> = listOf(
-    DemoLine("arriving", "2", "TRAM", Yellow, Dark, pinned = true, stops = listOf(
+    DemoLine("arriving", "2", RouteType.Tram, Yellow, Dark, pinned = true, stops = listOf(
         stop("arriving", "Arriving now", two(listOf(DemoTrip(0.0, 0.03), DemoTrip(6.0, 2.6)), listOf(DemoTrip(4.0, 2.0)))),
     )),
-    DemoLine("justleft", "47", "TRAM", Yellow, Dark, pinned = true, stops = listOf(
+    DemoLine("justleft", "47", RouteType.Tram, Yellow, Dark, pinned = true, stops = listOf(
         stop("justleft", "Just left (watch for a minute)", listOf(
             DemoDirection("Deák Ferenc tér M", "Kálvin", cycleMs = 120_000),
             DemoDirection("Budafok, Városház tér", "Fővám", trips = listOf(DemoTrip(5.0, 2.2))),
         )),
     )),
-    DemoLine("tworow", "105", "BUS", Blue, White, pinned = true, stops = listOf(
+    DemoLine("tworow", "105", RouteType.Bus, Blue, White, pinned = true, stops = listOf(
         stop("tworow", "Two in a row", listOf(
             DemoDirection("Gyöngyösi utca M", "Lánchíd", trips = listOf(DemoTrip(2.0, 1.0), DemoTrip(7.0, 2.9))),
             // The second one sits close behind: its time drops so the labels don't collide.
             DemoDirection("Apor Vilmos tér", "Deák", trips = listOf(DemoTrip(4.0, 1.6), DemoTrip(5.0, 2.1))),
         )),
     )),
-    DemoLine("far", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("far", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("far", "Far away", two(listOf(DemoTrip(14.0, 7.4)), listOf(DemoTrip(3.0, 1.2)))),
     )),
-    DemoLine("onedir", "105", "BUS", Blue, White, stops = listOf(
+    DemoLine("onedir", "105", RouteType.Bus, Blue, White, stops = listOf(
         stop("onedir", "One direction only", listOf(DemoDirection("Gyöngyösi utca M", "Lánchíd", trips = listOf(DemoTrip(7.0, 2.4))))),
     )),
-    DemoLine("first", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("first", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("first", "First stop (tram waiting)", listOf(DemoDirection("Jászai Mari tér", "-", origin = true, trips = listOf(DemoTrip(6.0, 0.0))))),
     )),
-    DemoLine("last", "47", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("last", "47", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("last", "Last stop", listOf(DemoDirection("Deák Ferenc tér M", "Kálvin", terminus = true, trips = listOf(DemoTrip(5.0, 1.5))))),
     )),
-    DemoLine("fork", "61", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("fork", "61", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("fork", "Three directions (fork)", listOf(
             DemoDirection("Széll Kálmán tér M", "Király", trips = listOf(DemoTrip(1.0, 0.6))),
             DemoDirection("Újbuda-központ M", "Jókai", trips = listOf(DemoTrip(4.0, 1.7))),
             DemoDirection("Móricz Zsigmond körtér M", "Jókai", trips = listOf(DemoTrip(9.0, 3.0))),
         )),
     )),
-    DemoLine("metro", "M3", "SUBWAY", MetroBlue, White, stops = listOf(
+    DemoLine("metro", "M3", RouteType.Subway, MetroBlue, White, stops = listOf(
         stop("metro", "Metro (timetable position)", listOf(
             DemoDirection("Újpest-központ", "Ferenciek", trips = listOf(DemoTrip(3.0, null), DemoTrip(7.0, null))),
             DemoDirection("Kőbánya-Kispest", "Nagyvárad", trips = listOf(DemoTrip(2.0, null), DemoTrip(6.0, null))),
         )),
     )),
-    DemoLine("timetable", "105", "BUS", Blue, White, stops = listOf(
+    DemoLine("timetable", "105", RouteType.Bus, Blue, White, stops = listOf(
         stop("timetable", "Timetable only", listOf(DemoDirection("Gyöngyösi utca M", "Lánchíd", trips = listOf(DemoTrip(12.0, null, predicted = false))))),
     )),
-    DemoLine("alert", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("alert", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop(
             "alert", "Disruption (long alert)", Steady,
             alert = "Track works: trams are replaced by buses between Jászai Mari tér and Széll Kálmán tér until 24 November, 04:00. " +
                 "Replacement stops are next to the tram stops.",
         ),
     )),
-    DemoLine("multi", "47", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("multi", "47", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("multi1", "Fővám tér", Steady),
         stop("multi2", "Kálvin tér", two(listOf(DemoTrip(1.0, 0.5)), listOf(DemoTrip(8.0, 3.0)))),
         stop("multi3", "Astoria", two(listOf(DemoTrip(9.0, 2.8)), listOf(DemoTrip(2.0, 0.9)))),
     )),
-    DemoLine("notrunning", "N111", "BUS", Black, White, stops = listOf(
+    DemoLine("notrunning", "N111", RouteType.Bus, Black, White, stops = listOf(
         stop("notrunning", "Not running", two(emptyList(), emptyList()), DemoBehaviour.Empty),
     )),
-    DemoLine("stale", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("stale", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("stale", "Out of date (after a minute)", Steady, DemoBehaviour.StaleAfterFirst),
     )),
-    DemoLine("error", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("error", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("error", "Live feed unavailable", Steady, DemoBehaviour.Error),
     )),
-    DemoLine("loading", "2", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("loading", "2", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("loading", "Loading (never answers)", Steady, DemoBehaviour.Loading),
     )),
-    DemoLine("long", "M3 pótló", "BUS", Blue, White, stops = listOf(
+    DemoLine("long", "M3 pótló", RouteType.Bus, Blue, White, stops = listOf(
         stop("long", "Széll Kálmán tér M (Várfok utca), Budai Vigadó felé, long stop name", listOf(
             DemoDirection("Bosnyák tér / Rákospalota, Kossuth utca ► Újpest", "Lehel", trips = listOf(DemoTrip(4.0, 1.8))),
             DemoDirection("Albertfalva, kitérő / Újbuda-központ M (Fehérvári út)", "Dózsa", trips = listOf(DemoTrip(7.0, 2.5))),
         )),
     )),
-    DemoLine("wait", "105", "BUS", Blue, White, stops = listOf(
+    DemoLine("wait", "105", RouteType.Bus, Blue, White, stops = listOf(
         stop("wait", "Long wait (clock time)", listOf(DemoDirection("Gyöngyösi utca M", "Lánchíd", trips = listOf(DemoTrip(130.0, null, predicted = false))))),
     )),
-    DemoLine("night", "N6", "BUS", Black, White, stops = listOf(
+    DemoLine("night", "N6", RouteType.Bus, Black, White, stops = listOf(
         stop("night", "Night bus", two(listOf(DemoTrip(3.0, 1.3)), listOf(DemoTrip(9.0, 2.7)))),
     )),
     // Trams replaced by buses that stop here: the buses are the line for now.
-    DemoLine("replaced", "28", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("replaced", "28", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("replaced", "Replaced by buses", listOf(
             DemoDirection("Teleki László tér", "Népszínház", replacement = true, trips = listOf(DemoTrip(3.0, 1.3), DemoTrip(12.0, 4.6))),
             DemoDirection("Blaha Lujza tér M", "Dologház", replacement = true, trips = listOf(DemoTrip(6.0, 2.4))),
@@ -179,14 +180,14 @@ internal val DemoLines: List<DemoLine> = listOf(
     )),
     // A direction picked on a replaced line, with the buses of both directions due: the ones going
     // the other way carry a note.
-    DemoLine("replacedpicked", "28", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("replacedpicked", "28", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("replacedpicked", "Replaced, one direction picked", listOf(
             DemoDirection("Teleki László tér", "Népszínház", replacement = true, directionId = "0", trips = listOf(DemoTrip(3.0, 1.3), DemoTrip(12.0, 4.6))),
             DemoDirection("Blaha Lujza tér M", "Dologház", replacement = true, directionId = "1", trips = listOf(DemoTrip(6.0, 2.4))),
         ), alert = ReplacementAlert, picked = "Teleki László tér"),
     )),
     // Replaced too, but its buses stop on another street: no trams here, and not "not running".
-    DemoLine("replacedaway", "28A", "TRAM", Yellow, Dark, stops = listOf(
+    DemoLine("replacedaway", "28A", RouteType.Tram, Yellow, Dark, stops = listOf(
         stop("replacedaway", "Replaced (buses stop elsewhere)", two(emptyList(), emptyList()), DemoBehaviour.Empty, alert = ReplacementAlert),
     )),
 )
@@ -204,10 +205,10 @@ internal class RealDemoTracker(
 
 /** Real lines worth seeing beside the demo ones: a metro, a forking tram, a first and a last stop. */
 internal val RealDemoTrackers: List<RealDemoTracker> = listOf(
-    RealDemoTracker("BKK_5200", "M2", "SUBWAY", Red, White, "BKK_CS011732", "Deák Ferenc tér"),
-    RealDemoTracker("BKK_3040", "4", "TRAM", Yellow, Dark, "BKK_CSF01082", "Oktogon"),
-    RealDemoTracker("BKK_2005", "200E", "BUS", Blue, White, "BKK_CS009592", "Kőbánya-Kispest"),
-    RealDemoTracker("BKK_3470", "47", "TRAM", Yellow, Dark, "BKK_CS011732", "Deák Ferenc tér"),
+    RealDemoTracker("BKK_5200", "M2", RouteType.Subway, Red, White, "BKK_CS011732", "Deák Ferenc tér"),
+    RealDemoTracker("BKK_3040", "4", RouteType.Tram, Yellow, Dark, "BKK_CSF01082", "Oktogon"),
+    RealDemoTracker("BKK_2005", "200E", RouteType.Bus, Blue, White, "BKK_CS009592", "Kőbánya-Kispest"),
+    RealDemoTracker("BKK_3470", "47", RouteType.Tram, Yellow, Dark, "BKK_CS011732", "Deák Ferenc tér"),
     // Inside tram 28's replaced section (November 2026): its replacement buses stop at this station.
-    RealDemoTracker("BKK_3280", "28", "TRAM", Yellow, Dark, "BKK_CSF01330", "Teleki László tér"),
+    RealDemoTracker("BKK_3280", "28", RouteType.Tram, Yellow, Dark, "BKK_CSF01330", "Teleki László tér"),
 )

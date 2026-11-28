@@ -217,7 +217,7 @@ internal fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: Dev
         nearest + pinned
     }
     val arrivalStopIds = remember(arrivalStops) { arrivalStops.map { it.id } }
-    val stopArrivalsResults = rememberBatchStopArrivals(repo, arrivalStopIds)
+    val stopArrivalsResults = rememberBatchStopArrivals(repo.feeds, arrivalStopIds)
 
     val boards = remember(arrivalStops, stopArrivalsResults, catalogRoutes.data) {
         arrivalStops.associate { it.id to parseAllNearbyBoards(stopArrivalsResults[it.id]?.data, catalogRoutes.data) }
@@ -324,8 +324,8 @@ internal fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: Dev
     val handleViewportChange: (ExplorerViewport) -> Unit = remember { { viewport = it } }
 
     // Selected route geometry: the departure's own trip first, route details as fallback.
-    val routeDetails = repo.routeDetails.collect(selection?.routeId)
-    val tripDetails = repo.tripDetails.collect(tripDetailsKey(selection?.tripId, selection?.serviceDate))
+    val routeDetails = repo.feeds.routeDetails.collect(selection?.routeId)
+    val tripDetails = repo.feeds.tripDetails.collect(tripDetailsKey(selection?.tripId, selection?.serviceDate))
     // Without trip details and with an unfamiliar headsign, the variant through the departure's platform.
     val servingStopIds = remember(selection, routeDetails.data) {
         selection?.let { explorerServingStopIds(it, routeDetails.data?.data?.references?.stops) }.orEmpty()
@@ -356,7 +356,7 @@ internal fun rememberNearbyExplorer(repo: TransitRepository, deviceLocation: Dev
 
     val trackedCountdownMinutes = selection?.let { etaMinutes(it.arrivalMs, now) }
 
-    val vehiclesQuery = repo.vehicles.collect(selection?.routeId)
+    val vehiclesQuery = repo.feeds.vehicles.collect(selection?.routeId)
     val vehicles = remember(selection, vehiclesQuery.data, polylines) {
         if (selection == null) return@remember emptyList<PlacedVehicle>()
         val list = vehiclesQuery.data?.data?.list.orEmpty()

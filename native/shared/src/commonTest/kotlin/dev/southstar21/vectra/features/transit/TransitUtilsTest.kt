@@ -365,11 +365,6 @@ class TransitUtilsTest {
         assertEquals(listOf("s1", "s2", "s3", "s4"), added5.map { it.stopId })
     }
 
-    @Test fun removesStop() = assertEquals(
-        listOf(TrackerStop("s2", "Stop 2", "")),
-        removeTrackerStop(listOf(TrackerStop("s1", "Stop 1", ""), TrackerStop("s2", "Stop 2", "")), "s1"),
-    )
-
     @Test fun stationIdsUnchanged() {
         assertEquals("BKK_CSF01330", normalizeStopIdToStation("BKK_CSF01330"))
         assertEquals("BKK_CS011732", normalizeStopIdToStation("BKK_CS011732"))

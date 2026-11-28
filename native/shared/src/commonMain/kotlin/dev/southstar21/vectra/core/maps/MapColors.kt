@@ -3,7 +3,7 @@ package dev.southstar21.vectra.core.maps
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 
 /** Fixed colours drawn on maps. They are map data, so they don't follow the theme or the accent. */
-object MapColors {
+internal object MapColors {
     /** You and the selected stop. */
     val Location = Palette.Blue500
 
