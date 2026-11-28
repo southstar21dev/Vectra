@@ -13,7 +13,7 @@ import kotlinx.datetime.plus
 // directly; iOS mirrors it in Swift (iosApp/VectraWidgets/Model.swift).
 
 internal const val MinuteMs = 60_000L
-private const val HourMs = 60 * MinuteMs
+const val HourMs = 60 * MinuteMs
 private const val DayMs = 24 * HourMs
 
 /** An exam this close gets the "next class" widgets once the day's classes are over. */
@@ -23,6 +23,9 @@ const val ExamHeadsUpMs = 7 * DayMs
 sealed interface NextUp {
     /** Signed out, or the app hasn't written a snapshot yet. */
     data object NoData : NextUp
+
+    /** Signed in, but the snapshot ended before today: the app has not run for two weeks. */
+    data object Stale : NextUp
 
     data class InClass(val session: WidgetSession) : NextUp
 
@@ -36,6 +39,7 @@ sealed interface NextUp {
 
 fun WidgetSnapshot?.nextUp(nowMs: Long, today: String): NextUp {
     val snap = this?.takeIf { it.signedIn } ?: return NextUp.NoData
+    if (!snap.covers(today)) return NextUp.Stale
     val timed = snap.sessions.filter { it.kind.isTimed }
     val current = timed.firstOrNull { it.day == today && it.startMs <= nowMs && nowMs < it.endMs }
     val upcoming = timed.firstOrNull { it.day == today && it.startMs > nowMs }
@@ -49,22 +53,14 @@ fun WidgetSnapshot?.nextUp(nowMs: Long, today: String): NextUp {
     }
 }
 
-/** The session [nextUp] leads with, if it leads with one from today. */
-val NextUp.todaySession: WidgetSession?
-    get() = when (this) {
-        is NextUp.InClass -> session
-        is NextUp.Upcoming -> session
-        else -> null
-    }
-
 /** The session to feature: today's, or else the next one on a later day (an exam close by first). */
-val NextUp.featured: WidgetSession?
+internal val NextUp.featured: WidgetSession?
     get() = when (this) {
         is NextUp.InClass -> session
         is NextUp.Upcoming -> session
         is NextUp.ExamSoon -> exam
         is NextUp.DayDone -> next
-        NextUp.NoData -> null
+        NextUp.NoData, NextUp.Stale -> null
     }
 
 /** Everything on [today], in order. */
@@ -72,7 +68,7 @@ fun WidgetSnapshot?.sessionsOn(today: String): List<WidgetSession> =
     this?.takeIf { it.signedIn }?.sessions.orEmpty().filter { it.day == today }
 
 /** What is still to come on [day] after [shown] (the session a widget already features). */
-fun WidgetSnapshot?.laterOn(day: String, nowMs: Long, shown: WidgetSession?): List<WidgetSession> =
+internal fun WidgetSnapshot?.laterOn(day: String, nowMs: Long, shown: WidgetSession?): List<WidgetSession> =
     sessionsOn(day).filter { it != shown && it.endMs > nowMs && (shown == null || it.startMs >= shown.startMs) }
 
 data class WeekDay(
@@ -85,7 +81,7 @@ data class WeekDay(
 )
 
 /** Whether [week] shows next week: at the weekend this week's classes are over. */
-fun showsNextWeek(today: String): Boolean =
+internal fun showsNextWeek(today: String): Boolean =
     parseYmd(today)?.dayOfWeek.let { it == DayOfWeek.SATURDAY || it == DayOfWeek.SUNDAY }
 
 /** Monday to Friday (of next week at the weekend), plus a weekend day when something is on it. */
@@ -105,7 +101,7 @@ fun WidgetSnapshot?.week(today: String): List<WeekDay> {
 /** Classes (not personal items) on the days [week] shows. */
 fun List<WeekDay>.classCount(): Int = sumOf { day -> day.kinds.count { it.isClass } }
 
-val WidgetKind.isClass: Boolean
+internal val WidgetKind.isClass: Boolean
     get() = this == WidgetKind.Lecture || this == WidgetKind.Seminar || this == WidgetKind.Lab || this == WidgetKind.Other
 
 /** The first exam from [today] on within this week, if any. */
@@ -117,6 +113,10 @@ fun WidgetSnapshot?.examThisWeek(today: String): WidgetSession? {
 /**
  * When the widgets should redraw next: the next session start or end, every minute while a ring
  * counts down (a class under way, or one starting within twelve hours), and midnight at the latest.
+ *
+ * This is Android's cadence. iOS keeps its own (`refreshDates` in Model.swift): every minute for 180
+ * minutes when a session starts within 24 hours, because WidgetKit budgets reloads. The two differ
+ * on purpose; do not align them.
  */
 fun WidgetSnapshot?.nextRefreshMs(nowMs: Long, midnightMs: Long): Long {
     val sessions = this?.sessions.orEmpty().filter { it.kind.isTimed }
@@ -131,7 +131,7 @@ fun progress(session: WidgetSession, nowMs: Long): Float =
     ((nowMs - session.startMs).toFloat() / (session.endMs - session.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
 
 /** Minutes of free time between two consecutive sessions, when it's long enough to call a break. */
-fun breakMinutes(before: WidgetSession, after: WidgetSession): Int? {
+internal fun breakMinutes(before: WidgetSession, after: WidgetSession): Int? {
     val gap = ((after.startMs - before.endMs) / MinuteMs).toInt()
     return gap.takeIf { it >= 15 }
 }

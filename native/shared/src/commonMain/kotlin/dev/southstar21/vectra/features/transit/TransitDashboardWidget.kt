@@ -31,6 +31,17 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.nearby.NearbyDeparturesList
+import dev.southstar21.vectra.features.transit.nearby.RadarDepartureItem
+import dev.southstar21.vectra.features.transit.nearby.groupByLine
+import dev.southstar21.vectra.features.transit.nearby.nearestStopItem
+import dev.southstar21.vectra.features.transit.nearby.rememberNearbyData
+import dev.southstar21.vectra.features.transit.strip.LineStripCard
+import dev.southstar21.vectra.features.transit.strip.LineStripSlimCard
+import dev.southstar21.vectra.features.transit.strip.stripCardSurface
 import dev.southstar21.vectra.navigation.LocalNavigator
 
 /** From this many pinned trackers the dashboard shows slim cards. */
@@ -42,11 +53,11 @@ private const val SlimCardsFrom = 4
  * the nearest stop as strips, and a link to pin your own.
  *
  * [favorites]: starred trackers in their saved order. [onOpenTracker]: open a
- * tracker's live view. [onOpenTransit]: go to the Transit tab ("Star a tracker
- * to pin it here").
+ * tracker's live view. [onOpenTransit]: go to the Transit tab ("Pin a tracker
+ * to show it here").
  */
 @Composable
-fun TransitDashboardWidget(
+internal fun TransitDashboardWidget(
     repo: TransitRepository,
     deviceLocation: DeviceLocation,
     auth: AuthRepository,
@@ -60,6 +71,7 @@ fun TransitDashboardWidget(
     val modeFilter = remember(profile?.preferences) { parseModeFilter(profile?.preferences) }
     val hasPinned = favorites.isNotEmpty()
     val nearby = rememberNearbyData(repo, deviceLocation, modeFilter, departures = !hasPinned)
+    val offline = !rememberOnline(repo.online)
     val navigator = LocalNavigator.current
     val openNearby = { navigator.nearbyMap = CardLaunch(null) }
 
@@ -77,11 +89,11 @@ fun TransitDashboardWidget(
                 }
             }
         } else {
-            val first = nearby.radarItems.firstOrNull()
+            val first = nearestStopItem(nearby.radarItems)
             TransitSectionHeader("Nearby", first?.stopName, onAction = openNearby)
             val lines = remember(nearby.radarItems, first?.stopId) { first?.let { nearbyTrackers(nearby.radarItems, it.stopId) }.orEmpty() }
             if (lines.isEmpty()) {
-                Box(Modifier.fillMaxWidth().stripCardSurface().padding(14.dp)) { NearbyDeparturesList(nearby.radarItems, nearby.status) }
+                Box(Modifier.fillMaxWidth().stripCardSurface().padding(14.dp)) { NearbyDeparturesList(nearby.radarItems, nearby.status, offline = offline) }
             } else {
                 lines.forEachIndexed { i, t -> key(t.id) { LineStripCard(repo, t, onOpen = { openNearby() }, revealIndex = i) } }
             }
@@ -95,7 +107,7 @@ fun TransitDashboardWidget(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 VIcon(RemixIcons.StarLine, size = 15.dp, tint = c.tints.amber.text)
-                VText("Star a tracker to pin it here", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
+                VText("Pin a tracker to show it here", Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary)
                 VIcon(RemixIcons.ArrowRightSLine, size = 15.dp, tint = c.textSecondary)
             }
         }
@@ -142,9 +154,8 @@ internal fun TransitSectionHeader(title: String, action: String?, modifier: Modi
 
 /** The dashboard's starred trackers, in their saved order. */
 @Composable
-fun rememberFavoriteTrackers(repo: TransitRepository): List<TransitTracker> {
+internal fun rememberFavoriteTrackers(repo: TransitRepository): List<TransitTracker> {
     val state = repo.trackersQuery.collect(Unit)
     val trackers = state.data.orEmpty()
-    DemoSeedEffect(repo, trackers, state.isFetched && state.data != null)
     return remember(trackers) { trackers.filter { it.isFavorite } }
 }

@@ -1,13 +1,10 @@
 package dev.southstar21.vectra.features.widgets
 
 import dev.southstar21.vectra.core.time.daysSinceSunday
-import dev.southstar21.vectra.core.time.formatBudapestHm
 import dev.southstar21.vectra.core.time.parseYmd
 import kotlinx.datetime.number
 
 // The widgets' wording; iOS mirrors it in iosApp/VectraWidgets/Model.swift.
-
-fun clockLabel(ms: Long): String = formatBudapestHm(ms)
 
 /** "in 25 min", "in 1 h 40 min", "in 3 h". */
 fun countdownLabel(nowMs: Long, startMs: Long): String = "in ${durationLabel(startMs - nowMs)}"

@@ -10,8 +10,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +24,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,9 +38,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.southstar21.vectra.core.designsystem.components.ButtonSize
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
+import dev.southstar21.vectra.core.designsystem.components.Toaster
 import dev.southstar21.vectra.core.designsystem.components.PostageStamp
 import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
@@ -53,10 +48,9 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
@@ -66,6 +60,10 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** "Synced 5 minutes ago" from the profile's neptun_last_sync. */
 internal fun syncCounterText(lastSyncMs: Long?, nowMs: Long): String {
@@ -96,13 +94,48 @@ internal fun isCalendarLink(text: String): Boolean {
     return host != null && lower.none(Char::isWhitespace) && '.' in host && !host.startsWith('.') && !host.endsWith('.')
 }
 
+/**
+ * Checks [link] really serves a calendar, then saves it (encrypted). True when it was saved; a link that
+ * fails the check is never stored, so the row cannot claim "Connected" for something that cannot sync.
+ */
+private suspend fun connectNeptunLink(repo: ScheduleRepository, toaster: Toaster, link: String): Boolean {
+    val problem = linkProblem(repo, link)
+    if (problem != null) {
+        toaster.error(problem.first, problem.second)
+        return false
+    }
+    return try {
+        repo.saveNeptunUrl(link)
+        toaster.success("Neptun URL saved successfully")
+        true
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        toaster.error("Failed to save Neptun URL", "The encryption service is unavailable. Please try again.")
+        false
+    }
+}
+
+/** Title and detail of what is wrong with [link], or null when it serves a calendar with classes. */
+private suspend fun linkProblem(repo: ScheduleRepository, link: String): Pair<String, String>? = when {
+    !isCalendarLink(link) -> "That isn't a calendar link" to "Copy the full https:// link from Neptun's calendar export."
+    else -> try {
+        if (repo.verifyNeptunLink(link)) null else "That isn't a Neptun calendar" to
+            "The link opened, but it has no classes in it. Copy the link from Neptun's calendar export."
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        "Couldn't load a calendar from that link" to "Check the link and your connection, then try again. Nothing was saved."
+    }
+}
+
 /** A glass panel titled with a tilted postage stamp. */
 @Composable
 private fun SettingsSectionBox(title: String, tiltLeft: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val c = Vectra.colors
     val shape = Radius.Card
     Box(Modifier.fillMaxWidth().padding(top = 20.dp)) {
-        Column(Modifier.fillMaxWidth().glass(shape).clip(shape).padding(top = 16.dp), content = content)
+        Column(Modifier.fillMaxWidth().plannerCard(shape).clip(shape).padding(top = 16.dp), content = content)
         PostageStamp(
             Modifier.padding(start = 16.dp).offset(y = (-20).dp).rotate(if (tiltLeft) -3f else 2f),
             innerModifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -126,7 +159,7 @@ private val RowTitle = vtext(TypeScale.Body, Weight.Semibold)
  * sync with the 3/hour limit, the link, and "Clear all classes").
  */
 @Composable
-fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
+internal fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -138,6 +171,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
     var savedUrl by remember { mutableStateOf("") }
     var rateLimited by remember { mutableStateOf(false) }
     var syncing by remember { mutableStateOf(false) }
+    var connecting by remember { mutableStateOf(false) }
 
     // Tick every 30s so "Synced X ago" moves.
     var now by remember { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
@@ -187,7 +221,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
 
     val busy = syncing || status == NeptunSyncStatus.Syncing
     SettingsSectionBox("Neptun") {
-        SettingsRow(RemixIcons.TimeLine, c.tints.blue.text, "Last sync", counter, titleStyle = RowTitle) {
+        SettingsRow(RemixIcons.TimeLine, "Last sync", counter, titleStyle = RowTitle) {
             if (savedUrl.isNotEmpty() && lastSyncMs != null) {
                 SyncLink(
                     state = when {
@@ -204,7 +238,7 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         RowDivider()
         if (savedUrl.isNotEmpty()) {
             // Removing it lives in the Danger zone, with clearing the classes.
-            SettingsRow(RemixIcons.Link, c.tints.emerald.text, "Calendar link", "Connected, stored encrypted", titleStyle = RowTitle)
+            SettingsRow(RemixIcons.Link, "Calendar link", "Connected, stored encrypted", titleStyle = RowTitle)
         } else {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column {
@@ -220,35 +254,26 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                     VInput(
                         value = urlInput,
                         onValueChange = { urlInput = it },
-                        placeholder = "https://neptun3r.web.uni-corvinus.hu/Hallgatoi/api/Calendar/...",
+                        placeholder = "https://neptun.example.hu/Hallgatoi/api/Calendar/...",
                         textSize = TypeScale.Caption,
                     )
                     VButton(
                         onClick = {
                             scope.launch {
-                                val trimmed = urlInput.trim()
-                                // Nothing is connected while this field shows, so there is nothing to remove.
-                                if (!isCalendarLink(trimmed)) {
-                                    toaster.error("That isn't a calendar link", "Copy the full https:// link from Neptun's calendar export.")
-                                    return@launch
-                                }
+                                connecting = true
                                 try {
-                                    repo.saveNeptunUrl(trimmed)
-                                    savedUrl = trimmed
-                                    urlInput = ""
-                                    toaster.success("Neptun URL saved successfully")
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: Throwable) {
-                                    toaster.error("Failed to save Neptun URL", "The encryption service is unavailable. Please try again.")
+                                    // Nothing is connected while this field shows, so there is nothing to remove.
+                                    if (connectNeptunLink(repo, toaster, urlInput.trim())) { savedUrl = urlInput.trim(); urlInput = "" }
+                                } finally {
+                                    connecting = false
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(36.dp),
-                        size = ButtonSize.Sm,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !connecting,
                     ) {
-                        VIcon(RemixIcons.CheckLine, size = 14.dp)
-                        VText("Connect", style = vtext(TypeScale.Caption, Weight.Bold))
+                        VIcon(RemixIcons.CheckLine)
+                        VText(if (connecting) "Checking the link..." else "Connect")
                     }
                 }
             }
@@ -256,28 +281,12 @@ fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
         if (status == NeptunSyncStatus.Error && !syncError.isNullOrEmpty()) {
             RowDivider()
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                val shape = Radius.Control
-                Row(
-                    Modifier.fillMaxWidth().background(Palette.Red500.copy(alpha = 0.1f), shape).border(1.dp, c.tints.red.border, shape).padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    VIcon(RemixIcons.ErrorWarningLine, size = 20.dp, tint = c.tints.red.text)
-                    Column {
-                        VText("Sync failed", style = vtext(TypeScale.Body, Weight.Bold, Tracking.Wide), color = c.tints.red.text)
-                        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            VText(syncError!!, style = vtext(TypeScale.Caption, lineHeight = 19.5.sp), color = c.tints.red.text.copy(alpha = 0.9f))
-                            Column(Modifier.drawBehind {
-                                drawLine(Palette.Red500.copy(alpha = 0.2f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
-                            }.padding(top = 12.dp)) {
-                                VText(
-                                    "The automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
-                                    style = vtext(TypeScale.Caption, lineHeight = 16.5.sp),
-                                    color = c.tints.red.text.copy(alpha = 0.8f),
-                                )
-                            }
-                        }
-                    }
-                }
+                Banner(
+                    tone = BannerTone.Red,
+                    icon = RemixIcons.ErrorWarningLine,
+                    title = "Sync failed",
+                    body = syncError!! + "\n\nThe automatic background sync failed. Please check your network connection, or if your URL has expired, generate a new one from Neptun.",
+                )
             }
         }
     }

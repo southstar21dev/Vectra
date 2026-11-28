@@ -87,10 +87,10 @@ import kotlin.math.roundToInt
 import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
 
 /** Corner radius of a sheet's top edge. */
-val SheetCornerRadius = 24.dp
+internal val SheetCornerRadius = 24.dp
 
 /** How tall a sheet may grow. */
-enum class SheetSize {
+internal enum class SheetSize {
     /** As tall as its content, up to just below the status bar. */
     Fit,
     /** Opens at half the window and drags up to full height (long lists, maps). */
@@ -100,21 +100,21 @@ enum class SheetSize {
 }
 
 /** Whether the surrounding surface runs under the system bars and must pad them itself. */
-val LocalSurfaceEdgeToEdge = staticCompositionLocalOf { false }
+internal val LocalSurfaceEdgeToEdge = staticCompositionLocalOf { false }
 
 /**
  * The pushed screen sits in a card in the middle of a wide window, away from the system bars,
  * so its [ScreenColumn] doesn't pad them. Set by the app shell around the screen.
  */
 @Suppress("CompositionLocalAllowlist")
-val LocalScreenInCard = staticCompositionLocalOf { false }
+internal val LocalScreenInCard = staticCompositionLocalOf { false }
 
 /**
  * Vertical offset of a draggable sheet, measured down from its fully expanded position.
  * [anchors] are the resting offsets (ascending); the last one is fully hidden.
  */
 @Stable
-class SheetDragState internal constructor(private val haptics: VectraHaptics) {
+internal class SheetDragState internal constructor(private val haptics: VectraHaptics) {
     internal val offset = Animatable(Float.NaN)
     private var anchorList by mutableStateOf(emptyList<Float>())
     internal var anchors: List<Float>
@@ -231,7 +231,7 @@ private class SheetNestedScroll(
  * action, and the page behind it leaves the accessibility tree while it is up.
  */
 @Composable
-fun VSheet(
+internal fun VSheet(
     open: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -400,7 +400,7 @@ private fun SheetHandle(modifier: Modifier = Modifier) {
  * `dragHandle = false` and place this over the content. Drags on it move the sheet, not what is under it.
  */
 @Composable
-fun SheetGrabber(modifier: Modifier = Modifier) {
+internal fun SheetGrabber(modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(width = 120.dp, height = 24.dp)
@@ -465,7 +465,7 @@ private fun Modifier.floatingSheetSurface(state: SheetDragState, fill: Color, si
  * so the surface can follow the finger before [onBack] commits.
  */
 @Composable
-fun rememberPredictiveBack(enabled: Boolean, onBack: () -> Unit): () -> Float {
+internal fun rememberPredictiveBack(enabled: Boolean, onBack: () -> Unit): () -> Float {
     val latest = rememberUpdatedState(onBack)
     val navState = rememberNavigationEventState(NavigationEventInfo.None)
     NavigationBackHandler(
@@ -481,6 +481,6 @@ fun rememberPredictiveBack(enabled: Boolean, onBack: () -> Unit): () -> Float {
 
 /** Small close button for a sheet header. */
 @Composable
-fun SheetCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SheetCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     BarButton(RemixIcons.CloseLine, "Close", onClick, modifier)
 }

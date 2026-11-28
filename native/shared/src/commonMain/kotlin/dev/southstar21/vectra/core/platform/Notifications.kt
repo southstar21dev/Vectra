@@ -18,6 +18,12 @@ interface Notifier {
 
     /** Replaces everything scheduled through this before with [notifications]; empty cancels them all. */
     fun replaceScheduled(notifications: List<ScheduledNotification>) {}
+
+    /**
+     * A quiet wake-up at [atMs] that replans the reminders, so the planning horizon keeps rolling
+     * forward when the app is not opened (Android; iOS has a background refresh task). Null cancels it.
+     */
+    fun scheduleReplan(atMs: Long?) {}
 }
 
 /** The two kinds of reminder; Android shows them on separate channels the user can mute apart. */
@@ -52,7 +58,7 @@ data class DepartureQuery(
 )
 
 /** Alarms set before several lines were allowed carry a single query. */
-object DepartureQueryList : OneOrManySerializer<DepartureQuery>(DepartureQuery.serializer())
+internal object DepartureQueryList : OneOrManySerializer<DepartureQuery>(DepartureQuery.serializer())
 
 /**
  * Native push registration (FCM on Android). The backend's push route sends Web

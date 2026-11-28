@@ -15,7 +15,6 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -26,14 +25,13 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
 /**
- * One settings row: a bare line icon in its tint (no tile behind it), title and subtitle, and a
+ * One settings row: a bare line icon (secondary text, red when [danger]; no tile behind it), title and subtitle, and a
  * control on the right. With [onClick] the whole row is the tap target and, without a control,
  * ends in a chevron. [enabled] false greys it out (an action with nothing to act on).
  */
 @Composable
-fun SettingsRow(
+internal fun SettingsRow(
     icon: ImageVector,
-    iconTint: Color,
     title: String,
     subtitle: String? = null,
     danger: Boolean = false,
@@ -54,7 +52,7 @@ fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            VIcon(icon, size = 18.dp, tint = iconTint)
+            VIcon(icon, size = 18.dp, tint = if (danger) c.tints.red.text else c.textSecondary)
         }
         Column(Modifier.weight(1f)) {
             VText(title, style = titleStyle, color = if (danger) c.tints.red.text else c.textPrimary)
@@ -69,7 +67,7 @@ fun SettingsRow(
 
 /** A row's action as a text link in the accent ("Edit", "Change", "Set up"): quieter than a button. */
 @Composable
-fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, busy: Boolean = false) {
+internal fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, busy: Boolean = false) {
     val c = Vectra.colors
     Box(
         modifier
@@ -88,7 +86,7 @@ fun SettingsLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
  * not a row of its own.
  */
 @Composable
-fun SettingsFooterLink(icon: ImageVector, text: String, caption: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
+internal fun SettingsFooterLink(icon: ImageVector, text: String, caption: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     val c = Vectra.colors
     Row(
         modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),

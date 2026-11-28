@@ -28,7 +28,7 @@ fun WidgetSnapshot?.dayShown(today: String): String =
     if (sessionsOn(today).isNotEmpty()) today else this?.takeIf { it.signedIn }?.sessions.orEmpty().firstOrNull { it.day > today }?.day ?: today
 
 /** [day]'s timed sessions as spine rows, with a break wherever there is real time between two. */
-fun WidgetSnapshot?.spine(day: String, nowMs: Long): List<SpineRow> {
+internal fun WidgetSnapshot?.spine(day: String, nowMs: Long): List<SpineRow> {
     val timed = sessionsOn(day).filter { it.kind.isTimed }
     val rows = mutableListOf<SpineRow>()
     timed.forEachIndexed { i, s ->
@@ -75,7 +75,7 @@ fun ringLabel(ms: Long, hoursWord: String): Pair<String, String> {
 private val MinorWords = setOf("and", "of", "the", "to", "in", "for", "a", "an", "és", "az")
 
 /** A course's label for a small timetable block: "Data Structures" DS, "Microeconomics" MIC. */
-fun courseAbbrev(title: String): String {
+internal fun courseAbbrev(title: String): String {
     val words = title.split(' ', '-', '/', ',').map { it.trim() }.filter { w -> w.isNotEmpty() && w.lowercase() !in MinorWords }
     val main = words.filter { w -> w.length >= 3 && w.first().isLetter() && !w.all { it.isUpperCase() && it in "IVX" } }
     return when {

@@ -5,7 +5,8 @@
 # change, so a PR that only touches web/ doesn't build the native app. Release.yml passes
 # all-jobs, which runs every job regardless: a skipped job proves nothing, and the path filter
 # diffs a push against the default branch (dev) or the previous push (master), so it can skip
-# a component that changed since the last release.
+# a component that changed since the last release. The deprecated web job is the exception: it
+# runs on pull requests only, so a web failure never blocks a release.
 name: CI
 
 on:
@@ -32,6 +33,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       backend: ${{ steps.filter.outputs.backend }}
       native: ${{ steps.filter.outputs.native }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -47,10 +49,41 @@ jobs:
             native:
               - 'native/**'
               - '.github/workflows/ci.yml'
+              - '.github/actions/**'
+            workflows:
+              - '.github/**'
+              - 'scripts/**'
 
+  # Release logic (the plan, publish, testflight and pages jobs) only runs on a master push, so a
+  # mistake in it would first show up during a real release. This lints the workflows and shell
+  # scripts on every change to them: actionlint (which also runs shellcheck on `run:` blocks) and
+  # shellcheck on the standalone scripts.
+  workflows:
+    needs: changes
+    if: inputs.all-jobs || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Pinned version and checksum, like XcodeGen below.
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/actionlint.tar.gz" \
+            "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+
+      - run: '"$RUNNER_TEMP/actionlint"'
+
+      - run: shellcheck .github/scripts/*.sh scripts/*.sh
+
+  # Deprecated: only checked on pull requests that touch web/, never gates a release.
   web:
     needs: changes
-    if: inputs.all-jobs || needs.changes.outputs.web == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,11 +125,18 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.27'
+          # The one place the Go version lives for CI; the Dockerfile's golang:1.27 tag follows the
+          # same minor release.
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - run: go vet ./...
       - run: go test ./...
+
+      # The image is otherwise first built by Coolify on a push to dev; build it (no push) so a
+      # Dockerfile, .dockerignore or entrypoint mistake fails here.
+      - name: Build the Docker image
+        run: docker build --pull .
 
   native:
     needs: changes
@@ -111,7 +151,7 @@ jobs:
           # Runs the shared tests on an iOS simulator (Kotlin/Native's regex engine and Foundation
           # differ from the JVM's); the steps below also build the Swift app and widgets.
           # release.yml builds the IPA.
-          - os: macos-latest
+          - os: macos-26
             tasks: :shared:compileKotlinIosSimulatorArm64 :shared:iosSimulatorArm64Test
     runs-on: ${{ matrix.os }}
     env:
@@ -120,23 +160,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
-        with:
-          distribution: temurin
-          java-version: 21
-
-      # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
-      # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
-      - id: kotlin
-        if: runner.os == 'macOS'
-        name: Read the Kotlin version
-        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        if: runner.os == 'macOS'
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+      - uses: ./.github/actions/native-setup
 
       # release.yml builds the committed iosApp.xcodeproj, so it must be what project.yml generates.
       # XcodeGen is pinned (version and checksum): another version may write the project differently.
@@ -158,7 +182,11 @@ jobs:
             exit 1
           fi
 
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      # The widget colours come from one table (native/tools/widget-tokens.json); the Swift tokens
+      # and the Android plate drawables are generated from it and checked in.
+      - name: Check the generated widget tokens are up to date
+        if: runner.os == 'Linux'
+        run: node native/tools/generate-widget-tokens.mjs --check
 
       - name: Verify
         working-directory: native
@@ -176,4 +204,17 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # The widget rules in Swift, against the same JSON cases the Kotlin WidgetFixturesTest runs.
+      # No Gradle phase and no app: only Model.swift is compiled, so it takes a few seconds.
+      - name: Test the iOS widget rules
+        if: runner.os == 'macOS'
+        run: |
+          udid=$(xcrun simctl list devices available | grep -m1 'iPhone' | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
+          xcodebuild test \
+            -project native/iosApp/iosApp.xcodeproj \
+            -scheme VectraWidgetsTests \
+            -destination "platform=iOS Simulator,id=$udid" \
+            -derivedDataPath "$RUNNER_TEMP/dd-tests" \
             CODE_SIGNING_ALLOWED=NO

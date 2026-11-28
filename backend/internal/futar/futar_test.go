@@ -184,8 +184,19 @@ func newRequestEvent(body string) (*core.RequestEvent, *httptest.ResponseRecorde
 // status/body assertions exercise the real error serialization.
 func runHandler(t *testing.T, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return runWith(t, newTestProxy(), body)
+}
+
+// newTestProxy is a Proxy with budgets no test spends.
+func newTestProxy() *Proxy {
+	return NewProxy(ratelimit.New(100_000, time.Minute), 100_000)
+}
+
+// runWith is runHandler for a test that builds its own Proxy.
+func runWith(t *testing.T, p *Proxy, body string) *httptest.ResponseRecorder {
+	t.Helper()
 	e, rec := newRequestEvent(body)
-	if err := Handler(e); err != nil {
+	if err := p.Handler(e); err != nil {
 		router.ErrorHandler(rec, e.Request, err)
 	}
 	return rec
@@ -306,7 +317,7 @@ func TestHandlerBatchCacheConcurrent(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			e, rec := newRequestEvent(`{"endpoint":"stop-arrivals","params":{"stopIds":"CS1,CS2"}}`)
-			if err := Handler(e); err != nil {
+			if err := newTestProxy().Handler(e); err != nil {
 				errs[i] = err
 				return
 			}
@@ -323,7 +334,7 @@ func TestHandlerBatchCacheConcurrent(t *testing.T) {
 
 	before := hits.Load()
 	e, rec := newRequestEvent(`{"endpoint":"stop-arrivals","params":{"stopIds":"CS1,CS2"}}`)
-	require.NoError(t, Handler(e))
+	require.NoError(t, newTestProxy().Handler(e))
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, before, hits.Load(), "identical batch within TTL must be served from cache")
 }
@@ -344,7 +355,7 @@ func TestHandlerBatchAsksForMaxLimit(t *testing.T) {
 	useFutarBase(t, srv.URL)
 
 	e, rec := newRequestEvent(`{"endpoint":"stop-arrivals","params":{"stopIds":"LIM1"}}`)
-	require.NoError(t, Handler(e))
+	require.NoError(t, newTestProxy().Handler(e))
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "200", <-limits)
 }
@@ -396,6 +407,8 @@ func TestHandlerBatchTransportFailureDoesNotLeakKey(t *testing.T) {
 		require.Equal(t, http.StatusBadGateway, rec.Code)
 		require.NotContains(t, rec.Body.String(), sentinelKey)
 		require.Contains(t, rec.Body.String(), "Upstream request failed")
+		// The client keys its no-fan-out decision on this code.
+		require.Contains(t, rec.Body.String(), `"code":"all_stops_failed"`)
 	})
 }
 
@@ -427,14 +440,25 @@ func TestHandlerInvalidStopIDRejected(t *testing.T) {
 
 func TestHandlerRateLimited(t *testing.T) {
 	t.Setenv("FUTAR_API_KEY", sentinelKey)
-	prev := limiter
-	limiter = ratelimit.New(1, time.Minute)
-	t.Cleanup(func() { limiter = prev })
+	p := NewProxy(ratelimit.New(1, time.Minute), 100_000)
 
-	rec := runHandler(t, `{"endpoint":"evil-endpoint","params":{}}`)
+	rec := runWith(t, p, `{"endpoint":"evil-endpoint","params":{}}`)
 	require.Equal(t, http.StatusBadRequest, rec.Code, "first call reaches validation")
-	rec = runHandler(t, `{"endpoint":"evil-endpoint","params":{}}`)
+	rec = runWith(t, p, `{"endpoint":"evil-endpoint","params":{}}`)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
+}
+
+// TestHandlerUpstreamBudgetSpent: once the process-wide upstream budget is
+// used up, valid requests are refused with 503 before reaching Futar, however
+// many different client addresses ask.
+func TestHandlerUpstreamBudgetSpent(t *testing.T) {
+	t.Setenv("FUTAR_API_KEY", sentinelKey)
+	p := NewProxy(ratelimit.New(100_000, time.Minute), 1)
+	p.upstream.Allow("upstream", time.Now())
+
+	rec := runWith(t, p, `{"endpoint":"route-details","params":{"routeId":"BKK_3010"}}`)
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Equal(t, "10", rec.Header().Get("Retry-After"))
 }
 
 // TestMinutesSnapToBuckets: the values the app sends pass through unchanged,
@@ -489,10 +513,6 @@ func TestRouteAndTripIDValidation(t *testing.T) {
 func TestHandlerBatchChargesPerStop(t *testing.T) {
 	t.Setenv("FUTAR_API_KEY", sentinelKey)
 	resetStopArrivalsCache()
-	prev := limiter
-	limiter = ratelimit.New(4, time.Minute)
-	t.Cleanup(func() { limiter = prev })
-
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w,
@@ -504,17 +524,15 @@ func TestHandlerBatchChargesPerStop(t *testing.T) {
 	useFutarBase(t, srv.URL)
 
 	// 1 (request) + 4 (stops) exceeds the budget of 4.
-	rec := runHandler(t, `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3,P4"}}`)
+	rec := runWith(t, NewProxy(ratelimit.New(4, time.Minute), 100_000), `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3,P4"}}`)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 
-	limiter = ratelimit.New(4, time.Minute)
 	// 1 + 3 fits and warms the cache.
-	rec = runHandler(t, `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3"}}`)
+	rec = runWith(t, NewProxy(ratelimit.New(4, time.Minute), 100_000), `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3"}}`)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	limiter = ratelimit.New(1, time.Minute)
 	// Fully cached: only the request unit is charged.
-	rec = runHandler(t, `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3"}}`)
+	rec = runWith(t, NewProxy(ratelimit.New(1, time.Minute), 100_000), `{"endpoint":"stop-arrivals","params":{"stopIds":"P1,P2,P3"}}`)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
@@ -540,7 +558,7 @@ func TestFetchStopArrivalsCollapsesConcurrentMisses(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if resp, msg := fetchStopArrivalsUpstream(t.Context(), "SF1", 0, 90, sentinelKey); resp != nil && msg == "" {
+			if resp, msg := newTestProxy().fetchStopArrivalsUpstream(t.Context(), "SF1", 0, 90, sentinelKey); resp != nil && msg == "" {
 				ok.Add(1)
 			}
 		}()

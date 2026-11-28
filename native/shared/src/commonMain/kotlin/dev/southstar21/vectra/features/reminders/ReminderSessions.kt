@@ -7,6 +7,7 @@ import dev.southstar21.vectra.features.coursetracker.getEventSessionType
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.ScheduleEventIndex
 import dev.southstar21.vectra.features.schedule.ScheduleItem
+import dev.southstar21.vectra.features.schedule.ScheduleItemOccurrence
 import dev.southstar21.vectra.features.schedule.classOccursOnDate
 import dev.southstar21.vectra.features.schedule.extractGroupCode
 import dev.southstar21.vectra.features.schedule.getScheduleItemOccurrences
@@ -17,10 +18,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 
-enum class SessionKind { Lecture, Seminar, Lab, Exam, Personal, Other }
+internal enum class SessionKind { Lecture, Seminar, Lab, Exam, Personal, Other }
 
 /** One class, exam or timed personal item on one day, in epoch millis. [key] ends in "@yyyy-mm-dd". */
-data class ReminderSession(
+internal data class ReminderSession(
     val key: String,
     val title: String,
     val location: String,
@@ -39,12 +40,12 @@ data class ReminderSession(
 }
 
 /** A gap longer than this between sessions counts as going home and coming back. */
-const val LongBreakMinutes = 120
+internal const val LongBreakMinutes = 120
 
 internal const val MinuteMs = 60_000L
 
 /** The kinds the type chips switch off; anything unclassified always counts. */
-fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
+internal fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
     SessionKind.Lecture -> prefs.lectures
     SessionKind.Seminar -> prefs.seminars
     SessionKind.Lab -> prefs.labs
@@ -53,7 +54,7 @@ fun SessionKind.allowedBy(prefs: ReminderPrefs): Boolean = when (this) {
 }
 
 /** Seminars and practice share a kind: a group code's practice classes read as seminars. */
-fun sessionKind(event: ScheduleEvent): SessionKind = when {
+internal fun sessionKind(event: ScheduleEvent): SessionKind = when {
     event.isExam() -> SessionKind.Exam
     else -> when (getEventSessionType(event)) {
         SessionType.Lecture -> SessionKind.Lecture
@@ -89,10 +90,22 @@ private fun timeRange(date: LocalDate, start: String, end: String): Pair<Long, L
 }
 
 /**
+ * A personal item's span. An overnight shift's first part ends at "24:00" (which [budapestMs]
+ * rejects), so its end is the item's own end time on the following day instead.
+ */
+private fun personalRange(o: ScheduleItemOccurrence): Pair<Long, Long>? {
+    val date = LocalDate.parse(o.date)
+    if (o.endTime != "24:00") return timeRange(date, o.startTime, o.endTime)
+    val start = budapestMs(date, o.startTime)
+    val end = budapestMs(date.plus(DatePeriod(days = 1)), o.item.endTime)
+    return if (start != null && end != null && end > start) start to end else null
+}
+
+/**
  * The sessions that actually meet on each of [days] days from [from]: odd/even weeks, semester
  * ranges and public holidays as the schedule shows them, minus classes marked "No class".
  */
-fun expandSessions(
+internal fun expandSessions(
     events: List<ScheduleEvent>,
     items: List<ScheduleItem>,
     includeItems: Boolean,
@@ -120,7 +133,7 @@ fun expandSessions(
         getScheduleItemOccurrences(items, from.ymd(), from.plus(DatePeriod(days = days - 1)).ymd())
             .filter { !it.continuation && it.item.completed != true }
             .mapNotNull { o ->
-                timeRange(LocalDate.parse(o.date), o.startTime, o.endTime)?.let { (s, end) ->
+                personalRange(o)?.let { (s, end) ->
                     val label = if (o.item.isShift) "Shift" else "Task"
                     ReminderSession("${o.item.id}@${o.date}", o.item.title.trim(), o.item.location.orEmpty().trim(), label, SessionKind.Personal, s, end)
                 }

@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * Camera-fit key for a whole set of drawn geometry. Covers EVERY polyline's
  * endpoints + length AND every walk's endpoints. Returns "" when there is nothing to fit.
  */
-fun journeyFitKey(polylines: List<List<LatLon>>, walks: List<List<LatLon>> = emptyList()): String {
+internal fun journeyFitKey(polylines: List<List<LatLon>>, walks: List<List<LatLon>> = emptyList()): String {
     val parts = mutableListOf<String>()
     for (pl in polylines) {
         if (pl.size < 2) continue
@@ -36,10 +36,10 @@ fun journeyFitKey(polylines: List<List<LatLon>>, walks: List<List<LatLon>> = emp
 }
 
 /** A point in a 2D (projected / SVG) coordinate space. */
-data class Point(val x: Double, val y: Double)
+internal data class Point(val x: Double, val y: Double)
 
 /** Decode a Google-encoded polyline into lat/lon pairs (1e-5 precision). */
-fun decodePolyline(encoded: String): List<LatLon> {
+internal fun decodePolyline(encoded: String): List<LatLon> {
     val points = mutableListOf<LatLon>()
     var index = 0
     var lat = 0
@@ -74,7 +74,7 @@ fun decodePolyline(encoded: String): List<LatLon> {
  * Equirectangular (longitude scaled by cos of the mid latitude, so distances and angles hold),
  * uniform scale, 8% padding, north up.
  */
-fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon) -> Point {
+internal fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon) -> Point {
     val pad = 0.08
     if (latLons.isEmpty()) return { Point(width / 2, height / 2) }
     var minLon = Double.POSITIVE_INFINITY
@@ -102,10 +102,10 @@ fun makeProjector(latLons: List<LatLon>, width: Double, height: Double): (LatLon
 }
 
 /** Result of [projectVehicleOntoPolyline]. */
-data class PolylineProjection(val point: Point, val distance: Double)
+internal data class PolylineProjection(val point: Point, val distance: Double)
 
 /** Project `p` onto the polyline: closest point on the nearest segment + cumulative distance. */
-fun projectVehicleOntoPolyline(p: Point, polyline: List<Point>): PolylineProjection? {
+internal fun projectVehicleOntoPolyline(p: Point, polyline: List<Point>): PolylineProjection? {
     if (polyline.isEmpty()) return null
     if (polyline.size == 1) return PolylineProjection(polyline[0], 0.0)
 
@@ -142,7 +142,7 @@ fun projectVehicleOntoPolyline(p: Point, polyline: List<Point>): PolylineProject
 }
 
 /** Cumulative polyline length at each vertex (first is 0). */
-fun cumulativeDistances(points: List<Point>): List<Double> {
+internal fun cumulativeDistances(points: List<Point>): List<Double> {
     val out = mutableListOf(0.0)
     for (i in 1 until points.size) {
         val a = points[i - 1]
@@ -153,7 +153,7 @@ fun cumulativeDistances(points: List<Point>): List<Double> {
 }
 
 /** Index of the first stop the vehicle has NOT yet reached; clamps to the last. */
-fun nextStopIndex(stopDistances: List<Double>, vehicleDistance: Double): Int {
+internal fun nextStopIndex(stopDistances: List<Double>, vehicleDistance: Double): Int {
     val i = stopDistances.indexOfFirst { it >= vehicleDistance }
     return if (i == -1) stopDistances.size - 1 else i
 }
@@ -161,7 +161,7 @@ fun nextStopIndex(stopDistances: List<Double>, vehicleDistance: Double): Int {
 private fun rad(d: Double) = d * PI / 180
 
 /** Haversine distance in meters between two lat/lon points. */
-fun haversineMeters(a: LatLon, b: LatLon): Double {
+internal fun haversineMeters(a: LatLon, b: LatLon): Double {
     val r = 6_371_000.0
     val dLat = rad(b.lat - a.lat)
     val dLon = rad(b.lon - a.lon)
@@ -170,7 +170,7 @@ fun haversineMeters(a: LatLon, b: LatLon): Double {
 }
 
 /** The point at `fraction` (0..1, clamped) of the polyline's geographic length. Null when empty. */
-fun pointAtFraction(polyline: List<LatLon>, fraction: Double): LatLon? {
+internal fun pointAtFraction(polyline: List<LatLon>, fraction: Double): LatLon? {
     if (polyline.isEmpty()) return null
     val f = max(0.0, min(1.0, fraction))
     if (polyline.size == 1 || f <= 0) return polyline[0]
@@ -191,7 +191,7 @@ fun pointAtFraction(polyline: List<LatLon>, fraction: Double): LatLon? {
 }
 
 /** Cumulative haversine length in meters at each vertex (first is 0). */
-fun cumulativeHaversineDistances(polyline: List<LatLon>): List<Double> {
+internal fun cumulativeHaversineDistances(polyline: List<LatLon>): List<Double> {
     val out = mutableListOf(0.0)
     for (i in 1 until polyline.size) out += out[i - 1] + haversineMeters(polyline[i - 1], polyline[i])
     return out
@@ -201,7 +201,7 @@ fun cumulativeHaversineDistances(polyline: List<LatLon>): List<Double> {
 private fun orOne(x: Double): Double = if (x == 0.0 || x.isNaN()) 1.0 else x
 
 /** The point at cumulative distance `d` meters along the polyline (clamped to its ends). */
-fun pointAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double): LatLon {
+internal fun pointAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double): LatLon {
     if (polyline.isEmpty()) return LatLon(0.0, 0.0)
     if (polyline.size == 1) return polyline[0]
     val total = orOne(dists[dists.size - 1])
@@ -227,7 +227,7 @@ fun pointAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double): Lat
  * The polyline prefix from its start up to cumulative distance `d` meters, with the
  * cut point interpolated.
  */
-fun cutPolylineAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double): List<LatLon> {
+internal fun cutPolylineAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double): List<LatLon> {
     if (polyline.isEmpty()) return emptyList()
     val total = orOne(dists[dists.size - 1])
     val target = max(0.0, min(total, d))
@@ -248,13 +248,13 @@ fun cutPolylineAtDistance(polyline: List<LatLon>, dists: List<Double>, d: Double
 }
 
 /** Difference between two headings in degrees (0..180). */
-fun angleDifference(a: Double, b: Double): Double {
+internal fun angleDifference(a: Double, b: Double): Double {
     val diff = abs(a - b) % 360
     return if (diff > 180) 360 - diff else diff
 }
 
 /** Result of [snapToPolyline]. */
-data class SnappedPoint(val point: LatLon, val distance: Double)
+internal data class SnappedPoint(val point: LatLon, val distance: Double)
 
 private class SegHit(val seg: Int, val t: Double, val distSq: Double)
 
@@ -262,7 +262,7 @@ private class SegHit(val seg: Int, val t: Double, val distSq: Double)
  * Snap `p` onto the polyline: nearest point on the closest segment plus its cumulative
  * distance (meters). With `preferredBearing`, segments heading the same way are favoured.
  */
-fun snapToPolyline(p: LatLon, polyline: List<LatLon>, preferredBearing: Double? = null): SnappedPoint? {
+internal fun snapToPolyline(p: LatLon, polyline: List<LatLon>, preferredBearing: Double? = null): SnappedPoint? {
     if (polyline.isEmpty()) return null
     if (polyline.size == 1) return SnappedPoint(polyline[0], 0.0)
 
@@ -307,7 +307,7 @@ fun snapToPolyline(p: LatLon, polyline: List<LatLon>, preferredBearing: Double? 
 }
 
 /** A vehicle snapped onto a route polyline, facing along the direction of travel. */
-data class PlacedVehicle(
+internal data class PlacedVehicle(
     val id: String,
     val lat: Double,
     val lon: Double,
@@ -316,10 +316,10 @@ data class PlacedVehicle(
 )
 
 /** Input for [placeVehiclesOnPolyline]. */
-data class VehiclePlacementInput(val id: String, val lat: Double, val lon: Double, val bearing: Double? = null)
+internal data class VehiclePlacementInput(val id: String, val lat: Double, val lon: Double, val bearing: Double? = null)
 
 /** Initial bearing from `from` to `to` in degrees (0 = north, clockwise). */
-fun bearingDegrees(from: LatLon, to: LatLon): Double {
+internal fun bearingDegrees(from: LatLon, to: LatLon): Double {
     val y = sin(rad(to.lon - from.lon)) * cos(rad(to.lat))
     val x = cos(rad(from.lat)) * sin(rad(to.lat)) -
         sin(rad(from.lat)) * cos(rad(to.lat)) * cos(rad(to.lon - from.lon))
@@ -327,7 +327,7 @@ fun bearingDegrees(from: LatLon, to: LatLon): Double {
 }
 
 /** Forward tangent bearing (degrees) along a polyline at a cumulative distance. */
-fun bearingAlongPolyline(
+internal fun bearingAlongPolyline(
     polyline: List<LatLon>,
     dists: List<Double>,
     distance: Double,
@@ -348,7 +348,7 @@ fun bearingAlongPolyline(
  * Snap each vehicle onto the polyline and point it along the direction of travel.
  * A telemetry bearing within 45° of the line is replaced by the line's; otherwise kept.
  */
-fun placeVehiclesOnPolyline(
+internal fun placeVehiclesOnPolyline(
     vehicles: List<VehiclePlacementInput>,
     polyline: List<LatLon>,
     lookAheadMeters: Double = 30.0,

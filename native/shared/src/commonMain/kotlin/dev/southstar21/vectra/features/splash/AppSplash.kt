@@ -42,11 +42,12 @@ import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.easeInOutCubic
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.platform.platformName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.math.pow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PointMode
@@ -79,7 +80,7 @@ private const val MaxFrameStepMs = 34L
  * [onPresented] fires as that starts, so the cards' reveals play underneath.
  */
 @Composable
-fun AppSplash(appReady: Boolean, version: String, onPresented: () -> Unit) {
+internal fun AppSplash(appReady: Boolean, version: String, onPresented: () -> Unit) {
     val c = Vectra.colors
     val reduce = Vectra.reduceMotion
     var minElapsed by remember { mutableStateOf(false) }
@@ -212,7 +213,7 @@ private fun DrawScope.drawLockup(
     val textX = left + owlW + gap
 
     // The owl: its whole 1024 square, centred where the owl sits, scaled from the system splash's size.
-    val g = easeInOut((t / 0.6f).coerceIn(0f, 1f))
+    val g = easeInOutCubic((t / 0.6f).coerceIn(0f, 1f))
     val from = Offset(size.width / 2, size.height / 2)
     val to = Offset(left + owlW / 2, baseline - cap / 2 + 0.8.dp.toPx())
     val square = lerpF(SystemIconSize.toPx(), OwlHeight.toPx() / OwlShare, g)
@@ -298,4 +299,3 @@ private fun seedAt(x: Float, y: Float): Float {
 
 private fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
 
-private fun easeInOut(x: Float): Float = if (x < 0.5f) 4 * x * x * x else 1 - (-2 * x + 2).pow(3) / 2

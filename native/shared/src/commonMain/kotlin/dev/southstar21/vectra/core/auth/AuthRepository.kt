@@ -12,7 +12,7 @@ import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +30,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
 /** Hooks run on sign-out (push cleanup) and after the session ends (cache wipe). */
-interface SessionListener {
+internal interface SessionListener {
     suspend fun beforeSignOut() {}
     suspend fun onSessionCleared() {}
 
@@ -41,19 +41,39 @@ interface SessionListener {
     suspend fun flushPendingWrites(): Boolean = true
 }
 
+/** The account exists but the sign-in that followed failed: [cause] is why. */
+internal class AccountCreatedSignInFailed(override val cause: Throwable) : Exception("Account created, but sign-in failed", cause)
+
 /**
  * The session, the profile, and the account
  * mutations. The profile is the users auth record itself.
  */
-class AuthRepository(
+class AuthRepository internal constructor(
     private val pb: PocketBaseClient,
     private val store: AuthStore,
     private val kv: KeyValueStore,
     scope: CoroutineScope,
     private val listeners: Lazy<List<SessionListener>>,
 ) {
-    val session: StateFlow<AuthState?> = store.state
-    val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
+    internal val session: StateFlow<AuthState?> = store.state
+
+    /**
+     * The signed-in user's id, the one answer to "who is signed in": null when signed out or when
+     * the id is empty, so no feature has its own idea of "no user". Read it where the answer must be
+     * current; [currentUserId] is the observable form.
+     */
+    val userId: String? get() = store.current?.userId?.ifEmpty { null }
+
+    val currentUserId: StateFlow<String?> = store.state.map { it?.userId?.ifEmpty { null } }
+        .stateIn(scope, SharingStarted.Eagerly, userId)
+
+    /**
+     * Scopes for per-user async work: cancelled when the signed-in user changes, so a sync or fetch
+     * started for one account cannot outlive it.
+     */
+    internal val sessionScope: SessionScope = SessionScope(scope, { userId }, store.state.map { it?.userId?.ifEmpty { null } })
+
+    internal val profile: StateFlow<Profile?> = store.state.map { it?.record?.let(Profile::from) }
         .stateIn(scope, SharingStarted.Eagerly, store.current?.record?.let(Profile::from))
 
     private val _sessionExpired = MutableStateFlow(false)
@@ -61,6 +81,13 @@ class AuthRepository(
     val sessionExpired: StateFlow<Boolean> = _sessionExpired.asStateFlow()
     fun consumeSessionExpired() {
         _sessionExpired.value = false
+    }
+
+    private val _loginNotice = MutableStateFlow<String?>(null)
+    /** One-shot message for the login page, for a sign-out the user's own action caused (it unmounts the form that would show the error). */
+    val loginNotice: StateFlow<String?> = _loginNotice.asStateFlow()
+    fun consumeLoginNotice() {
+        _loginNotice.value = null
     }
 
     private val restoreLock = Mutex()
@@ -82,6 +109,11 @@ class AuthRepository(
         settleKeptQueue()
     }
 
+    /**
+     * Creates the account and signs in. A sign-in failure after the account exists throws
+     * [AccountCreatedSignInFailed], so the screen can send the person to Sign in instead of
+     * leaving them on a form that would now say the email is taken.
+     */
     suspend fun signup(email: String, password: String, fullName: String) {
         pb.collection("users").create(
             buildJsonObject {
@@ -91,7 +123,11 @@ class AuthRepository(
                 put("full_name", JsonPrimitive(fullName))
             },
         )
-        pb.authWithPassword(email, password)
+        try {
+            pb.authWithPassword(email, password)
+        } catch (e: PocketBaseException) {
+            throw AccountCreatedSignInFailed(e)
+        }
         settleKeptQueue()
     }
 
@@ -119,6 +155,18 @@ class AuthRepository(
         store.updateRecord(record)
     }
 
+    /**
+     * Sets one key of the profile's `preferences`, merged into the server's current copy: this
+     * device's cached profile may predate another device's change to a different key, and writing
+     * the whole object back would revert it.
+     */
+    suspend fun setPreference(key: String, value: JsonElement) {
+        val id = requireSession().userId
+        val fresh = runSuspendCatching { pb.collection("users").getOne(id)["preferences"] as? JsonObject }.getOrNull()
+        val current = fresh ?: profile.value?.preferences ?: JsonObject(emptyMap())
+        updateProfile(mapOf("preferences" to JsonObject(current + (key to value))))
+    }
+
     suspend fun changeEmail(currentPassword: String, newEmail: String) {
         requireSession()
         pb.send(
@@ -132,6 +180,7 @@ class AuthRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
+            _loginNotice.value = "Email updated. Sign in again with your new address."
             clear(keepQueue = true)
             error("Email updated, but your session ended. Please sign in again with your new address")
         }
@@ -140,34 +189,47 @@ class AuthRepository(
     suspend fun changePassword(currentPassword: String, newPassword: String) {
         val session = requireSession()
         val email = session.email ?: error("Not authenticated")
+        // PocketBase requires oldPassword whenever a user changes their own password, and checks it,
+        // so no separate sign-in is needed (the auth endpoint allows only 2 requests per 3 seconds,
+        // and the re-authentication below needs one of them).
         try {
-            pb.authWithPassword(email, currentPassword)
+            pb.collection("users").update(
+                session.userId,
+                JsonObject(
+                    mapOf(
+                        "oldPassword" to JsonPrimitive(currentPassword),
+                        "password" to JsonPrimitive(newPassword),
+                        "passwordConfirm" to JsonPrimitive(newPassword),
+                    ),
+                ),
+            )
         } catch (e: PocketBaseException) {
-            // Only a rejected login means a wrong password; offline or rate-limited is said as such.
             when {
-                e.status == 400 || e.status == 401 -> error("Current password is incorrect")
+                e.status == 400 && "oldPassword" in e.fieldErrors -> error("Current password is incorrect")
                 e.status == 429 -> error("Too many attempts. Please wait a moment and try again")
                 else -> throw e
             }
         }
-        // PocketBase requires oldPassword whenever a user changes their own password.
-        pb.collection("users").update(
-            session.userId,
-            JsonObject(
-                mapOf(
-                    "oldPassword" to JsonPrimitive(currentPassword),
-                    "password" to JsonPrimitive(newPassword),
-                    "passwordConfirm" to JsonPrimitive(newPassword),
-                ),
-            ),
-        )
+        // The change rotates the token key, which ends this session: sign in again with the new password.
         try {
-            pb.authWithPassword(email, newPassword)
+            reauthenticate(email, newPassword)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
+            _loginNotice.value = "Password updated. Sign in again with your new password."
             clear(keepQueue = true)
             error("Password updated, but your session ended. Please sign in again")
+        }
+    }
+
+    /** Signs in, and once more after a short wait when the server rate-limited or was unreachable. */
+    private suspend fun reauthenticate(email: String, password: String) {
+        try {
+            pb.authWithPassword(email, password)
+        } catch (e: PocketBaseException) {
+            if (e.status != 429 && !e.isNetwork) throw e
+            delay(REAUTH_RETRY_DELAY_MS)
+            pb.authWithPassword(email, password)
         }
     }
 
@@ -197,13 +259,8 @@ class AuthRepository(
      * first and warn when it returns false.
      */
     suspend fun signOut() {
-        try {
-            withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } }
-        } catch (e: CancellationException) {
-            if (e !is TimeoutCancellationException) throw e
-        } catch (_: Throwable) {
-            // cleanup is best-effort
-        }
+        // Cleanup is best-effort: a timeout or a listener's own failure still signs out.
+        runSuspendCatching { withTimeout(SIGN_OUT_TIMEOUT_MS) { listeners.value.forEach { it.beforeSignOut() } } }
         clear()
     }
 
@@ -263,6 +320,7 @@ class AuthRepository(
     companion object {
         const val SIGN_OUT_TIMEOUT_MS = 3000L
         const val FLUSH_TIMEOUT_MS = 8000L
+        const val REAUTH_RETRY_DELAY_MS = 3200L
 
         /** Which account the offline queue kept by an involuntary sign-out belongs to. */
         const val KEPT_QUEUE_OWNER_KEY = "vectra.keptQueueOwner"

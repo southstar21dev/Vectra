@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.BitmapFactory
 import java.io.ByteArrayOutputStream
 
-actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? {
+internal actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? {
     val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
     val bmp = if (decoded.width == size && decoded.height == size) decoded else Bitmap.createScaledBitmap(decoded, size, size, true)
     val px = IntArray(size * size)
@@ -14,11 +14,11 @@ actual fun decodeImage(bytes: ByteArray, size: Int): ArgbImage? {
     return ArgbImage(size, size, px)
 }
 
-actual fun encodePng(image: ArgbImage): ByteArray? {
+internal actual fun encodePng(image: ArgbImage): ByteArray? {
     val bmp = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
     val out = ByteArrayOutputStream()
     return if (bmp.compress(Bitmap.CompressFormat.PNG, 100, out)) out.toByteArray() else null
 }
 
-actual fun ArgbImage.toImageBitmap(): ImageBitmap =
+internal actual fun ArgbImage.toImageBitmap(): ImageBitmap =
     Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()

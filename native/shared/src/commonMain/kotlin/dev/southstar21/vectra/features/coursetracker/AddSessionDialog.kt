@@ -17,24 +17,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
-import dev.southstar21.vectra.core.designsystem.components.BarLeading
 import dev.southstar21.vectra.core.designsystem.components.BottomBar
 import dev.southstar21.vectra.core.designsystem.components.DateField
 import dev.southstar21.vectra.core.designsystem.components.ScrollBody
 import dev.southstar21.vectra.core.designsystem.components.SectionTitle
+import dev.southstar21.vectra.core.designsystem.components.SheetHeader
 import dev.southstar21.vectra.core.designsystem.components.SurfaceGutter
-import dev.southstar21.vectra.core.designsystem.components.TopBar
 import dev.southstar21.vectra.core.designsystem.components.TimeField
 import dev.southstar21.vectra.core.designsystem.components.FormField
 import dev.southstar21.vectra.core.designsystem.components.FormGroup
@@ -53,7 +50,10 @@ import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.designsystem.theme.tappable
-import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import dev.southstar21.vectra.core.designsystem.components.ButtonSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private val SessionTypeOptions = listOf(
     SelectOption(SessionType.Lecture, "Lecture"),
@@ -93,7 +93,6 @@ internal fun AddSessionDialog(open: Boolean, onDismiss: () -> Unit, onAddSession
 @Composable
 private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (AttendanceSession) -> Unit) {
     val c = Vectra.colors
-    var scrolled by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("Extra consultation") }
     var date by remember { mutableStateOf(nowInBudapest().ymd) }
     var start by remember { mutableStateOf("10:00") }
@@ -103,10 +102,9 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
     var notes by remember { mutableStateOf("") }
     val canSubmit = title.trim().isNotEmpty() && date.isNotEmpty()
 
-    TopBar("Add session", BarLeading.Close, onCancel, scrolled = scrolled)
+    SheetHeader("Add session", onCancel)
     ScrollBody(
         scrollState = rememberScrollState(),
-        onScrolledChange = { scrolled = it },
         fadeBottom = false,
         contentPadding = PaddingValues(start = SurfaceGutter, end = SurfaceGutter, top = 12.dp, bottom = 24.dp),
     ) {
@@ -127,12 +125,12 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("When")
             FormGroup(rows = listOf(
-                { FormField("Date") { DateField(date, { date = it }) } },
+                { FormField("Date") { DateField(date, { date = it }, title = "Date") } },
                 {
                     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                        Box(Modifier.weight(1f)) { FormField("Starts") { TimeField(start, { start = it }) } }
+                        Box(Modifier.weight(1f)) { FormField("Starts") { TimeField(start, { start = it }, title = "Starts") } }
                         Box(Modifier.width(1.dp).fillMaxHeight().background(c.borderSubtle))
-                        Box(Modifier.weight(1f)) { FormField("Ends") { TimeField(end, { end = it }) } }
+                        Box(Modifier.weight(1f)) { FormField("Ends") { TimeField(end, { end = it }, title = "Ends") } }
                     }
                 },
             ))
@@ -174,9 +172,10 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
       }
     }
     BottomBar {
-        TrackerButton(
-            onClick = {
-                if (!canSubmit) return@TrackerButton
+        VButton(
+            "Add session",
+            {
+                if (!canSubmit) return@VButton
                 onSubmit(
                     AttendanceSession(
                         id = genId(),
@@ -191,11 +190,10 @@ private fun ColumnScope.AddSessionForm(onCancel: () -> Unit, onSubmit: (Attendan
                     ),
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = Radius.Panel,
-            height = 48.dp,
+            Modifier.fillMaxWidth(),
+            size = ButtonSize.Lg,
             enabled = canSubmit,
-        ) { ink -> VText("Add session", style = vtext(TypeScale.Body, Weight.Bold), color = ink) }
+        )
     }
 }
 

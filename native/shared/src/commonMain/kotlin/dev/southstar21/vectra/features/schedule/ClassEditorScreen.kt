@@ -27,6 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.southstar21.vectra.core.designsystem.components.BarLeading
@@ -47,16 +51,17 @@ import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VSelect
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
+import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.parseHexColor
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatHHMM
 import dev.southstar21.vectra.core.time.parseHourMinute
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.navigation.LocalNavigator
-import dev.southstar21.vectra.navigation.Screen
 import kotlinx.coroutines.launch
 
 /** Monday-first, the way a Budapest timetable reads. */
@@ -84,8 +89,8 @@ private val FrequencyOptions = listOf(
 )
 
 private val ColorOptions = listOf(
-    "#3b82f6", "#a855f7", "#22c55e", "#ef4444", "#f59e0b",
-    "#06b6d4", "#ec4899", "#14b8a6", "#eab308", "#8b5cf6",
+    "#3b82f6" to "Blue", "#a855f7" to "Purple", "#22c55e" to "Green", "#ef4444" to "Red", "#f59e0b" to "Amber",
+    "#06b6d4" to "Cyan", "#ec4899" to "Pink", "#14b8a6" to "Teal", "#eab308" to "Yellow", "#8b5cf6" to "Violet",
 )
 
 /** Colours a new class can be given at random. */
@@ -95,7 +100,7 @@ private val GeneratedColors = listOf(
     "#85C1E9", "#82E0AA", "#F8C471", "#D98880", "#AED6F1",
 )
 
-fun generateEventColor(): String = GeneratedColors.random()
+internal fun generateEventColor(): String = GeneratedColors.random()
 
 /** A class's `HH:mm` times are real clock times and it ends later the same day (classes never cross midnight). */
 internal fun classTimesValid(start: String, end: String): Boolean {
@@ -241,8 +246,8 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                         { FormField("Day") { PillRadio(form.dayOfWeek, DayOptions, { form.dayOfWeek = it }, columns = 7) } },
                         {
                             TwoColumns(
-                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }, minuteStep = 5) } },
-                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }, minuteStep = 5) } },
+                                { FormField("Starts") { TimeField(form.startTime, { form.startTime = it }, title = "Starts", minuteStep = 5) } },
+                                { FormField("Ends") { TimeField(form.endTime, { form.endTime = it }, title = "Ends", minuteStep = 5) } },
                             )
                         },
                         { FormField("Repeats") { PillRadio(form.frequency, FrequencyOptions, { form.frequency = it }, columns = 3) } },
@@ -265,6 +270,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                                     listOf(SelectOption("", "All semesters")) + availableSemesters.map { SelectOption(it, it) },
                                     { form.semester = it },
                                     Modifier.fillMaxWidth().height(44.dp),
+                                    title = "Semester",
                                 )
                             }
                         }
@@ -279,7 +285,7 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ColorOptions.forEach { hex ->
+                            ColorOptions.forEach { (hex, colourName) ->
                                 val active = form.color == hex
                                 Box(
                                     Modifier
@@ -293,10 +299,11 @@ private fun ClassEditorContent(repo: ScheduleRepository, tracker: ScheduleCourse
                                                 .border(2.dp, c.surfaceSecondary, CircleShape)
                                             else Modifier,
                                         )
-                                        .background(parseOpaqueHexColor(hex), CircleShape)
-                                        .tappable(CircleShape, role = null, onClickLabel = "Colour $hex", highlight = false, haptic = { if (!active) tick() }) {
+                                        .background(parseHexColor(hex, opaque = true) ?: Palette.Sky400, CircleShape)
+                                        .tappable(CircleShape, role = Role.RadioButton, onClickLabel = "Colour $colourName", highlight = false, haptic = { if (!active) tick() }) {
                                             form.color = hex
-                                        },
+                                        }
+                                        .semantics { contentDescription = colourName; selected = active },
                                 )
                             }
                         }

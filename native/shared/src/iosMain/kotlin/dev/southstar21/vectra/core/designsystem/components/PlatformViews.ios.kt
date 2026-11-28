@@ -1,5 +1,5 @@
 package dev.southstar21.vectra.core.designsystem.components
 
-actual val nativeViewsUnderCanvas: Boolean = true
+internal actual val nativeViewsUnderCanvas: Boolean = true
 
-actual val trackpadScrollStopsDead: Boolean = true
+internal actual val trackpadScrollStopsDead: Boolean = true

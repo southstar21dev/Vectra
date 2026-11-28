@@ -1,5 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
+import dev.southstar21.vectra.features.transit.data.FutarRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -32,5 +33,18 @@ class LineSearchTest {
     @Test fun typeAndQueryCombine() {
         assertEquals(emptyList(), ids("szentendre", "BUS"))
         assertEquals(listOf("h5"), ids("szentendre", "RAIL"))
+    }
+
+    @Test fun exactLineNumberLeadsTheResults() {
+        val routes = searchableRoutes(
+            listOf(
+                route("t1", "17", "Tram 17", "TRAM"),
+                route("tb", "70", "Trolley 70", "TROLLEYBUS"),
+                route("x", "99", "Via Rákóczi 7", "BUS"),
+                route("b7", "7", "Bus 7", "BUS"),
+                route("b27", "27", "Bus 27", "BUS"),
+            ),
+        )
+        assertEquals(listOf("b7", "tb", "t1", "b27", "x"), filterRoutes(routes, "7", "ALL").map { it.id })
     }
 }

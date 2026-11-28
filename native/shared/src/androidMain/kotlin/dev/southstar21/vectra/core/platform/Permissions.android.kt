@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 @Composable
-actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequester {
+internal actual fun rememberPermissionRequester(kind: PermissionKind): PermissionRequester {
     // Remembered: the screen recomposes while the system dialog is up, and a plain local would
     // leave the result callback reading a fresh, empty one.
     val pending = remember { PendingResult() }

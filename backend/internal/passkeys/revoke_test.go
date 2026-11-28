@@ -33,7 +33,7 @@ func TestRegisterStartRequiresCurrentPassword(t *testing.T) {
 	user := newTestUser(t, app, "reauth-reg@test.local", "")
 	for _, body := range []string{"", `{}`, `{"currentPassword":"wrong"}`} {
 		e, _ := requestEvent(t, app, user, http.MethodPost, "/api/vectra/passkeys/register/start", body, nil)
-		apiErr, ok := RegistrationStartHandler(e).(*router.ApiError)
+		apiErr, ok := registrationStartRoomy(e).(*router.ApiError)
 		require.True(t, ok, "body %q", body)
 		require.Equal(t, http.StatusBadRequest, apiErr.Status, "body %q", body)
 	}
@@ -79,7 +79,7 @@ func TestPasswordResetRevokesPreHijackPasskey(t *testing.T) {
 
 	require.Zero(t, passkeyCount(t, app, attackerAccount.Id), "the reset must revoke every passkey")
 	e, w2 := requestEvent(t, app, nil, http.MethodPost, "/api/vectra/passkeys/login/start", "", nil)
-	require.NoError(t, LoginStartHandler(e))
+	require.NoError(t, loginStartRoomy(e))
 	login = decodeStart(t, w2.Body.Bytes())
 	require.Error(t, loginVerify(t, app, login.ChallengeID,
 		attackerKey.assertionCredential(t, login.Challenge, webAuthnID(attackerAccount))),

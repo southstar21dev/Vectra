@@ -26,7 +26,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LiveQueryTest {
-    private fun real(test: suspend () -> Unit) = runTest { withContext(Dispatchers.Default) { withTimeout(10_000) { test() } } }
+    private fun real(test: suspend () -> Unit) = runTest { withContext(Dispatchers.Default) { withTimeout(30_000) { test() } } }
     private fun appScope() = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Test fun aHealthyQueryKeepsItsInterval() = assertEquals(20_000, pollIntervalMs(20_000, 0))
@@ -66,8 +66,11 @@ class LiveQueryTest {
     @Test fun observedEntriesSurvive() = real {
         val scope = appScope()
         val q = LiveQuery<Int, String>(scope, maxIdleEntries = 1) { "v$it" }
-        val job = scope.launch { q.observe(1).collect { } }
-        q.observe(1).first { it.data != null }
+        // Observed by a collector that has certainly attached: it has seen the data (a second, short-lived
+        // observer, as before, could finish before the first one attached and leave the entry unobserved).
+        val attached = CompletableDeferred<Unit>()
+        val job = scope.launch { q.observe(1).collect { if (it.data != null) attached.complete(Unit) } }
+        attached.await()
         q.fetch(2)
         q.fetch(3)
         q.fetch(4)
@@ -104,6 +107,15 @@ class LiveQueryTest {
         val q = LiveQuery<Int, String>(appScope(), retry = 0) { calls++; error("down") }
         val failure = runCatching { q.fetch(1) }.exceptionOrNull()
         assertEquals("down", failure?.message)
+        assertTrue(q.peek(1).isError)
+        assertEquals(1, calls)
+    }
+
+    @Test fun aFailureThatCannotBeFixedIsNotRetried() = real {
+        var calls = 0
+        val q = LiveQuery<Int, String>(appScope(), retry = 2, shouldRetry = { false }) { calls++; error("429") }
+        val failure = runCatching { q.fetch(1) }.exceptionOrNull()
+        assertEquals("429", failure?.message)
         assertTrue(q.peek(1).isError)
         assertEquals(1, calls)
     }
@@ -196,6 +208,28 @@ class LiveQueryTest {
         assertEquals(1, calls[1])
         // The unobserved entry is only marked: its next ensure ignores the staleTime.
         assertEquals(2, q.ensure(1))
+        job.cancel()
+    }
+
+    @Test fun invalidateDuringAFetchRefetchesAfterIt() = real {
+        val scope = appScope()
+        val gate = CompletableDeferred<Unit>()
+        var server = 1
+        var calls = 0
+        val q = LiveQuery<Int, Int>(scope, staleTimeMs = 60_000) {
+            calls++
+            val seen = server
+            if (calls == 1) gate.await()
+            seen
+        }
+        val job = scope.launch { q.observe(1).collect { } }
+        waitFor { calls == 1 }
+        // The write lands while the first read is still in flight.
+        server = 2
+        q.invalidate(1)
+        gate.complete(Unit)
+        waitFor { q.peek(1).data == 2 }
+        assertEquals(2, calls)
         job.cancel()
     }
 

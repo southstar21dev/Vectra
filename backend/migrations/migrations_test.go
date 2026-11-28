@@ -1,6 +1,7 @@
 package migrations_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -9,6 +10,8 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/mails"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
+
+	"vectra/pb/internal/schema"
 )
 
 func TestUsersCollection(t *testing.T) {
@@ -80,13 +83,17 @@ func TestDataCollections(t *testing.T) {
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	for _, name := range []string{"schedule_events", "neptun_schedule_events", "schedule_items",
-		"transit_trackers", "course_tracker_data", "trip_plans", "push_subscriptions"} {
-		c, err := app.FindCollectionByNameOrId(name)
-		require.NoError(t, err, name)
-		require.Equal(t, "user = @request.auth.id", *c.ListRule, name)
-		require.NotNil(t, c.Fields.GetByName("user"), name)
+	owned, err := schema.OwnerCollections(app)
+	require.NoError(t, err)
+	checked := 0
+	for _, c := range owned {
+		if strings.HasPrefix(c.Name, "passkey") {
+			continue // server-managed, with their own rules
+		}
+		require.Equal(t, "user = @request.auth.id", *c.ListRule, c.Name)
+		checked++
 	}
+	require.Equal(t, 7, checked, "schedule_events, neptun_schedule_events, schedule_items, transit_trackers, course_tracker_data, trip_plans, push_subscriptions")
 
 	tt, err := app.FindCollectionByNameOrId("transit_trackers")
 	require.NoError(t, err)
@@ -286,7 +293,6 @@ func TestBlobFieldMax(t *testing.T) {
 
 	for _, tc := range []struct{ collection, field string }{
 		{"course_tracker_data", "data"},
-		{"schedule_items", "payload"},
 	} {
 		col, err := app.FindCollectionByNameOrId(tc.collection)
 		require.NoError(t, err)
@@ -295,6 +301,63 @@ func TestBlobFieldMax(t *testing.T) {
 		require.GreaterOrEqual(t, f.Max, 1_000_000,
 			"%s.%s Max must be raised above the 5000 default", tc.collection, tc.field)
 	}
+}
+
+// TestRecordSizeLimits: the blob fields refuse a create one character over
+// their limit and accept one exactly at it, and a row that predates the limit
+// (inserted past the validator) stays readable and deletable.
+func TestRecordSizeLimits(t *testing.T) {
+	app, err := tests.NewTestApp()
+	require.NoError(t, err)
+	defer app.Cleanup()
+
+	users, err := app.FindCollectionByNameOrId("users")
+	require.NoError(t, err)
+	u := core.NewRecord(users)
+	u.SetEmail("size-limits@example.com")
+	u.SetPassword("password123")
+	require.NoError(t, app.Save(u))
+
+	// A JSON string of n bytes in total, quotes included.
+	jsonOf := func(n int) json.RawMessage { return json.RawMessage(`"` + strings.Repeat("a", n-2) + `"`) }
+
+	cases := []struct {
+		collection, field string
+		limit             int
+		value             func(n int) any
+		extra             map[string]any
+	}{
+		{"schedule_items", "payload", 64 * 1024, func(n int) any { return strings.Repeat("a", n) }, map[string]any{"client_id": "c1"}},
+		{"transit_trackers", "stops", 16 * 1024, func(n int) any { return jsonOf(n) }, map[string]any{"dedupe_key": "d1"}},
+		{"trip_plans", "legs", 256 * 1024, func(n int) any { return jsonOf(n) }, nil},
+		{"course_tracker_data", "data", 1_000_000, func(n int) any { return strings.Repeat("a", n) }, nil},
+	}
+	for _, tc := range cases {
+		col, err := app.FindCollectionByNameOrId(tc.collection)
+		require.NoError(t, err)
+		create := func(n int) error {
+			r := core.NewRecord(col)
+			r.Set("user", u.Id)
+			for k, v := range tc.extra {
+				r.Set(k, v)
+			}
+			r.Set(tc.field, tc.value(n))
+			return app.Save(r)
+		}
+		require.NoErrorf(t, create(tc.limit), "%s.%s at its limit must save", tc.collection, tc.field)
+		require.Errorf(t, create(tc.limit+1), "%s.%s over its limit must be refused", tc.collection, tc.field)
+	}
+
+	// An existing row over the new limit is untouched by the limit.
+	si, err := app.FindCollectionByNameOrId("schedule_items")
+	require.NoError(t, err)
+	insertRaw(t, app, "schedule_items", dbx.Params{
+		"id": "oldbigrow000001", "user": u.Id, "client_id": "old", "payload": strings.Repeat("a", 200_000),
+	})
+	old, err := app.FindRecordById(si.Id, "oldbigrow000001")
+	require.NoError(t, err)
+	require.Len(t, old.GetString("payload"), 200_000)
+	require.NoError(t, app.Delete(old))
 }
 
 // TestRemoveFcmPushSubscriptionsMigrationApplies proves the FCM purge

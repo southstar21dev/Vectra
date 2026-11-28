@@ -1,9 +1,9 @@
 package dev.southstar21.vectra.features.update
 
 /** Where this install gets its updates: the update screen's button. */
-data class UpdateTarget(val label: String, val url: String)
+internal data class UpdateTarget(val label: String, val url: String)
 
-expect fun updateTarget(): UpdateTarget
+internal expect fun updateTarget(): UpdateTarget
 
 internal const val GitHubLatestRelease = "https://github.com/southstar21dev/Vectra/releases/latest"
 

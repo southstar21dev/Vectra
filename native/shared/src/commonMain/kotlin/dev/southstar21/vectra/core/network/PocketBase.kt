@@ -25,7 +25,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.concurrent.Volatile
 
-val VectraJson = Json {
+internal val VectraJson = Json {
     ignoreUnknownKeys = true
     // An explicit null (or an unknown enum value) in a field with a default takes the default, so one
     // odd entry in a large feed doesn't fail the whole response.
@@ -39,7 +39,7 @@ val VectraJson = Json {
  * A failed PocketBase call (ClientResponseError). `status == 0` means the
  * request never got an HTTP answer (offline, DNS, timeout).
  */
-class PocketBaseException(
+internal class PocketBaseException(
     val status: Int,
     override val message: String,
     val data: JsonObject = JsonObject(emptyMap()),
@@ -51,6 +51,12 @@ class PocketBaseException(
             ((v as? JsonObject)?.get("message") as? JsonPrimitive)?.contentOrNull?.let { field to it }
         }?.toMap().orEmpty()
 
+    /** PocketBase field-level validation error codes: field to code (such as `validation_not_unique`). */
+    val fieldCodes: Map<String, String>
+        get() = (data["data"] as? JsonObject)?.mapNotNull { (field, v) ->
+            ((v as? JsonObject)?.get("code") as? JsonPrimitive)?.contentOrNull?.let { field to it }
+        }?.toMap().orEmpty()
+
     val isNetwork get() = status == 0
     val isAuthRejection get() = status == 401 || status == 403
 
@@ -59,17 +65,17 @@ class PocketBaseException(
 }
 
 /** 426 Upgrade Required: the backend's only use of it is refusing an outdated app build. */
-const val UpdateRequiredStatus = 426
+internal const val UpdateRequiredStatus = 426
 
 /** One page of a list query. */
-data class ListResult(val page: Int, val perPage: Int, val totalItems: Int, val items: List<JsonObject>)
+internal data class ListResult(val page: Int, val perPage: Int, val totalItems: Int, val items: List<JsonObject>)
 
 /** A last resort only: well above the 40 s Futár and 30 s ICS proxy budgets, and a slow catalog download. */
 private const val RequestTimeoutMs = 90_000L
 private const val ConnectTimeoutMs = 15_000L
 private const val SocketTimeoutMs = 60_000L
 
-fun createHttpClient(engine: HttpClient = HttpClient()): HttpClient = engine.config {
+internal fun createHttpClient(engine: HttpClient = HttpClient()): HttpClient = engine.config {
     install(HttpTimeout) {
         requestTimeoutMillis = RequestTimeoutMs
         connectTimeoutMillis = ConnectTimeoutMs
@@ -87,7 +93,7 @@ fun createHttpClient(engine: HttpClient = HttpClient()): HttpClient = engine.con
  * request, so the server can refuse an outdated build. They are set here, not on the shared
  * [HttpClient], so map, transit and weather providers never see them.
  */
-class PocketBaseClient(
+internal class PocketBaseClient(
     private val http: HttpClient,
     val baseUrl: String,
     val auth: AuthStore,
@@ -184,7 +190,7 @@ class PocketBaseClient(
     }
 }
 
-class RecordService(private val pb: PocketBaseClient, private val name: String) {
+internal class RecordService(private val pb: PocketBaseClient, private val name: String) {
     private val path = "/api/collections/$name/records"
 
     suspend fun getList(page: Int = 1, perPage: Int = 30, filter: String? = null, sort: String? = null, skipTotal: Boolean = true): ListResult {
@@ -234,11 +240,11 @@ class RecordService(private val pb: PocketBaseClient, private val name: String) 
 }
 
 /** PocketBase filter literal escaping (pb.filter's {:param} binding). */
-fun pbString(value: String): String = "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+internal fun pbString(value: String): String = "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
-fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
-fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()?.toInt()
-fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()
-fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull()
-fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
-fun JsonObject.array(key: String): JsonArray? = this[key] as? JsonArray
+internal fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+internal fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()?.toInt()
+internal fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()
+internal fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull()
+internal fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
+internal fun JsonObject.array(key: String): JsonArray? = this[key] as? JsonArray

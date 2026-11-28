@@ -11,7 +11,7 @@ import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
-import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import dev.southstar21.vectra.core.network.CryptoClient
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -36,7 +37,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * device, so reminders fire offline and with the app closed.
  * [prefs] are kept on the device and in the profile by [ReminderPrefsStore].
  */
-class ReminderScheduler(
+class ReminderScheduler internal constructor(
     kv: KeyValueStore,
     private val schedule: ScheduleRepository,
     private val courseTracker: CourseTrackerRepository,
@@ -45,9 +46,10 @@ class ReminderScheduler(
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
     private val updateGate: UpdateGate,
+    crypto: CryptoClient,
 ) : SessionListener {
-    private val store = ReminderPrefsStore(kv, auth, scope)
-    val prefs: StateFlow<ReminderPrefs> = store.prefs
+    private val store = ReminderPrefsStore(kv, auth, scope, crypto)
+    internal val prefs: StateFlow<ReminderPrefs> = store.prefs
 
     private val loaded = CompletableDeferred<Unit>()
     private val replanRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -57,6 +59,9 @@ class ReminderScheduler(
 
     /** What is scheduled right now (the test reminder rides along with it). */
     private var planned: List<ScheduledNotification> = emptyList()
+
+    /** Whether this process has handed a plan to the system yet; the first one is always applied. */
+    private var appliedOnce = false
 
     init {
         scope.launch { store.load { loaded.complete(Unit) } }
@@ -85,7 +90,7 @@ class ReminderScheduler(
         replanRequests.tryEmit(Unit)
     }
 
-    fun update(transform: (ReminderPrefs) -> ReminderPrefs) = store.update(transform)
+    internal fun update(transform: (ReminderPrefs) -> ReminderPrefs) = store.update(transform)
 
     /**
      * For a cold start with no screen (boot, background refresh): waits for the cached schedule,
@@ -102,16 +107,22 @@ class ReminderScheduler(
     suspend fun reschedule() = lock.withLock {
         loaded.await()
         val prefs = prefs.value
+        // A process started by an alarm or a widget has not read the stored session yet. The first plan
+        // of a process is always applied, so "no session" must mean signed out, not "not read yet", or
+        // that empty first plan would cancel every pending reminder.
+        auth.restore()
         // A cold start (boot, background refresh) hasn't read a stored lock yet.
         updateGate.loadStored()
         // Locked for an update: nothing fires until the new version replans. Forced, because alarms
         // set by an earlier process are still pending while this one's plan starts empty.
         if (updateGate.state.value != null) {
             apply(emptyList(), force = true)
+            notifier.scheduleReplan(null)
             return@withLock
         }
         if (auth.session.value == null || !prefs.anyOn) {
             apply(emptyList())
+            notifier.scheduleReplan(null)
             return@withLock
         }
         // Before the cached schedule is in memory an empty list means "not read yet", not "no classes".
@@ -127,6 +138,8 @@ class ReminderScheduler(
         var plan = planReminders(sessions, prefs, now).take(MaxScheduled)
         if (!notifier.resolvesAtFireTime) plan = departures.bake(plan, now)
         apply(plan)
+        // Nothing else restarts the process in a quiet week, so ask the system to replan daily.
+        notifier.scheduleReplan(now + ReplanIntervalMs)
     }
 
     /** A sample reminder in a few seconds, so the user can see one without waiting for class. */
@@ -154,7 +167,7 @@ class ReminderScheduler(
      * reminder firing now. [LiveDepartures.firstMs] is the latest of the lines' next departures, so
      * the times stay fresh while any of them can still be caught.
      */
-    suspend fun liveDepartures(queries: List<DepartureQuery>, budgetMs: Long = LiveDeparturesBudgetMs): LiveDepartures {
+    internal suspend fun liveDepartures(queries: List<DepartureQuery>, budgetMs: Long = LiveDeparturesBudgetMs): LiveDepartures {
         // Bounded, so a stalled network still leaves the caller time to post the reminder itself:
         // past the budget every line falls back to "tap for departures".
         val times = withTimeoutOrNull(budgetMs) {
@@ -170,9 +183,11 @@ class ReminderScheduler(
     /**
      * [force] hands [plan] to the system even when it matches [planned]: that starts empty on every
      * launch while alarms set by an earlier process are still pending, so clearing must not be skipped.
+     * The first plan of a process is forced for the same reason.
      */
     private fun apply(plan: List<ScheduledNotification>, force: Boolean = false) {
-        if (!force && plan == planned) return
+        if (!force && appliedOnce && plan == planned) return
+        appliedOnce = true
         planned = plan
         notifier.replaceScheduled(plan)
     }
@@ -184,15 +199,23 @@ class ReminderScheduler(
         return auth.session.value != null && updateGate.state.value == null
     }
 
-    override suspend fun beforeSignOut() = lock.withLock { apply(emptyList(), force = true) }
+    override suspend fun beforeSignOut() = lock.withLock {
+        apply(emptyList(), force = true)
+        notifier.scheduleReplan(null)
+    }
 
     override suspend fun onSessionCleared() {
-        lock.withLock { apply(emptyList(), force = true) }
+        lock.withLock {
+            apply(emptyList(), force = true)
+            notifier.scheduleReplan(null)
+        }
         store.reset()
     }
 
     companion object {
         const val HorizonDays = 7
+        /** How often the system wakes the app to roll the horizon forward when it is never opened. */
+        const val ReplanIntervalMs = 24 * 60 * 60 * 1000L
         /** How long a firing reminder waits for live departures; the Android receiver has about 10 s in all. */
         const val LiveDeparturesBudgetMs = 5_000L
         /** iOS keeps at most 64 pending notifications per app. */

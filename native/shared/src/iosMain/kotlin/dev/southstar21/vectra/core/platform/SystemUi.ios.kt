@@ -22,13 +22,17 @@ actual fun rememberSystemReduceMotion(): Boolean {
 }
 
 /**
- * The window takes the app's resolved theme, so the status bar (default style) and UIKit
+ * The window takes the app's resolved theme (or follows the OS in System mode), so the status bar (default style) and UIKit
  * chrome such as the keyboard and system sheets match it rather than the system setting.
  */
 @Composable
-actual fun SystemBarsAppearance(darkTheme: Boolean) {
+internal actual fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean) {
     SideEffect {
-        keyWindow()?.overrideUserInterfaceStyle =
-            if (darkTheme) UIUserInterfaceStyle.UIUserInterfaceStyleDark else UIUserInterfaceStyle.UIUserInterfaceStyleLight
+        // Pinning the window in System mode would hide OS appearance changes from isSystemInDarkTheme().
+        keyWindow()?.overrideUserInterfaceStyle = when {
+            followSystem -> UIUserInterfaceStyle.UIUserInterfaceStyleUnspecified
+            darkTheme -> UIUserInterfaceStyle.UIUserInterfaceStyleDark
+            else -> UIUserInterfaceStyle.UIUserInterfaceStyleLight
+        }
     }
 }

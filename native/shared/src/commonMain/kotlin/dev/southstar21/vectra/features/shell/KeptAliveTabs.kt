@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -44,7 +45,7 @@ import dev.southstar21.vectra.navigation.Route
  * Switching is a short cross-fade.
  */
 @Composable
-fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, page: @Composable (Route) -> Unit) {
+internal fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, page: @Composable (Route) -> Unit) {
     val visited = remember { mutableStateListOf<Route>() }
     if (current !in visited) visited += current
     // Once the app has settled, compose the remaining tabs one per frame while they are
@@ -102,7 +103,9 @@ fun KeptAliveTabs(current: Route, routes: List<Route>, fullyCovered: Boolean, pa
                             layout(p.width, p.height) { p.place(0, 0) }
                         }
                     }
-                    .graphicsLayer { this.alpha = alpha.value },
+                    .graphicsLayer { this.alpha = alpha.value }
+                    // Under a pushed screen the tab is still composed but must not be read out.
+                    .then(if (fullyCovered) Modifier.clearAndSetSemantics { } else Modifier),
             ) {
                 CompositionLocalProvider(
                     LocalPageActive provides (active && shellVisible),

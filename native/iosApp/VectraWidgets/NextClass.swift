@@ -43,7 +43,7 @@ extension Snapshot {
             s("Statistics Lab", "QB 112", .lab, 250, 340, "Nagy Gábor", "L2"),
             s("Problem set 3", "", .task, 600, 601),
             s("Algorithms", "B 012", .lecture, 1300, 1390, "Dr. Varga Béla", day: tomorrow),
-        ], updateRequired: nil)
+        ], updateRequired: nil, aheadDays: nil, hour12: nil)
     }
 }
 
@@ -94,7 +94,7 @@ struct SmallNextClass: View {
             let left = ringLabel(s.end.timeIntervalSince(now), hoursWord: "LEFT")
             SmallLayout(head: RingHead(fraction: s.progress(at: now), kind: s.kind, value: left.value, unit: left.unit) {
                 TypeWord(kind: s.kind)
-                HStack(spacing: 4) { Quiet(text: "till"); Mono(text: Budapest.clock(s.end), size: 11) }
+                SideTime(lead: "till", time: s.clock(s.end))
                 RoomLine(room: s.location)
             }, title: s.title, sub: s.teacher.isEmpty ? s.group : s.teacher, rows: afterRows(s), fallback: "Nothing else coming up")
         case .upcoming(let s):
@@ -102,14 +102,14 @@ struct SmallNextClass: View {
             let label = ringLabel(wait, hoursWord: "TO GO")
             SmallLayout(head: RingHead(fraction: max(0, 1 - wait / 3600), kind: s.kind, value: label.value, unit: label.unit) {
                 TypeWord(kind: s.kind)
-                Mono(text: "\(Budapest.clock(s.start))–\(Budapest.clock(s.end))", size: 11)
+                SideTime(lead: nil, time: s.clock(s.start), tail: "–" + s.clock(s.end))
                 RoomLine(room: s.place)
             }, title: s.title, sub: s.teacher, rows: afterRows(s), fallback: "Nothing else coming up")
         case .examSoon(let exam):
             let label = ringLabel(exam.start.timeIntervalSince(now), hoursWord: "TO GO")
-            SmallLayout(head: RingHead(fraction: max(0, 1 - exam.start.timeIntervalSince(now) / (7 * 86_400)), kind: .exam, value: label.value, unit: label.unit) {
+            SmallLayout(head: RingHead(fraction: max(0, 1 - exam.start.timeIntervalSince(now) / Snapshot.examHeadsUp), kind: .exam, value: label.value, unit: label.unit) {
                 TypeWord(kind: .exam)
-                Mono(text: "\(Budapest.weekday(exam.day)) \(Budapest.clock(exam.start))", size: 11)
+                SideTime(lead: Budapest.weekday(exam.day), time: exam.clock(exam.start), mono: true)
                 RoomLine(room: exam.location)
             }, title: exam.title, sub: "Lasts \(durationLabel(exam.end.timeIntervalSince(exam.start)))", rows: snapshot.exams(after: exam, limit: 3).map { MiniItem(time: Budapest.dayMonth($0.day), title: $0.title, kind: .exam) }, fallback: "No more exams soon")
         case .dayDone(let hadToday, let next):
@@ -123,7 +123,7 @@ extension SmallNextClass {
     func afterRows(_ s: Session) -> [MiniItem] {
         let sameDay = snapshot.later(on: s.day, now: now, after: s).filter { $0 != s }.map(MiniItem.init)
         let later = (snapshot?.sessions ?? []).filter { $0.day > s.day }.prefix(4).map {
-            MiniItem(time: "\(Budapest.weekday($0.day)) \(Budapest.clock($0.when))", title: $0.title, kind: $0.kind)
+            MiniItem(time: "\(Budapest.weekday($0.day)) \($0.clock($0.when))", title: $0.title, kind: $0.kind)
         }
         return Array((sameDay + later).prefix(4))
     }
@@ -140,7 +140,30 @@ struct MiniItem: Hashable {
         self.kind = kind
     }
 
-    init(_ s: Session) { self.init(time: Budapest.clock(s.when), title: s.title, kind: s.kind) }
+    init(_ s: Session) { self.init(time: s.clock(s.when), title: s.title, kind: s.kind) }
+}
+
+/// A time beside the small widgets' ring. It is one line when it fits; in 12-hour mode ("10:45 AM") it
+/// can be wider than the room left, so its parts then stack instead of being cut.
+struct SideTime: View {
+    let lead: String?
+    let time: String
+    var tail: String?
+    /// The lead is a weekday, drawn like the time rather than as a quiet word.
+    var mono = false
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: tail == nil ? 4 : 0) { parts }
+            VStack(alignment: .leading, spacing: 0) { parts }
+        }
+    }
+
+    @ViewBuilder private var parts: some View {
+        if let lead { if mono { Mono(text: lead, size: 11) } else { Quiet(text: lead) } }
+        Mono(text: time, size: 11)
+        if let tail { Mono(text: tail, size: 11) }
+    }
 }
 
 /// The ring on the left, three short lines beside it.
@@ -247,7 +270,7 @@ struct DayDoneSmall: View {
     private func rows(_ list: [Session], _ firstDay: String, _ n: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(list.prefix(n).enumerated()), id: \.offset) { i, s in
-                MiniRow(time: s.day == firstDay ? Budapest.clock(s.when) : "\(Budapest.weekday(s.day)) \(Budapest.clock(s.when))", title: s.title, kind: s.kind, strong: i == 0)
+                MiniRow(time: s.day == firstDay ? s.clock(s.when) : "\(Budapest.weekday(s.day)) \(s.clock(s.when))", title: s.title, kind: s.kind, strong: i == 0)
             }
         }
     }
@@ -272,15 +295,15 @@ struct RectangularAccessory: View {
                 Text(s.detail).font(VFont.inter(12, 600)).foregroundStyle(.secondary).lineLimit(1)
                 Text(s.title).font(VFont.inter(15, 800)).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
                 if s.day == Budapest.day(now) {
-                    (Text(Budapest.clock(s.start) + ", in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700))
+                    (Text(s.clock(s.start) + ", in ") + Text(s.start, style: .relative)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 } else {
-                    Text(Budapest.distance(from: Budapest.day(now), to: s.day) + " " + Budapest.clock(s.start)).font(VFont.mono(12, 700))
+                    Text(Budapest.distance(from: Budapest.day(now), to: s.day) + " " + s.clock(s.start)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 }
             case .dayDone(let hadToday, let next):
                 Text(hadToday ? "Done for today" : "No classes today").font(VFont.inter(12, 600)).foregroundStyle(.secondary)
                 if let next {
                     Text(next.title).font(VFont.inter(15, 800)).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
-                    Text(Budapest.distance(from: Budapest.day(now), to: next.day) + " " + Budapest.clock(next.start)).font(VFont.mono(12, 700))
+                    Text(Budapest.distance(from: Budapest.day(now), to: next.day) + " " + next.clock(next.start)).font(VFont.mono(12, 700)).lineLimit(1).minimumScaleFactor(0.7)
                 }
             case .noData:
                 Text("Vectra").font(VFont.inter(15, 800))
@@ -334,10 +357,10 @@ struct InlineAccessory: View {
 
     var body: some View {
         switch up {
-        case .inClass(let s): Text("Until \(Budapest.clock(s.end)), \(s.location.isEmpty ? s.title : s.location)")
-        case .upcoming(let s): Text("\(Budapest.clock(s.start)) \(s.title)")
-        case .examSoon(let s): Text("Exam \(Budapest.weekday(s.day)) \(Budapest.clock(s.start))")
-        case .dayDone(_, let next): Text(next.map { "\(Budapest.weekday($0.day)) \(Budapest.clock($0.start)) \($0.title)" } ?? "No classes coming up")
+        case .inClass(let s): Text("Until \(s.clock(s.end)), \(s.location.isEmpty ? s.title : s.location)")
+        case .upcoming(let s): Text("\(s.clock(s.start)) \(s.title)")
+        case .examSoon(let s): Text("Exam \(Budapest.weekday(s.day)) \(s.clock(s.start))")
+        case .dayDone(_, let next): Text(next.map { "\(Budapest.weekday($0.day)) \($0.clock($0.start)) \($0.title)" } ?? "No classes coming up")
         case .noData: Text(locked ? "Update Vectra" : "Vectra")
         case .stale: Text("Open Vectra to refresh")
         }

@@ -1,20 +1,21 @@
 package dev.southstar21.vectra.features.reminders
 
 import dev.southstar21.vectra.core.platform.DepartureQuery
+import dev.southstar21.vectra.core.network.OneOrManySerializer
 import dev.southstar21.vectra.features.transit.findCombinedGroup
 import dev.southstar21.vectra.features.transit.formatRouteDisplayName
-import dev.southstar21.vectra.core.network.OneOrManySerializer
 import kotlinx.serialization.Serializable
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Settings saved when each leg held a single line. */
-object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
+internal object CommuteLegList : OneOrManySerializer<CommuteLeg>(CommuteLeg.serializer())
 
 /**
  * The reminder settings. Off until the user turns them on (they need the permission). Kept on the
  * device and in the profile's `preferences.reminders`, so they come back after a reinstall.
  */
 @Serializable
-data class ReminderPrefs(
+internal data class ReminderPrefs(
     /** Before the first class of the day (and the first after a long break): the room, [leadMinutes] ahead. */
     val beforeClass: Boolean = false,
     val leadMinutes: Int = 60,
@@ -47,7 +48,7 @@ data class ReminderPrefs(
  * and at boot without the tracker list. The tracker id only marks which row is selected.
  */
 @Serializable
-data class CommuteLeg(
+internal data class CommuteLeg(
     val trackerId: String,
     val stopId: String,
     val stopName: String,
@@ -74,7 +75,7 @@ data class CommuteLeg(
     val query: DepartureQuery get() = DepartureQuery(stopId, stopName, routeId, headsign?.ifEmpty { null }, lineLabel)
 
     companion object {
-        private val LineTypeLabels = mapOf("TRAM" to "Tram", "BUS" to "Bus", "TROLLEYBUS" to "Trolley", "FERRY" to "Boat")
+        private val LineTypeLabels = mapOf(RouteType.Tram to "Tram", RouteType.Bus to "Bus", RouteType.Trolleybus to "Trolley", RouteType.Ferry to "Boat")
         private val SelfDescribing = Regex("^[MH]\\d+[A-Z]?$")
     }
 }

@@ -64,6 +64,26 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.maps.LatLon
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.route.RoutePreviewMap
+import dev.southstar21.vectra.features.transit.route.RoutePreviewStop
+import dev.southstar21.vectra.features.transit.route.RoutePreviewVehicle
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormRow
+import dev.southstar21.vectra.features.transit.trackers.DirectionSelect
+import dev.southstar21.vectra.features.transit.trackers.LineRow
+import dev.southstar21.vectra.features.transit.trackers.ListStatus
+import dev.southstar21.vectra.features.transit.trackers.MapBottomFade
+import dev.southstar21.vectra.features.transit.trackers.RouteTypeFilters
+import dev.southstar21.vectra.features.transit.trackers.SheetFootnote
+import dev.southstar21.vectra.features.transit.trackers.SheetListSpinner
+import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
+import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
+import dev.southstar21.vectra.features.transit.trackers.StopCountPill
+import dev.southstar21.vectra.features.transit.trackers.TrackedChip
+import dev.southstar21.vectra.features.transit.data.RouteType
 
 /** Let a row run past the sheet gutter on both sides (negative margin, with the gutter added back as padding). */
 internal fun Modifier.bleedHorizontally(gutter: Dp): Modifier = layout { measurable, constraints ->
@@ -114,21 +134,37 @@ internal fun searchableRoutes(catalog: List<FutarRoute>): List<SearchableRoute> 
     sortRoutes(catalog.distinctBy { it.id }).map { r ->
         SearchableRoute(
             route = r,
-            typeGroup = if (r.type == "SUBURBAN_RAILWAY") "RAIL" else r.type,
+            typeGroup = if (r.type == RouteType.SuburbanRailway) RouteType.Rail else r.type,
             searchText = listOf(r.shortName, r.description, r.type).map(::normalizeSearchText),
         )
     }
 
+/**
+ * The catalog narrowed to [query] and [typeFilter]. A typed query ranks the line numbers it
+ * names first (exact, then starting with it, then containing it), then matches on the
+ * description, so "7" leads with bus 7 instead of the trams and trolleys that merely contain a 7
+ * in their route. The display order holds within each rank.
+ */
 internal fun filterRoutes(routes: List<SearchableRoute>, query: String, typeFilter: String): List<FutarRoute> {
     val q = normalizeSearchText(query.trim())
-    return routes
-        .filter { r -> (typeFilter == "ALL" || r.typeGroup == typeFilter) && (q.isEmpty() || r.searchText.any { it.contains(q) }) }
+    val byType = routes.filter { r -> typeFilter == "ALL" || r.typeGroup == typeFilter }
+    if (q.isEmpty()) return byType.map { it.route }
+    return byType.filter { r -> r.searchText.any { it.contains(q) } }
+        .sortedBy { r ->
+            val name = r.searchText[0]
+            when {
+                name == q -> 0
+                name.startsWith(q) -> 1
+                name.contains(q) -> 2
+                else -> 3
+            }
+        }
         .map { it.route }
 }
 
 /** Root of By line: a type filter strip and the catalog as one list. */
 @Composable
-fun ColumnScope.LineBrowser(
+internal fun ColumnScope.LineBrowser(
     routeTypeFilter: String,
     setRouteTypeFilter: (String) -> Unit,
     catalogLoaded: Boolean,
@@ -193,34 +229,16 @@ fun ColumnScope.LineBrowser(
 private fun RouteRow(route: FutarRoute, tracked: Boolean, onClick: () -> Unit) {
     val c = Vectra.colors
     val meta = routeTypeMeta(route.type)
-    ListRow(
-        route.description.ifEmpty { meta.label },
+    // Where it starts as the title, where it goes under it, the vehicle last.
+    val (from, to) = splitTermini(route.description)
+    LineRow(
+        badge = { RouteBadge(formatRouteDisplayName(route.shortName, route.id), route.color, route.textColor, size = RouteBadgeSize.Sm) },
+        title = from.ifEmpty { meta.label },
+        toLine = to,
         onClick = onClick,
         navigates = true,
-        leading = {
-            RouteBadge(
-                formatRouteDisplayName(route.shortName, route.id),
-                route.color,
-                route.textColor,
-                size = RouteBadgeSize.Sm,
-            )
-        },
-        titleContent = {
-            if (route.description.isNotEmpty()) {
-                FormattedRouteTitle(
-                    route.description,
-                    style = vtext(TypeScale.Body, Weight.Semibold),
-                    color = c.textPrimary,
-                    iconSize = 12.dp,
-                )
-            } else {
-                VText(meta.label, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary, maxLines = 1)
-            }
-            Row(
-                Modifier.padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        meta = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 VIcon(meta.icon, size = 12.dp, tint = c.textMuted)
                 VText(meta.label, style = vtext(TypeScale.Caption), color = c.textSecondary, maxLines = 1)
                 if (tracked) TrackedChip()
@@ -241,7 +259,7 @@ private val MapHeight = 208.dp
 
 /** After a line is picked: the route on the map, then its stops to tick. */
 @Composable
-fun ColumnScope.LineStopPicker(
+internal fun ColumnScope.LineStopPicker(
     browseRoute: FutarRoute,
     selectedLineStops: List<TrackerStop>,
     routePolylines: List<List<LatLon>>,
@@ -380,7 +398,7 @@ private fun LineStopRow(
                 Modifier.size(20.dp).background(boxBg, shape).border(1.dp, boxBorder, shape),
                 contentAlignment = Alignment.Center,
             ) { VIcon(RemixIcons.CheckLine, size = 14.dp, tint = checkInk) }
-            VText(stop.name, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 1)
+            VText(stop.name, Modifier.weight(1f), vtext(TypeScale.Body, Weight.Semibold), c.textPrimary, maxLines = 2)
             if (note != null) StatusLabel(note, tone = StatusTone.Amber)
         }
         if (selectedEntry != null && directionOptions != null && directionOptions.options.size > 1) {

@@ -1,9 +1,9 @@
 package dev.southstar21.vectra
 
 import dev.southstar21.vectra.features.coursetracker.CourseHubSheetHost
-import dev.southstar21.vectra.features.transit.LiveTrackerSheetHost
+import dev.southstar21.vectra.features.transit.live.LiveTrackerSheetHost
+import dev.southstar21.vectra.features.transit.nearby.NearbyExplorerHost
 import dev.southstar21.vectra.features.weather.WeatherRadarHost
-import dev.southstar21.vectra.features.transit.NearbyExplorerHost
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -59,6 +59,7 @@ fun VectraApp(graph: AppGraph) {
     // Return to foreground → refresh the session; leaving flushes what is still debounced.
     LifecycleResumeEffect(graph) {
         graph.watchdog.trigger()
+        graph.courseTrackerRepository.retryUnsynced()
         onPauseOrDispose { graph.courseTrackerRepository.flushPendingUpload() }
     }
     LifecycleStartEffect(graph) {

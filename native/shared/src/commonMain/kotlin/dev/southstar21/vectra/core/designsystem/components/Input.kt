@@ -42,7 +42,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 /** Glass text field with an accent focus ring. [height] is a minimum; large text grows it. */
 @Composable
-fun VInput(
+internal fun VInput(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -110,5 +110,5 @@ fun VInput(
 
 /** Divider in the border-subtle colour. */
 @Composable
-fun HairlineDivider(modifier: Modifier = Modifier) =
+internal fun HairlineDivider(modifier: Modifier = Modifier) =
     Box(modifier.fillMaxWidth().height(1.dp).background(Vectra.colors.borderSubtle))

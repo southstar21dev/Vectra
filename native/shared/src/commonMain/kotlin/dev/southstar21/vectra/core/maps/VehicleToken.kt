@@ -34,7 +34,7 @@ private const val NubHalfBase = 0.46f
  * (0 up, 90 right); null draws no point. [gap] cuts it out of whatever it sits on (the line, a
  * card) by [gapWidth] px.
  */
-fun DrawScope.drawVehicleToken(
+internal fun DrawScope.drawVehicleToken(
     center: Offset,
     radius: Float,
     fill: Color,
@@ -72,7 +72,7 @@ private fun DrawScope.drawHeadingPoint(center: Offset, radius: Float, headingDeg
 }
 
 /** A vehicle seen from the front (body, windscreen, two wheels), [size] px tall, in [ink]. */
-fun DrawScope.drawVehicleGlyph(center: Offset, size: Float, ink: Color, window: Color) {
+internal fun DrawScope.drawVehicleGlyph(center: Offset, size: Float, ink: Color, window: Color) {
     val u = size / 2f
     fun at(x: Float, y: Float) = Offset(center.x + x * u, center.y + y * u)
     val bodyTop = at(-0.5f, -0.56f)
@@ -84,7 +84,7 @@ fun DrawScope.drawVehicleGlyph(center: Offset, size: Float, ink: Color, window: 
 
 /** The token as a Compose element (place it with `Modifier.placedAt` on a map). */
 @Composable
-fun VehicleToken(
+internal fun VehicleToken(
     fill: Color,
     ink: Color,
     headingDeg: () -> Float?,

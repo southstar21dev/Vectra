@@ -10,6 +10,25 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import dev.southstar21.vectra.core.designsystem.components.EmptyAction
+import dev.southstar21.vectra.core.designsystem.components.EmptyState
+import dev.southstar21.vectra.core.designsystem.theme.TypeScale
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.nearby.NearbyMapStrip
+import dev.southstar21.vectra.features.transit.nearby.NearbyMapStripHeight
+import dev.southstar21.vectra.features.transit.nearby.PeekStop
+import dev.southstar21.vectra.features.transit.nearby.rememberNearbyStops
+import dev.southstar21.vectra.features.transit.nearby.rememberPeekChips
+import dev.southstar21.vectra.features.transit.strip.LineStrip
+import dev.southstar21.vectra.features.transit.strip.LineStripCard
+import dev.southstar21.vectra.features.transit.strip.StripModel
+import dev.southstar21.vectra.features.transit.strip.StripVehicle
+import dev.southstar21.vectra.features.transit.strip.stripCardSurface
+import dev.southstar21.vectra.features.transit.strip.stripColors
+import dev.southstar21.vectra.features.transit.trackers.removeTrackerWithUndo
+import dev.southstar21.vectra.features.transit.trackers.trackerErrorMessage
 import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.Stable
@@ -49,7 +68,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,7 +80,6 @@ import dev.southstar21.vectra.core.designsystem.components.OfflineBanner
 import dev.southstar21.vectra.core.designsystem.components.Reveal
 import dev.southstar21.vectra.core.designsystem.components.SheetAction
 import dev.southstar21.vectra.core.designsystem.components.SleepingIcon
-import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
@@ -167,7 +184,7 @@ private fun Modifier.roomBelow(extra: Dp, fraction: () -> Float): Modifier = lay
 
 /** The Transit tab: the map around you, then your trackers as line strips straight on the page. */
 @Composable
-fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore) {
+internal fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: KeyValueStore) {
     val scope = rememberCoroutineScope()
     val c = Vectra.colors
 
@@ -180,7 +197,6 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     val trackers = trackersState.data.orEmpty()
     // First ever fetch still in flight (no offline cache to seed from yet).
     val firstLoad = trackersState.isFetching && !trackersState.isFetched
-    DemoSeedEffect(repo, trackers, trackersState.isFetched && trackersState.data != null)
 
     val navigator = LocalNavigator.current
     var menuTracker by remember { mutableStateOf<TransitTracker?>(null) }
@@ -200,17 +216,17 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     val inactiveTrackers = if (departuresSettled) trackers.filter { hasDepartures[it.id] == false } else emptyList()
     val allInactive = trackers.isNotEmpty() && activeTrackers.isEmpty() && inactiveTrackers.isNotEmpty()
 
-    val isOffline = !rememberOnline(repo.connectivity)
+    val isOffline = !rememberOnline(repo.online)
 
     RegisterNavbarActions(
         NavbarActionConfig(
             icon = RemixIcons.AddLine,
             actions = buildList {
-                if (trackers.isNotEmpty()) add(NavbarAction("reorder", "Manage Trackers", RemixIcons.Equalizer2Line, NavbarActionVariant.Gray) {
+                if (trackers.isNotEmpty()) add(NavbarAction("reorder", "Manage trackers", RemixIcons.Equalizer2Line, NavbarActionVariant.Gray) {
                     navigator.push(Screen.ManageTrackers)
                 })
-                add(NavbarAction("nearby", "Show Nearby", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.nearbyMap = CardLaunch(null) })
-                add(NavbarAction("add-tracker", "Add Tracker", RemixIcons.AddLine, NavbarActionVariant.Primary) { navigator.push(Screen.AddTracker) })
+                add(NavbarAction("nearby", "Nearby map", RemixIcons.MapPinLine, NavbarActionVariant.Emerald) { navigator.nearbyMap = CardLaunch(null) })
+                add(NavbarAction("add-tracker", "Add tracker", RemixIcons.AddLine, NavbarActionVariant.Primary) { navigator.push(Screen.AddTracker) })
             },
         ),
     )
@@ -264,7 +280,7 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
                         }
                         Column {
                             VText("All tracked lines are off-service", style = vtext(15.sp to 20.sp, Weight.Bold), color = c.textPrimary)
-                            VText("Nothing is running right now.", style = vtext(13.sp to 18.sp), color = c.textSecondary)
+                            VText("Nothing is running right now.", style = vtext(TypeScale.Meta13), color = c.textSecondary)
                         }
                     }
                     trackers.forEach { t -> key(t.id) { TrackerCard(t) } }
@@ -308,15 +324,15 @@ fun TransitScreen(repo: TransitRepository, deviceLocation: DeviceLocation, kv: K
     ActionSheet(
         open = menu != null,
         onDismiss = { menuTracker = null },
-        title = menu?.let { "${it.routeShortName}, ${it.stopName}" },
+        title = menu?.let { "${formatRouteDisplayName(it.routeShortName, it.routeId).replace(" / ", "/")} at ${it.stopName}" },
         actions = if (menu == null) emptyList() else listOf(
             SheetAction("Live departures", RemixIcons.TimeLine) { navigator.openLiveTracker(menu.id, menu.stopId) },
             SheetAction("Edit tracker", RemixIcons.PencilLine) { navigator.push(Screen.EditTracker(menu.id)) },
-            SheetAction(if (menu.isFavorite) "Remove from favourites" else "Add to favourites", if (menu.isFavorite) RemixIcons.StarFill else RemixIcons.StarLine) {
-                scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update favourites", it.message) } }
+            SheetAction(if (menu.isFavorite) "Unpin" else "Pin to Dashboard", if (menu.isFavorite) RemixIcons.StarFill else RemixIcons.StarLine) {
+                scope.launch { runSuspendCatching { repo.toggleFavorite(menu.id) }.onFailure { toaster.error("Could not update pinned trackers", it.message) } }
             },
             SheetAction("Remove tracker", RemixIcons.DeleteBinLine, destructive = true) {
-                repo.scope.launch { runSuspendCatching { removeTrackerWithUndo(repo, toaster, menu) }.onFailure { toaster.error("Failed to remove tracker", trackerErrorMessage(it)) } }
+                repo.launchInAppScope { runSuspendCatching { removeTrackerWithUndo(repo, toaster, menu) }.onFailure { toaster.error("Failed to remove tracker", trackerErrorMessage(it)) } }
             },
         ),
     )
@@ -340,21 +356,12 @@ private fun NoTrackersCard(onAdd: () -> Unit) {
     // What a tracker looks like: a greyed line with your stop and one vehicle on the way.
     val sample = remember { StripModel(vehicles = listOf(StripVehicle(1.4f, 1, null))) }
     val colors = stripColors(null, null, rememberDayColors().card, grey = true)
-    Column(
-        Modifier.fillMaxWidth().stripCardSurface().padding(horizontal = 20.dp, vertical = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        LineStrip(sample, colors, Modifier.padding(bottom = 6.dp), labels = false)
-        VText("No trackers yet", style = vtext(17.sp to 22.sp, Weight.Bold), color = c.textPrimary)
-        VText(
-            "Pick a line and a stop, and it shows up here with its vehicles on the way.",
-            style = vtext(13.sp to 18.sp),
-            color = c.textSecondary,
-            align = TextAlign.Center,
-        )
-        VButton("Add a tracker", onClick = onAdd, Modifier.padding(top = 8.dp), icon = RemixIcons.AddLine)
-    }
+    EmptyState(
+        art = { LineStrip(sample, colors, labels = false) },
+        title = "No trackers yet",
+        body = "Pick a line and a stop, and it shows up here with its vehicles on the way.",
+        primary = EmptyAction("Add a tracker", onAdd, RemixIcons.AddLine),
+    )
 }
 
 /**
@@ -403,11 +410,7 @@ private fun InactiveStack(trackers: List<TransitTracker>, open: Boolean, onToggl
                         lines.take(StackBadges).forEach { t ->
                             RouteBadge(formatRouteDisplayName(t.routeShortName, t.routeId), t.routeColor, t.routeTextColor, size = RouteBadgeSize.Xs)
                         }
-                        if (lines.size > StackBadges) {
-                            Box(Modifier.height(28.dp).background(c.surfaceOverlay, CircleShape).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                                VText("+${lines.size - StackBadges}", style = vtext(11.sp to 14.sp, Weight.Bold), color = c.textSecondary)
-                            }
-                        }
+                        if (lines.size > StackBadges) RouteBadge("+${lines.size - StackBadges}", null, null, size = RouteBadgeSize.Xs)
                     }
                 }
                 VIcon(RemixIcons.ArrowDownSLine, Modifier.graphicsLayer { rotationZ = 180f * fan }, tint = c.textMuted)

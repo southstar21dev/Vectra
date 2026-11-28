@@ -1,3 +1,7 @@
+// kotlinx.coroutines.IO is needed by the iOS compile (Dispatchers.IO is internal there without it); the Android
+// analysis detekt runs sees it as unused.
+@file:Suppress("UnusedImport")
+
 package dev.southstar21.vectra.core.data
 
 import kotlinx.coroutines.CoroutineDispatcher

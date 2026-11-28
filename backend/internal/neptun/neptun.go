@@ -9,12 +9,12 @@ import (
 	"vectra/pb/internal/ratelimit"
 )
 
-// Port of the Supabase RPC replace_neptun_schedule(p_user_id, p_events).
+// POST /api/vectra/neptun/replace: replaces the caller's stored Neptun calendar.
 //
 // The client syncs its whole Neptun calendar at once; the server atomically
 // replaces the user's stored set (delete + insert in one transaction) so a
 // mid-sync failure can never leave the calendar empty or duplicated. Every
-// event content field arrives already encrypted with the app's vc2: scheme and
+// event content field arrives already encrypted with the app's vc3: scheme and
 // is stored verbatim — the server never decrypts or re-encrypts.
 
 const (
@@ -25,22 +25,12 @@ const (
 	// to a couple hundred rows; without a cap one request could insert an
 	// unbounded number of records inside a single write transaction.
 	maxEvents = 500
-
-	// replacesPerWindow caps replace calls per user per replaceWindow. The
-	// client syncs on demand and on login, so a handful per minute is ample;
-	// each call rewrites the user's whole calendar.
-	replacesPerWindow = 10
-	replaceWindow     = time.Minute
 )
-
-// limiter is the per-user limiter for Handler. It is a var so tests can
-// substitute a fresh one.
-var limiter = ratelimit.New(replacesPerWindow, replaceWindow)
 
 // verbatimFields are the client-supplied content fields copied as-is into a
 // row. Their values are ciphertext (or, for color, display metadata) and must
 // not be interpreted by the server. semester_start/semester_end are included
-// because the client encrypts them as vc2: ciphertext too; typing them as
+// because the client encrypts them as vc3: ciphertext too; typing them as
 // dates would silently discard that ciphertext.
 var verbatimFields = []string{
 	"course_name", "course_code", "instructor", "location",
@@ -86,7 +76,6 @@ func insertEvents(app core.App, userID string, events []map[string]any) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
 	for _, ev := range events {
 		rec := core.NewRecord(collection)
 		rec.Set("user", userID)
@@ -98,10 +87,6 @@ func insertEvents(app core.App, userID string, events []map[string]any) error {
 		rec.Set("color", valueOrDefault(ev, "color", defaultColor))
 		rec.Set("semester", valueOrDefault(ev, "semester", ""))
 		rec.Set("event_type", valueOrDefault(ev, "event_type", defaultEventType))
-		// The Postgres columns default to now(); direct app.Save calls bypass
-		// the request-scoped timestamp hook, so set them explicitly.
-		rec.Set("created_at", now)
-		rec.Set("updated_at", now)
 		if err := app.Save(rec); err != nil {
 			return err
 		}
@@ -122,10 +107,17 @@ func valueOrDefault(ev map[string]any, key, def string) string {
 	return def
 }
 
-// Handler implements POST /api/vectra/neptun/replace (JWT-gated). It reads
+// Handler implements POST /api/vectra/neptun/replace (JWT-gated). limiter is
+// the per-user limit (limits.NeptunReplace: the client syncs on demand and on
+// login, so a handful per minute is ample; each call rewrites the user's whole
+// calendar). It reads
 // {events: [...]} and replaces the caller's own calendar. The owner is always
 // e.Auth.Id; any user id in the body is ignored.
-func Handler(e *core.RequestEvent) error {
+func Handler(limiter *ratelimit.Limiter) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return replace(limiter, e) }
+}
+
+func replace(limiter *ratelimit.Limiter, e *core.RequestEvent) error {
 	if e.Auth == nil || e.Auth.Id == "" {
 		return e.UnauthorizedError("Authentication required", nil)
 	}

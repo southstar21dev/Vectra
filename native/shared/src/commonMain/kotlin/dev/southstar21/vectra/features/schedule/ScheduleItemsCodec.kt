@@ -15,7 +15,7 @@ import kotlinx.serialization.json.put
  */
 
 /** Thrown when a save still has clashes the user has not acknowledged. */
-class ScheduleItemConflictException(val conflicts: List<ScheduleConflict>) :
+internal class ScheduleItemConflictException(val conflicts: List<ScheduleConflict>) :
     Exception("Acknowledge the current schedule conflicts before saving.")
 
 /**
@@ -23,7 +23,7 @@ class ScheduleItemConflictException(val conflicts: List<ScheduleConflict>) :
  * client_id). Key names, order and the omitted-when-null fields are the stored
  * format; keep them stable so existing rows keep comparing equal.
  */
-fun scheduleItemPayload(item: ScheduleItem): JsonObject = buildJsonObject {
+internal fun scheduleItemPayload(item: ScheduleItem): JsonObject = buildJsonObject {
     put("type", item.type)
     put("title", item.title)
     put("date", item.date)
@@ -35,14 +35,14 @@ fun scheduleItemPayload(item: ScheduleItem): JsonObject = buildJsonObject {
     item.continuation?.let { put("continuation", it) }
 }
 
-fun sameItemPayload(a: ScheduleItem, b: ScheduleItem): Boolean = scheduleItemPayload(a) == scheduleItemPayload(b)
+internal fun sameItemPayload(a: ScheduleItem, b: ScheduleItem): Boolean = scheduleItemPayload(a) == scheduleItemPayload(b)
 
 /**
  * A schedule_items row → item. The app id is the client UUID (client_id); the
  * PocketBase id is only a fallback for legacy rows. Non-ciphertext or invalid
  * payloads are skipped (null); an undecryptable one throws.
  */
-suspend fun decodeScheduleItemRow(row: JsonObject, decrypt: suspend (String?) -> String?): StoredScheduleItem? {
+internal suspend fun decodeScheduleItemRow(row: JsonObject, decrypt: suspend (String?) -> String?): StoredScheduleItem? {
     val payload = row.string("payload")
     if (!isCiphertext(payload)) return null
     val appId = row.string("client_id") ?: row.string("id").orEmpty()
@@ -63,7 +63,7 @@ suspend fun decodeScheduleItemRow(row: JsonObject, decrypt: suspend (String?) ->
 }
 
 /** Clashes of [item] against the other items and the classes, on the item's own dates. */
-fun getConflictsForItem(
+internal fun getConflictsForItem(
     item: ScheduleItem,
     otherItems: List<ScheduleItem>,
     events: List<ScheduleEvent>,
@@ -75,7 +75,7 @@ fun getConflictsForItem(
         .map { it.copy(needsAcknowledgment = it.needsAcknowledgment && it.key !in acknowledged) }
 }
 
-fun throwForUnacknowledgedConflicts(conflicts: List<ScheduleConflict>, acknowledgedKeys: List<String>) {
+internal fun throwForUnacknowledgedConflicts(conflicts: List<ScheduleConflict>, acknowledgedKeys: List<String>) {
     val ack = acknowledgedKeys.toSet()
     val open = conflicts.filter { it.needsAcknowledgment && it.key !in ack }
     if (open.isNotEmpty()) throw ScheduleItemConflictException(open)
@@ -85,7 +85,7 @@ fun throwForUnacknowledgedConflicts(conflicts: List<ScheduleConflict>, acknowled
  * Never manufacture an acknowledgment during background reconciliation: queued
  * intervals are re-validated, but unacknowledged keys stay absent from the item.
  */
-fun reconcileQueuedItemConflicts(
+internal fun reconcileQueuedItemConflicts(
     state: ScheduleItemsState,
     events: List<ScheduleEvent>,
 ): ScheduleItemsState {

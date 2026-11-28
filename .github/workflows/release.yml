@@ -1,6 +1,6 @@
 # semantic-release for the native apps.
 #
-#   master  -> 1.4.0         GitHub release
+#   master  -> vX.Y.Z        GitHub release (version from Conventional Commits)
 #   dev     -> CI only       no builds, no release (dev builds are checked locally)
 #
 # The version comes from Conventional Commits since the last tag (feat: minor, fix:/perf: patch,
@@ -9,9 +9,10 @@
 # pass is the tag and GitHub release created, so a failed build or test never leaves a release.
 #
 # A push to master whose tree is identical to dev's head, where CI already passed, skips CI: the
-# promotion merge changes nothing that was tested. CI here always runs every job (all-jobs), so
-# "passed" means each of web, backend and native succeeded on that exact commit; a skipped job
-# never counts.
+# promotion merge changes nothing that was tested. CI here always runs every release job
+# (all-jobs), so "passed" means each of backend and native succeeded on that exact commit; a
+# skipped job never counts. The deprecated web job is not part of the gate: it runs on pull
+# requests only (see ci.yml), so a web failure never blocks a release.
 #
 # The release APK is also launched on an emulator first (android-launch.yml), so a crash that only
 # the shrunk release build has stops the release.
@@ -28,19 +29,27 @@
 # Run the workflow by hand (gh workflow run release.yml --ref master) to republish them without
 # releasing, e.g. after editing a release's notes.
 #
-# The web app and the backend deploy from master through Coolify; they aren't built here.
+# The web app and the backend deploy from master through Coolify; they aren't built here, and
+# only the backend is tested before a release.
 #
 # Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (Android signing).
-# The IPA is unsigned; AltStore signs it with the installing user's Apple ID.
-# TestFlight gets a separately signed App Store build of the same release (the testflight job),
-# once the App Store Connect key secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 are set.
+# iOS is archived once (the ios job, signed with the CI development certificate). The IPA made from
+# it is ad hoc signed; AltStore re-signs it with the installing user's Apple ID. TestFlight gets the
+# same archive exported after publish (the testflight job); both need the App Store Connect key
+# secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 plus IOS_DEV_P12 and IOS_DEV_P12_PASSWORD, and fail without them.
 name: Release
 
 on:
   push:
     branches: [master, dev]
-  # Republishes the AltStore/SideStore sources without releasing.
+  # Republishes the AltStore/SideStore sources without releasing. With ios_dry_run, also archives
+  # the iOS app and exports it without uploading (see the ios job); nothing is released.
   workflow_dispatch:
+    inputs:
+      ios_dry_run:
+        description: Archive iOS and export it without uploading (no release, no TestFlight)
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -75,17 +84,18 @@ jobs:
             echo "Tree differs from dev ($DEV_SHA); running CI." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          # Dev's CI runs every job (all-jobs), so web, backend and native must each have a run on
+          # Dev's CI runs every release job (all-jobs), so backend and native must each have a run on
           # dev's head, and every CI run there must have succeeded. Skipped is not green: it means
           # the job never ran (an older dev run with a path filter, or a failed dependency).
-          # Anything still running, failed, skipped or missing means CI runs here.
+          # Anything still running, failed, skipped or missing means CI runs here. The web job is
+          # left out on purpose: it only runs on pull requests, so on a push it is always skipped.
           # $ci and $job are jq variables, not shell ones.
           # shellcheck disable=SC2016
           GREEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$DEV_SHA/check-runs?per_page=100" --jq '
-            [.check_runs[] | select(.name | startswith("ci / "))] as $ci
+            [.check_runs[] | select((.name | startswith("ci / ")) and (.name | startswith("ci / web") | not))] as $ci
             | ($ci | length > 0)
               and ($ci | all(.conclusion == "success"))
-              and (["ci / web", "ci / backend", "ci / native"] | all(. as $job | $ci | any(.name | startswith($job))))')"
+              and (["ci / backend", "ci / native"] | all(. as $job | $ci | any(.name | startswith($job))))')"
           if [ "$GREEN" = true ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Same tree as dev ($DEV_SHA), where CI passed; skipping CI." >> "$GITHUB_STEP_SUMMARY"
@@ -126,13 +136,7 @@ jobs:
         with:
           node-version: 22
 
-      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
-      # a write token, so nothing resolved fresh or run at install time may reach it.
-      - name: Install semantic-release
-        run: |
-          mkdir -p "$RUNNER_TEMP/semrel"
-          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
-          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
+      - uses: ./.github/actions/install-semantic-release
 
       # An Android-only fix skips the iOS build: when every commit since the last release carries a
       # "Platforms: android" line, the release gets the APKs and AAB only. The AltStore source lists
@@ -142,7 +146,10 @@ jobs:
         run: |
           LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)
           RANGE=${LAST:+$LAST..}HEAD
-          TOTAL=$(git rev-list --no-merges --count "$RANGE")
+          # Commits by vectra-bot (the catalog refresh bot until the catalog moved into the
+          # backend) carry no trailer and never touch native code, so they must not defeat the shortcut.
+          BOT=$(git rev-list --no-merges --author='^vectra-bot ' --count "$RANGE")
+          TOTAL=$(( $(git rev-list --no-merges --count "$RANGE") - BOT ))
           ANDROID=$(git rev-list --no-merges --grep '^Platforms: android$' --count "$RANGE")
           if [ "$TOTAL" -gt 0 ] && [ "$TOTAL" = "$ANDROID" ]; then
             echo "ios=false" >> "$GITHUB_OUTPUT"
@@ -168,20 +175,22 @@ jobs:
     needs: plan
     if: needs.plan.outputs.version != ''
     runs-on: ubuntu-latest
+    # The signing secrets belong in the "release" environment (deployment branches: master only), so a
+    # workflow on any other ref cannot read them. Until they are moved there the repo secrets still work.
+    environment: release
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      # No build cache: the keystore is in this job, and caches are shared with every other job of a
+      # master run, so a poisoned entry would run with it.
+      - uses: ./.github/actions/native-setup
         with:
-          distribution: temurin
-          java-version: 21
-
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-
-      - name: Set the version
-        run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
+          caches: false
+          version: ${{ env.VERSION }}
 
       # The APKs are for Obtainium and direct download; the AAB is what Google Play takes.
       - name: Build the signed APKs and AAB
@@ -213,6 +222,14 @@ jobs:
           cp "$OUT/androidApp-arm64-v8a-release.apk" "release-assets/Vectra-$VERSION-arm64.apk"
           cp native/androidApp/build/outputs/bundle/release/androidApp-release.aab "release-assets/Vectra-$VERSION.aab"
 
+      # Hashes go out as a job output, a channel separate from the artifact: publish verifies the
+      # downloaded files against them before anything is attached to the release. Base64, because
+      # the runner drops an output that contains a secret's value, and a plain list holds the file
+      # names (a key alias such as "Vectra" would match them).
+      - id: sums
+        name: Hash the release assets
+        run: echo "sums=$(cd release-assets && sha256sum -- * | base64 -w0)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: android
@@ -224,49 +241,126 @@ jobs:
     needs: android
     uses: ./.github/workflows/android-launch.yml
 
+  # Archives the iOS app once, before anything is published. The archive is signed with the fixed CI
+  # development certificate (without one on the runner, xcodebuild would create a new "Created via API"
+  # certificate on every run until the account hits Apple's limit, which breaks every archive), and
+  # two things are made from it:
+  #   - the AltStore/SideStore IPA (published with the release, ad hoc re-signed, see below);
+  #   - the .xcarchive itself, tarred and uploaded as the short-lived "ios-archive" artifact, which the
+  #     testflight job exports after publish. Kotlin/Native therefore links in Release only once.
+  # The job holds the signing secrets, so it runs in the "release" environment and has no build caches
+  # (caches are shared with every other job of a master run; a poisoned entry would run with them).
+  # Secrets are passed only to the step that needs them, so third-party actions and the Gradle daemon
+  # that xcodebuild starts never see the .p12, its password or the .p8 in their environment.
+  #
+  # Dry run: gh workflow run release.yml --ref master -f ios_dry_run=true archives with version 0.0.1
+  # and exports the archive with destination=export (a signed IPA stays on the runner and is checked,
+  # nothing is uploaded to App Store Connect). The android, publish and testflight jobs are skipped
+  # (no release, no GitHub release, no TestFlight). The release environment only accepts master.
   ios:
     needs: plan
-    if: needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true'
-    runs-on: macos-latest
+    # !cancelled(): on a dispatch the plan job is skipped, which would skip this job too.
+    if: >-
+      ${{ !cancelled()
+      && ((needs.plan.outputs.version != '' && needs.plan.outputs.ios == 'true')
+          || (github.event_name == 'workflow_dispatch' && inputs.ios_dry_run)) }}
+    runs-on: macos-26
+    # A hung xcodebuild would otherwise hold the release concurrency group for six hours. The archive
+    # without caches takes about 30 minutes.
+    timeout-minutes: 90
+    environment: release
+    outputs:
+      sums: ${{ steps.sums.outputs.sums }}
     env:
-      VERSION: ${{ needs.plan.outputs.version }}
+      VERSION: ${{ needs.plan.outputs.version || '0.0.1' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_dry_run }}
     steps:
+      # A missing secret fails the job: all five exist, so a deleted or renamed one must be loud
+      # instead of TestFlight quietly getting no builds while the release stays green.
+      - name: Check for the App Store Connect key and CI certificate
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -n "$ASC_KEY_ID" ] || MISSING="$MISSING ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ] || MISSING="$MISSING ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ] || MISSING="$MISSING ASC_KEY_P8"
+          [ -n "$IOS_DEV_P12" ] || MISSING="$MISSING IOS_DEV_P12"
+          [ -n "$IOS_DEV_P12_PASSWORD" ] || MISSING="$MISSING IOS_DEV_P12_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::The iOS archive cannot be signed, missing secrets:$MISSING"
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      - uses: ./.github/actions/native-setup
         with:
-          distribution: temurin
-          java-version: 21
+          caches: false
+          version: ${{ env.VERSION }}
 
-      # Kotlin/Native's compiler bundle and LLVM/sysroot live in ~/.konan, which setup-gradle doesn't
-      # cache; without this every macOS run downloads them again. Keyed on the Kotlin version.
-      - id: kotlin
-        name: Read the Kotlin version
-        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-
-      - name: Set the version
-        run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
-
-      - name: Build the unsigned IPA
+      # A throwaway keychain holding only the CI certificate, first in the search list so xcodebuild
+      # finds that identity and doesn't create a new one.
+      - name: Load the CI development certificate
+        env:
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
-          xcodebuild build \
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          PASS=$(openssl rand -hex 24)
+          security create-keychain -p "$PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASS" "$KEYCHAIN"
+          printf '%s' "$IOS_DEV_P12" | base64 --decode > "$RUNNER_TEMP/dev.p12"
+          security import "$RUNNER_TEMP/dev.p12" -k "$KEYCHAIN" -P "$IOS_DEV_P12_PASSWORD" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dev.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PASS" "$KEYCHAIN" > /dev/null
+          # Splitting is intended: one argument per existing keychain path (none contain spaces).
+          # shellcheck disable=SC2046
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Development' \
+            || { echo "::error::IOS_DEV_P12 holds no Apple Development identity."; exit 1; }
+
+      - name: Write the App Store Connect key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+
+      # The key is read from the file only; ASC_KEY_P8 is not in this step's environment.
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive \
             -project native/iosApp/iosApp.xcodeproj \
             -scheme iosApp \
             -configuration Release \
-            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+            -archivePath "$RUNNER_TEMP/Vectra.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      # The sideload IPA is the archive's app with its development signature and provisioning profile
+      # removed. SideStore and AltStore re-sign with the installing user's Apple ID and their own
+      # profile, as with the unsigned build this replaces.
+      - name: Make the sideload IPA from the archive
+        run: |
           mkdir -p "$RUNNER_TEMP/ipa/Payload" release-assets
           APP="$RUNNER_TEMP/ipa/Payload/Vectra.app"
-          cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Vectra.app" "$APP"
+          cp -R "$RUNNER_TEMP/Vectra.xcarchive/Products/Applications/Vectra.app" "$APP"
+          for BUNDLE in "$APP" "$APP/PlugIns/VectraWidgets.appex"; do
+            rm -rf "$BUNDLE/_CodeSignature" "$BUNDLE/embedded.mobileprovision"
+          done
           # Ad-hoc signatures that carry the App Group the widgets share with the app. SideStore and
           # AltStore read the entitlements from the binaries and register the group (renamed with
           # the installing user's team) when they re-sign; an unsigned binary has none to read.
@@ -278,16 +372,86 @@ jobs:
             <key>com.apple.security.application-groups</key><array><string>group.dev.southstar21.vectra</string></array>
           </dict></plist>
           PLIST
+          # Embedded frameworks, if any, carry the CI signature too: replace it, innermost first.
+          for F in "$APP"/Frameworks/*; do
+            [ -e "$F" ] || continue
+            codesign --force --sign - "$F"
+          done
           codesign --force --sign - --entitlements "$RUNNER_TEMP/sideload.entitlements" "$APP/PlugIns/VectraWidgets.appex"
           codesign --force --sign - --entitlements "$RUNNER_TEMP/sideload.entitlements" "$APP"
           codesign -d --entitlements - "$APP/PlugIns/VectraWidgets.appex" | grep -q application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/release-assets/Vectra-$VERSION.ipa" Payload)
+
+      # Same as the android job; macOS base64 writes a single line by default.
+      - id: sums
+        name: Hash the release assets
+        run: echo "sums=$(cd release-assets && shasum -a 256 -- * | base64)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ios
           path: release-assets/
           if-no-files-found: error
+
+      # Tarred because upload-artifact keeps neither symlinks nor file modes, and an archive's
+      # frameworks and dSYMs need both. The tarball holds no secret: the app is signed with the CI
+      # development certificate's public part. A different artifact name than "ios", so publish never
+      # attaches it to the release. Kept for a week so a failed upload (an Apple outage, an agreement
+      # to accept) can be retried by re-running only the testflight job; once it expires, that
+      # release can no longer reach TestFlight from this run.
+      - name: Tar the archive
+        run: |
+          tar -czf "$RUNNER_TEMP/Vectra.xcarchive.tar.gz" -C "$RUNNER_TEMP" Vectra.xcarchive
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ios-archive
+          path: ${{ runner.temp }}/Vectra.xcarchive.tar.gz
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+      # Dry run only: the export that testflight does after publish, with destination=export so the
+      # signed IPA stays on the runner. It proves the archive can be exported with the cloud-managed
+      # distribution certificate. Runs from the tarball, like testflight does.
+      - if: ${{ env.DRY_RUN == 'true' }}
+        name: Dry run, export the archive without uploading
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          mkdir "$RUNNER_TEMP/untarred"
+          tar -xzf "$RUNNER_TEMP/Vectra.xcarchive.tar.gz" -C "$RUNNER_TEMP/untarred"
+          DEST="export"
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>$DEST</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>3HNYQ2F575</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>uploadSymbols</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/untarred/Vectra.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          ls -l "$RUNNER_TEMP/export"
+          test -n "$(find "$RUNNER_TEMP/export" -name '*.ipa')"
+          echo "Dry run: archived and exported $VERSION (nothing uploaded, nothing released)." >> "$GITHUB_STEP_SUMMARY"
+
+      - if: always()
+        name: Remove the key and the signing keychain
+        run: |
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/dev.p12"
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
 
   publish:
     needs: [verified, ci, plan, android, android-launch, ios]
@@ -316,18 +480,34 @@ jobs:
         with:
           node-version: 22
 
+      # Only the two build jobs' artifacts: a pattern, so an artifact another job of the run uploaded
+      # (a reusable CI job, say) is never merged into the release.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: release-assets
+          pattern: '{android,ios}'
           merge-multiple: true
 
-      # From the committed lockfile (.github/release-tools), with no lifecycle scripts: the job holds
-      # a write token, so nothing resolved fresh or run at install time may reach it.
-      - name: Install semantic-release
+      # The files must be exactly the ones the build jobs hashed. SHA256SUMS is attached to the release.
+      - name: Verify the assets against the build jobs' hashes
+        env:
+          ANDROID_SUMS: ${{ needs.android.outputs.sums }}
+          IOS_SUMS: ${{ needs.ios.outputs.sums }}
+          IOS_BUILT: ${{ needs.ios.result == 'success' }}
         run: |
-          mkdir -p "$RUNNER_TEMP/semrel"
-          cp .github/release-tools/package.json .github/release-tools/package-lock.json "$RUNNER_TEMP/semrel/"
-          npm ci --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/semrel"
+          if [ -z "$ANDROID_SUMS" ] || { [ "$IOS_BUILT" = true ] && [ -z "$IOS_SUMS" ]; }; then
+            echo "::error::A build job published no hashes (its sums output is empty or was dropped)."
+            exit 1
+          fi
+          cd release-assets
+          { printf '%s' "$ANDROID_SUMS" | base64 --decode; [ -z "$IOS_SUMS" ] || printf '%s' "$IOS_SUMS" | base64 --decode; } > "$RUNNER_TEMP/SHA256SUMS"
+          sha256sum -c "$RUNNER_TEMP/SHA256SUMS"
+          EXPECTED=$(awk '{print $2}' "$RUNNER_TEMP/SHA256SUMS" | sed 's/^\*//' | sort)
+          ACTUAL=$(printf '%s\n' * | sort)
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::release-assets holds files the build jobs did not hash."; exit 1; }
+          cp "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+
+      - uses: ./.github/actions/install-semantic-release
 
       - name: Tag and publish the GitHub release
         env:
@@ -340,14 +520,17 @@ jobs:
             exit 1
           fi
 
-  # Sends the released version to TestFlight: a signed App Store build of the same commit and
-  # version as the GitHub release (the AltStore IPA above stays unsigned). Runs only after publish,
-  # so TestFlight never gets a build that wasn't released. The export is signed with the
-  # cloud-managed distribution certificate, which xcodebuild fetches with the App Store Connect API
-  # key. The archive step signs with a development certificate first; without one on the runner,
-  # xcodebuild would create a new "Created via API" certificate on every run until the account hits
-  # Apple's limit, so a single fixed CI certificate is loaded from the secrets instead.
-  # Skipped (with a note in the summary) until these secrets exist:
+
+  # Sends the released version to TestFlight: exports the archive the ios job made (same commit and
+  # version as the GitHub release; the AltStore IPA stays ad hoc signed) with destination=upload, which
+  # sends the build straight to App Store Connect. Runs only after publish, so TestFlight never gets a
+  # build that wasn't released. No checkout, Gradle or Kotlin/Native: it only unpacks the tarball.
+  # The export is signed with the cloud-managed distribution certificate, which xcodebuild fetches with
+  # the App Store Connect API key. The CI development certificate is loaded here too, so xcodebuild
+  # never creates a "Created via API" one if the export wants a development identity.
+  # A failed upload can be retried by re-running just this job while the ios-archive artifact
+  # (7 days) is still there.
+  # Needs these secrets (the job fails when one is missing):
   #   ASC_KEY_ID             the key's ID
   #   ASC_ISSUER_ID          the issuer ID shown above the keys list
   #   ASC_KEY_P8             the contents of the downloaded AuthKey_<id>.p8
@@ -357,58 +540,49 @@ jobs:
   # certificate expires after a year: make a new one and replace both IOS_DEV_P12 secrets.
   testflight:
     name: TestFlight
-    needs: [plan, publish]
-    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.plan.outputs.ios == 'true' }}
-    runs-on: macos-latest
+    needs: [plan, ios, publish]
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.ios.result == 'success' && needs.plan.outputs.ios == 'true' }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    environment: release
     env:
       VERSION: ${{ needs.plan.outputs.version }}
-      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-      IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
-      IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
     steps:
-      - id: key
-        name: Check for the App Store Connect key and CI certificate
+      # Each secret is passed only to the step that needs it.
+      - name: Check for the App Store Connect key and CI certificate
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
-          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$IOS_DEV_P12" ] && [ -n "$IOS_DEV_P12_PASSWORD" ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "TestFlight upload skipped: set ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, IOS_DEV_P12 and IOS_DEV_P12_PASSWORD to enable it." >> "$GITHUB_STEP_SUMMARY"
+          MISSING=""
+          [ -n "$ASC_KEY_ID" ] || MISSING="$MISSING ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ] || MISSING="$MISSING ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ] || MISSING="$MISSING ASC_KEY_P8"
+          [ -n "$IOS_DEV_P12" ] || MISSING="$MISSING IOS_DEV_P12"
+          [ -n "$IOS_DEV_P12_PASSWORD" ] || MISSING="$MISSING IOS_DEV_P12_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::TestFlight upload cannot run, missing secrets:$MISSING"
+            exit 1
           fi
 
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          distribution: temurin
-          java-version: 21
+          name: ios-archive
+          path: ${{ runner.temp }}/archive-download
 
-      - id: kotlin
-        if: steps.key.outputs.ok == 'true'
-        name: Read the Kotlin version
-        run: echo "version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' native/gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+      - name: Unpack the archive
+        run: |
+          tar -xzf "$RUNNER_TEMP/archive-download/Vectra.xcarchive.tar.gz" -C "$RUNNER_TEMP"
+          test -d "$RUNNER_TEMP/Vectra.xcarchive/Products/Applications/Vectra.app"
 
-      - if: steps.key.outputs.ok == 'true'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      - if: steps.key.outputs.ok == 'true'
-        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-
-      - if: steps.key.outputs.ok == 'true'
-        name: Set the version
-        run: perl -pi -e "s/^vectra.versionName=.*/vectra.versionName=$VERSION/" native/gradle.properties
-
-      # A throwaway keychain holding only the CI certificate, first in the search list so xcodebuild
-      # finds that identity and doesn't create a new one.
-      - if: steps.key.outputs.ok == 'true'
-        name: Load the CI development certificate
+      # A throwaway keychain holding only the CI certificate, first in the search list.
+      - name: Load the CI development certificate
+        env:
+          IOS_DEV_P12: ${{ secrets.IOS_DEV_P12 }}
+          IOS_DEV_P12_PASSWORD: ${{ secrets.IOS_DEV_P12_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           PASS=$(openssl rand -hex 24)
@@ -425,27 +599,26 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Development' \
             || { echo "::error::IOS_DEV_P12 holds no Apple Development identity."; exit 1; }
 
-      - if: steps.key.outputs.ok == 'true'
-        name: Archive and upload to TestFlight
+      - name: Write the App Store Connect key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
-          KEY="$RUNNER_TEMP/AuthKey.p8"
-          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
-          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
-          xcodebuild archive \
-            -project native/iosApp/iosApp.xcodeproj \
-            -scheme iosApp \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath "$RUNNER_TEMP/dd" \
-            -archivePath "$RUNNER_TEMP/Vectra.xcarchive" \
-            "${AUTH[@]}"
-          # destination=upload: the export sends the build straight to App Store Connect.
-          cat > "$RUNNER_TEMP/export.plist" <<'PLIST'
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+
+      # The key is read from the file only; ASC_KEY_P8 is not in this step's environment.
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          DEST="upload"
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>$DEST</string>
             <key>signingStyle</key><string>automatic</string>
             <key>teamID</key><string>3HNYQ2F575</string>
             <key>manageAppVersionAndBuildNumber</key><false/>
@@ -456,10 +629,13 @@ jobs:
             -archivePath "$RUNNER_TEMP/Vectra.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
             -exportPath "$RUNNER_TEMP/export" \
-            "${AUTH[@]}"
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           echo "Uploaded $VERSION to TestFlight; it appears there once App Store Connect finishes processing." >> "$GITHUB_STEP_SUMMARY"
 
-      - if: always() && steps.key.outputs.ok == 'true'
+      - if: always()
         name: Remove the key and the signing keychain
         run: |
           rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/dev.p12"
@@ -470,7 +646,7 @@ jobs:
     needs: publish
     # Runs after every release attempt (and on its own when dispatched); cheap even when nothing was
     # released, since it only rebuilds the sources from the existing releases.
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && !(github.event_name == 'workflow_dispatch' && inputs.ios_dry_run) && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -27,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +53,6 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.preferences.BackgroundKey
 import dev.southstar21.vectra.core.preferences.ThemeMode
 import dev.southstar21.vectra.core.preferences.TimeFormat
-import dev.southstar21.vectra.core.preferences.isDark
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
@@ -61,7 +62,7 @@ private fun SectionLabel(text: String) =
 
 /** The "Look" section. Every control applies instantly. */
 @Composable
-fun AppearanceSettings(repo: AppearanceRepository) {
+internal fun AppearanceSettings(repo: AppearanceRepository) {
     val prefs by repo.prefs.collectAsStateWithLifecycle()
     val c = Vectra.colors
     SettingsSection("Look", tilt = StampTilt.Left, rows = listOf {
@@ -95,8 +96,8 @@ fun AppearanceSettings(repo: AppearanceRepository) {
                                 .pressScale(interaction)
                                 .boxShadow(CircleShape, listOf(BoxShadow(y = 1f, blur = 3f, color = Color.Black.copy(alpha = 0.1f))))
                                 .background(if (c.isDark) preset.dark else preset.light, CircleShape)
-                                .tappable(role = null, highlight = false, interactionSource = interaction) { repo.update { it.copy(accent = preset.key) } }
-                                .semantics { contentDescription = preset.name },
+                                .tappable(role = Role.RadioButton, highlight = false, interactionSource = interaction) { repo.update { it.copy(accent = preset.key) } }
+                                .semantics { contentDescription = preset.name; selected = active },
                             contentAlignment = Alignment.Center,
                         ) {
                             if (active) VIcon(RemixIcons.CheckFill, tint = Color.White)
@@ -119,14 +120,14 @@ fun AppearanceSettings(repo: AppearanceRepository) {
                                 .pressScale(interaction)
                                 .clip(shape)
                                 .border(1.dp, lerp(c.borderSubtle, c.accentPrimary, lit), shape)
-                                .tappable(role = null, highlight = false, interactionSource = interaction) { repo.update { it.copy(background = key) } }
-                                .semantics { contentDescription = key.label },
+                                .tappable(role = Role.RadioButton, highlight = false, interactionSource = interaction) { repo.update { it.copy(background = key) } }
+                                .semantics { contentDescription = key.label; selected = active },
                         ) { BackgroundPreview(key, c) }
                     }
                 }
             }
             Column {
-                SectionLabel("Time Format")
+                SectionLabel("Time format")
                 VTabs(prefs.timeFormat, TimeFormat.entries, { f -> repo.update { it.copy(timeFormat = f) } }, Modifier.fillMaxWidth(), triggerHeight = 36.dp, pillSpec = VectraSprings.snappy(), pillHonorsReduceMotion = false) { f, _ ->
                     VIcon(RemixIcons.TimeFill, size = 14.dp)
                     VText(if (f == TimeFormat.H24) "24-hour" else "12-hour", style = vtext(TypeScale.Caption, Weight.Medium))

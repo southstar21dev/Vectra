@@ -19,7 +19,7 @@ import kotlinx.serialization.json.jsonObject
 private val CiphertextPrefixes = listOf("vc2:", "vc3:")
 
 /** True when [value] is still server ciphertext (encrypted, or a failed decrypt). */
-fun isCiphertext(value: String?): Boolean = value != null && CiphertextPrefixes.any(value::startsWith)
+internal fun isCiphertext(value: String?): Boolean = value != null && CiphertextPrefixes.any(value::startsWith)
 
 /** How long calls are collected before the batch goes out. */
 internal const val CryptoBatchWindowMs = 5L
@@ -42,7 +42,7 @@ private const val MaxMemoizedChars = 32 * 1024
  * Failure semantics: encrypt/digest throw (never store plaintext);
  * decrypt passes the raw value through.
  */
-class CryptoClient(private val pb: PocketBaseClient, private val scope: CoroutineScope) {
+internal class CryptoClient(private val pb: PocketBaseClient, private val scope: CoroutineScope) {
     private class Pending<T>(val input: T, val result: CompletableDeferred<String>)
 
     private val lock = Mutex()

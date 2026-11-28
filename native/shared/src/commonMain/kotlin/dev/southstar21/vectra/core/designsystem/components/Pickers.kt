@@ -57,7 +57,9 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.time.getShortDayName
 import dev.southstar21.vectra.core.time.monthName
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.core.time.pad2
@@ -77,13 +79,20 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
-private val WeekdayInitials = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
 private val WeekdayShort = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 private val WeekdayLong = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 /** Form-height field that shows a value and opens a picker sheet. */
 @Composable
-fun PickerField(text: String, placeholder: Boolean, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PickerField(
+    text: String,
+    placeholder: Boolean,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Times read in mono with tabular numerals, as on the cards. */
+    mono: Boolean = false,
+) {
     val c = Vectra.colors
     val shape = Radius.Control
     Row(
@@ -96,16 +105,19 @@ fun PickerField(text: String, placeholder: Boolean, icon: ImageVector, onClick: 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        VText(text, Modifier.weight(1f), vtext(TypeScale.BodyLarge), if (placeholder) c.textMuted else c.textPrimary, maxLines = 1)
+        val style = vtext(TypeScale.BodyLarge, mono = mono).let { if (mono) it.tnum() else it }
+        VText(text, Modifier.weight(1f), style, if (placeholder) c.textMuted else c.textPrimary, maxLines = 1)
         VIcon(icon, tint = c.textMuted)
     }
 }
 
 /** A date as `yyyy-MM-dd` (or empty), picked from a month calendar in a sheet. */
 @Composable
-fun DateField(
+internal fun DateField(
     value: String,
     onChange: (String) -> Unit,
+    /** The field's name, shown as the picker sheet's title. */
+    title: String,
     modifier: Modifier = Modifier,
     placeholder: String = "Pick a date",
     onClear: (() -> Unit)? = null,
@@ -116,6 +128,7 @@ fun DateField(
     PickerField(date?.let(::formatLongDate) ?: placeholder, date == null, RemixIcons.CalendarLine, { open = true }, modifier)
     DatePickerSheet(
         open = open,
+        title = title,
         selected = date,
         onDismiss = { open = false },
         onPick = { onChange(it.ymd()); open = false },
@@ -126,8 +139,11 @@ fun DateField(
 /** A [LocalDate] as its ISO text, which a saved instance state can hold. */
 internal val LocalDateSaver = Saver<LocalDate, String>(save = { it.toString() }, restore = LocalDate::parse)
 
+/** Like [LocalDateSaver], for a day that may not be picked yet (empty text). */
+private val NullableLocalDateSaver = Saver<LocalDate?, String>(save = { it?.toString().orEmpty() }, restore = { it.takeIf(String::isNotEmpty)?.let(LocalDate::parse) })
+
 /** "Fri, 30 Oct 2026". */
-fun formatLongDate(date: LocalDate): String =
+internal fun formatLongDate(date: LocalDate): String =
     "${WeekdayShort[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number).take(3)} ${date.year}"
 
 /** A calendar day as a screen reader says it: "Friday, 30 October 2026", plus ", today". */
@@ -135,10 +151,14 @@ internal fun dayCellDescription(date: LocalDate, isToday: Boolean): String =
     "${WeekdayLong[date.dayOfWeek.isoDayNumber - 1]}, ${date.day} ${monthName(date.month.number)} ${date.year}" +
         if (isToday) ", today" else ""
 
-/** Month calendar (Monday first). Swipe sideways or use the arrows to change month. */
+/**
+ * Month calendar (Monday first). Swipe sideways or use the arrows to change month; tapping a day
+ * selects it, Done confirms. [title] is the field's name ("Date", "Due").
+ */
 @Composable
-fun DatePickerSheet(
+internal fun DatePickerSheet(
     open: Boolean,
+    title: String,
     selected: LocalDate?,
     onDismiss: () -> Unit,
     onPick: (LocalDate) -> Unit,
@@ -155,7 +175,9 @@ fun DatePickerSheet(
         haptics.tick()
         month = if (months > 0) month.plus(DatePeriod(months = months)) else month.minus(DatePeriod(months = -months))
     }
-    VSheet(open, onDismiss, title = "Pick a date") {
+    var picked by rememberSaveable(open, stateSaver = NullableLocalDateSaver) { mutableStateOf(selected) }
+    VSheet(open, onDismiss, title = title) {
+        SheetHeader(title, onDismiss)
         Column(Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BarButton(RemixIcons.ArrowLeftSLine, "Previous month", { shift(-1) })
@@ -169,8 +191,9 @@ fun DatePickerSheet(
                 BarButton(RemixIcons.ArrowRightSLine, "Next month", { shift(1) })
             }
             Row(Modifier.fillMaxWidth()) {
-                WeekdayInitials.forEach {
-                    VText(it, Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textMuted, align = TextAlign.Center)
+                // getShortDayName counts from Sunday, the grid starts on Monday.
+                for (i in 0 until 7) {
+                    VText(getShortDayName((i + 1) % 7), Modifier.weight(1f), vtext(TypeScale.Caption, Weight.Semibold), c.textMuted, align = TextAlign.Center)
                 }
             }
             val lead = month.dayOfWeek.isoDayNumber - 1
@@ -189,7 +212,7 @@ fun DatePickerSheet(
                         for (d in 0 until 7) {
                             val date = start.plus(DatePeriod(days = week * 7 + d))
                             val inMonth = date.month == month.month
-                            val isSelected = date == selected
+                            val isSelected = date == picked
                             val isToday = date == today
                             Box(
                                 Modifier
@@ -198,7 +221,7 @@ fun DatePickerSheet(
                                     .padding(2.dp)
                                     .then(if (isSelected) Modifier.background(c.accentPrimary, CircleShape) else Modifier)
                                     .then(if (isToday && !isSelected) Modifier.border(1.dp, c.accentPrimary, CircleShape) else Modifier)
-                                    .tappable(CircleShape, role = Role.Button, haptic = { tick() }) { onPick(date) }
+                                    .tappable(CircleShape, role = Role.Button, haptic = { tick() }) { picked = date }
                                     // The bare number ("14") says neither the month nor which day is picked.
                                     // As Material's date picker does: the cell's text is the full date
                                     // and the number under it is left out.
@@ -223,28 +246,39 @@ fun DatePickerSheet(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                if (onClear != null) VButton("Clear", onClear, variant = ButtonVariant.Ghost)
-                VButton("Today", { onPick(today) }, variant = ButtonVariant.Outline)
-            }
         }
+        SheetFooter(
+            secondary = {
+                if (onClear != null) VButton("Clear", onClear, variant = ButtonVariant.Ghost)
+                VButton("Today", { picked = today; month = LocalDate(today.year, today.month, 1) }, variant = ButtonVariant.Outline)
+            },
+            primary = { VButton("Done", { picked?.let(onPick) }, enabled = picked != null) },
+        )
     }
 }
 
 /** A time as `HH:mm` (or empty), picked on wheels in a sheet. Follows the app's 12/24h setting. */
 @Composable
-fun TimeField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, minuteStep: Int = 1) {
+internal fun TimeField(
+    value: String,
+    onChange: (String) -> Unit,
+    /** The field's name ("Starts", "Ends"), shown as the picker sheet's title. */
+    title: String,
+    modifier: Modifier = Modifier,
+    minuteStep: Int = 1,
+) {
     var open by rememberSaveable { mutableStateOf(false) }
     val parsed = parseHourMinute(value)?.takeIf { (h, m) -> h in 0..23 && m in 0..59 }
     val use12h = Vectra.appearance.timeFormat == TimeFormat.H12
     val text = parsed?.let { (h, m) -> formatHm(h, m, use12h) } ?: "--:--"
-    PickerField(text, parsed == null, RemixIcons.TimeLine, { open = true }, modifier)
+    PickerField(text, parsed == null, RemixIcons.TimeLine, { open = true }, modifier, mono = true)
     TimePickerSheet(
         open = open,
         hour = parsed?.first ?: 9,
         minute = parsed?.second ?: 0,
         use12h = use12h,
         minuteStep = minuteStep,
+        title = title,
         onDismiss = { open = false },
         onPick = { h, m -> onChange("${pad2(h)}:${pad2(m)}"); open = false },
     )
@@ -253,16 +287,17 @@ fun TimeField(value: String, onChange: (String) -> Unit, modifier: Modifier = Mo
 private fun formatHm(h: Int, m: Int, use12h: Boolean): String =
     if (!use12h) "${pad2(h)}:${pad2(m)}" else "${(h + 11) % 12 + 1}:${pad2(m)} ${if (h < 12) "AM" else "PM"}"
 
+/** Hour and minute wheels; [title] is the field's name ("Starts", "Ends"), never just "Time". */
 @Composable
-fun TimePickerSheet(
+internal fun TimePickerSheet(
     open: Boolean,
+    title: String,
     hour: Int,
     minute: Int,
     use12h: Boolean,
     onDismiss: () -> Unit,
     onPick: (hour: Int, minute: Int) -> Unit,
     minuteStep: Int = 1,
-    title: String = "Time",
 ) {
     val minutes = remember(minuteStep) { (0 until 60 step minuteStep).toList() }
     var h by rememberSaveable(open) { mutableIntStateOf(hour) }
@@ -279,16 +314,14 @@ fun TimePickerSheet(
             } else {
                 Wheel("Hour", 24, h, { pad2(it) }, { h = it })
             }
-            VText(":", Modifier.padding(horizontal = 8.dp), vtext(TypeScale.Headline, Weight.Bold), Vectra.colors.textMuted)
+            VText(":", Modifier.padding(horizontal = 8.dp), vtext(TypeScale.Headline, Weight.Bold, mono = true), Vectra.colors.textMuted)
             Wheel("Minute", minutes.size, mIndex, { pad2(minutes[it]) }, { mIndex = it })
             if (use12h) {
                 Box(Modifier.width(12.dp))
                 Wheel("AM or PM", 2, if (h < 12) 0 else 1, { if (it == 0) "AM" else "PM" }, { pm -> h = h % 12 + if (pm == 1) 12 else 0 })
             }
         }
-        Box(Modifier.fillMaxWidth().padding(horizontal = SurfaceGutter, vertical = 12.dp)) {
-            VButton("Done", { onPick(h, minutes[mIndex]) }, Modifier.fillMaxWidth(), size = ButtonSize.Lg)
-        }
+        SheetFooter(secondary = null, primary = { VButton("Done", { onPick(h, minutes[mIndex]) }) })
     }
 }
 
@@ -304,7 +337,7 @@ internal fun wheelIndexFor(requested: Float, count: Int): Int = requested.roundT
  * of a scrolling list of bare numbers.
  */
 @Composable
-private fun Wheel(name: String, count: Int, selected: Int, label: (Int) -> String, onSelected: (Int) -> Unit) {
+private fun Wheel(name: String, count: Int, selected: Int, label: (Int) -> String, onSelected: (Int) -> Unit, mono: Boolean = true) {
     val c = Vectra.colors
     val haptics = Vectra.haptics
     val state = rememberLazyListState(initialFirstVisibleItemIndex = selected.coerceIn(0, count - 1))
@@ -352,7 +385,7 @@ private fun Wheel(name: String, count: Int, selected: Int, label: (Int) -> Strin
                 ) {
                     VText(
                         label(i),
-                        style = vtext(TypeScale.Title, if (i == centred) Weight.Bold else Weight.Medium),
+                        style = vtext(TypeScale.Title, if (i == centred) Weight.Bold else Weight.Medium, mono = mono).let { if (mono) it.tnum() else it },
                         color = if (i == centred) c.textPrimary else c.textSecondary,
                     )
                 }

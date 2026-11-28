@@ -27,6 +27,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,10 +42,20 @@ import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.preferences.TimeFormat
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.text.style.TextOverflow
 
 private const val StackCardDp = 50
 private const val StackGapDp = 6
 private const val StackPeekDp = 7
+
+private fun discDescription(title: String, status: CardAttendance?, task: Boolean): String = when {
+    task -> "$title: ${if (status == CardAttendance.Present) "done" else "not done"}. Tap to change"
+    else -> "Attendance for $title: ${(status ?: CardAttendance.Unmarked).name.lowercase()}"
+}
 
 private fun mix(a: Float, b: Float, f: Float) = a + (b - a) * f
 
@@ -53,7 +65,7 @@ private class SmallCardLook(val bg: Color, val contentAlpha: Float, val subtitle
 @Composable
 private fun SmallCard(
     entry: DayEntry,
-    status: AttendanceStatus?,
+    status: CardAttendance?,
     subtitle: String?,
     look: SmallCardLook,
     d: DayColors,
@@ -79,16 +91,29 @@ private fun SmallCard(
         val fade = Modifier.graphicsLayer { alpha = look.contentAlpha.coerceIn(0f, 1f) }
         val discTap = if (onDisc != null) {
             Modifier.tappable(RoundedCornerShape(50), enabled = look.enabled, role = Role.Button, onClickLabel = "Change attendance for ${entry.title}", onClick = onDisc)
+                // A separate node from the card's own, so it needs its own name (a task reads like the Schedule's tick box).
+                .semantics { contentDescription = discDescription(entry.title, status, square) }
         } else Modifier
         SmallStatusDisc(status, d.dashed, fade.then(discTap), square = square)
         Column(fade.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            VText(entry.title, style = vtext(14.sp to 17.sp, Weight.Bold), color = d.room, maxLines = 1)
+            VText(entry.title, Modifier.fillMaxWidth().fadeEnd(look.bg), vtext(14.sp to 17.sp, Weight.Bold), d.room, maxLines = 1, overflow = TextOverflow.Clip)
             if (subtitle != null && look.subtitleAlpha > 0.01f) {
-                VText(subtitle, Modifier.graphicsLayer { alpha = look.subtitleAlpha.coerceIn(0f, 1f) }, vtext(11.sp to 13.sp, Weight.Semibold), d.muted, maxLines = 1)
+                VText(subtitle, Modifier.fillMaxWidth().graphicsLayer { alpha = look.subtitleAlpha.coerceIn(0f, 1f) }.fadeEnd(look.bg), vtext(11.sp to 13.sp, Weight.Semibold), d.muted, maxLines = 1, overflow = TextOverflow.Clip)
             }
         }
         VText(rangeLabel(entry.start, entry.end, timeFormat), fade, vtext(12.sp to 16.sp, Weight.Bold, mono = true).tnum(), d.muted, maxLines = 1)
     }
+}
+
+/** Fades the last 20dp into [bg], so a one-line title that runs out of room dissolves instead of ending in an ellipsis. */
+private fun Modifier.fadeEnd(bg: Color): Modifier = drawWithContent {
+    drawContent()
+    val w = 20.dp.toPx().coerceAtMost(size.width)
+    drawRect(
+        Brush.horizontalGradient(listOf(Color.Transparent, bg), startX = size.width - w, endX = size.width),
+        topLeft = Offset(size.width - w, 0f),
+        size = Size(w, size.height),
+    )
 }
 
 /**
@@ -96,7 +121,7 @@ private fun SmallCard(
  * tapping the card does once the stack is open (its Course Hub, or the item's editor).
  */
 internal class StackActions(
-    val statusOf: (DayEntry) -> AttendanceStatus?,
+    val statusOf: (DayEntry) -> CardAttendance?,
     val onDisc: (DayEntry) -> (() -> Unit)?,
     val onOpen: (DayEntry) -> (() -> Unit)? = { null },
 ) {

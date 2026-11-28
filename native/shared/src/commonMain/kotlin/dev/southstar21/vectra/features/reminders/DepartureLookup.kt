@@ -4,7 +4,7 @@ import dev.southstar21.vectra.core.platform.DepartureQuery
 import dev.southstar21.vectra.core.platform.ScheduledNotification
 import dev.southstar21.vectra.core.time.nowMs
 import dev.southstar21.vectra.core.util.runSuspendCatching
-import dev.southstar21.vectra.features.transit.TransitRepository
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.transit.parseStopArrivals
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -15,7 +15,7 @@ internal class DepartureLookup(private val transit: TransitRepository) {
     /** The next [count] departures of [query] from [fromMs]; null when they can't be fetched. */
     suspend fun times(query: DepartureQuery, fromMs: Long, count: Int = 4): List<Long>? = runSuspendCatching {
         val minutesAfter = ((fromMs - nowMs()) / MinuteMs + 60).toInt().coerceIn(30, FeedReachMinutes)
-        val response = transit.api.fetchStopArrivals(query.stopId, minutesAfter)
+        val response = transit.stopArrivals(query.stopId, minutesAfter)
         parseStopArrivals(response, query.routeId, query.headsign, now = fromMs).take(count).map { it.arrivalMs }
     }.getOrNull()
 

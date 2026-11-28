@@ -13,7 +13,10 @@ import (
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/router"
 	"github.com/stretchr/testify/require"
 
+	"vectra/pb/internal/limits"
+
 	"vectra/pb/internal/ratelimit"
+	"vectra/pb/internal/schema"
 	_ "vectra/pb/migrations"
 )
 
@@ -38,6 +41,7 @@ func rowsFor(t *testing.T, app core.App, userID string) []*core.Record {
 }
 
 func TestReplaceNeptunSchedule(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -61,7 +65,9 @@ func TestReplaceNeptunSchedule(t *testing.T) {
 // including the encrypted semester bounds, and color/event_type fall back to
 // their COALESCE defaults.
 func TestReplaceDefaultsAndVerbatimFields(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
+	schema.RegisterTimestamps(app)
 	require.NoError(t, err)
 	defer app.Cleanup()
 
@@ -102,6 +108,7 @@ func TestReplaceDefaultsAndVerbatimFields(t *testing.T) {
 // TestReplaceOmitsAbsentSemesterBounds confirms that events without encrypted
 // semester bounds leave those columns empty rather than storing a stray value.
 func TestReplaceOmitsAbsentSemesterBounds(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -124,6 +131,7 @@ func TestReplaceOmitsAbsentSemesterBounds(t *testing.T) {
 // solely from e.Auth.Id: a body carrying user_id/p_user_id for another user is
 // ignored and the rows land on the authenticated caller.
 func TestHandlerIgnoresClientSuppliedOwner(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -139,7 +147,7 @@ func TestHandlerIgnoresClientSuppliedOwner(t *testing.T) {
 	e.Request = req
 	e.Response = httptest.NewRecorder()
 
-	require.NoError(t, Handler(e))
+	require.NoError(t, Handler(limits.NeptunReplace.New())(e))
 
 	require.Len(t, rowsFor(t, app, caller.Id), 1)
 	require.Empty(t, rowsFor(t, app, victim.Id))
@@ -151,6 +159,7 @@ func TestHandlerIgnoresClientSuppliedOwner(t *testing.T) {
 // prior rows survive. No production seam is needed: a course_name longer than
 // the text field's 5000-char limit fails PocketBase validation during Save.
 func TestReplaceRollsBackOnInsertFailure(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -189,6 +198,7 @@ func neptunRequest(app core.App, auth *core.Record, body string) (*core.RequestE
 // TestHandlerRejectsOversizedSync: more than maxEvents events is a 400 and
 // leaves the stored calendar untouched.
 func TestHandlerRejectsOversizedSync(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
@@ -201,7 +211,7 @@ func TestHandlerRejectsOversizedSync(t *testing.T) {
 		events[i] = `{"course_name":"x"}`
 	}
 	e, _ := neptunRequest(app, u, `{"events":[`+strings.Join(events, ",")+`]}`)
-	err = Handler(e)
+	err = Handler(limits.NeptunReplace.New())(e)
 	var apiErr *router.ApiError
 	require.ErrorAs(t, err, &apiErr)
 	require.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -209,26 +219,25 @@ func TestHandlerRejectsOversizedSync(t *testing.T) {
 }
 
 func TestHandlerRateLimitedPerUser(t *testing.T) {
+	t.Parallel()
 	app, err := tests.NewTestApp()
 	require.NoError(t, err)
 	defer app.Cleanup()
 
-	prev := limiter
-	limiter = ratelimit.New(1, time.Minute)
-	t.Cleanup(func() { limiter = prev })
+	h := Handler(ratelimit.New(1, time.Minute))
 
 	a := newUser(t, app, "rl-a@test.local")
 	b := newUser(t, app, "rl-b@test.local")
 
 	e, _ := neptunRequest(app, a, `{"events":[]}`)
-	require.NoError(t, Handler(e))
+	require.NoError(t, h(e))
 
 	e, _ = neptunRequest(app, a, `{"events":[]}`)
-	err = Handler(e)
+	err = h(e)
 	var apiErr *router.ApiError
 	require.ErrorAs(t, err, &apiErr)
 	require.Equal(t, http.StatusTooManyRequests, apiErr.Status)
 
 	e, _ = neptunRequest(app, b, `{"events":[]}`)
-	require.NoError(t, Handler(e), "the limit is per user")
+	require.NoError(t, h(e), "the limit is per user")
 }

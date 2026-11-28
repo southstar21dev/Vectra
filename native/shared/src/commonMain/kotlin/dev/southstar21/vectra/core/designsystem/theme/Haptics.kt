@@ -10,7 +10,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
  * consistent: a selection always ticks, a commit always confirms.
  */
 @Immutable
-class VectraHaptics(private val feedback: HapticFeedback?) {
+internal class VectraHaptics(private val feedback: HapticFeedback?) {
     /** A discrete value changed: tab, segment, picker step, sheet detent. */
     fun tick() = perform(HapticFeedbackType.SegmentTick)
     /** Continuous scrubbing crossed a detent (navbar drag, sliders). */
@@ -31,4 +31,4 @@ class VectraHaptics(private val feedback: HapticFeedback?) {
     }
 }
 
-val LocalVectraHaptics = staticCompositionLocalOf { VectraHaptics(null) }
+internal val LocalVectraHaptics = staticCompositionLocalOf { VectraHaptics(null) }

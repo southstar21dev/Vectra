@@ -1,0 +1,11 @@
+# Icons the home-screen widgets use. One per line: the Remix icon name, the iOS imageset
+# name, and optionally the Android drawable suffix (ic_widget_<suffix>.xml). Every line
+# gets an imageset in iosApp/VectraWidgets/Assets.xcassets; Android drawables are only
+# written for lines that have a suffix. Re-run `npm run icons` after editing.
+RiBriefcaseLine RiBriefcase
+RiCalendarLine RiCalendar calendar
+RiCheckLine RiCheck check
+RiCheckboxCircleFill RiCheckboxCircle
+RiGroupLine RiGroup group
+RiMapPinLine RiMapPin pin
+RiTaskLine RiTask task

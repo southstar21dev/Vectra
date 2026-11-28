@@ -7,7 +7,7 @@
 **Your university timetable, Budapest transit and the weather, in one app.**
 
 Classes from Neptun with your breaks worked out, live departures and vehicles around you, and
-attendance you can actually keep track of. Built for students at Corvinus in Budapest.
+attendance you can actually keep track of. Built for university students in Budapest.
 
 [![Release](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml)
 [![Native version](https://img.shields.io/github/v/release/southstar21dev/Vectra?sort=semver&label=native&color=8B5CF6)](https://github.com/southstar21dev/Vectra/releases/latest)
@@ -201,15 +201,14 @@ make -C backend run
 ```
 
 See [`native/README.md`](native/README.md) and [`native/docs/CONTRIBUTING.md`](native/docs/CONTRIBUTING.md)
-for how the app is put together, and [`web/README.md`](web/README.md) for the PWA and the backend's
-environment variables.
+for how the app is put together, and [`backend/README.md`](backend/README.md) for the backend's environment variables and rate limits, and [`web/README.md`](web/README.md) for the PWA.
 
 ### Branches and releases
 
 | Branch | Purpose | Releases |
 |---|---|---|
 | `dev` | Day-to-day work; feature branches and Dependabot PRs merge here. | none (CI only) |
-| `master` | Production; the backend and web deploy from here. | `1.4.0` |
+| `master` | Production; the backend and web deploy from here. | a version tag (`vX.Y.Z`) |
 
 [semantic-release](https://semantic-release.gitbook.io/) runs on every push to `master` once
 CI passes, and versions from [Conventional Commits](https://www.conventionalcommits.org/):
@@ -224,7 +223,7 @@ updated AltStore/SideStore sources, plus an ad-hoc-signed IPA unless the release
 > **Vectra is an unofficial, independent student project.**
 >
 > - **No affiliation.** Vectra isn't made, endorsed, sponsored or approved by Campus Codeworks Zrt.
->   (the company behind Neptun), Corvinus University of Budapest or any other university, or
+>   (the company behind Neptun), any university, or
 >   BKK (Budapesti Közlekedési Központ). Neptun, BKK Futár and other product names and logos belong to
 >   their owners and appear here only to say what Vectra works with.
 > - **Your data.** Your Neptun calendar is downloaded through a Google Apps Script relay, and your

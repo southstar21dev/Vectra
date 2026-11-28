@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 /** The server refused this build; [minVersion] is the oldest it still serves, when it said. */
-data class UpdateRequired(val minVersion: String?)
+internal data class UpdateRequired(val minVersion: String?)
 
 /** What is kept on disk: the refusal, and which build it was for. */
 @Serializable
@@ -27,7 +27,7 @@ private data class StoredRefusal(val version: String, val minVersion: String? = 
  * restarts and offline launches until it is updated (a new version ignores and drops it) or the
  * server lowers its minimum (a successful [check] clears it).
  */
-class UpdateGate(
+internal class UpdateGate(
     private val kv: KeyValueStore,
     private val scope: CoroutineScope,
     private val appVersion: String,
@@ -35,12 +35,17 @@ class UpdateGate(
     private val _state = MutableStateFlow<UpdateRequired?>(null)
     val state: StateFlow<UpdateRequired?> = _state.asStateFlow()
 
+    /** A health check already succeeded in this process, so a stored refusal read before it is out of date. */
+    private var servedThisProcess = false
+
     /** Before the app shows anything: a refusal stored by this same build locks it again. */
     suspend fun loadStored() {
         val raw = kv.get(Key) ?: return
+        // The cold-start check can win the race against this read; its verdict is newer.
+        if (servedThisProcess) return
         val stored = runCatching { VectraJson.decodeFromString(StoredRefusal.serializer(), raw) }.getOrNull()
         if (stored != null && stored.version == appVersion) {
-            if (_state.value == null) _state.value = UpdateRequired(stored.minVersion)
+            if (_state.value == null && !servedThisProcess) _state.value = UpdateRequired(stored.minVersion)
         } else {
             // Updated since (or unreadable): this build hasn't been refused.
             kv.set(Key, null)
@@ -49,6 +54,7 @@ class UpdateGate(
 
     fun report(minVersion: String?) {
         val next = UpdateRequired(minVersion)
+        servedThisProcess = false
         if (_state.value == next) return
         _state.value = next
         scope.launch {
@@ -68,6 +74,7 @@ class UpdateGate(
             // Refused (already reported), offline or another error: the state stays as it is.
             return
         }
+        servedThisProcess = true
         if (_state.value != null) _state.value = null
         runSuspendCatching { kv.set(Key, null) }
     }

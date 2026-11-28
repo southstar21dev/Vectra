@@ -1,14 +1,19 @@
 package dev.southstar21.vectra.features.widgets
 
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.core.time.nowInBudapest
+import dev.southstar21.vectra.core.time.ymd
 import dev.southstar21.vectra.features.reminders.ReminderSession
 import dev.southstar21.vectra.features.reminders.SessionKind
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * What the widgets draw from: the sessions from Monday of this week through the next two weeks.
- * iOS decodes the same JSON in Swift (iosApp/VectraWidgets/Snapshot.swift), so keep the two in step.
+ * iOS decodes the same JSON in Swift (iosApp/VectraWidgets/Model.swift), so keep the two in step.
  */
 @Serializable
 data class WidgetSnapshot(
@@ -18,6 +23,10 @@ data class WidgetSnapshot(
     val sessions: List<WidgetSession>,
     /** The app is locked until it is updated (the server refused this build); no sessions then. */
     val updateRequired: Boolean = false,
+    /** Days after [generatedAtMs]'s day the sessions cover; iOS asks for the app once past it. */
+    val aheadDays: Int = SnapshotAheadDays,
+    /** The app's 12-hour clock setting; snapshots written before the key existed stay on 24-hour. */
+    val hour12: Boolean = false,
 )
 
 @Serializable
@@ -63,7 +72,7 @@ enum class WidgetKind {
         }
 }
 
-const val SnapshotVersion = 1
+internal const val SnapshotVersion = 1
 
 internal fun ReminderSession.widgetKind(): WidgetKind = when (kind) {
     SessionKind.Lecture -> WidgetKind.Lecture
@@ -74,28 +83,47 @@ internal fun ReminderSession.widgetKind(): WidgetKind = when (kind) {
     SessionKind.Other -> WidgetKind.Other
 }
 
-fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long): WidgetSnapshot =
+internal fun buildWidgetSnapshot(sessions: List<ReminderSession>, nowMs: Long, hour12: Boolean = false): WidgetSnapshot =
     WidgetSnapshot(
         generatedAtMs = nowMs,
         signedIn = true,
+        hour12 = hour12,
         sessions = sessions.map {
             WidgetSession(it.title, it.location, it.widgetKind(), it.startMs, it.endMs, it.day, it.color, it.teacher, it.group)
         },
     )
 
-fun signedOutSnapshot(nowMs: Long) = WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList())
+internal fun signedOutSnapshot(nowMs: Long, hour12: Boolean = false) =
+    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), hour12 = hour12)
 
 /** What the widgets hold while the app is locked: nothing from the timetable, only the update prompt. */
-fun updateRequiredSnapshot(nowMs: Long) =
-    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true)
+internal fun updateRequiredSnapshot(nowMs: Long, hour12: Boolean = false) =
+    WidgetSnapshot(generatedAtMs = nowMs, signedIn = false, sessions = emptyList(), updateRequired = true, hour12 = hour12)
 
-const val UpdateRequiredWidgetMessage = "Update Vectra to keep using it."
+internal const val UpdateRequiredWidgetMessage = "Update Vectra to keep using it."
+
+/** What a widget says when its snapshot has run out (same wording as StaleMessage in Model.swift). */
+const val StaleWidgetMessage = "Open Vectra to refresh your schedule."
+
+/**
+ * False once [today] is past the last day the snapshot covers ([aheadDays] after the day it was
+ * generated, in Budapest). It can no longer tell an empty day from one it never saw, so the widgets
+ * ask for the app instead of saying "No classes". Same rule as `Snapshot.covers` in Model.swift.
+ */
+internal fun WidgetSnapshot.covers(today: String): Boolean {
+    val generated = nowInBudapest(Instant.fromEpochMilliseconds(generatedAtMs)).date
+    val last = generated.plus(DatePeriod(days = aheadDays)).ymd()
+    return today <= last
+}
+
+/** Signed in, but the snapshot no longer reaches [today]. */
+fun WidgetSnapshot?.isStale(today: String): Boolean = this != null && signedIn && !covers(today)
 
 /** A widget's empty-state line: the update prompt while locked, else [signedOut]. */
 fun WidgetSnapshot?.emptyMessage(signedOut: String): String =
     if (this?.updateRequired == true) UpdateRequiredWidgetMessage else signedOut
 
-fun encodeWidgetSnapshot(snapshot: WidgetSnapshot): String =
+internal fun encodeWidgetSnapshot(snapshot: WidgetSnapshot): String =
     VectraJson.encodeToString(WidgetSnapshot.serializer(), snapshot)
 
 /** Null for a missing, unreadable or newer-format snapshot: the widget then shows its empty state. */

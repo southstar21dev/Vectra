@@ -18,19 +18,19 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
-enum class StampTilt(val degrees: Float) { Left(-3f), Right(2f) }
+internal enum class StampTilt(val degrees: Float) { Left(-3f), Right(2f) }
 
 /**
  * One glass panel of rows separated by hairlines, titled with a postage stamp stuck over its top
  * edge. [danger]: the stamp is red (the Danger zone, where every destructive action lives).
  */
 @Composable
-fun SettingsSection(
+internal fun SettingsSection(
     title: String,
     modifier: Modifier = Modifier,
     tilt: StampTilt = StampTilt.Left,
@@ -41,7 +41,7 @@ fun SettingsSection(
 ) {
     val c = Vectra.colors
     Box(modifier.fillMaxWidth().padding(top = 20.dp)) {
-        Column(Modifier.fillMaxWidth().glass(Radius.Card).clip(Radius.Card).padding(top = 16.dp)) {
+        Column(Modifier.fillMaxWidth().plannerCard().clip(Radius.Card).padding(top = 16.dp)) {
             rows.forEachIndexed { i, row ->
                 if (i > 0) HairlineDivider()
                 row()
@@ -59,4 +59,4 @@ fun SettingsSection(
 }
 
 /** SETTINGS_BLOCK_CLASS: padding for a non-row block inside a section. */
-val SettingsBlockPadding = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+internal val SettingsBlockPadding = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)

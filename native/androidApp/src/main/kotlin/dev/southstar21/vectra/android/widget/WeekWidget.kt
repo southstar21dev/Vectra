@@ -29,14 +29,17 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import dev.southstar21.vectra.core.time.nowInBudapest
+import dev.southstar21.vectra.features.widgets.StaleWidgetMessage
 import dev.southstar21.vectra.features.widgets.WeekBlock
 import dev.southstar21.vectra.features.widgets.WeekColumn
 import dev.southstar21.vectra.features.widgets.WeekGrid
+import dev.southstar21.vectra.features.widgets.WidgetGeometry
 import dev.southstar21.vectra.features.widgets.WidgetKind
+import dev.southstar21.vectra.features.widgets.hourAxisLabel
 import dev.southstar21.vectra.features.widgets.classCount
-import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.emptyMessage
 import dev.southstar21.vectra.features.widgets.examThisWeek
+import dev.southstar21.vectra.features.widgets.isStale
 import dev.southstar21.vectra.features.widgets.week
 import dev.southstar21.vectra.features.widgets.weekGrid
 import dev.southstar21.vectra.features.widgets.weekdayLabel
@@ -49,8 +52,7 @@ class WeekWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val frame = WidgetStore.frame(context)
-        provideContent { WidgetTheme { WeekContent(context, frame) } }
+        provideContent { WidgetTheme { WeekContent(context, rememberFrame(context)) } }
     }
 
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
@@ -67,27 +69,38 @@ private fun WeekContent(context: Context, frame: WidgetFrame) {
         EmptyState(context, snap.emptyMessage("Open Vectra and sign in to see your week here."))
         return
     }
+    if (snap.isStale(frame.today)) {
+        EmptyState(context, StaleWidgetMessage)
+        return
+    }
     val p = LocalWPalette.current
     val grid = snap.weekGrid(frame.today, frame.nowMs, ::minuteOfDay)
     val classes = snap.week(frame.today).classCount()
     val exam = snap.examThisWeek(frame.today)
-    val b = Budget(context)
-    val height = (LocalSize.current.height.value - 21f - 24f - b.line(11f) - 7f).coerceAtLeast(40f)
+    val b = budgetFor(context)
+    val countText = (if (classes == 1) "1 class" else "$classes classes") + if (grid.weekendFree()) ", weekend free" else ""
+    val examText = exam?.let { "${it.title}, ${weekdayLabel(it.day)} " }.orEmpty()
+    // The exam title takes what the class count and the time leave, on up to two lines, never cutting the time.
+    val examRoom = LocalSize.current.width.value - 23f - 11f * 0.5f * countText.length - 60f - WidgetGeometry.timeExtra(frame.hour12)
+    val examLines = if (exam == null) 1 else b.lines(examText, 11f, examRoom.coerceAtLeast(60f), bold = false, max = 2)
+    val height = (LocalSize.current.height.value - 21f - 24f - b.line(11f) * examLines - 7f).coerceAtLeast(40f)
     WidgetSurface(context, padding = 0.dp) {
         Column(GlanceModifier.fillMaxSize().padding(start = 10.dp, top = 11.dp, end = 13.dp, bottom = 10.dp)) {
             Row(GlanceModifier.fillMaxWidth()) {
-                HourLabels(grid, height.dp)
+                HourLabels(grid, height.dp, frame.hour12)
                 grid.columns.forEach { DayColumn(it, grid, height.dp, frame.nowMs) }
             }
             Spacer(GlanceModifier.height(7.dp))
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Quiet((if (classes == 1) "1 class" else "$classes classes") + if (grid.weekendFree()) ", weekend free" else "")
-                Spacer(GlanceModifier.defaultWeight())
+                Quiet(countText)
+                Spacer(GlanceModifier.width(8.dp))
                 if (exam != null) {
                     TypeWord(WidgetKind.Exam)
                     Spacer(GlanceModifier.width(6.dp))
-                    Quiet("${exam.title}, ${weekdayLabel(exam.day)} ")
-                    Mono(clockLabel(exam.startMs), 11f, p.secondary)
+                    Box(GlanceModifier.defaultWeight()) { Quiet(examText, maxLines = 2) }
+                    Mono(frame.clock(exam.startMs), 11f, p.secondary)
+                } else {
+                    Spacer(GlanceModifier.defaultWeight())
                 }
             }
         }
@@ -100,7 +113,7 @@ private fun y(minute: Int, grid: WeekGrid, height: Dp): Dp =
 private fun hours(grid: WeekGrid): List<Int> = (grid.fromHour..grid.toHour step if (grid.toHour - grid.fromHour > 8) 2 else 1).toList()
 
 @Composable
-private fun HourLabels(grid: WeekGrid, height: Dp) {
+private fun HourLabels(grid: WeekGrid, height: Dp, hour12: Boolean) {
     val p = LocalWPalette.current
     Column(GlanceModifier.width(16.dp).padding(top = 18.dp)) {
         var cursor = 0.dp
@@ -109,7 +122,7 @@ private fun HourLabels(grid: WeekGrid, height: Dp) {
             // Each hour one child: Glance draws at most ten per column.
             Column {
                 Spacer(GlanceModifier.height(at - cursor))
-                Text(h.toString().padStart(2, '0'), style = style(9.sp, FontWeight.Bold, p.muted, mono = true), maxLines = 1)
+                Text(hourAxisLabel(h, hour12), style = style(9.sp, FontWeight.Bold, p.muted, mono = true), maxLines = 1)
             }
             cursor = at + 12.dp
         }

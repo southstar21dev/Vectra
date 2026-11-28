@@ -2,12 +2,15 @@ package routes_test
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tests"
 
+	"vectra/pb/internal/limits"
+	"vectra/pb/internal/reauth"
 	"vectra/pb/internal/routes"
 	_ "vectra/pb/migrations"
 )
@@ -23,7 +26,7 @@ func TestRouteBindings(t *testing.T) {
 	t.Setenv("WEBAUTHN_RP_DISPLAY_NAME", "Vectra Test")
 
 	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) {
-		routes.Register(e)
+		routes.Register(e, routes.NewDeps(reauth.NewGuard(limits.ReauthUser.New(), limits.ReauthIP.New())))
 	}
 
 	scenarios := []tests.ApiScenario{
@@ -49,15 +52,6 @@ func TestRouteBindings(t *testing.T) {
 			Method:          http.MethodPost,
 			URL:             "/api/vectra/account/email",
 			Body:            strings.NewReader(`{"currentPassword":"x","newEmail":"n@test.local"}`),
-			ExpectedStatus:  http.StatusUnauthorized,
-			ExpectedContent: []string{`"status":401`},
-			BeforeTestFunc:  register,
-		},
-		{
-			Name:            "push send requires auth",
-			Method:          http.MethodPost,
-			URL:             "/api/vectra/push/send",
-			Body:            strings.NewReader(`{"user_id":"x","title":"t","body":"b"}`),
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"status":401`},
 			BeforeTestFunc:  register,
@@ -131,5 +125,74 @@ func TestRouteBindings(t *testing.T) {
 
 	for i := range scenarios {
 		scenarios[i].Test(t)
+	}
+}
+
+// TestSuperuserBindings enforces the auth convention: routes for signed-in
+// users refuse a superuser token (403). No route currently lets superusers in.
+func TestSuperuserBindings(t *testing.T) {
+	register := func(_ testing.TB, _ *tests.TestApp, e *core.ServeEvent) {
+		routes.Register(e, routes.NewDeps(reauth.NewGuard(limits.ReauthUser.New(), limits.ReauthIP.New())))
+	}
+	super := func(t testing.TB, app *tests.TestApp) {
+		_, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "root@test.local")
+		if err == nil {
+			return
+		}
+		col, err := app.FindCollectionByNameOrId(core.CollectionNameSuperusers)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := core.NewRecord(col)
+		r.SetEmail("root@test.local")
+		r.SetPassword("password123")
+		if err := app.Save(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	token := func(t testing.TB, app *tests.TestApp) string {
+		super(t, app)
+		r, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "root@test.local")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tok, err := r.NewAuthToken()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tok
+	}
+
+	for _, tc := range []struct {
+		name, method, url string
+		status            int
+	}{
+		{"crypto", http.MethodPost, "/api/vectra/crypto", http.StatusForbidden},
+		{"account delete", http.MethodPost, "/api/vectra/account/delete", http.StatusForbidden},
+		{"account email", http.MethodPost, "/api/vectra/account/email", http.StatusForbidden},
+		{"neptun replace", http.MethodPost, "/api/vectra/neptun/replace", http.StatusForbidden},
+		{"passkeys list", http.MethodGet, "/api/vectra/passkeys", http.StatusForbidden},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := tests.NewTestApp()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer app.Cleanup()
+			s := tests.ApiScenario{
+				Name:            tc.name,
+				Method:          tc.method,
+				URL:             tc.url,
+				Body:            strings.NewReader(`{}`),
+				Headers:         map[string]string{"Authorization": token(t, app)},
+				ExpectedStatus:  tc.status,
+				ExpectedContent: []string{`"status":` + strconv.Itoa(tc.status)},
+				TestAppFactory:  func(testing.TB) *tests.TestApp { return app },
+				BeforeTestFunc:  register,
+			}
+			s.DisableTestAppCleanup = true
+			s.Test(t)
+		})
 	}
 }

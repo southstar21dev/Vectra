@@ -30,6 +30,12 @@ updates:
         update-types:
           - minor
           - patch
+  # The backend image's base images (golang and alpine tags).
+  - package-ecosystem: docker
+    directory: /backend
+    target-branch: dev
+    schedule:
+      interval: weekly
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev

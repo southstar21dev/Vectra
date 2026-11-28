@@ -3,6 +3,7 @@ package dev.southstar21.vectra.features.reminders
 import dev.southstar21.vectra.core.auth.AuthRepository
 import dev.southstar21.vectra.core.auth.Profile
 import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.JsonObject
+import kotlin.concurrent.Volatile
 
 /**
  * The reminder settings, on the device and in the profile (`preferences.reminders`): a device that
@@ -24,7 +25,10 @@ internal class ReminderPrefsStore(
     private val kv: KeyValueStore,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
+    crypto: CryptoClient,
 ) {
+    private val cloud = ReminderPrefsCloud(crypto)
+
     private val _prefs = MutableStateFlow(ReminderPrefs())
     val prefs: StateFlow<ReminderPrefs> = _prefs.asStateFlow()
 
@@ -33,14 +37,20 @@ internal class ReminderPrefsStore(
     /** The account whose profile was compared with [prefs] in this process. */
     private var syncedFor: String? = null
 
+    /** Whether [update] ran yet, so a late [load] does not put the stored settings over it. */
+    @Volatile private var edited = false
+
     /** Reads the stored settings, then keeps them in step with the signed-in profile. */
     suspend fun load(onLoaded: () -> Unit) {
-        _prefs.value = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
+        val stored = kv.get(PrefsKey)?.let { runCatching { VectraJson.decodeFromString(ReminderPrefs.serializer(), it) }.getOrNull() } ?: ReminderPrefs()
+        // A change made before the stored settings were read is newer than them: keep it.
+        _prefs.update { if (edited) it else stored }
         onLoaded()
         auth.profile.collect { profile -> if (profile != null) runSuspendCatching { syncWith(profile) } }
     }
 
     fun update(transform: (ReminderPrefs) -> ReminderPrefs) {
+        edited = true
         _prefs.update(transform)
         scope.launch {
             persist()
@@ -55,12 +65,16 @@ internal class ReminderPrefsStore(
         store(ReminderPrefs())
     }
 
-    /** Once per account and process: take the profile's settings on a fresh device, otherwise push ours if they differ. */
+    /**
+     * Once per account and process: take the profile's settings on a fresh device, otherwise push
+     * ours if they differ. A commute blob that cannot be decrypted right now throws before anything
+     * is decided, so a later profile update tries again instead of adopting settings without legs.
+     */
     private suspend fun syncWith(profile: Profile) {
         if (syncedFor == profile.id) return
+        val remoteJson = profile.preferences?.get(ProfileKey)
+        val remote = remoteJson?.let { cloud.decode(it) }
         syncedFor = profile.id
-        val remote = profile.preferences?.get(ProfileKey)
-            ?.let { runCatching { VectraJson.decodeFromJsonElement(ReminderPrefs.serializer(), it) }.getOrNull() }
         val owner = kv.get(OwnerKey)
         if (owner != profile.id) {
             kv.set(OwnerKey, profile.id)
@@ -70,7 +84,7 @@ internal class ReminderPrefsStore(
                 owner != null -> store(ReminderPrefs())
             }
         }
-        if (remote != _prefs.value) push()
+        if (remote != _prefs.value || cloud.hasPlainLegs(remoteJson)) push()
     }
 
     private suspend fun store(next: ReminderPrefs) {
@@ -91,9 +105,15 @@ internal class ReminderPrefsStore(
     private suspend fun push() = pushLock.withLock {
         if (auth.session.value == null) return@withLock
         runSuspendCatching {
-            val current = auth.profile.value?.preferences ?: JsonObject(emptyMap())
-            val mine = VectraJson.encodeToJsonElement(ReminderPrefs.serializer(), _prefs.value)
-            if (current[ProfileKey] != mine) auth.updateProfile(mapOf("preferences" to JsonObject(current + (ProfileKey to mine))))
+            val remoteJson = auth.profile.value?.preferences?.get(ProfileKey)
+            // The ciphertext differs on every encryption, so compare the settings, not the JSON.
+            // A remote copy that cannot be decrypted now counts as out of date: this device's copy wins.
+            val inSync = remoteJson != null && !cloud.hasPlainLegs(remoteJson) &&
+                runSuspendCatching { cloud.decode(remoteJson) }.getOrNull() == _prefs.value
+            if (inSync) return@runSuspendCatching
+            // setPreference refetches the record and merges this one key, so other preference keys are not overwritten.
+            // encode throws when the legs cannot be encrypted, which skips this write until the next change or sync.
+            auth.setPreference(ProfileKey, cloud.encode(_prefs.value))
         }
     }
 

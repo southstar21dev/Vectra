@@ -3,10 +3,8 @@ package dev.southstar21.vectra.features.reminders
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,22 +25,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.southstar21.vectra.core.designsystem.components.ButtonSize
-import dev.southstar21.vectra.core.designsystem.components.ButtonVariant
 import dev.southstar21.vectra.core.designsystem.components.HairlineDivider
-import dev.southstar21.vectra.core.designsystem.components.InlineLoader
 import dev.southstar21.vectra.core.designsystem.components.LocalToaster
-import dev.southstar21.vectra.core.designsystem.components.OptionSheet
-import dev.southstar21.vectra.core.designsystem.components.SelectOption
+import dev.southstar21.vectra.core.designsystem.components.SettingsLink
 import dev.southstar21.vectra.core.designsystem.components.SettingsRow
 import dev.southstar21.vectra.core.designsystem.components.SettingsFooterLink
-import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VTabs
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.VToggle
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
@@ -53,12 +45,6 @@ import dev.southstar21.vectra.core.platform.Notifier
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
 import dev.southstar21.vectra.core.util.runSuspendCatching
-import dev.southstar21.vectra.features.transit.RouteBadge
-import dev.southstar21.vectra.features.transit.RouteBadgeSize
-import dev.southstar21.vectra.features.transit.TransitRepository
-import dev.southstar21.vectra.features.transit.TransitTracker
-import dev.southstar21.vectra.features.transit.collect
-import dev.southstar21.vectra.features.transit.getTrackerStops
 import kotlinx.coroutines.launch
 
 /** Turning a reminder on asks for the notification permission first; [enable] runs once it's granted. */
@@ -81,7 +67,7 @@ private fun BlockLabel(text: String) =
     VText(text, Modifier.padding(bottom = 8.dp), vtext(11.sp to 16.sp, Weight.Semibold), Vectra.colors.textMuted)
 
 /** The "Class reminders" settings group. */
-fun classReminderRows(scheduler: ReminderScheduler, notifier: Notifier): List<@Composable () -> Unit> = listOf(
+internal fun classReminderRows(scheduler: ReminderScheduler, notifier: Notifier): List<@Composable () -> Unit> = listOf(
     { BeforeClassRows(scheduler, notifier) },
     { NextClassRow(scheduler, notifier) },
     { TypeFilter(scheduler) },
@@ -95,7 +81,7 @@ private fun BeforeClassRows(scheduler: ReminderScheduler, notifier: Notifier) {
     val enable = rememberEnabler(notifier)
     Column {
         PermissionLostRow(prefs, notifier)
-        SettingsRow(RemixIcons.TimeLine, c.tints.sky.text, "Before class", "Which class and room, ahead of time") {
+        SettingsRow(RemixIcons.TimeLine, "Before class", "Which class and room, ahead of time") {
             VToggle(prefs.beforeClass, { on ->
                 if (on) enable { scheduler.update { it.copy(beforeClass = true) } } else scheduler.update { it.copy(beforeClass = false) }
             }, label = "Before class")
@@ -131,10 +117,8 @@ private fun PermissionLostRow(prefs: ReminderPrefs, notifier: Notifier) {
     }
     val enable = rememberEnabler(notifier)
     if (granted || !prefs.anyOn) return
-    SettingsRow(RemixIcons.NotificationOffLine, c.tints.red.text, "Notifications are off", "Your reminders are set but can't appear") {
-        VButton(onClick = { enable { granted = true } }, variant = ButtonVariant.Outline, size = ButtonSize.Sm) {
-            VText("Allow", style = vtext(TypeScale.Caption, Weight.Bold))
-        }
+    SettingsRow(RemixIcons.NotificationOffLine, "Notifications are off", "Your reminders are set but can't appear") {
+        SettingsLink("Allow", { enable { granted = true } })
     }
     HairlineDivider()
 }
@@ -144,7 +128,7 @@ private fun NextClassRow(scheduler: ReminderScheduler, notifier: Notifier) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
     val enable = rememberEnabler(notifier)
-    SettingsRow(RemixIcons.ArrowRightLine, c.tints.purple.text, "Next class", "Five minutes before a class ends: what's next and where") {
+    SettingsRow(RemixIcons.ArrowRightLine, "Next class", "Five minutes before a class ends: what's next and where") {
         VToggle(prefs.nextClass, { on ->
             if (on) enable { scheduler.update { it.copy(nextClass = true) } } else scheduler.update { it.copy(nextClass = false) }
         }, label = "Next class")
@@ -176,14 +160,14 @@ private fun TypeFilter(scheduler: ReminderScheduler) {
 private fun PersonalItemsRow(scheduler: ReminderScheduler) {
     val c = Vectra.colors
     val prefs by scheduler.prefs.collectAsStateWithLifecycle()
-    SettingsRow(RemixIcons.Calendar2Line, c.tints.amber.text, "Personal items too", "Shifts and tasks from your schedule") {
+    SettingsRow(RemixIcons.Calendar2Line, "Personal items too", "Shifts and tasks from your schedule") {
         VToggle(prefs.personalItems, { on -> scheduler.update { it.copy(personalItems = on) } }, label = "Personal items too")
     }
 }
 
 /** The Class reminders footer: a test reminder a few seconds out. */
 @Composable
-fun TestReminderLink(scheduler: ReminderScheduler, notifier: Notifier) {
+internal fun TestReminderLink(scheduler: ReminderScheduler, notifier: Notifier) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val enable = rememberEnabler(notifier)

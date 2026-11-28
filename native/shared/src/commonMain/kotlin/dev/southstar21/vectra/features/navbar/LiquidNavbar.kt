@@ -103,7 +103,7 @@ private fun Modifier.narrowTo(compact: Dp, collapse: () -> Float): Modifier = la
  * actions pop out of the + as one glass panel.
  */
 @Composable
-fun LiquidNavbar(
+internal fun LiquidNavbar(
     current: Route,
     onNavigate: (Route) -> Unit,
     backdrop: Backdrop,
@@ -168,6 +168,8 @@ fun LiquidNavbar(
                     selectedIndex = activeIndex,
                     // The drop ticks as it crosses each tab; landing is felt by that last tick.
                     onSelect = { index -> onNavigate(items[index].route) },
+                    onReselect = { index -> onNavigate(items[index].route) },
+                    label = { index -> items[index].label },
                     onCross = { haptics.frequentTick() },
                     backdrop = backdrop,
                     accent = c.accentPrimary,

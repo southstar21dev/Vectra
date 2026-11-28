@@ -9,10 +9,10 @@ import dev.southstar21.vectra.core.preferences.AccentKey
 internal fun rgba(r: Int, g: Int, b: Int, a: Float) = Color(r, g, b, (a * 255f + 0.5f).toInt())
 
 /** This colour at [percent]% of its opacity (mixed with transparent). */
-fun Color.mixTransparent(percent: Float): Color = copy(alpha = alpha * percent / 100f)
+internal fun Color.mixTransparent(percent: Float): Color = copy(alpha = alpha * percent / 100f)
 
 /** [percent]% of this colour mixed with [other] in sRGB. */
-fun Color.mix(percent: Float, other: Color): Color = lerp(other, this, percent / 100f)
+internal fun Color.mix(percent: Float, other: Color): Color = lerp(other, this, percent / 100f)
 
 /** One feature-chip tint: background wash, hairline and ink. */
 @Immutable
@@ -24,6 +24,7 @@ data class Tints(
     val purple: Tint,
     val violet: Tint,
     val amber: Tint,
+    val orange: Tint,
     val red: Tint,
     val sky: Tint,
     val emerald: Tint,
@@ -42,9 +43,9 @@ data class BoxShadow(
 )
 
 @Immutable
-data class AccentPreset(val key: AccentKey, val name: String, val dark: Color, val light: Color)
+internal data class AccentPreset(val key: AccentKey, val name: String, val dark: Color, val light: Color)
 
-val AccentPresets: List<AccentPreset> = listOf(
+internal val AccentPresets: List<AccentPreset> = listOf(
     AccentPreset(AccentKey.Blue, "Sky Blue", Color(0xFF38BDF8), Color(0xFF0284C7)),
     AccentPreset(AccentKey.Indigo, "Indigo", Color(0xFF818CF8), Color(0xFF4F46E5)),
     AccentPreset(AccentKey.Purple, "Violet", Color(0xFFA855F7), Color(0xFF7C3AED)),
@@ -135,6 +136,7 @@ data class VectraColors(
                 purple = Tint(rgba(168, 85, 247, 0.15f), rgba(168, 85, 247, 0.3f), Color(0xFFC084FC)),
                 violet = Tint(rgba(139, 92, 246, 0.15f), rgba(139, 92, 246, 0.35f), Color(0xFFC4B5FD)),
                 amber = Tint(rgba(245, 158, 11, 0.15f), rgba(245, 158, 11, 0.3f), Color(0xFFFBBF24)),
+                orange = Tint(rgba(249, 115, 22, 0.15f), rgba(249, 115, 22, 0.3f), Color(0xFFFB923C)),
                 red = Tint(rgba(239, 68, 68, 0.15f), rgba(239, 68, 68, 0.3f), Color(0xFFF87171)),
                 sky = Tint(rgba(14, 165, 233, 0.15f), rgba(14, 165, 233, 0.3f), Color(0xFF38BDF8)),
                 emerald = Tint(rgba(16, 185, 129, 0.15f), rgba(16, 185, 129, 0.3f), Color(0xFF34D399)),
@@ -158,7 +160,7 @@ data class VectraColors(
             glowPrimary = rgba(37, 99, 235, 0.08f),
             glowSecondary = rgba(124, 58, 237, 0.06f),
             glassBg = rgba(255, 255, 255, 0.95f),
-            glassBgElevated = rgba(255, 255, 255, 0.98f),
+            glassBgElevated = rgba(255, 255, 255, 1f),
             glassBorder = Color.Transparent,
             glassBorderSpecular = rgba(255, 255, 255, 0.80f),
             glassShadow = listOf(
@@ -184,6 +186,7 @@ data class VectraColors(
                 purple = Tint(rgba(147, 51, 234, 0.12f), rgba(147, 51, 234, 0.3f), Color(0xFF7C3AED)),
                 violet = Tint(rgba(109, 40, 217, 0.1f), rgba(109, 40, 217, 0.28f), Color(0xFF6D28D9)),
                 amber = Tint(rgba(217, 119, 6, 0.12f), rgba(217, 119, 6, 0.3f), Color(0xFFB45309)),
+                orange = Tint(rgba(234, 88, 12, 0.12f), rgba(234, 88, 12, 0.3f), Color(0xFFC2410C)),
                 red = Tint(rgba(220, 38, 38, 0.12f), rgba(220, 38, 38, 0.3f), Color(0xFFDC2626)),
                 sky = Tint(rgba(2, 132, 199, 0.12f), rgba(2, 132, 199, 0.3f), Color(0xFF0284C7)),
                 emerald = Tint(rgba(5, 150, 105, 0.12f), rgba(5, 150, 105, 0.3f), Color(0xFF059669)),
@@ -240,4 +243,19 @@ object Palette {
     val Emerald600 = Color(0xFF059669)
     val Sky400 = Color(0xFF38BDF8)
     val Sky500 = Color(0xFF0EA5E9)
+}
+
+/**
+ * `#rrggbb`, `rrggbb`, `#rgb` or `rrggbbaa` (hash optional) to a Color; null when unparsable.
+ * With [opaque] an 8-digit value drops its alpha instead of honouring it.
+ */
+internal fun parseHexColor(hex: String?, opaque: Boolean = false): Color? {
+    val h = hex?.trim()?.removePrefix("#") ?: return null
+    val v = when (h.length) {
+        6 -> h.toLongOrNull(16)?.let { 0xFF000000 or it }
+        8 -> h.toLongOrNull(16)?.let { if (opaque) 0xFF000000 or (it shr 8) else ((it and 0xFF) shl 24) or (it shr 8) }
+        3 -> h.map { "$it$it" }.joinToString("").toLongOrNull(16)?.let { 0xFF000000 or it }
+        else -> null
+    }
+    return v?.let { Color(it) }
 }

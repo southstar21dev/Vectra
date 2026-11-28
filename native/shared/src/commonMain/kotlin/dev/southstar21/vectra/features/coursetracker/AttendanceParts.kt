@@ -54,6 +54,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.mixTransparent
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 import dev.southstar21.vectra.core.designsystem.theme.tnum
@@ -373,12 +374,14 @@ internal fun AttendanceStandingCard(
             valueColor = if (riskTier == AttendanceRiskTier.Warning) c.tints.amber.text else c.tints.emerald.text
         }
     }
+    // A type with no sessions has nothing to draw; its name goes in the header line instead.
+    val shown = strips.filter { it.sessions.isNotEmpty() }
     val showBars = maxAbsences != null && maxAbsences in 1..MaxBars
     val narrow = maxAbsences != null && maxAbsences > 6
     val shape = Radius.Card
-    Column(Modifier.fillMaxWidth().glassDepth(shape).padding(20.dp).semantics { contentDescription = "Attendance standing" }) {
+    Column(Modifier.fillMaxWidth().plannerCard(shape).padding(20.dp).semantics { contentDescription = "Attendance standing" }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (value == null) {
                     VText(caption, style = vtext(TypeScale.Title, Weight.Black, Tracking.Tight), color = c.textPrimary)
                 } else {
@@ -389,6 +392,9 @@ internal fun AttendanceStandingCard(
                         }
                         VText(caption, Modifier.alignByBaseline(), vtext(15.sp to 22.sp, Weight.Bold), c.textPrimary)
                     }
+                }
+                if (strips.isNotEmpty()) {
+                    VText(strips.joinToString(", ") { it.label }, style = vtext(TypeScale.Meta13, Weight.Medium), color = c.textSecondary)
                 }
             }
             if (showBars) {
@@ -408,12 +414,12 @@ internal fun AttendanceStandingCard(
                 }
             }
         }
-        if (strips.isNotEmpty()) {
+        if (shown.isNotEmpty()) {
             Column(
                 Modifier.padding(top = 18.dp).fillMaxWidth().topRule(c.borderSubtle).padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                for (row in strips) {
+                for (row in shown) {
                     AttendanceStrip(
                         label = row.label,
                         tone = row.tone,
@@ -503,7 +509,7 @@ internal fun SessionLedgerRow(
  * who teaches it, where and when, and the four marks.
  */
 @Composable
-fun TodaySessionCard(
+internal fun TodaySessionCard(
     session: AttendanceSession,
     typeLabel: String,
     weekTitle: String,
@@ -519,7 +525,7 @@ fun TodaySessionCard(
     }.orEmpty()
     val shape = Radius.Panel
     Box(modifier.fillMaxWidth().padding(top = 28.dp).semantics { contentDescription = "Today's ${typeLabel.lowercase()}" }) {
-        Column(Modifier.fillMaxWidth().glassDepth(shape).padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 64.dp)) {
+        Column(Modifier.fillMaxWidth().plannerCard(shape).padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 64.dp)) {
             StatusToggle(session, onSetStatus, labels = true)
         }
         TrackerStamp(
@@ -543,9 +549,16 @@ fun TodaySessionCard(
         ) {
             VText(instructor.nonEmpty() ?: weekTitle, style = vtext(TypeScale.Body, Weight.Bold), color = c.textPrimary, maxLines = 1)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val where = location.nonEmpty()?.let { "Room $it" } ?: if (!instructor.isNullOrEmpty()) weekTitle else ""
-                VText(where, Modifier.weight(1f), vtext(13.sp to 18.sp), c.textSecondary, maxLines = 1)
-                if (time.isNotEmpty()) VText(time, style = vtext(13.sp to 18.sp, mono = true).tnum(), color = c.textSecondary, maxLines = 1)
+                val room = location.nonEmpty()
+                if (room != null) {
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        VIcon(RemixIcons.MapPinLine, size = 14.dp, tint = c.textSecondary)
+                        VText(room, Modifier.weight(1f, fill = false), vtext(TypeScale.Meta13), c.textSecondary, maxLines = 1)
+                    }
+                } else {
+                    VText(if (!instructor.isNullOrEmpty()) weekTitle else "", Modifier.weight(1f), vtext(TypeScale.Meta13), c.textSecondary, maxLines = 1)
+                }
+                if (time.isNotEmpty()) VText(time, style = vtext(TypeScale.Meta13, mono = true).tnum(), color = c.textSecondary, maxLines = 1)
             }
         }
     }

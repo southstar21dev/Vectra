@@ -11,13 +11,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Appearance prefs: the stored prefs paint first; once the profile loads its
- * `appearance` wins (per user, once), unless this device holds a change it never
+ * `appearance` wins (and again whenever a newer record brings a different one), unless this device holds a change it never
  * managed to save there; changes apply instantly and sync to the profile in the background.
  */
-class AppearanceRepository(
+class AppearanceRepository internal constructor(
     private val kv: KeyValueStore,
     private val auth: AuthRepository,
     private val scope: CoroutineScope,
@@ -25,6 +26,8 @@ class AppearanceRepository(
     private val _prefs = MutableStateFlow(AppearancePrefs.Default)
     val prefs: StateFlow<AppearancePrefs> = _prefs.asStateFlow()
     private var hydratedFor: String? = null
+    /** The profile's `appearance` as last applied here, to tell a newer one (from another device) apart. */
+    private var hydratedAppearance: JsonElement? = null
 
     private val _loaded = MutableStateFlow(false)
     /** The stored theme is in [prefs]. Until then the first frames would paint the default one. */
@@ -47,12 +50,20 @@ class AppearanceRepository(
                 if (profile == null) {
                     if (hydratedFor != null) {
                         hydratedFor = null
+                        hydratedAppearance = null
                         kv.set(UNSYNCED_KEY, null)
                         set(AppearancePrefs.Default)
                     }
                 } else if (hydratedFor != profile.id) {
                     hydratedFor = profile.id
+                    hydratedAppearance = profile.appearance
                     hydrate(profile)
+                } else if (hydratedAppearance != profile.appearance) {
+                    // A fresher record (token refresh, another device's change): follow it unless a local change is unsaved.
+                    hydratedAppearance = profile.appearance
+                    if (kv.get(UNSYNCED_KEY) != profile.id) {
+                        set(profile.appearance?.let(AppearancePrefs::normalize) ?: AppearancePrefs.Default)
+                    }
                 }
             }
         }
@@ -69,7 +80,8 @@ class AppearanceRepository(
             return
         }
         set(unsaved)
-        push(profile.id, unsaved)
+        // From the profile collector: a sign-out ends the save quietly instead of failing the collector.
+        auth.sessionScope.withSessionOrNull(profile.id) { push(profile.id, unsaved) }
     }
 
     private suspend fun set(next: AppearancePrefs) {
@@ -79,9 +91,14 @@ class AppearanceRepository(
 
     fun update(transform: (AppearancePrefs) -> AppearancePrefs) {
         val next = transform(_prefs.value)
-        scope.launch {
+        val uid = auth.userId
+        if (uid == null) {
+            scope.launch { set(next) }
+            return
+        }
+        // In the account's session: a sign-out mid-save must not write its prefs or mark after the wipe.
+        auth.sessionScope.launchFor(uid) {
             set(next)
-            val uid = auth.session.value?.userId?.ifEmpty { null } ?: return@launch
             // Marked before the request, so a process killed mid-save still knows.
             kv.set(UNSYNCED_KEY, uid)
             push(uid, next)
@@ -90,8 +107,8 @@ class AppearanceRepository(
 
     /** Saves [next] to [uid]'s profile; the mark goes once the newest change is saved. */
     private suspend fun push(uid: String, next: AppearancePrefs) {
-        if (auth.session.value?.userId != uid) return
         val saved = runSuspendCatching { auth.updateProfile(mapOf("appearance" to next.toJson())) }.isSuccess
+        // Kept: clears the mark only if no newer change replaced [next] while the save ran.
         if (saved && _prefs.value == next && kv.get(UNSYNCED_KEY) == uid) kv.set(UNSYNCED_KEY, null)
     }
 

@@ -6,6 +6,7 @@ import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
@@ -16,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * `data` (the encrypted blob) and `updated_at` — with a unique index on `user`.
  * PocketBase has no upsert, so the writer finds the row first.
  */
-interface TrackerCloud {
+internal interface TrackerCloud {
     /** The encrypted blob, or null when the user has no row yet; other failures throw. */
     suspend fun fetch(userId: String): String?
 
@@ -24,7 +25,7 @@ interface TrackerCloud {
     suspend fun upsert(userId: String, encrypted: String)
 }
 
-class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
+internal class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
     private val collection get() = pb.collection("course_tracker_data")
 
     private suspend fun findRow(userId: String): JsonObject? = collection.getFirstOrNull("user = ${pbString(userId)}")
@@ -61,7 +62,7 @@ class PocketBaseTrackerCloud(private val pb: PocketBaseClient) : TrackerCloud {
 }
 
 /** Field encryption for the blob. */
-interface TrackerCipher {
+internal interface TrackerCipher {
     /** Throws on failure — plaintext is never stored. */
     suspend fun encrypt(plain: String): String
 
@@ -69,13 +70,13 @@ interface TrackerCipher {
     suspend fun decrypt(value: String): String
 }
 
-class CryptoTrackerCipher(private val crypto: CryptoClient) : TrackerCipher {
+internal class CryptoTrackerCipher(private val crypto: CryptoClient) : TrackerCipher {
     override suspend fun encrypt(plain: String): String = crypto.encrypt(plain) ?: error("Encryption failed")
     override suspend fun decrypt(value: String): String = crypto.decrypt(value) ?: value
 }
 
 /** Thrown when the cloud row exists but cannot be decrypted or parsed. */
-class UnreadableCloudTrackerException : IllegalStateException("Course tracker cloud data is unreadable")
+internal class UnreadableCloudTrackerException : IllegalStateException("Course tracker cloud data is unreadable")
 
 /**
  * The cloud-write gate. The row is one whole-document
@@ -84,12 +85,14 @@ class UnreadableCloudTrackerException : IllegalStateException("Course tracker cl
  * write is remembered, and uploads are serialised with queued ones collapsing
  * to the newest (each carries the full document).
  */
-class CloudWriteGate {
+internal class CloudWriteGate {
     private val state = Mutex()
     private val queue = Mutex()
     private val readable = mutableSetOf<String>()
     private val heldBack = mutableSetOf<String>()
-    private var latestPending: (suspend () -> Unit)? = null
+    private class Pending(var run: suspend () -> Unit, val waiters: MutableList<CompletableDeferred<Unit>>)
+
+    private var latestPending: Pending? = null
 
     suspend fun markReadable(userId: String) = state.withLock { readable += userId }
     suspend fun isReadable(userId: String): Boolean = state.withLock { userId in readable }
@@ -100,12 +103,38 @@ class CloudWriteGate {
     /** Returns (and clears) whether a write was held back. */
     suspend fun takeHeldBack(userId: String): Boolean = state.withLock { heldBack.remove(userId) }
 
-    /** Runs [run] after every earlier upload; uploads queued meanwhile collapse to the newest. */
+    /**
+     * Runs [run] after every earlier upload; uploads queued meanwhile collapse to the newest.
+     * Every caller whose upload was collapsed waits for the run that replaced it and sees its
+     * outcome, so a failure reaches all of them and none reports success for an upload that failed.
+     */
     suspend fun enqueue(run: suspend () -> Unit) {
-        state.withLock { latestPending = run }
+        val mine = CompletableDeferred<Unit>()
+        state.withLock {
+            val pending = latestPending
+            if (pending == null) latestPending = Pending(run, mutableListOf(mine))
+            else {
+                pending.run = run
+                pending.waiters += mine
+            }
+        }
         queue.withLock {
-            val pending = state.withLock { latestPending.also { latestPending = null } } ?: return
-            pending()
+            val pending = state.withLock { latestPending.also { latestPending = null } }
+            if (pending != null) runPending(pending)
+        }
+        mine.await()
+    }
+
+    private suspend fun runPending(pending: Pending) {
+        val failure = runCatching { pending.run() }.exceptionOrNull()
+        when (failure) {
+            null -> pending.waiters.forEach { it.complete(Unit) }
+            is CancellationException -> {
+                // The runner was cancelled: the callers it carried must not wait forever or take the cancellation as their own.
+                pending.waiters.forEach { it.completeExceptionally(IllegalStateException("Upload cancelled", failure)) }
+                throw failure
+            }
+            else -> pending.waiters.forEach { it.completeExceptionally(failure) }
         }
     }
 }

@@ -15,7 +15,7 @@ import kotlinx.datetime.plus
  * on plain calendar dates (LocalDate), never instants, so time zones can't shift a day.
  */
 
-data class MonthWeek(
+internal data class MonthWeek(
     val index: Int,
     val monday: LocalDate,
     val startStr: String,
@@ -24,15 +24,15 @@ data class MonthWeek(
     val isCurrentWeek: Boolean,
 )
 
-data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
+internal data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
 
 private fun LocalDate.mondayOfWeek(): LocalDate = minus(DatePeriod(days = dayOfWeek.isoDayNumber - 1))
 
 /** Short month and day: "Oct 6". */
-fun formatShortMonthDay(d: LocalDate): String = "${monthName(d.month.number).take(3)} ${d.day}"
+internal fun formatShortMonthDay(d: LocalDate): String = "${monthName(d.month.number).take(3)} ${d.day}"
 
 /** All Monday–Sunday weeks overlapping the month of [targetDate]. */
-fun getWeeksInMonth(targetDate: LocalDate, todayYmd: String = nowInBudapest().ymd): List<MonthWeek> {
+internal fun getWeeksInMonth(targetDate: LocalDate, todayYmd: String = nowInBudapest().ymd): List<MonthWeek> {
     val first = LocalDate(targetDate.year, targetDate.month, 1)
     val last = first.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
     var mon = first.mondayOfWeek()
@@ -56,7 +56,7 @@ fun getWeeksInMonth(targetDate: LocalDate, todayYmd: String = nowInBudapest().ym
 private val YmdRe = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
 /** The semester week of [dateStr]: the week containing the start is Week 1, earlier weeks Pre-semester. */
-fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
+internal fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
     if (semesterStartStr == null || !YmdRe.matches(semesterStartStr) || !YmdRe.matches(dateStr)) return null
     val start = runCatching { LocalDate.parse(semesterStartStr) }.getOrNull() ?: return null
     val target = runCatching { LocalDate.parse(dateStr) }.getOrNull() ?: return null
@@ -67,7 +67,7 @@ fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWee
 }
 
 /** Upcoming/past semesters open on their start week (at offset 0); active ones on the current week. */
-fun resolveDefaultWeekIndex(monthWeeks: List<MonthWeek>, semesterStatus: String, startDate: String?, navDateOffset: Int = 0): Int {
+internal fun resolveDefaultWeekIndex(monthWeeks: List<MonthWeek>, semesterStatus: String, startDate: String?, navDateOffset: Int = 0): Int {
     if (monthWeeks.isEmpty()) return 0
     if ((semesterStatus == "upcoming" || semesterStatus == "past") && startDate != null && navDateOffset == 0) {
         val idx = monthWeeks.indexOfFirst { startDate >= it.startStr && startDate <= it.endStr }
@@ -78,7 +78,7 @@ fun resolveDefaultWeekIndex(monthWeeks: List<MonthWeek>, semesterStatus: String,
 }
 
 /** First week after (or last before) the week starting on [startStr], for cross-month moves. */
-fun resolveAdjacentWeekIndex(monthWeeks: List<MonthWeek>, direction: String, startStr: String): Int {
+internal fun resolveAdjacentWeekIndex(monthWeeks: List<MonthWeek>, direction: String, startStr: String): Int {
     if (monthWeeks.isEmpty()) return 0
     if (direction == "after") {
         val idx = monthWeeks.indexOfFirst { it.startStr > startStr }
@@ -89,13 +89,13 @@ fun resolveAdjacentWeekIndex(monthWeeks: List<MonthWeek>, direction: String, sta
 }
 
 /** Keep the user's week across a midnight recompute unless the context changed. */
-fun resolveWeekIndexAfterRecompute(contextChanged: Boolean, current: Int?, previousDefault: Int, nextDefault: Int): Int =
+internal fun resolveWeekIndexAfterRecompute(contextChanged: Boolean, current: Int?, previousDefault: Int, nextDefault: Int): Int =
     if (contextChanged || current == null || current == previousDefault) nextDefault else current
 
 /** Semester status + the base date the month navigation anchors on. */
-data class SemesterStatus(val info: SemesterInfo, val baseYmd: String)
+internal data class SemesterStatus(val info: SemesterInfo, val baseYmd: String)
 
-fun computeSemesterStatus(events: List<ScheduleEvent>, selectedSemester: String, todayStr: String): SemesterStatus {
+internal fun computeSemesterStatus(events: List<ScheduleEvent>, selectedSemester: String, todayStr: String): SemesterStatus {
     val relevant = if (selectedSemester == "all") events else events.filter { it.semester == selectedSemester }
     val starts = relevant.mapNotNull { it.semesterStart?.ifEmpty { null } }
     val ends = relevant.mapNotNull { it.semesterEnd?.ifEmpty { null } }
@@ -111,7 +111,7 @@ fun computeSemesterStatus(events: List<ScheduleEvent>, selectedSemester: String,
 }
 
 /** The week label, renamed "Intensive Week" when the pre-start week hosts an intensive block. */
-fun computeAcademicWeekInfo(
+internal fun computeAcademicWeekInfo(
     events: List<ScheduleEvent>,
     selectedSemester: String,
     semesterStartDate: String?,
@@ -133,7 +133,7 @@ fun computeAcademicWeekInfo(
 }
 
 /** The month the navigation shows: always the 1st, offset from [baseYmd]. */
-fun activeMonthFor(baseYmd: String, navDateOffset: Int): LocalDate {
+internal fun activeMonthFor(baseYmd: String, navDateOffset: Int): LocalDate {
     val base = LocalDate.parse(baseYmd)
     return LocalDate(base.year, base.month, 1).plus(DatePeriod(months = navDateOffset))
 }
@@ -141,11 +141,11 @@ fun activeMonthFor(baseYmd: String, navDateOffset: Int): LocalDate {
 // ---- Day filters --------------------------------------------------------------
 
 /** Mon … Sun as stored day indices (0 = Sunday). */
-val DayOrder = listOf(1, 2, 3, 4, 5, 6, 0)
+internal val DayOrder = listOf(1, 2, 3, 4, 5, 6, 0)
 
-data class DayDateInfo(val formattedDate: String, val isToday: Boolean, val dateStr: String)
+internal data class DayDateInfo(val formattedDate: String, val isToday: Boolean, val dateStr: String)
 
-fun getFormattedDateForDay(dayOfWeek: Int, monday: LocalDate, todayYmd: String = nowInBudapest().ymd): DayDateInfo {
+internal fun getFormattedDateForDay(dayOfWeek: Int, monday: LocalDate, todayYmd: String = nowInBudapest().ymd): DayDateInfo {
     val offset = (if (dayOfWeek == 0) 7 else dayOfWeek) - 1
     val target = monday.plus(DatePeriod(days = offset))
     val ymd = target.toString()
@@ -153,7 +153,7 @@ fun getFormattedDateForDay(dayOfWeek: Int, monday: LocalDate, todayYmd: String =
 }
 
 /** `selectedDay`: null = all days. Manual classes without a semester show in every semester. */
-fun filterScheduleEvents(
+internal fun filterScheduleEvents(
     events: List<ScheduleEvent>,
     selectedSemester: String,
     selectedDay: Int?,
@@ -170,11 +170,11 @@ fun filterScheduleEvents(
     matchesSemester && matchesDay && inRange
 }
 
-fun groupEventsByDay(events: List<ScheduleEvent>): Map<Int, List<ScheduleEvent>> =
+internal fun groupEventsByDay(events: List<ScheduleEvent>): Map<Int, List<ScheduleEvent>> =
     (0..6).associateWith { day -> events.filter { it.dayOfWeek == day }.sortedBy { it.startTime } }
 
 /** The view's semester: the current one when it has events, else the newest, else 'all'. */
-fun resolveSelectedSemester(semesters: List<String>, currentSemester: String?): String = when {
+internal fun resolveSelectedSemester(semesters: List<String>, currentSemester: String?): String = when {
     currentSemester != null && currentSemester in semesters -> currentSemester
     semesters.isNotEmpty() -> semesters.last()
     else -> "all"

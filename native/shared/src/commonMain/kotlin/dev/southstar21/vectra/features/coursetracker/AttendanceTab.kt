@@ -13,7 +13,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +34,7 @@ import dev.southstar21.vectra.core.designsystem.components.SectionTitle
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.features.holidays.rememberNowInstant
@@ -42,6 +42,8 @@ import dev.southstar21.vectra.features.schedule.getWeekBeforeStart
 import dev.southstar21.vectra.features.schedule.isIntensiveClass
 import kotlinx.coroutines.delay
 import dev.southstar21.vectra.core.designsystem.theme.Radius
+import dev.southstar21.vectra.core.designsystem.components.VButton
+import androidx.compose.runtime.setValue
 
 internal data class TypeInfo(val label: String, val plural: String, val tone: StatusTone)
 
@@ -51,7 +53,7 @@ private val SessionTypes = mapOf(
     SessionType.Lab to TypeInfo("Lab", "Labs", StatusTone.Purple),
     SessionType.Consultation to TypeInfo("Consultation", "Consultations", StatusTone.Amber),
     SessionType.Exam to TypeInfo("Exam", "Exams", StatusTone.Violet),
-    SessionType.Other to TypeInfo("Session", "Other", StatusTone.Neutral),
+    SessionType.Other to TypeInfo("Other", "Other", StatusTone.Neutral),
 )
 
 /** Ledger order of the type filter and the semester rows. */
@@ -60,7 +62,7 @@ private val TypeOrder = listOf(SessionType.Lecture, SessionType.Seminar, Session
 private val IntensiveInfo = TypeInfo("Intensive", "Intensive", StatusTone.Amber)
 
 /** Who teaches a session and where, from the timetable row it came from. */
-data class SessionMeta(val instructor: String?, val location: String?)
+internal data class SessionMeta(val instructor: String?, val location: String?)
 
 /**
  * The attendance tab: today's class, the standing card with the semester as
@@ -117,13 +119,19 @@ internal fun AttendanceTab(
     fun typeInfo(type: SessionType) = if (isIntensive && type == SessionType.Seminar) IntensiveInfo else SessionTypes.getValue(type)
 
     // Generic "Week N" titles get the academic week label (a mid-week start can
-    // shift them); intensive pre-semester sessions read "Intensive Week".
+    // shift them); intensive pre-semester sessions read "Intensive Week". Any other title is
+    // the student's or the course's own words and is shown as written, even when it ends in a
+    // type word ("iOS Lecture", "Exam Consultation").
     fun displayTitle(s: AttendanceSession): String {
         val clean = s.title.replace(Regex("\\s+(lecture|seminar|lab|practice|exam|session|consultation)$", RegexOption.IGNORE_CASE), "")
         val week = getAcademicWeekInfo(s.date, semesterStart)
-        return if (week != null && Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())) {
-            if (isIntensive && week.weekNumber == 0) "Intensive Week" else week.label
-        } else clean
+        val generic = Regex("^week\\s+\\d+$", RegexOption.IGNORE_CASE).matches(clean.trim())
+        return when {
+            !generic -> s.title.trim()
+            week == null -> clean
+            isIntensive && week.weekNumber == 0 -> "Intensive Week"
+            else -> week.label
+        }
     }
 
     fun describe(s: AttendanceSession): String {
@@ -171,7 +179,7 @@ internal fun AttendanceTab(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         if (sessions.isEmpty()) {
             Column(
-                Modifier.fillMaxWidth().glassDepth(Radius.Card).padding(32.dp),
+                Modifier.fillMaxWidth().plannerCard(Radius.Card).padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 VIcon(RemixIcons.CalendarLine, size = 32.dp, tint = c.textMuted)
@@ -183,10 +191,7 @@ internal fun AttendanceTab(
                     c.textSecondary,
                     align = TextAlign.Center,
                 )
-                TrackerButton(onClick = { showAdd = true }, modifier = Modifier.padding(top = 16.dp)) { ink ->
-                    VIcon(RemixIcons.AddLine, size = 14.dp, tint = ink)
-                    VText("Add a session", style = vtext(TypeScale.Caption, Weight.Bold), color = ink)
-                }
+                VButton("Add a session", { showAdd = true }, Modifier.padding(top = 16.dp), icon = RemixIcons.AddLine)
             }
         } else {
             for (s in todaySessions) {
@@ -216,7 +221,7 @@ internal fun AttendanceTab(
                 if (options.size > 2) {
                     PillRadio(typeFilter, options, { typeFilter = it }, columns = minOf(4, options.size))
                 }
-                Box(Modifier.fillMaxWidth().clip(Radius.Card).glassDepth(Radius.Card)) {
+                Box(Modifier.fillMaxWidth().clip(Radius.Card).plannerCard(Radius.Card)) {
                     Column(Modifier.fillMaxWidth()) {
                         Divided(
                             filtered.map { s ->

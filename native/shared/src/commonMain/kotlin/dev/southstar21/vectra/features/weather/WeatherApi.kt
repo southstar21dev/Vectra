@@ -6,8 +6,10 @@ import dev.southstar21.vectra.core.network.VectraJson
 import dev.southstar21.vectra.core.util.formatCompactNumber
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
@@ -22,13 +24,13 @@ import kotlin.time.Instant
 
 /** Open-Meteo forecast API (keyless). */
 @Serializable
-data class WeatherCoords(val latitude: Double, val longitude: Double)
+internal data class WeatherCoords(val latitude: Double, val longitude: Double)
 
 /** Fixed Budapest location — fallback when geolocation is off or not granted. */
-val BudapestCoords = WeatherCoords(47.4979, 19.0402)
+internal val BudapestCoords = WeatherCoords(47.4979, 19.0402)
 
 @Serializable
-data class WeatherData(
+internal data class WeatherData(
     /** Current temperature, °C. */
     val temperature: Double,
     /** Feels-like temperature, °C. */
@@ -46,9 +48,9 @@ data class WeatherData(
 )
 
 /** Sky family of a condition — drives the weather card's tint and artwork. */
-enum class WeatherSky { Clear, Partly, Cloudy, Fog, Rain, Snow, Storm }
+internal enum class WeatherSky { Clear, Partly, Cloudy, Fog, Rain, Snow, Storm }
 
-data class WeatherConditionMeta(val label: String, val icon: ImageVector, val sky: WeatherSky)
+internal data class WeatherConditionMeta(val label: String, val icon: ImageVector, val sky: WeatherSky)
 
 private fun meta(label: String, icon: () -> ImageVector, sky: WeatherSky) = Triple(label, icon, sky)
 
@@ -84,7 +86,7 @@ private val WmoMeta: Map<Int, Triple<String, () -> ImageVector, WeatherSky>> = m
 )
 
 /** WMO weather code → condition label + icon. Unmapped codes get a generic fallback. */
-fun weatherCodeMeta(code: Int): WeatherConditionMeta {
+internal fun weatherCodeMeta(code: Int): WeatherConditionMeta {
     val m = WmoMeta[code] ?: return WeatherConditionMeta("Weather", RemixIcons.CloudyLine, WeatherSky.Cloudy)
     return WeatherConditionMeta(m.first, m.second(), m.third)
 }
@@ -93,17 +95,17 @@ fun weatherCodeMeta(code: Int): WeatherConditionMeta {
  * Hour-of-day (0–23) at the location described by utc_offset_seconds, used to
  * index the hourly precipitation series — correct for any location.
  */
-fun currentHourAtOffset(utcOffsetSeconds: Int, now: Instant = Clock.System.now()): Int {
+internal fun currentHourAtOffset(utcOffsetSeconds: Int, now: Instant = Clock.System.now()): Int {
     val local = now.toEpochMilliseconds().floorDiv(1000L) + utcOffsetSeconds
     return (((local % 86400) + 86400) % 86400 / 3600).toInt()
 }
 
 /** Chance of precipitation in the current hour; null / missing values read as 0. */
-fun hourlyRainProbability(probabilities: List<Double?>, utcOffsetSeconds: Int, now: Instant = Clock.System.now()): Double =
+internal fun hourlyRainProbability(probabilities: List<Double?>, utcOffsetSeconds: Int, now: Instant = Clock.System.now()): Double =
     probabilities.getOrNull(currentHourAtOffset(utcOffsetSeconds, now)) ?: 0.0
 
 /** The subset of the Open-Meteo /v1/forecast response this feature uses. */
-data class WeatherResponse(
+internal data class WeatherResponse(
     val temperature: Double,
     val apparentTemperature: Double,
     val windSpeed: Double,
@@ -115,7 +117,7 @@ data class WeatherResponse(
     val utcOffsetSeconds: Int,
 )
 
-class WeatherShapeException(message: String) : IllegalStateException(message)
+internal class WeatherShapeException(message: String) : IllegalStateException(message)
 
 private fun JsonElement?.num(path: String): Double =
     ((this as? JsonPrimitive)?.takeIf { !it.isString })?.doubleOrNull ?: throw WeatherShapeException("Expected number at $path")
@@ -124,7 +126,7 @@ private fun JsonElement?.obj(path: String): JsonObject = this as? JsonObject ?: 
 private fun JsonElement?.arr(path: String): JsonArray = this as? JsonArray ?: throw WeatherShapeException("Expected array at $path")
 
 /** weatherResponseSchema.parse: throws on any shape change (the card then hides). */
-fun parseWeatherResponse(json: JsonElement): WeatherResponse {
+internal fun parseWeatherResponse(json: JsonElement): WeatherResponse {
     val root = json.obj("$")
     val current = root["current"].obj("current")
     val hourly = root["hourly"].obj("hourly")
@@ -146,7 +148,7 @@ fun parseWeatherResponse(json: JsonElement): WeatherResponse {
     ).also { daily["time"].arr("daily.time") }
 }
 
-fun WeatherResponse.toWeatherData(now: Instant = Clock.System.now()) = WeatherData(
+internal fun WeatherResponse.toWeatherData(now: Instant = Clock.System.now()) = WeatherData(
     temperature = temperature,
     feelsLike = apparentTemperature,
     windSpeed = windSpeed,
@@ -159,7 +161,7 @@ fun WeatherResponse.toWeatherData(now: Instant = Clock.System.now()) = WeatherDa
 private const val OpenMeteoUrl = "https://api.open-meteo.com/v1/forecast"
 
 /** Current conditions at [coords] straight from Open-Meteo. */
-suspend fun fetchWeather(http: HttpClient, coords: WeatherCoords = BudapestCoords): WeatherData {
+internal suspend fun fetchWeather(http: HttpClient, coords: WeatherCoords = BudapestCoords): WeatherData {
     val res = withTimeout(15_000) { http.get(OpenMeteoUrl) {
         parameter("latitude", formatCompactNumber(coords.latitude))
         parameter("longitude", formatCompactNumber(coords.longitude))
@@ -168,6 +170,8 @@ suspend fun fetchWeather(http: HttpClient, coords: WeatherCoords = BudapestCoord
         parameter("daily", "temperature_2m_max,temperature_2m_min")
         parameter("timezone", "auto")
         parameter("forecast_days", "1")
+        // The coordinates are in the URL: keep the response out of the disk cache.
+        header(HttpHeaders.CacheControl, "no-store")
     } }
     if (!res.status.isSuccess()) error("Open-Meteo returned HTTP ${res.status.value}")
     return parseWeatherResponse(VectraJson.parseToJsonElement(res.bodyAsText())).toWeatherData()

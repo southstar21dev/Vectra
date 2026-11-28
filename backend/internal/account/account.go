@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"ganigeorgiev.com/pocketbase/dbx"
+	validation "ganigeorgiev.com/pocketbase/ozzo-validation/v4"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 
 	"vectra/pb/internal/reauth"
@@ -14,30 +14,12 @@ import (
 // match the stored hash.
 var errInvalidPassword = errors.New("current password is incorrect")
 
-var ownedCollections = []string{
-	"schedule_events", "neptun_schedule_events", "schedule_items",
-	"transit_trackers", "course_tracker_data", "trip_plans",
-	"push_subscriptions", "passkeys", "passkey_challenges",
-}
-
-// deleteAccount removes all of userID's owned records across the cascade
-// collections, then the auth record itself. It must be called with an app
-// scoped to a transaction so every delete commits or rolls back together.
+// deleteAccount removes the auth record; every collection that owns data holds
+// a `user` relation with CascadeDelete (see schema.OwnerCollections), so
+// PocketBase deletes the owned records in the same call. It must be called
+// with an app scoped to a transaction so everything commits or rolls back
+// together. A test asserts that no owned record survives.
 func deleteAccount(app core.App, userID string) error {
-	for _, name := range ownedCollections {
-		if _, err := app.FindCollectionByNameOrId(name); err != nil {
-			continue // collection may not exist in a partial schema
-		}
-		records, err := app.FindRecordsByFilter(name, "user = {:u}", "", 0, 0, dbx.Params{"u": userID})
-		if err != nil {
-			return err
-		}
-		for _, r := range records {
-			if err := app.Delete(r); err != nil {
-				return err
-			}
-		}
-	}
 	user, err := app.FindRecordById("users", userID)
 	if err != nil {
 		return err
@@ -46,17 +28,21 @@ func deleteAccount(app core.App, userID string) error {
 }
 
 // Handler implements POST /api/vectra/account/delete (JWT-gated): reads
-// {currentPassword}, verifies it (rate-limited, see reauth.Check), then deletes
+// {currentPassword}, verifies it (rate-limited, see reauth.Guard.Check), then deletes
 // the caller's owned records and the auth record itself in one transaction. The
 // password check keeps a leaked session token from deleting the account.
-func Handler(e *core.RequestEvent) error {
+func Handler(g *reauth.Guard) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return deleteAccountHandler(g, e) }
+}
+
+func deleteAccountHandler(g *reauth.Guard, e *core.RequestEvent) error {
 	var body struct {
 		CurrentPassword string `json:"currentPassword"`
 	}
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
-	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+	if err := g.Check(e, body.CurrentPassword); err != nil {
 		return err
 	}
 	userID := e.Auth.Id
@@ -86,7 +72,8 @@ func ChangeEmail(app core.App, userID, currentPassword, newEmail string) error {
 	if !user.ValidatePassword(currentPassword) {
 		return errInvalidPassword
 	}
-	if strings.EqualFold(strings.TrimSpace(newEmail), user.Email()) {
+	newEmail = strings.TrimSpace(newEmail)
+	if strings.EqualFold(newEmail, user.Email()) {
 		return nil
 	}
 	user.SetEmail(newEmail)
@@ -97,7 +84,11 @@ func ChangeEmail(app core.App, userID, currentPassword, newEmail string) error {
 // EmailHandler implements POST /api/vectra/account/email (JWT-gated): reads
 // {currentPassword, newEmail}, verifies the password, and switches the email
 // for the authenticated user only (the id is never taken from the body).
-func EmailHandler(e *core.RequestEvent) error {
+func EmailHandler(g *reauth.Guard) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return changeEmailHandler(g, e) }
+}
+
+func changeEmailHandler(g *reauth.Guard, e *core.RequestEvent) error {
 	var body struct {
 		CurrentPassword string `json:"currentPassword"`
 		NewEmail        string `json:"newEmail"`
@@ -107,15 +98,20 @@ func EmailHandler(e *core.RequestEvent) error {
 	}
 	// The shared re-auth gate rate-limits the password check per user and IP;
 	// ChangeEmail re-validates it as part of the change itself.
-	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+	if err := g.Check(e, body.CurrentPassword); err != nil {
 		return err
 	}
 	err := ChangeEmail(e.App, e.Auth.Id, body.CurrentPassword, body.NewEmail)
 	if errors.Is(err, errInvalidPassword) {
 		return e.BadRequestError("Current password is incorrect", nil)
 	}
-	if err != nil {
+	var invalid validation.Errors
+	if errors.As(err, &invalid) {
 		return e.BadRequestError("Could not update email", err)
+	}
+	if err != nil {
+		// Not a rejected input (for example SQLITE_BUSY): let the client retry.
+		return e.InternalServerError("Could not update email", err)
 	}
 	return e.JSON(200, map[string]any{"ok": true})
 }

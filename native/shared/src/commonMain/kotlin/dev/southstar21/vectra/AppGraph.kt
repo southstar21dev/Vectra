@@ -13,6 +13,7 @@ import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.CryptoClient
 import dev.southstar21.vectra.core.network.PocketBaseClient
 import dev.southstar21.vectra.core.platform.Connectivity
+import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.LocationProvider
 import dev.southstar21.vectra.core.platform.Notifier
@@ -29,14 +30,19 @@ import dev.southstar21.vectra.features.coursetracker.CryptoTrackerCipher
 import dev.southstar21.vectra.features.coursetracker.PocketBaseTrackerCloud
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.ReminderScheduler
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.DeviceLocation
+import dev.southstar21.vectra.features.transit.data.FutarApi
+import dev.southstar21.vectra.features.transit.data.FutarSource
+import dev.southstar21.vectra.features.transit.data.RealFutarSource
+import dev.southstar21.vectra.features.transit.demo.DemoFutarSource
+import dev.southstar21.vectra.features.transit.demo.DemoSeeder
+import dev.southstar21.vectra.features.transit.data.TransitRepository
 import dev.southstar21.vectra.features.widgets.WidgetPublisher
 import dev.southstar21.vectra.features.schedule.NeptunSyncListener
 import dev.southstar21.vectra.features.schedule.ScheduleCourseTrackerHooks
 import dev.southstar21.vectra.features.schedule.ScheduleRepository
 import dev.southstar21.vectra.features.settings.AppearanceRepository
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
-import dev.southstar21.vectra.features.transit.DeviceLocation
-import dev.southstar21.vectra.features.transit.TransitRepository
 import dev.southstar21.vectra.features.update.UpdateGate
 import dev.southstar21.vectra.features.weather.WeatherRepository
 import dev.zacsweers.metro.AppScope
@@ -47,78 +53,77 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * The app's object graph (Metro, compile-time). Platform pieces come in through the factory;
  * everything here is an app-lifetime singleton, built the first time it is asked for.
  */
 @DependencyGraph(AppScope::class)
-interface AppGraph {
-    val config: VectraConfig
-    val http: HttpClient
-    val kv: KeyValueStore
-    val pb: PocketBaseClient
-    val crypto: CryptoClient
-    val auth: AuthRepository
-    val watchdog: SessionWatchdog
-    val scope: CoroutineScope
-    val connectivity: Connectivity
-    val location: LocationProvider
-    val launcher: Launcher
-    val passkeyAuthenticator: PasskeyAuthenticator
-    val notifier: Notifier
-    val push: PushRegistrar
-    val startup: ProcessStartup
-    val mapEnvironment: MapEnvironment
+abstract class AppGraph {
+    internal abstract val config: VectraConfig
+    internal abstract val http: HttpClient
+    abstract val kv: KeyValueStore
+    internal abstract val pb: PocketBaseClient
+    internal abstract val crypto: CryptoClient
+    abstract val auth: AuthRepository
+    internal abstract val watchdog: SessionWatchdog
+    internal abstract val scope: CoroutineScope
+    internal abstract val connectivity: Connectivity
+    internal abstract val location: LocationProvider
+    internal abstract val launcher: Launcher
+    internal abstract val passkeyAuthenticator: PasskeyAuthenticator
+    internal abstract val notifier: Notifier
+    internal abstract val push: PushRegistrar
+    abstract val startup: ProcessStartup
+    internal abstract val mapEnvironment: MapEnvironment
 
-    val appearanceRepository: AppearanceRepository
-    val passkeyRepository: PasskeyRepository
-    val notificationsRepository: NotificationsRepository
-    val scheduleRepository: ScheduleRepository
-    val courseTrackerRepository: CourseTrackerRepository
-    val courseTrackerHooks: ScheduleCourseTrackerHooks
-    val transitRepository: TransitRepository
-    val deviceLocation: DeviceLocation
-    val weatherRepository: WeatherRepository
-    val reminders: ReminderScheduler
-    val widgets: WidgetPublisher
-    val updateGate: UpdateGate
-
-    @SingleIn(AppScope::class)
-    @Provides
-    fun provideStartup(): ProcessStartup = ProcessStartup()
-
-    @Provides
-    fun provideMapEnvironment(http: HttpClient, connectivity: Connectivity): MapEnvironment = MapEnvironment(http, connectivity)
+    abstract val appearanceRepository: AppearanceRepository
+    internal abstract val passkeyRepository: PasskeyRepository
+    internal abstract val notificationsRepository: NotificationsRepository
+    internal abstract val scheduleRepository: ScheduleRepository
+    internal abstract val courseTrackerRepository: CourseTrackerRepository
+    internal abstract val courseTrackerHooks: ScheduleCourseTrackerHooks
+    internal abstract val transitRepository: TransitRepository
+    internal abstract val demoSeeder: DemoSeeder
+    internal abstract val deviceLocation: DeviceLocation
+    internal abstract val weatherRepository: WeatherRepository
+    abstract val reminders: ReminderScheduler
+    abstract val widgets: WidgetPublisher
+    internal abstract val updateGate: UpdateGate
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    internal fun provideStartup(): ProcessStartup = ProcessStartup()
+
+    @Provides
+    internal fun provideMapEnvironment(http: HttpClient, connectivity: Connectivity): MapEnvironment = MapEnvironment(http, connectivity)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideKv(store: DataStore<Preferences>, blobs: BlobStore): KeyValueStore = KeyValueStore(store, blobs)
+    internal fun provideScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideAuthStore(kv: KeyValueStore, cipher: SecretCipher): AuthStore = AuthStore(kv, cipher)
+    internal fun provideKv(store: DataStore<Preferences>, blobs: BlobStore): KeyValueStore = KeyValueStore(store, blobs)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun providePb(http: HttpClient, config: VectraConfig, store: AuthStore, updateGate: UpdateGate): PocketBaseClient =
+    internal fun provideAuthStore(kv: KeyValueStore, cipher: SecretCipher): AuthStore = AuthStore(kv, cipher)
+
+    @SingleIn(AppScope::class)
+    @Provides
+    internal fun providePb(http: HttpClient, config: VectraConfig, store: AuthStore, updateGate: UpdateGate): PocketBaseClient =
         PocketBaseClient(http, config.pocketbaseUrl, store, clientVersion = config.appVersion, clientPlatform = platformName)
             .apply { onUpdateRequired = updateGate::report }
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideUpdateGate(kv: KeyValueStore, scope: CoroutineScope, config: VectraConfig): UpdateGate =
+    internal fun provideUpdateGate(kv: KeyValueStore, scope: CoroutineScope, config: VectraConfig): UpdateGate =
         UpdateGate(kv, scope, config.appVersion)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideCrypto(pb: PocketBaseClient, scope: CoroutineScope): CryptoClient = CryptoClient(pb, scope)
+    internal fun provideCrypto(pb: PocketBaseClient, scope: CoroutineScope): CryptoClient = CryptoClient(pb, scope)
 
     /**
      * The sign-out listeners are declared here rather than registered by each repository as
@@ -127,7 +132,7 @@ interface AppGraph {
      */
     @SingleIn(AppScope::class)
     @Provides
-    fun provideAuth(
+    internal fun provideAuth(
         pb: PocketBaseClient,
         store: AuthStore,
         kv: KeyValueStore,
@@ -136,8 +141,9 @@ interface AppGraph {
     ): AuthRepository = AuthRepository(pb, store, kv, scope, listeners)
 
     @Provides
-    fun provideSessionListeners(
+    internal fun provideSessionListeners(
         crypto: CryptoClient,
+        httpCache: HttpCache,
         transit: TransitRepository,
         notifications: NotificationsRepository,
         reminders: ReminderScheduler,
@@ -148,6 +154,10 @@ interface AppGraph {
     ): List<SessionListener> = listOf(
         object : SessionListener {
             override suspend fun onSessionCleared() = crypto.clearMemo()
+        },
+        // Cached responses hold the previous account's proxy, weather and map requests.
+        object : SessionListener {
+            override suspend fun onSessionCleared() = httpCache.clear()
         },
         // Both react to the session themselves; here they only get to upload before an explicit sign-out.
         object : SessionListener {
@@ -165,22 +175,22 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideWatchdog(auth: AuthRepository, store: AuthStore, scope: CoroutineScope): SessionWatchdog =
+    internal fun provideWatchdog(auth: AuthRepository, store: AuthStore, scope: CoroutineScope): SessionWatchdog =
         SessionWatchdog(auth, store, scope)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideAppearance(kv: KeyValueStore, auth: AuthRepository, scope: CoroutineScope): AppearanceRepository =
+    internal fun provideAppearance(kv: KeyValueStore, auth: AuthRepository, scope: CoroutineScope): AppearanceRepository =
         AppearanceRepository(kv, auth, scope)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun providePasskeys(pb: PocketBaseClient, auth: AuthRepository, authenticator: PasskeyAuthenticator, scope: CoroutineScope): PasskeyRepository =
+    internal fun providePasskeys(pb: PocketBaseClient, auth: AuthRepository, authenticator: PasskeyAuthenticator, scope: CoroutineScope): PasskeyRepository =
         PasskeyRepository(pb, auth, authenticator, scope)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideNotifications(
+    internal fun provideNotifications(
         pb: PocketBaseClient,
         auth: AuthRepository,
         kv: KeyValueStore,
@@ -190,7 +200,7 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideReminders(
+    internal fun provideReminders(
         kv: KeyValueStore,
         schedule: ScheduleRepository,
         courseTracker: CourseTrackerRepository,
@@ -199,22 +209,24 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate)
+        crypto: CryptoClient,
+    ): ReminderScheduler = ReminderScheduler(kv, schedule, courseTracker, transit, notifier, auth, scope, updateGate, crypto)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideWidgets(
+    internal fun provideWidgets(
         schedule: ScheduleRepository,
         courseTracker: CourseTrackerRepository,
         auth: AuthRepository,
         host: WidgetHost,
         scope: CoroutineScope,
         updateGate: UpdateGate,
-    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate)
+        appearance: AppearanceRepository,
+    ): WidgetPublisher = WidgetPublisher(schedule, courseTracker, auth, host, scope, updateGate, appearance)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideSchedule(
+    internal fun provideSchedule(
         pb: PocketBaseClient,
         crypto: CryptoClient,
         kv: KeyValueStore,
@@ -227,7 +239,7 @@ interface AppGraph {
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideCourseTracker(
+    internal fun provideCourseTracker(
         pb: PocketBaseClient,
         crypto: CryptoClient,
         kv: KeyValueStore,
@@ -235,54 +247,73 @@ interface AppGraph {
         auth: AuthRepository,
         scope: CoroutineScope,
     ): CourseTrackerRepository {
-        val uid = MutableStateFlow(auth.session.value?.userId)
-        scope.launch { auth.session.collect { uid.value = it?.userId } }
         return CourseTrackerRepository(
             cloud = PocketBaseTrackerCloud(pb),
             cipher = CryptoTrackerCipher(crypto),
             kv = kv,
             scope = scope,
-            userIdFlow = uid,
+            userIdFlow = auth.currentUserId,
             isOnline = { connectivity.online.value },
+            onlineChanges = connectivity.online,
         )
     }
 
     @Provides
-    fun provideCourseTrackerHooks(tracker: Lazy<CourseTrackerRepository>): ScheduleCourseTrackerHooks =
+    internal fun provideCourseTrackerHooks(tracker: Lazy<CourseTrackerRepository>): ScheduleCourseTrackerHooks =
         CourseTrackerScheduleHooks(tracker)
 
     /** Lazy: the schedule needs this at construction, before the tracker exists. */
     @Provides
-    fun provideNeptunSyncListener(tracker: Lazy<CourseTrackerRepository>): NeptunSyncListener =
+    internal fun provideNeptunSyncListener(tracker: Lazy<CourseTrackerRepository>): NeptunSyncListener =
         CourseTrackerScheduleSync(tracker)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideTransit(
+    internal fun provideTransit(
         pb: PocketBaseClient,
         crypto: CryptoClient,
         kv: KeyValueStore,
+        auth: AuthRepository,
         connectivity: Connectivity,
-        location: LocationProvider,
         http: HttpClient,
         config: VectraConfig,
         catalogCache: CatalogDiskCache,
         scope: CoroutineScope,
-    ): TransitRepository = TransitRepository(pb, crypto, kv, connectivity, location, http, config.catalogOrigin, catalogCache, scope, demoFeed = config.isDebug)
+    ): TransitRepository {
+        // The one place that decides whether the Futar feed is real or the demo one.
+        val live: FutarSource = RealFutarSource(FutarApi(pb), scope)
+        val source = if (config.isDebug) DemoFutarSource(live) else live
+        return TransitRepository(pb, crypto, kv, auth, connectivity, source, http, config.catalogOrigin, catalogCache, scope)
+    }
+
+    /** Debug builds seed the demo accounts' trackers; started from `AppStartup`, does nothing in release. */
+    @SingleIn(AppScope::class)
+    @Provides
+    internal fun provideDemoSeeder(auth: AuthRepository, transit: TransitRepository, scope: CoroutineScope, config: VectraConfig): DemoSeeder =
+        DemoSeeder(auth, transit, scope, enabled = config.isDebug)
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideDeviceLocation(
-        transit: TransitRepository,
+    internal fun provideDeviceLocation(
+        location: LocationProvider,
         kv: KeyValueStore,
         pb: PocketBaseClient,
         scope: CoroutineScope,
-    ): DeviceLocation = DeviceLocation(transit.location, kv, scope, canPersist = { pb.auth.current != null })
+        weather: WeatherRepository,
+    ): DeviceLocation = DeviceLocation(location, kv, scope, canPersist = { pb.auth.current != null }).apply {
+        // A grant from the Nearby map or its "Allow" button turns the Settings location switch on too.
+        onUserGrant = weather::adoptDeviceGrant
+    }
 
     @SingleIn(AppScope::class)
     @Provides
-    fun provideWeather(http: HttpClient, kv: KeyValueStore, location: LocationProvider, scope: CoroutineScope): WeatherRepository =
-        WeatherRepository(http, kv, location, scope)
+    internal fun provideWeather(
+        http: HttpClient,
+        kv: KeyValueStore,
+        location: LocationProvider,
+        scope: CoroutineScope,
+        connectivity: Connectivity,
+    ): WeatherRepository = WeatherRepository(http, kv, location, scope, connectivity)
 
     @DependencyGraph.Factory
     fun interface Factory {
@@ -292,6 +323,7 @@ interface AppGraph {
             @Provides blobs: BlobStore,
             @Provides catalogCache: CatalogDiskCache,
             @Provides http: HttpClient,
+            @Provides httpCache: HttpCache,
             @Provides cipher: SecretCipher,
             @Provides connectivity: Connectivity,
             @Provides location: LocationProvider,

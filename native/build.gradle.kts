@@ -15,7 +15,7 @@ plugins {
 // vectra.versionName in gradle.properties is only current while CI builds a release (it writes it
 // then and never commits it), so a local build reading it would show a long-gone version. Release
 // builds keep using vectra.versionName; without tags (a shallow clone) debug builds fall back to it.
-// iosApp/project.yml applies the same rule to the Debug configuration's Info.plist.
+// iosApp/scripts/version.sh applies the same rule to the Debug configuration's Info.plist.
 val latestReleaseTag: Provider<String> = providers.exec {
     commandLine("git", "tag", "--list", "v*")
     isIgnoreExitValue = true
@@ -31,12 +31,13 @@ val gitCommit: Provider<String> = providers.exec {
 }.standardOutput.asText.map { it.trim().ifEmpty { null } }
 
 /** The x.y.z a debug build is based on: the newest release tag, else vectra.versionName. */
-val debugBaseVersion by extra(latestReleaseTag.orElse(providers.gradleProperty("vectra.versionName")))
+val debugBaseVersion: Provider<String> = latestReleaseTag.orElse(providers.gradleProperty("vectra.versionName"))
+extra.set("debugBaseVersion", debugBaseVersion)
 
 /** What a debug build shows: [debugBaseVersion] plus the commit. */
-val debugVersionName by extra(
-    debugBaseVersion.zip(gitCommit.orElse("")) { version, commit -> if (commit.isEmpty()) version else "$version+$commit" },
-)
+val debugVersionName: Provider<String> =
+    debugBaseVersion.zip(gitCommit.orElse("")) { version, commit -> if (commit.isEmpty()) version else "$version+$commit" }
+extra.set("debugVersionName", debugVersionName)
 
 // One run over all modules' sources: `./gradlew detekt`; `detektBaseline` regenerates the baseline.
 detekt {
@@ -49,4 +50,9 @@ detekt {
 
 dependencies {
     detektPlugins(libs.compose.rules.detekt)
+}
+
+// UnusedImport and similar rules need type resolution, which only the per-module tasks have.
+tasks.named("detekt") {
+    dependsOn(":androidApp:detektDebug", ":shared:detektMainAndroid", ":shared:detektHostTestAndroid")
 }

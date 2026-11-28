@@ -9,6 +9,10 @@ import dev.southstar21.vectra.features.holidays.isHungarianPublicHoliday
 import dev.southstar21.vectra.features.schedule.ScheduleEvent
 import dev.southstar21.vectra.features.schedule.TrackerCourses
 import dev.southstar21.vectra.features.schedule.getEventFrequency
+import dev.southstar21.vectra.features.schedule.getSemesterFromYearMonth
+import dev.southstar21.vectra.features.schedule.mondayOf
+import dev.southstar21.vectra.features.schedule.semesterWeekOneMonday
+import kotlinx.datetime.number
 import dev.southstar21.vectra.features.schedule.isExam
 import dev.southstar21.vectra.features.schedule.normalizeTime
 import kotlinx.datetime.DatePeriod
@@ -18,13 +22,13 @@ import kotlinx.datetime.plus
 
 private val YmdPattern = Regex("^\\d{4}-\\d{2}-\\d{2}$")
 
-data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
+internal data class AcademicWeekInfo(val weekNumber: Int, val label: String, val isStarted: Boolean)
 
 /**
  * The academic week of [dateStr] the way the schedule's week switcher numbers
  * it: the week containing the semester start is Week 1, earlier is "Pre-semester".
  */
-fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
+internal fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWeekInfo? {
     if (semesterStartStr == null || !isYmdString(semesterStartStr) || !isYmdString(dateStr)) return null
     val start = parseIsoDate(semesterStartStr) ?: return null
     val target = parseIsoDate(dateStr) ?: return null
@@ -38,7 +42,7 @@ fun getAcademicWeekInfo(dateStr: String, semesterStartStr: String?): AcademicWee
 // Attendance
 // ---------------------------------------------------------------------------
 
-data class AttendanceStats(
+internal data class AttendanceStats(
     val totalSessions: Int,
     val presentCount: Int,
     val absentCount: Int,
@@ -59,20 +63,20 @@ data class AttendanceStats(
     val isOverAbsenceLimit: Boolean,
 )
 
-enum class AttendanceRiskTier { Unknown, Safe, Warning, Critical }
+internal enum class AttendanceRiskTier { Unknown, Safe, Warning, Critical }
 
 /**
  * THE single source of truth for a course's tracker key: the base code (or the
  * base title for short/absent codes) plus the semester. Any other derivation
  * silently forks the tracker.
  */
-fun resolveCourseKey(identity: CourseIdentity): String =
+internal fun resolveCourseKey(identity: CourseIdentity): String =
     TrackerCourses.courseKey(identity.courseCode, identity.courseName, identity.semester)
 
-fun resolveCourseKey(event: ScheduleEvent): String = TrackerCourses.courseKey(event.courseCode, event.courseName, event.semester)
+internal fun resolveCourseKey(event: ScheduleEvent): String = TrackerCourses.courseKey(event.courseCode, event.courseName, event.semester)
 
 /** Collapses duplicate sessions of a slot, keeping a marked one; sorted by date and time. */
-fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSession> {
+internal fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSession> {
     val map = LinkedHashMap<String, AttendanceSession>()
     for (s in sessions) {
         if (s.date.isEmpty()) continue
@@ -101,7 +105,7 @@ fun deduplicateSessions(sessions: List<AttendanceSession>): List<AttendanceSessi
  * wins, then the group code's class type (E01 → lecture, G01 → seminar,
  * L01 → lab), then the event type.
  */
-fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType: String?): SessionType {
+internal fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType: String?): SessionType {
     val explicit = attendanceType.nonEmpty()
     var type = if (explicit == "unknown") SessionType.Other else SessionType.Lecture
     when (explicit) {
@@ -122,7 +126,7 @@ fun getEventSessionType(courseCode: String?, eventType: String?, attendanceType:
     return type
 }
 
-fun getEventSessionType(event: ScheduleEvent): SessionType = getEventSessionType(event.courseCode, event.eventType, event.attendanceType)
+internal fun getEventSessionType(event: ScheduleEvent): SessionType = getEventSessionType(event.courseCode, event.eventType, event.attendanceType)
 
 private data class ClassSlot(
     val dayOfWeek: Int,
@@ -165,7 +169,7 @@ private fun weeksToCover(start: LocalDate, slots: List<ClassSlot>): Int {
  * the manual fallback slot), preserving every marked or custom session and
  * never resurrecting a tombstoned slot.
  */
-fun generateSessionsFromScheduleEvents(
+internal fun generateSessionsFromScheduleEvents(
     courseName: String,
     courseCode: String? = null,
     semester: String? = null,
@@ -209,7 +213,7 @@ fun generateSessionsFromScheduleEvents(
                     startTime = sTime.nonEmpty(),
                     endTime = eTime.nonEmpty(),
                     sessionType = type,
-                    frequency = getEventFrequency(evt.csvMetadata, acceptJsonString = true).key,
+                    frequency = getEventFrequency(evt.csvMetadata).key,
                     startDate = sDate.nonEmpty() ?: semesterStart.nonEmpty(),
                     endDate = eDate.nonEmpty() ?: semesterEnd.nonEmpty(),
                     skipHolidays = evt.source != "neptun",
@@ -239,7 +243,17 @@ fun generateSessionsFromScheduleEvents(
         .mapNotNull { it.nonEmpty() }
         .filter { YmdPattern.matches(it) }
         .sorted()
-    val start: LocalDate = validStarts.firstOrNull()?.let(::parseIsoDate) ?: LocalDate(today.year, today.month, 1)
+    // Week one is the Monday the timetable counts odd/even parity from, so tracker weeks match the
+    // schedule. Manual classes carry no dates, so without this the anchor would drift with "today".
+    val explicitSemester = semester.orEmpty().trim().ifEmpty { matching.firstOrNull { it.semester.isNotBlank() }?.semester?.trim().orEmpty() }
+    val earliest = validStarts.firstOrNull()
+    val weekOne = semesterStart.nonEmpty()?.trim()?.takeIf { YmdPattern.matches(it) }?.let(::mondayOf)
+        ?: semesterWeekOneMonday(explicitSemester, scheduleEvents)
+        // A class with neither dates nor a semester counts in the semester today falls in.
+        ?: if (earliest == null) semesterWeekOneMonday(getSemesterFromYearMonth(today.year, today.month.number), scheduleEvents) else null
+    // An intensive slot starting before week one keeps generating from its own start.
+    val start: LocalDate = (if (weekOne != null && (earliest == null || earliest >= weekOne)) weekOne else earliest)
+        ?.let(::parseIsoDate) ?: LocalDate(today.year, today.month, 1)
 
     // Existing lookup: id, date+time+type, date+time, and — for untimed
     // sessions only — date+type / date. Loose keys must never match a timed
@@ -288,6 +302,7 @@ fun generateSessionsFromScheduleEvents(
                 status = existing?.status ?: AttendanceStatus.Unmarked,
                 notes = existing?.notes,
                 isCustom = existing?.isCustom,
+                markedAt = existing?.markedAt,
             )
         }
     }
@@ -304,7 +319,7 @@ fun generateSessionsFromScheduleEvents(
 }
 
 /** generateScheduleSessions: the single-slot convenience form. */
-fun generateScheduleSessions(
+internal fun generateScheduleSessions(
     dayOfWeek: Int,
     startTime: String? = null,
     endTime: String? = null,
@@ -327,7 +342,7 @@ fun generateScheduleSessions(
     frequency = frequency,
 )
 
-fun calculateAttendanceStats(
+internal fun calculateAttendanceStats(
     sessions: List<AttendanceSession>,
     maxAbsencesAllowed: Int?,
     minAttendancePercent: Double?,
@@ -374,7 +389,7 @@ fun calculateAttendanceStats(
  * Risk tier: unknown with nothing marked; critical over the quota or below the
  * minimum; warning at the quota or one away; safe otherwise.
  */
-fun getAttendanceRiskTier(
+internal fun getAttendanceRiskTier(
     absentCount: Int,
     maxAbsencesAllowed: Int?,
     attendancePercent: Double,

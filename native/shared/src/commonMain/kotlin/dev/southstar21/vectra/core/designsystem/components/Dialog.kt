@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.LocalContentColor
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
@@ -62,7 +61,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  * (a short fade under reduced motion). Anything larger belongs on a pushed screen or a sheet.
  */
 @Composable
-fun VDialog(
+internal fun VDialog(
     open: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -153,32 +152,32 @@ fun VDialog(
 private const val DialogRestDelta = 0.005f
 
 @Composable
-fun DialogCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun DialogCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     BarButton(RemixIcons.CloseLine, "Close", onClick, modifier)
 }
 
 @Composable
-fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun DialogHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.padding(top = 4.dp, end = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
 }
 
 @Composable
-fun DialogTitle(text: String, modifier: Modifier = Modifier) =
-    VText(text, modifier.semantics { heading() }, vtext(TypeScale.Body, Weight.Bold, lineHeight = 21.sp), Vectra.colors.textPrimary)
+internal fun DialogTitle(text: String, modifier: Modifier = Modifier) =
+    VText(text, modifier.semantics { heading() }, vtext(TypeScale.Title17, Weight.Bold), Vectra.colors.textPrimary)
 
 @Composable
-fun DialogDescription(text: String, modifier: Modifier = Modifier) =
+internal fun DialogDescription(text: String, modifier: Modifier = Modifier) =
     VText(text, modifier.padding(top = 6.dp), vtext(TypeScale.Caption, lineHeight = 19.5.sp), Vectra.colors.textSecondary)
 
 /** Buttons stacked full-width under the dialog text. */
 @Composable
-fun DialogFooter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun DialogFooter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom), content = content)
 }
 
 /** Asks before a consequential action; [onConfirm] runs with the dialog showing progress. */
 @Composable
-fun ConfirmDialog(
+internal fun ConfirmDialog(
     open: Boolean,
     onClose: () -> Unit,
     onConfirm: suspend () -> Unit,
@@ -200,24 +199,12 @@ fun ConfirmDialog(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (destructive) IconChip(RemixIcons.AlertLine, c.tints.red, size = 32, iconSize = 16)
+                if (destructive) VIcon(RemixIcons.AlertLine, size = 20.dp, tint = c.tints.red.text)
                 DialogTitle(title)
             }
             DialogDescription(description, Modifier.padding(top = 2.dp))
         }
-        if (error != null) {
-            val shape = Radius.Control
-            Row(
-                Modifier.padding(top = 12.dp).fillMaxWidth()
-                    .background(Palette.Red500.copy(alpha = 0.1f), shape)
-                    .border(1.dp, c.tints.red.border, shape).padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VIcon(RemixIcons.ErrorWarningLine, tint = c.tints.red.text)
-                VText(error!!, style = vtext(TypeScale.Caption), color = c.tints.red.text)
-            }
-        }
+        if (error != null) Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, error!!, Modifier.padding(top = 12.dp))
         DialogFooter(Modifier.padding(top = 16.dp)) {
             VButton(
                 onClick = {

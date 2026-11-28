@@ -16,7 +16,7 @@ Material components; build on the primitives below.
   - `core/designsystem/components/`: primitives (see "Surfaces" below).
   - `core/network/`: `PocketBaseClient`, `CryptoClient` (field encryption), the stored session.
   - `core/auth/`: `AuthRepository`, `SessionListener`, `SessionWatchdog`, `Profile`.
-  - `core/data/`: `KeyValueStore` (large values go to `BlobStore`, one file each), `OfflineCache` + `offlineFirst(...)`, `LiveQuery`.
+  - `core/data/`: `KeyValueStore` (large values go to `BlobStore`, one file each), `OfflineCache`, `LiveQuery`.
   - `core/maps/`: the basemap (`TransitMap`), camera, GeoJSON and route geometry, radar tile recolouring.
   - `core/preferences/`: `AppearancePrefs` and the keys it holds (accent, background, time format).
   - `core/time/`: Budapest wall-clock helpers. Always use `nowInBudapest()`, never device-local time.
@@ -65,10 +65,31 @@ Material components; build on the primitives below.
   which gather several features); pass everything below it the repositories it uses.
 - **Sign-out**: anything holding per-user state in memory implements `SessionListener` and joins
   `AppGraph.provideSessionListeners`. Listeners don't register themselves, so one no screen has opened still runs.
+- **Per-user async work**: work that belongs to the signed-in account runs in `auth.sessionScope`
+  (`launchFor(uid)`, `asyncFor(uid)`, `withSession(uid)`), which is cancelled the moment the signed-in user is anyone else.
+  Don't re-check `userId == uid` after every await: a sign-out already ended the work at its next suspension point.
+  Keep a check only where a non-suspending write must be atomic with it (and say why in a comment), or where
+  the signed-out case (uid null) has no session to cancel. `withSession` throws `SessionEndedException` (a
+  `CancellationException`) in the caller; a collector that must survive it uses `withSessionOrNull`.
 - **Reaching up a dependency**: when a lower feature needs a higher one, it declares an interface, the higher
   feature implements it and `AppGraph` binds them (`ScheduleCourseTrackerHooks`, `NeptunSyncListener`).
 - **Startup**: once-per-process work goes in `AppStartup.run`, not in a composable.
 - **State**: plain classes exposing `StateFlow`s; collect with `collectAsStateWithLifecycle()`.
+- **Retries and cancellation**: retry with `retrying(BackoffPolicy.exponential(...) / .linear(...)) { }` from
+  `core/util`, never a hand-rolled loop. One attempt timeout, if any, is part of the policy and counts as a
+  failure. A `CancellationException` is only the end of the caller when the caller itself is cancelled; one that
+  comes from a cancelled shared `Deferred`, a write-gate waiter or a timeout is an ordinary failure. So wrap suspending
+  work in `runSuspendCatching`, or in a `catch (e: Throwable)` that starts with `rethrowIfOwnCancellation(e)`.
+  A plain `catch (e: CancellationException) { throw e }` is fine where nothing shared or timed is awaited inside.
+- **Shared request helpers** (`core/data/QueryHelpers.kt`): `StaleGate` (when data counts as stale), `SingleFlight`
+  (one request per key, everyone asking meanwhile joins it) and the `QueryState` transitions. `LiveQuery`,
+  `WeatherRepository` and `ScheduleEventsRepository` use them; new repositories should too.
+- **Two encryption models**: a collection with a few sensitive text columns declares them once as
+  `EncryptedColumns` (`core/network`) and uses that declaration to write and to read (`schedule_events`,
+  `neptun_schedule_events`). A collection that stores a whole document keeps one encrypted
+  `data`/`payload` blob per row, with the plain columns beside it (`CourseTrackerCloud` for the course tracker,
+  `ScheduleItemsSync` for personal items): the blob is encrypted and decrypted as one value, so there is
+  no per-column list to declare.
 - **Neptun ICS** must be fetched through the Google Apps Script proxy (`features/schedule/IcsParser.kt`):
   the university blocks datacenter IPs. Never fetch Neptun directly or via the backend.
 - **Colours**: themed colours come from `Vectra.colors`, fixed hues from `Palette`, map data colours from `MapColors`.
@@ -87,6 +108,41 @@ Kotlin warnings are errors, in the Android and iOS compiles alike. Suppress one 
 narrowly and with a comment. detekt checks new code against `config/detekt/baseline.xml`;
 `./gradlew detektBaseline` regenerates it (do that to record a deliberate exception, not to clear a finding).
 `androidApp/lint-baseline.xml` works the same way for Android lint (`:androidApp:updateLintBaseline`).
+detekt also runs UnusedImport through the type-resolved module tasks (`config/detekt/type-resolved.yml`).
 CI runs tests, detekt, the debug build, lint and the iOS compile on every change under `native/`.
 The baseline profile is generated and checked in; the README has the commands.
 Check UI changes on a device or emulator as well; unit tests don't cover interaction.
+
+## Widgets
+Home and Lock Screen widgets exist on both platforms and are not shared UI: each platform draws its own, from
+one JSON snapshot.
+- **Shared (Kotlin)**: `shared/.../features/widgets/`. `WidgetSnapshot` is the JSON the app writes (sessions from
+  Monday of this week through the next two weeks); `WidgetModel`, `WidgetSpine`, `WidgetAgenda`, `WidgetWeek`
+  and `WidgetLabels` hold the rules and wording both platforms follow. `WidgetPublisher` writes the snapshot.
+- **Android (Glance)**: `androidApp/.../android/widget/`. Colours and sizes are in `WidgetStyle.kt`.
+- **iOS (SwiftUI)**: `iosApp/VectraWidgets/`, a pure-Swift extension that never links the Kotlin framework.
+  `Model.swift` decodes the same snapshot JSON and mirrors the shared rules and labels; `Theme.swift` mirrors the
+  colour tokens from `core/designsystem/theme/Color.kt` and loads the same Inter and JetBrains Mono files. The
+  snapshot's file name and App Group are in `iosApp/Shared/AppGroup.swift`.
+- **Keep in step**: a change to the snapshot fields, a rule in `WidgetModel`, `WidgetSpine`, `WidgetAgenda` or
+  `WidgetWeek`, or a label in `WidgetLabels` needs the matching edit in `Model.swift` (and `Spine.swift`);
+  a colour token change needs `Theme.swift`. Bump `SnapshotVersion` when the JSON shape changes.
+
+## Android developer verification
+`androidApp/src/main/assets/adi-registration.properties` is the Android developer verification token for the
+app's package. Do not delete it when cleaning assets; no code references it.
+
+## Upgrading dependencies
+Dependabot raises weekly PRs for the Gradle catalog (`.github/dependabot.yml`); the notes below are what makes
+some of them more than a version bump.
+- **Kotlin, Metro and Compose Multiplatform move together.** Metro is a Kotlin compiler plugin and the Compose
+  compiler ships with Kotlin, so a Kotlin bump waits for a matching Metro and a compatible Compose Multiplatform.
+  Gradle 10 will need KGP 2.5 or later (Gradle's own deprecation message), so plan Kotlin, Metro, Compose
+  Multiplatform and probably detekt as one step ahead of the Gradle 10 wrapper bump.
+- **Pre-1.0 or pre-release pins with breaking minors**: kotlinx-datetime, kotlinx-io, maplibre-compose, detekt
+  (2.0 alpha), compose-rules, and the two single-maintainer libraries under the Liquid Glass navbar (Kyant
+  backdrop and shapes). Bump these one at a time.
+- **`work` is a forced pin.** Glance pulls WorkManager 2.7.1, whose Room database R8 strips in release builds, so
+  the catalog pins a current WorkManager. When Glance is bumped, check whether the pin is still needed and smoke
+  test a widget in a minified release build (add a widget, trigger `WidgetRefreshReceiver`); the release launch
+  check only starts the app and would not notice a widget-only R8 regression.

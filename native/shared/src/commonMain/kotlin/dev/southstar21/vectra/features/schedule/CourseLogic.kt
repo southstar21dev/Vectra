@@ -19,13 +19,13 @@ import kotlinx.serialization.json.contentOrNull
  */
 
 /** How often a class meets: every week, or only on even or odd weeks. */
-enum class ScheduleFrequency(val key: String) { Weekly("weekly"), Even("even"), Odd("odd") }
+internal enum class ScheduleFrequency(val key: String) { Weekly("weekly"), Even("even"), Odd("odd") }
 
 /**
  * Read the odd/even-week frequency filter stored in csv_metadata. With [acceptJsonString], metadata
  * stored as a JSON-encoded string counts as well; the schedule itself treats that as weekly.
  */
-fun getEventFrequency(meta: JsonElement?, acceptJsonString: Boolean = false): ScheduleFrequency {
+internal fun getEventFrequency(meta: JsonElement?, acceptJsonString: Boolean = false): ScheduleFrequency {
     val obj = when {
         meta is JsonObject -> meta
         acceptJsonString && meta is JsonPrimitive ->
@@ -40,7 +40,7 @@ fun getEventFrequency(meta: JsonElement?, acceptJsonString: Boolean = false): Sc
 }
 
 /** Merge a frequency into csv_metadata (weekly removes the key). */
-fun setFrequencyInMetadata(meta: JsonElement?, frequency: ScheduleFrequency?): JsonObject {
+internal fun setFrequencyInMetadata(meta: JsonElement?, frequency: ScheduleFrequency?): JsonObject {
     val next = (meta as? JsonObject)?.toMutableMap() ?: mutableMapOf()
     if (frequency == ScheduleFrequency.Even || frequency == ScheduleFrequency.Odd) next["frequency"] = JsonPrimitive(frequency.key)
     else next.remove("frequency")
@@ -78,17 +78,17 @@ private val CodeGroupSuffix = Regex("""[-_/\s]+(e|g|l)\d*$""", RegexOption.IGNOR
 private val LooseTime = Regex("""^(\d{1,2}):(\d{1,2})""")
 
 /** An intensive keyword in the name, code or type. */
-fun isIntensiveClass(courseName: String?, courseCode: String?, eventType: String? = null): Boolean {
+internal fun isIntensiveClass(courseName: String?, courseCode: String?, eventType: String? = null): Boolean {
     val upper = "${courseName.orEmpty()} ${courseCode.orEmpty()} ${eventType.orEmpty()}".uppercase()
     return IntensiveKeyword.containsMatchIn(upper)
 }
 
-enum class ClassKind(val label: String) { Intensive("Intensive"), Lecture("Lecture"), Seminar("Seminar"), Lab("Lab") }
+internal enum class ClassKind(val label: String) { Intensive("Intensive"), Lecture("Lecture"), Seminar("Seminar"), Lab("Lab") }
 
-data class ClassType(val label: String, val tone: StatusTone)
+internal data class ClassType(val label: String, val tone: StatusTone)
 
 /** Seminar/Lab/Lecture/Intensive from a course code or event type, with the schedule's badge colour. */
-fun getClassType(code: String?): ClassType? = ScheduleCourses.classKind(code)?.let { kind ->
+internal fun getClassType(code: String?): ClassType? = ScheduleCourses.classKind(code)?.let { kind ->
     val tone = when (kind) {
         ClassKind.Intensive -> StatusTone.Amber
         ClassKind.Lecture -> StatusTone.Sky
@@ -99,7 +99,7 @@ fun getClassType(code: String?): ClassType? = ScheduleCourses.classKind(code)?.l
 }
 
 /** The class group from a course code: "7SO20NGMA01M-G01" → "G01". */
-fun extractGroupCode(code: String?): String? {
+internal fun extractGroupCode(code: String?): String? {
     if (code.isNullOrEmpty()) return null
     val upper = code.trim().uppercase()
     for (token in upper.split(CodeSeparators)) {
@@ -110,17 +110,17 @@ fun extractGroupCode(code: String?): String? {
     return m.groupValues[1] + m.groupValues[2].padStart(2, '0')
 }
 
-data class WeekRange(val startStr: String, val endStr: String)
+internal data class WeekRange(val startStr: String, val endStr: String)
 
 /** The Monday–Sunday week right before the anchor's week. */
-fun getWeekBeforeStart(anchorDate: String?): WeekRange? {
+internal fun getWeekBeforeStart(anchorDate: String?): WeekRange? {
     val anchor = anchorDate?.takeIf { isYmdString(it) }?.let(::parseIsoDate) ?: return null
     val monDiff = 1 - anchor.dayOfWeek.isoDayNumber
     return WeekRange(anchor.plus(DatePeriod(days = monDiff - 7)).toString(), anchor.plus(DatePeriod(days = monDiff - 1)).toString())
 }
 
 /** Whether a course is intensive: a keyword, or the whole course inside the pre-start week. */
-fun isIntensiveCourseEvents(events: List<ScheduleEvent>, officialStart: String?): Boolean {
+internal fun isIntensiveCourseEvents(events: List<ScheduleEvent>, officialStart: String?): Boolean {
     if (events.isEmpty()) return false
     if (events.any { isIntensiveClass(it.courseName, it.courseCode, it.eventType) }) return true
     val preWeek = getWeekBeforeStart(officialStart) ?: return false
@@ -133,14 +133,14 @@ fun isIntensiveCourseEvents(events: List<ScheduleEvent>, officialStart: String?)
 }
 
 /** Slug of a course code or name, suffixed with the slugged semester when given. */
-fun normalizeCourseKey(courseCodeOrName: String, semester: String? = null): String {
+internal fun normalizeCourseKey(courseCodeOrName: String, semester: String? = null): String {
     val sanitized = courseCodeOrName.trim().lowercase().replace(NonSlugChars, "-").replace(EdgeDashes, "")
     val sem = semester.orEmpty().trim().lowercase().replace(NonSlugChars, "-")
     return if (sem.isNotEmpty()) "${sanitized}_$sem" else sanitized
 }
 
 /** A course code without its group suffix, alphanumerics only. */
-fun getBaseCourseCode(code: String?): String {
+internal fun getBaseCourseCode(code: String?): String {
     if (code.isNullOrEmpty()) return ""
     return code.lowercase()
         .replace(CodeGroupSuffix, "")
@@ -149,7 +149,7 @@ fun getBaseCourseCode(code: String?): String {
 }
 
 /** `8:00` → `08:00`. */
-fun normalizeTime(time: String?): String? {
+internal fun normalizeTime(time: String?): String? {
     if (time.isNullOrEmpty()) return null
     val m = LooseTime.find(time.trim()) ?: return null
     val h = m.groupValues[1].padStart(2, '0')
@@ -166,7 +166,7 @@ fun normalizeTime(time: String?): String? {
  * - a course whose dates can't be read: the tracker leaves it out of the official start,
  *   the schedule counts it as lasting no time.
  */
-class CourseRules internal constructor(
+internal class CourseRules internal constructor(
     wordRegex: (pattern: String, ignoreCase: Boolean) -> Regex,
     private val skipUnreadableDates: Boolean,
 ) {
@@ -273,12 +273,12 @@ class CourseRules internal constructor(
 }
 
 /** What the schedule groups and labels its own events by. */
-val ScheduleCourses = CourseRules(::platformWordRegex, skipUnreadableDates = false)
+internal val ScheduleCourses = CourseRules(::platformWordRegex, skipUnreadableDates = false)
 
 /** What the course tracker keys and matches its trackers by. */
-val TrackerCourses = CourseRules(::asciiWordRegex, skipUnreadableDates = true)
+internal val TrackerCourses = CourseRules(::asciiWordRegex, skipUnreadableDates = true)
 
-fun ScheduleEvent.scheduleCourseKey(): String = ScheduleCourses.courseKey(courseCode, courseName, semester)
+internal fun ScheduleEvent.scheduleCourseKey(): String = ScheduleCourses.courseKey(courseCode, courseName, semester)
 
 /** A course's comparison forms, worked out once so one list can be matched against itself cheaply. */
 internal class CourseNames(private val title: String, name: String?, code: String?) {

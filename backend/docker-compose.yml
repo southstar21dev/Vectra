@@ -27,12 +27,12 @@ services:
       # --- Secrets (dev placeholders; override for anything real) ---
       NEPTUN_ENCRYPTION_KEY: "${NEPTUN_ENCRYPTION_KEY:-dev-neptun-encryption-key-change-me}"
       FUTAR_API_KEY: "${FUTAR_API_KEY:-dev-futar-api-key-change-me}"
-      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-dev-vapid-public-key-change-me}"
-      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-dev-vapid-private-key-change-me}"
-      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:dev@example.com}"
       # --- Passkey (WebAuthn) relying-party config ---
       WEBAUTHN_RP_DISPLAY_NAME: "${WEBAUTHN_RP_DISPLAY_NAME:-Vectra (dev)}"
       WEBAUTHN_RP_ID: "${WEBAUTHN_RP_ID:-localhost}"
+      # web-only: remove with web/ (the default origin is the web Vite dev
+      # server; a local native build needs its android:apk-key-hash: origin
+      # added by hand).
       WEBAUTHN_RP_ORIGINS: "${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}"
 
 volumes:

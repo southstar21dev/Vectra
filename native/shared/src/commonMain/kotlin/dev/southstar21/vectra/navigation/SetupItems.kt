@@ -14,6 +14,7 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.platform.PermissionKind
+import dev.southstar21.vectra.features.auth.BiometricCopy
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
 import dev.southstar21.vectra.features.reminders.rememberEnabler
 import dev.southstar21.vectra.features.settings.SettingsAnchor
@@ -27,7 +28,7 @@ import dev.southstar21.vectra.features.weather.WeatherLocationMode
  * section into view for the ones set up in place (commute lines, passkeys).
  */
 @Composable
-fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): List<SetupItem> {
+internal fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): List<SetupItem> {
     val c = Vectra.colors
     val navigator = LocalNavigator.current
     val profile by graph.auth.profile.collectAsStateWithLifecycle()
@@ -40,29 +41,31 @@ fun rememberSetupItems(graph: AppGraph, scrollTo: (SettingsAnchor) -> Unit): Lis
     val notifications = rememberNotificationsSetup(graph)
     return listOfNotNull(
         SetupItem(
-            RemixIcons.CalendarLine, c.tints.blue.text, "Link your Neptun timetable", "Your classes, kept in sync",
+            RemixIcons.CalendarLine, "Link your Neptun timetable", "Your classes, kept in sync",
             done = profile?.let { !it.neptunIcsUrl.isNullOrBlank() }, actionLabel = "Link",
         ) { navigator.push(Screen.NeptunImport) },
         SetupItem(
-            RemixIcons.TimeLine, c.tints.sky.text, "Class reminders", "A nudge before each class, with the room",
+            RemixIcons.TimeLine, "Class reminders", "A nudge before each class, with the room",
             done = prefs.beforeClass || prefs.nextClass, actionLabel = "Turn on",
         ) { enableReminders { graph.reminders.update { it.copy(beforeClass = true) } } },
         notifications,
         SetupItem(
-            RemixIcons.MapPinLine, c.tints.amber.text, "Use your location", "Local weather and the stops near you",
+            RemixIcons.MapPinLine, "Use your location", "Local weather and the stops near you",
             done = location?.let { it.mode == WeatherLocationMode.Auto }, actionLabel = "Allow",
         ) { locationRequester.request { graph.weatherRepository.setMode(WeatherLocationMode.Auto) } },
         SetupItem(
-            RemixIcons.BusLine, c.tints.emerald.text, "Track a stop", "Live departures on your dashboard",
+            RemixIcons.BusLine, "Track a stop", "Live departures on your dashboard",
             done = trackers?.isNotEmpty(), actionLabel = "Add",
         ) { navigator.push(Screen.AddTracker) },
         SetupItem(
-            RemixIcons.RouteLine, c.tints.violet.text, "Commute lines", "Departures home and to uni in your reminders",
+            RemixIcons.RouteLine, "Commute lines", "Departures home and to uni in your reminders",
             done = prefs.toUni.isNotEmpty() || prefs.backHome.isNotEmpty(), actionLabel = "Pick",
         ) { scrollTo(SettingsAnchor.Commute) },
         SetupItem(
-            RemixIcons.FingerprintLine, c.tints.purple.text, "Passkey sign-in", "Your fingerprint or face instead of a password",
+            RemixIcons.FingerprintLine, "Passkey", BiometricCopy.setupSubtitle(),
             done = passkeys?.isNotEmpty(), actionLabel = "Set up",
+            // The Account section below has its own "Set up" link for it.
+            canBeButton = false,
         ) { scrollTo(SettingsAnchor.Account) }.takeIf { graph.passkeyRepository.isSupported },
     )
 }
@@ -82,7 +85,7 @@ private fun rememberNotificationsSetup(graph: AppGraph): SetupItem {
     }
     val requester = rememberPermissionRequester(PermissionKind.Notifications)
     return SetupItem(
-        RemixIcons.Notification3Line, c.tints.purple.text, "Notifications", "So reminders and departure alerts reach you",
+        RemixIcons.Notification3Line, "Notifications", "So reminders and departure alerts reach you",
         done = if (repo.pushAvailable) subscribed else granted, actionLabel = "Allow",
     ) {
         requester.request { ok ->

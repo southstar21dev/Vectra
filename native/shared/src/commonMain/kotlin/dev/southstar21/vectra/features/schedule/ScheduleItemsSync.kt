@@ -7,6 +7,8 @@ import dev.southstar21.vectra.core.network.PocketBaseException
 import dev.southstar21.vectra.core.network.isCiphertext
 import dev.southstar21.vectra.core.network.pbString
 import dev.southstar21.vectra.core.network.string
+import dev.southstar21.vectra.core.util.exponentialBackoffMs
+import dev.southstar21.vectra.core.util.rethrowIfOwnCancellation
 import dev.southstar21.vectra.core.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +17,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,7 +28,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -46,6 +49,9 @@ internal class ScheduleItemsSync(
     private val classes: ScheduleEventsRepository,
     private val scope: CoroutineScope,
 ) {
+    /** Per-user async work (sync passes, retries, refreshes) runs here and dies with the signed-in user. */
+    private val sessions get() = session.sessions
+
     private val userId: String? get() = session.userId
     private val online: Boolean get() = session.online
 
@@ -92,9 +98,7 @@ internal class ScheduleItemsSync(
         loadedFor = null
         itemsFetchedAt = 0L
         syncRetryCount = 0
-        retryJob?.cancel()
-        // The previous account's pass must not run on, or be joined by, the next one.
-        syncJobLock.withLock { syncJob?.cancel() }
+        // The previous account's passes and retry were cancelled with its session scope.
         _itemSyncError.value = null
         if (uid == null) {
             _itemsState.value = createEmptyScheduleItemsState()
@@ -109,8 +113,9 @@ internal class ScheduleItemsSync(
 
     /** Refresh when stale. */
     fun ensureFresh() {
+        val uid = userId ?: return
         val now = Clock.System.now().toEpochMilliseconds()
-        if (now - itemsFetchedAt > ITEMS_STALE_MS) scope.launch { refreshItems() }
+        if (now - itemsFetchedAt > ITEMS_STALE_MS) sessions.launchFor(uid) { refreshItems() }
     }
 
     private suspend fun readLocalItems(uid: String): ScheduleItemsState =
@@ -121,9 +126,10 @@ internal class ScheduleItemsSync(
     /** Persist durably first; the in-memory state only moves once the write succeeded. */
     private suspend fun saveLocal(uid: String, next: ScheduleItemsState) {
         if (!isValidScheduleItemsState(next)) error(SAVE_FAILED)
-        // A pass outliving its session must not bring back what sign-out just wiped, nor save over a
-        // queue it has not read back yet.
-        if (userId != uid || loadedFor != uid) return
+        // Every caller runs in [uid]'s session, so a sign-out ends it here instead of bringing back what it wiped.
+        currentCoroutineContext().ensureActive()
+        // Not saving over a queue that has not been read back yet is a separate rule from the session.
+        if (loadedFor != uid) return
         try {
             kv.set(getScheduleItemsStorageKey(uid), encodeScheduleItemsState(next))
         } catch (e: CancellationException) {
@@ -131,11 +137,13 @@ internal class ScheduleItemsSync(
         } catch (_: Throwable) {
             error(SAVE_FAILED)
         }
+        // Kept: the write above suspended, and the state is published without another suspension point.
         if (userId == uid) _itemsState.value = next
     }
 
     /** A user's own change, for [uid]: refused when another account signed in since it began. */
     private suspend fun persistLocalState(uid: String, next: ScheduleItemsState) {
+        // Kept: the one place that tells the person their edit was not saved, atomically with the enqueue.
         if (userId != uid) error(ACCOUNT_CHANGED)
         if (loadedFor != uid) error(SAVE_FAILED)
         saveLocal(uid, next)
@@ -157,30 +165,32 @@ internal class ScheduleItemsSync(
     suspend fun refreshItems(force: Boolean = false) {
         val uid = userId ?: return
         if (skipsRefresh(uid, force)) return
-        try {
-            if (!online) return
+        sessions.withSession(uid) {
             try {
-                val merged = readAndMerge(uid, classes::publish) { local, read ->
-                    val revalidated = reconcileQueuedItemConflicts(mergeScheduleItemsState(local, read.items), read.events)
-                    try {
-                        saveLocal(uid, revalidated)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Throwable) {
-                        // Preserve the in-memory result even when the cache refresh fails.
-                        if (userId == uid && loadedFor == uid) _itemsState.value = revalidated
+                if (!online) return@withSession
+                try {
+                    val merged = readAndMerge(uid, classes::publish) { local, read ->
+                        val revalidated = reconcileQueuedItemConflicts(mergeScheduleItemsState(local, read.items), read.events)
+                        try {
+                            saveLocal(uid, revalidated)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Throwable) {
+                            // Preserve the in-memory result even when the cache refresh fails.
+                            if (loadedFor == uid) _itemsState.value = revalidated
+                        }
                     }
+                    if (merged != null) itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
+                } catch (e: Throwable) {
+                    // Failed to load schedule items (or the shared class fetch was cancelled by someone
+                    // else); the local cache stays on screen.
+                    rethrowIfOwnCancellation(e)
                 }
-                if (merged != null) itemsFetchedAt = Clock.System.now().toEpochMilliseconds()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
-                // Failed to load schedule items; the local cache stays on screen.
+            } finally {
+                _itemsLoading.value = false
+                val q = _itemsState.value.queue
+                if (online && q.isNotEmpty() && _itemSyncError.value == null) sessions.launchFor(uid) { executeSync() }
             }
-        } finally {
-            _itemsLoading.value = false
-            val q = _itemsState.value.queue
-            if (online && q.isNotEmpty() && _itemSyncError.value == null) scope.launch { executeSync() }
         }
     }
 
@@ -188,8 +198,8 @@ internal class ScheduleItemsSync(
      * Reads classes and items, then merges them into the local state under [stateLock]. A sync
      * pass that committed a write after the read began makes the read stale: merging it would
      * bring back the row's previous version (and `updatedAt`) over the commit, so the read is
-     * retried instead. Null when the account changed or every read raced a commit; the local
-     * state, which already holds those commits, then stays as it is.
+     * retried instead. Null when every read raced a commit; the local state, which already holds
+     * those commits, then stays as it is. Runs in [uid]'s session, so a sign-out cancels it.
      */
     private suspend fun readAndMerge(
         uid: String,
@@ -198,7 +208,7 @@ internal class ScheduleItemsSync(
     ): CloudSnapshot? {
         var merged: CloudSnapshot? = null
         var attempts = 0
-        while (merged == null && attempts < STALE_READ_ATTEMPTS && userId == uid) {
+        while (merged == null && attempts < STALE_READ_ATTEMPTS) {
             attempts++
             val writesAtRead = committedWrites
             val (latestEvents, cloud) = coroutineScope {
@@ -206,14 +216,14 @@ internal class ScheduleItemsSync(
                 val c = async { fetchCloudItems(uid) }
                 e.await() to c.await()
             }
-            if (userId == uid) {
-                show(latestEvents)
-                val read = CloudSnapshot(Clock.System.now().toEpochMilliseconds(), writesAtRead, latestEvents, cloud)
-                val fresh = stateLock.withLock {
-                    (committedWrites == writesAtRead).also { if (it) merge(currentLocal(), read) }
-                }
-                if (fresh) merged = read
+            // The reads above were awaited in the session: a sign-out cancelled them, so this is still [uid]'s.
+            currentCoroutineContext().ensureActive()
+            show(latestEvents)
+            val read = CloudSnapshot(Clock.System.now().toEpochMilliseconds(), writesAtRead, latestEvents, cloud)
+            val fresh = stateLock.withLock {
+                (committedWrites == writesAtRead).also { if (it) merge(currentLocal(), read) }
             }
+            if (fresh) merged = read
         }
         return merged
     }
@@ -237,7 +247,7 @@ internal class ScheduleItemsSync(
         val job = syncJobLock.withLock {
             val running = syncJob?.takeIf { it.isActive }
             syncRequested = running != null
-            running ?: scope.async { runSyncPasses(uid) }.also { syncJob = it }
+            running ?: sessions.asyncFor(uid) { runSyncPasses(uid) }.also { syncJob = it }
         }
         job.await()
     }
@@ -246,7 +256,7 @@ internal class ScheduleItemsSync(
         while (true) {
             val hasNewer = runSyncPass(uid)
             val again = syncJobLock.withLock {
-                val rerun = (hasNewer || syncRequested) && userId == uid && online
+                val rerun = (hasNewer || syncRequested) && online
                 syncRequested = false
                 // Under the lock, so nobody can join a sync that has already decided to stop.
                 if (!rerun) syncJob = null
@@ -273,11 +283,10 @@ internal class ScheduleItemsSync(
             validatedCloud = null
             // Refresh classes first so newly imported ones cannot silently invalidate an offline acknowledgment.
             val latestEvents = validated?.events ?: classes.fetchShared(uid)
-            if (userId != uid) return false
+            currentCoroutineContext().ensureActive()
             classes.publish(latestEvents)
 
             val cloudItems = (validated?.items ?: fetchCloudItems(uid)).toMutableList()
-            if (userId != uid) return false
             var current = stateLock.withLock {
                 mergeScheduleItemsState(currentLocal(), cloudItems).also { saveLocal(uid, it) }
             }
@@ -359,13 +368,13 @@ internal class ScheduleItemsSync(
             syncRetryCount = 0
             retryJob?.cancel()
             return hasNewer
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: Throwable) {
+            // A cancelled shared class fetch is a failed pass to retry; only this pass's own cancellation ends it.
+            rethrowIfOwnCancellation(e)
             _itemSyncError.value = e.message ?: "Schedule changes are waiting to sync."
             // A refused app version won't pass sooner for retrying: wait the longest, queue kept.
             syncRetryCount = if (e is PocketBaseException && e.isUpdateRequired) MaxRetryShift else syncRetryCount + 1
-            scheduleRetry()
+            scheduleRetry(uid)
             return false
         }
     }
@@ -460,10 +469,10 @@ internal class ScheduleItemsSync(
     }
 
     /** Exponential backoff while the queue is non-empty and the last pass failed. */
-    private fun scheduleRetry() {
+    private fun scheduleRetry(uid: String) {
         retryJob?.cancel()
-        val delayMs = minOf(60_000L, 2_000L * (1L shl minOf(syncRetryCount, MaxRetryShift)))
-        retryJob = scope.launch {
+        val delayMs = exponentialBackoffMs(minOf(syncRetryCount, MaxRetryShift), 2_000L, 60_000L)
+        retryJob = sessions.launchFor(uid) {
             delay(delayMs)
             if (online && currentLocal().queue.isNotEmpty() && _itemSyncError.value != null) executeSync()
         }
@@ -495,7 +504,7 @@ internal class ScheduleItemsSync(
     suspend fun saveItem(candidate: ScheduleItem): StoredScheduleItem = saving {
         // Pinned: the fresh read can take a while, and another account may sign in meanwhile.
         val uid = userId ?: error("Sign in to save schedule items.")
-        val stored = itemLocks.withLock(candidate.id) { queueSave(uid, candidate) }
+        val stored = itemLocks.withLock(candidate.id) { sessions.withSession(uid) { queueSave(uid, candidate) } }
         executeSync()
         stored
     }
@@ -519,9 +528,9 @@ internal class ScheduleItemsSync(
                     // Every read raced a commit: check against the newest local state, which has them.
                     current = currentLocal()
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
+            } catch (e: Throwable) {
+                // The check awaits a class fetch other callers share: its cancellation is not this save's.
+                rethrowIfOwnCancellation(e)
                 error("Could not check your latest schedule. Please try again or save while offline.")
             }
         }
@@ -536,10 +545,12 @@ internal class ScheduleItemsSync(
     suspend fun deleteItem(id: String) = saving {
         val uid = userId ?: error("Sign in to save schedule items.")
         itemLocks.withLock(id) {
-            stateLock.withLock {
-                val current = currentLocal()
-                val item = current.items.firstOrNull { it.id == id }
-                persistLocalState(uid, enqueueScheduleItemDelete(current, id, item?.updatedAt))
+            sessions.withSession(uid) {
+                stateLock.withLock {
+                    val current = currentLocal()
+                    val item = current.items.firstOrNull { it.id == id }
+                    persistLocalState(uid, enqueueScheduleItemDelete(current, id, item?.updatedAt))
+                }
             }
         }
         executeSync()
@@ -566,7 +577,7 @@ internal class ScheduleItemsSync(
     /** 'server' | 'local' */
     fun resolveSyncConflict(id: String, resolution: String) {
         val uid = userId ?: return
-        scope.launch {
+        sessions.launchFor(uid) {
             runSuspendCatching {
                 stateLock.withLock { persistLocalState(uid, resolveScheduleItemSyncConflict(currentLocal(), id, resolution)) }
                 if (online) executeSync()

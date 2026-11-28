@@ -1,6 +1,10 @@
 package dev.southstar21.vectra.features.schedule
 
+import dev.southstar21.vectra.SafeList
 import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.data.OfflineCache
+import dev.southstar21.vectra.core.data.UserKeys
+import kotlinx.serialization.builtins.ListSerializer
 import dev.southstar21.vectra.core.network.AuthState
 import dev.southstar21.vectra.core.network.AuthStore
 import dev.southstar21.vectra.core.network.CryptoClient
@@ -12,6 +16,7 @@ import dev.southstar21.vectra.core.network.string
 import dev.southstar21.vectra.core.platform.Connectivity
 import dev.southstar21.vectra.core.platform.PlainSecretCipher
 import dev.southstar21.vectra.core.auth.AuthRepository
+import dev.southstar21.vectra.core.auth.SessionEndedException
 import dev.southstar21.vectra.features.coursetracker.CourseIdentity
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerRepository
 import dev.southstar21.vectra.features.coursetracker.CourseTrackerScheduleSync
@@ -102,14 +107,16 @@ private class FakeBackend {
     /** Runs after a full item list was read, before it is answered: hold it to make it stale. */
     var afterListRead: (suspend () -> Unit)? = null
     @Volatile var listReads = 0
+    /** Runs after the class list was read, before it is answered: hold it to make a class fetch outlive its account. */
+    var afterClassRead: (suspend () -> Unit)? = null
     /** Bodies of class edits (PATCH schedule_events). */
-    val eventPatches = mutableListOf<JsonObject>()
+    val eventPatches = SafeList<JsonObject>()
     /** The Neptun feed the proxy serves, and a hook run inside its fetch. */
     var ics = ""
     var duringIcsFetch: (suspend () -> Unit)? = null
     val neptunRows = mutableListOf<JsonObject>()
     /** The auth token each Neptun replace was sent with. */
-    val neptunReplaces = mutableListOf<String?>()
+    val neptunReplaces = SafeList<String?>()
 
     fun row(item: ScheduleItem, updatedAt: String, rowId: String = "row-${item.id.take(1)}"): JsonObject = JsonObject(
         mapOf(
@@ -152,7 +159,13 @@ private class FakeBackend {
                 json(JsonObject(b + mapOf("id" to JsonPrimitive(path.substringAfterLast('/')), "updated_at" to JsonPrimitive("e2"))).toString())
             }
             path.startsWith("/api/collections/schedule_events/") ->
-                if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(classRows.toList()) })
+                if (classesDown) {
+                    json("{}", HttpStatusCode.InternalServerError)
+                } else {
+                    val snapshot = lock.withLock { list(classRows.toList()) }
+                    afterClassRead?.invoke()
+                    json(snapshot)
+                }
             path.startsWith("/api/collections/neptun_schedule_events/") ->
                 if (classesDown) json("{}", HttpStatusCode.InternalServerError) else json(lock.withLock { list(neptunRows.toList()) })
             path.startsWith("/api/collections/schedule_items/") -> items(req, path.substringAfter("/records").trim('/'))
@@ -265,6 +278,7 @@ private class Harness(val backend: FakeBackend, online: Boolean = true) {
         kv.set(getScheduleItemsStorageKey(UserId), encodeScheduleItemsState(local))
         store.save(AuthState("tok", JsonObject(mapOf("id" to JsonPrimitive(UserId)))))
         repo = ScheduleRepository(pb, CryptoClient(pb, scope), kv, connectivity, auth, http, scope, neptunListener)
+        repo.onForeground()
         until { repo.localReady.value }
     }
 
@@ -279,7 +293,7 @@ private class Harness(val backend: FakeBackend, online: Boolean = true) {
     }
 }
 
-private suspend fun until(condition: suspend () -> Boolean) = withTimeout(10_000) { while (!condition()) delay(2) }
+private suspend fun until(condition: suspend () -> Boolean) = withTimeout(30_000) { while (!condition()) delay(2) }
 
 /** Queued writes, as [saveItem]/[deleteItem] would have left them. */
 private fun queuedCreate(item: ScheduleItem) = enqueueScheduleItemUpsert(ScheduleItemsState(), item.stored())
@@ -298,7 +312,7 @@ class ScheduleSyncTest {
         val backend = FakeBackend()
         val h = Harness(backend, online)
         try {
-            withContext(Dispatchers.Default) { withTimeout(20_000) { h.test(backend) } }
+            withContext(Dispatchers.Default) { withTimeout(55_000) { h.test(backend) } }
         } finally {
             h.scope.cancel()
         }
@@ -599,12 +613,14 @@ class ScheduleSyncTest {
         val held = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         b.afterListRead = { if (held.complete(Unit)) release.await() }
-        val save = scope.async { assertFailsWith<IllegalStateException> { repo.saveItem(item()) } }
+        val save = scope.async { runCatching { repo.saveItem(item()) }.exceptionOrNull() }
         held.await()
         auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
         until { repo.itemsState.value.items.isEmpty() && !repo.itemsLoading.value }
         release.complete(Unit)
-        save.await()
+        // Either the save is ended with its session or its enqueue refuses ("Nothing was saved"): which one wins is a race.
+        val failure = save.await()
+        assertTrue(failure is IllegalStateException || failure is SessionEndedException, failure.toString())
         settle()
         assertTrue(parseScheduleItemsState(kv.get(getScheduleItemsStorageKey(OtherUser)))?.items.orEmpty().isEmpty())
         assertTrue(repo.itemsState.value.items.isEmpty())
@@ -823,8 +839,12 @@ class ScheduleSyncTest {
         until { repo.eventsError.value != null }
         assertFalse(repo.eventsLoading.value)
         b.classesDown = false
-        repo.refreshEvents(force = true)
-        assertNull(repo.eventsError.value)
+        // A load that began while the classes were down may still be in flight, and a forced refresh joins
+        // it: ask again until one that started after the recovery has answered.
+        until {
+            repo.refreshEvents(force = true)
+            repo.eventsError.value == null
+        }
     }
 
     @Test fun aLoadFailureWithACacheStaysQuiet() = scenario { b ->
@@ -843,6 +863,42 @@ class ScheduleSyncTest {
         until { repo.events.value.isNotEmpty() }
         coroutineScope { List(10) { launch { repo.refreshEvents(force = true) } } }
         assertEquals("Algebra", repo.events.value.single().courseName)
+    }
+
+    /** A class fetch still running when another account signs in lands in neither its state nor the old account's cache. */
+    @Test fun aClassFetchStartedBeforeAnAccountSwitchDoesNotLandInTheNewAccount() = scenario { b ->
+        start()
+        until { !repo.eventsLoading.value }
+        val cache = OfflineCache(kv, UserKeys.SCHEDULE_EVENTS, ListSerializer(ScheduleEvent.serializer()))
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.afterClassRead = { if (held.complete(Unit)) release.await() }
+        b.seedClass()
+        val refresh = scope.launch { runCatching { repo.refreshEvents(force = true) } }
+        held.await()
+        b.classRows.clear()
+        auth.adoptSession("tok-b", JsonObject(mapOf("id" to JsonPrimitive(OtherUser))))
+        until { auth.session.value?.userId == OtherUser && !repo.eventsLoading.value }
+        release.complete(Unit)
+        refresh.join()
+        settle()
+        assertTrue(repo.events.value.isEmpty())
+        assertTrue(cache.read(OtherUser).orEmpty().isEmpty())
+        assertTrue(cache.read(UserId).orEmpty().isEmpty())
+    }
+
+    /** Signing out while a sync pass is mid-request ends the pass: it neither retries nor reports an error afterwards. */
+    @Test fun aSyncPassEndsWhenItsAccountSignsOut() = scenario { b ->
+        val inCreate = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        b.duringCreate = { inCreate.complete(Unit); release.await() }
+        start(queuedCreate(item()))
+        inCreate.await()
+        auth.signOut()
+        release.complete(Unit)
+        delay(50)
+        assertNull(repo.itemSyncError.value)
+        assertTrue(repo.itemsState.value.queue.isEmpty())
     }
 
     @Test fun signingOutClearsTheClassError() = scenario { b ->

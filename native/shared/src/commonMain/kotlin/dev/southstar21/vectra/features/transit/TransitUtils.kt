@@ -3,33 +3,44 @@ package dev.southstar21.vectra.features.transit
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.time.nowMs
+import dev.southstar21.vectra.core.util.isTrustedAlertUrl
 import dev.southstar21.vectra.core.util.parseLeadingNumber
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.FutarAlert
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarStopTime
+import dev.southstar21.vectra.features.transit.data.FutarTranslations
+import dev.southstar21.vectra.features.transit.data.FutarTripRef
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitAlert
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import kotlin.math.ceil
 import kotlin.math.min
+import dev.southstar21.vectra.features.transit.data.RouteType
 
-data class RouteTypeMeta(val label: String, val emoji: String, val icon: ImageVector)
+internal data class RouteTypeMeta(val label: String, val emoji: String, val icon: ImageVector)
 
-val RouteTypeMetaByType: Map<String, RouteTypeMeta> by lazy {
+internal val RouteTypeMetaByType: Map<String, RouteTypeMeta> by lazy {
     mapOf(
-        "SUBWAY" to RouteTypeMeta("Metro", "🚇", RemixIcons.SubwayLine),
-        "TRAM" to RouteTypeMeta("Tram", "🚋", RemixIcons.TrainLine),
-        "BUS" to RouteTypeMeta("Bus", "🚌", RemixIcons.BusLine),
-        "TROLLEYBUS" to RouteTypeMeta("Trolleybus", "🚎", RemixIcons.Bus2Line),
-        "RAIL" to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
-        "SUBURBAN_RAILWAY" to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
-        "FERRY" to RouteTypeMeta("Ferry", "⛴️", RemixIcons.Ship2Line),
-        "COACH" to RouteTypeMeta("Coach", "🚌", RemixIcons.BusLine),
+        RouteType.Subway to RouteTypeMeta("Metro", "🚇", RemixIcons.SubwayLine),
+        RouteType.Tram to RouteTypeMeta("Tram", "🚋", RemixIcons.TrainLine),
+        RouteType.Bus to RouteTypeMeta("Bus", "🚌", RemixIcons.BusLine),
+        RouteType.Trolleybus to RouteTypeMeta("Trolleybus", "🚎", RemixIcons.Bus2Line),
+        RouteType.Rail to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
+        RouteType.SuburbanRailway to RouteTypeMeta("HÉV", "🚆", RemixIcons.TrainLine),
+        RouteType.Ferry to RouteTypeMeta("Ferry", "⛴️", RemixIcons.Ship2Line),
+        RouteType.Coach to RouteTypeMeta("Coach", "🚌", RemixIcons.BusLine),
     )
 }
 
-fun routeTypeMeta(type: String?): RouteTypeMeta =
+internal fun routeTypeMeta(type: String?): RouteTypeMeta =
     RouteTypeMetaByType[type.orEmpty()] ?: RouteTypeMeta(type?.takeIf { it.isNotEmpty() } ?: "Transit", "🚉", RemixIcons.TrainLine)
-
-private val TypePriority = listOf("SUBWAY", "TRAM", "TROLLEYBUS", "BUS", "RAIL", "FERRY")
 
 private fun parseFloatOr0(s: String): Double = parseLeadingNumber(s).let { if (it.isNaN()) 0.0 else it }
 
 /** `String#localeCompare` approximation: case/diacritic-insensitive first, then exact. */
-fun localeCompare(a: String, b: String): Int {
+internal fun localeCompare(a: String, b: String): Int {
     val pa = normalizeSearchText(a)
     val pb = normalizeSearchText(b)
     val c = pa.compareTo(pb)
@@ -37,9 +48,9 @@ fun localeCompare(a: String, b: String): Int {
 }
 
 /** Sort routes so metro/tram come first, then alphabetically-ish by short name. */
-fun sortRoutes(routes: List<FutarRoute>): List<FutarRoute> = routes.sortedWith { a, b ->
-    val pa = TypePriority.indexOf(a.type).let { if (it == -1) 99 else it }
-    val pb = TypePriority.indexOf(b.type).let { if (it == -1) 99 else it }
+internal fun sortRoutes(routes: List<FutarRoute>): List<FutarRoute> = routes.sortedWith { a, b ->
+    val pa = RouteType.Priority.indexOf(a.type).let { if (it == -1) 99 else it }
+    val pb = RouteType.Priority.indexOf(b.type).let { if (it == -1) 99 else it }
     if (pa != pb) return@sortedWith pa - pb
     val na = parseFloatOr0(a.shortName)
     val nb = parseFloatOr0(b.shortName)
@@ -47,14 +58,14 @@ fun sortRoutes(routes: List<FutarRoute>): List<FutarRoute> = routes.sortedWith {
     localeCompare(a.shortName, b.shortName)
 }
 
-data class CombinedRouteGroup(
+internal data class CombinedRouteGroup(
     val name: String,
     val compactName: String,
     val routeIds: List<String>,
     val shortNames: List<String>,
 )
 
-val CombinedRouteGroups = listOf(
+internal val CombinedRouteGroups = listOf(
     CombinedRouteGroup("1 / 1A", "1/1A", listOf("BKK_3010", "BKK_3011"), listOf("1", "1A", "1/1A", "1 / 1A")),
     CombinedRouteGroup("4 / 6", "4/6", listOf("BKK_3040", "BKK_3060", "BKK_3046"), listOf("4", "6", "4-6", "4/6", "4 / 6")),
     CombinedRouteGroup("28 / 28A", "28/28A", listOf("BKK_3280", "BKK_3281"), listOf("28", "28A", "28/28A", "28 / 28A")),
@@ -62,7 +73,7 @@ val CombinedRouteGroups = listOf(
     CombinedRouteGroup("H5", "H5", listOf("BKK_H5", "volan_H5", "volan_H5A", "volan_H5E"), listOf("H5", "H5A", "H5E")),
 )
 
-fun findCombinedGroup(routeId: String? = null, shortName: String? = null): CombinedRouteGroup? {
+internal fun findCombinedGroup(routeId: String? = null, shortName: String? = null): CombinedRouteGroup? {
     if (!routeId.isNullOrEmpty()) {
         CombinedRouteGroups.firstOrNull { routeId in it.routeIds }?.let { return it }
     }
@@ -73,13 +84,13 @@ fun findCombinedGroup(routeId: String? = null, shortName: String? = null): Combi
     return null
 }
 
-fun getCombinedRouteIds(routeId: String?): List<String>? = findCombinedGroup(routeId)?.routeIds
+internal fun getCombinedRouteIds(routeId: String?): List<String>? = findCombinedGroup(routeId)?.routeIds
 
 /**
  * Route matching that combines paired lines (1/1A, 37/37A, 28/28A, 4/6, H5)
  * while keeping all other lines strictly isolated.
  */
-fun isRouteMatch(
+internal fun isRouteMatch(
     tripRouteId: String?,
     targetRouteId: String,
     tripShortName: String? = null,
@@ -96,7 +107,7 @@ fun isRouteMatch(
     return tripRouteId == targetRouteId
 }
 
-fun formatRouteDisplayName(shortName: String, routeId: String? = null, compact: Boolean = false): String {
+internal fun formatRouteDisplayName(shortName: String, routeId: String? = null, compact: Boolean = false): String {
     val group = findCombinedGroup(routeId, shortName) ?: return shortName
     return if (compact) group.compactName else group.name
 }
@@ -104,7 +115,7 @@ fun formatRouteDisplayName(shortName: String, routeId: String? = null, compact: 
 private val ViaSplit = Regex("""\s*(?:►|>|->)\s*""")
 
 /** "Salgótarjáni utca ► Sörgyár" → "Sörgyár" */
-fun extractHeadsignDestination(headsign: String?): String {
+internal fun extractHeadsignDestination(headsign: String?): String {
     if (headsign.isNullOrEmpty()) return ""
     val trimmed = headsign.trim()
     val parts = trimmed.split(ViaSplit)
@@ -113,6 +124,8 @@ fun extractHeadsignDestination(headsign: String?): String {
 
 private val ParenNotes = Regex("""\([^)]*\)""")
 private val StationSuffixes = Regex("""\b(m|h|pu|vasutallomas|allomas)\b""")
+/** "Móricz Zs. körtér" and "Móricz Zsigmond körtér" name the same stop. */
+private val ZsAbbreviation = Regex("""\bzs\b\.?""")
 private val Whitespace = Regex("""\s+""")
 private val RouteTitleSeparator = Regex("""\s*\|\s*""")
 private val SixDigitStopId = Regex("""^BKK_\d{6}$""")
@@ -121,6 +134,7 @@ private val EightDigitStopId = Regex("""^BKK_\d{8}$""")
 private fun normalizeHeadsignForMatch(s: String): String =
     normalizeSearchText(s)
         .replace(ParenNotes, "")
+        .replace(ZsAbbreviation, "zsigmond")
         .replace(StationSuffixes, "")
         .replace(Whitespace, " ")
         .trim()
@@ -129,7 +143,7 @@ private fun normalizeHeadsignForMatch(s: String): String =
  * Robust headsign matching for live arrivals: empty target matches all; exact,
  * via-destination and normalized (diacritics, parentheses, M/H suffix) matches.
  */
-fun isHeadsignMatch(targetHeadsign: String?, stopHeadsign: String?, tripHeadsign: String? = null): Boolean {
+internal fun isHeadsignMatch(targetHeadsign: String?, stopHeadsign: String?, tripHeadsign: String? = null): Boolean {
     if (targetHeadsign.isNullOrBlank()) return true
     val branches = splitDirectionHeadsigns(targetHeadsign)
     if (branches.size > 1) {
@@ -168,10 +182,10 @@ private val FallbackShortNames = mapOf(
 private val ReplacementRouteId = Regex("^[A-Za-z]+_(VP|MP|HP)\\w")
 
 /** Whether [routeId] is a replacement-bus route (see [ReplacementRouteId]). */
-fun isReplacementRouteId(routeId: String?): Boolean = routeId != null && ReplacementRouteId.containsMatchIn(routeId)
+internal fun isReplacementRouteId(routeId: String?): Boolean = routeId != null && ReplacementRouteId.containsMatchIn(routeId)
 
 /** A trip on a replacement-bus route standing in for a line. */
-val Arrival.isReplacementBus: Boolean get() = isReplacementRouteId(routeId)
+internal val Arrival.isReplacementBus: Boolean get() = isReplacementRouteId(routeId)
 
 private fun lineKey(name: String) = name.uppercase().replace(" ", "")
 
@@ -182,7 +196,7 @@ private fun lineKey(name: String) = name.uppercase().replace(" ", "")
  */
 private val ReplacementNameSplit = Regex("[-/]")
 
-fun isReplacementFor(tripRouteId: String?, tripShortName: String?, routeId: String, shortName: String?): Boolean {
+internal fun isReplacementFor(tripRouteId: String?, tripShortName: String?, routeId: String, shortName: String?): Boolean {
     if (!isReplacementRouteId(tripRouteId) || tripShortName.isNullOrBlank() || isReplacementRouteId(routeId)) return false
     val names = buildSet {
         shortName?.takeIf { it.isNotBlank() }?.let { add(lineKey(it)) }
@@ -192,34 +206,23 @@ fun isReplacementFor(tripRouteId: String?, tripShortName: String?, routeId: Stri
     return key in names || key.split(ReplacementNameSplit).any { part -> part.isNotEmpty() && part in names }
 }
 
-private fun narrowReplacementDirection(
-    matched: List<Pair<Arrival, String?>>,
-    headsign: String?,
-    targetDirectionId: String?,
-): List<Pair<Arrival, String?>> {
-    if (headsign.isNullOrBlank() || targetDirectionId.isNullOrBlank()) return matched
-    val repDirs = matched.mapNotNull { (a, dirId) -> if (a.isReplacementBus) dirId?.takeIf(String::isNotBlank) else null }.toSet()
-    return if (repDirs.size > 1 && targetDirectionId in repDirs) {
-        matched.filter { (a, dirId) -> !a.isReplacementBus || dirId == targetDirectionId }
-    } else {
-        matched
-    }
-}
-
 /**
  * Upcoming arrivals for one route from a stop's Futár response, narrowed to
  * [headsign] when set. Paired lines combine, and the line's replacement buses count as the line
- * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them.
+ * (see [isReplacementFor]); they keep their own destinations, so the [headsign] doesn't narrow them,
+ * in either direction. The ones going the other way from [headsign] are flagged
+ * ([Arrival.otherDirection], from [otherHeadsigns]) so callers can tell them apart.
  * When [targetDirectionId] is supplied, short-turned or diverted trips moving in the same physical
  * direction still match automatically even if their terminus headsign changed.
  */
-fun parseStopArrivals(
+internal fun parseStopArrivals(
     data: FutarArrivalsResponse?,
     routeId: String,
     headsign: String? = null,
     now: Long = nowMs(),
     shortName: String? = null,
     targetDirectionId: String? = null,
+    otherHeadsigns: List<String> = emptyList(),
 ): List<Arrival> {
     val stopTimes = data?.data?.entry?.stopTimes.orEmpty()
     val refs = data?.data?.references
@@ -228,7 +231,7 @@ fun parseStopArrivals(
     val lineName = shortName?.takeIf { it.isNotBlank() } ?: routes[routeId]?.shortName ?: FallbackShortNames[routeId]
     fun serves(tripRouteId: String?) =
         isRouteMatch(tripRouteId, routeId) || isReplacementFor(tripRouteId, tripRouteId?.let { routes[it]?.shortName }, routeId, lineName)
-    val matched = stopTimes
+    return stopTimes
         .filter { !it.canceled && serves(trips[it.tripId]?.routeId) }
         .map { st -> st.toArrival(trips[st.tripId], routes) to trips[st.tripId]?.directionId }
         .filter { (a, _) -> a.arrivalMs > 0 && a.arrivalMs >= now - 60_000 }
@@ -237,8 +240,23 @@ fun parseStopArrivals(
                 isHeadsignMatch(headsign, a.headSign, a.tripHeadsign) ||
                 (!headsign.isNullOrBlank() && !targetDirectionId.isNullOrBlank() && dirId == targetDirectionId)
         }
-    return narrowReplacementDirection(matched, headsign, targetDirectionId).map { it.first }.sortedBy { it.arrivalMs }
+        .map { (a, _) -> if (a.isReplacementBus && isOtherDirection(a, headsign, otherHeadsigns)) a.copy(otherDirection = true) else a }
+        .sortedBy { it.arrivalMs }
 }
+
+/**
+ * Whether the replacement bus [a] goes the other way from the picked [headsign]: its headsign (or
+ * terminus) matches one of the line's [otherHeadsigns] and does not match the picked headsign. A
+ * compound "A / B" picked headsign matches on any part. Replacement buses keep their own
+ * destinations, so this only labels them, it never filters. Direction ids are deliberately not
+ * used: a replacement route numbers them on its own, and a bus that runs to the end of the replaced
+ * section can carry the other id while still going the picked way. Anything else is unknown, and
+ * unknown is not labelled.
+ */
+internal fun isOtherDirection(a: Arrival, headsign: String?, otherHeadsigns: List<String>): Boolean =
+    !headsign.isNullOrBlank() &&
+        !isHeadsignMatch(headsign, a.headSign, a.tripHeadsign) &&
+        otherHeadsigns.any { isHeadsignMatch(it, a.headSign, a.tripHeadsign) }
 
 /** One stop time as an arrival: the live estimate when there is one, else the timetable. */
 private fun FutarStopTime.toArrival(trip: FutarTripRef?, routes: Map<String, FutarRoute>): Arrival {
@@ -263,24 +281,24 @@ private fun FutarStopTime.toArrival(trip: FutarTripRef?, routes: Map<String, Fut
  * (in Hungarian "autóbuszos pótlás …"). Only the header: a combined alert's description can
  * mention another line's replacement.
  */
-fun isReplacementAlert(alert: TransitAlert): Boolean {
+internal fun isReplacementAlert(alert: TransitAlert): Boolean {
     val header = alert.header.lowercase()
     return "replacement bus" in header || "pótlás" in header || "pótlóbusz" in header
 }
 
 private fun Arrival.directionKey(): String = tripHeadsign?.takeIf { it.isNotEmpty() } ?: headSign.ifEmpty { "Unknown" }
 
-data class ArrivalGroup(val name: String, val list: List<Arrival>)
+internal data class ArrivalGroup(val name: String, val list: List<Arrival>)
 
 /** Group arrivals by terminus (headsign), preserving time order within each group. */
-fun groupArrivalsByHeadsign(arrivals: List<Arrival>): List<ArrivalGroup> {
+internal fun groupArrivalsByHeadsign(arrivals: List<Arrival>): List<ArrivalGroup> {
     val map = LinkedHashMap<String, MutableList<Arrival>>()
     for (a in arrivals) map.getOrPut(a.directionKey()) { mutableListOf() }.add(a)
     return map.map { (name, list) -> ArrivalGroup(name, list) }
 }
 
 /** The [count] departures following [current] in the same direction, in time order. */
-fun followingArrivals(arrivals: List<Arrival>, current: Arrival?, count: Int = 2): List<Arrival> {
+internal fun followingArrivals(arrivals: List<Arrival>, current: Arrival?, count: Int = 2): List<Arrival> {
     if (current == null) return emptyList()
     val key = current.directionKey()
     return arrivals.filter { it.tripId != current.tripId && it.arrivalMs > current.arrivalMs && it.directionKey() == key }.take(count)
@@ -296,7 +314,7 @@ private val DiacriticFolds: Map<Char, Char> by lazy {
 }
 
 /** Lowercase + strip diacritics so "szell kalman" matches "Széll Kálmán tér". */
-fun normalizeSearchText(s: String): String {
+internal fun normalizeSearchText(s: String): String {
     val lower = s.lowercase()
     val sb = StringBuilder(lower.length)
     for (ch in lower) {
@@ -331,7 +349,7 @@ internal fun codePointToString(code: Int): String? = when (code) {
 }
 
 /** Crude HTML-to-text: drop tags and decode the common entities. */
-fun stripHtml(html: String): String = html
+internal fun stripHtml(html: String): String = html
     .replace(HtmlBreak, " ")
     .replace(HtmlTag, " ")
     .replace(EntityNbsp, " ")
@@ -353,7 +371,7 @@ private fun pickText(t: FutarTranslations?): String {
 }
 
 /** Identity of the tracked route/stop, used to scope alerts. */
-data class AlertContext(val routeId: String, val routeShortName: String, val routeType: String, val stopId: String)
+internal data class AlertContext(val routeId: String, val routeShortName: String, val routeType: String, val stopId: String)
 
 private fun FutarAlert.affectedRouteIds(): List<String> = routeIds ?: routes?.mapNotNull { it.routeId?.takeIf(String::isNotEmpty) }.orEmpty()
 
@@ -361,7 +379,7 @@ private fun FutarAlert.affectedRouteIds(): List<String> = routeIds ?: routes?.ma
  * Active disruption alerts for a tracker from `references.alerts`: attached to
  * the route, to the stop (same vehicle type), or agency-wide (same vehicle type).
  */
-fun parseAlerts(
+internal fun parseAlerts(
     data: FutarArrivalsResponse?,
     ctx: AlertContext,
     now: Long = nowMs(),
@@ -419,7 +437,7 @@ fun parseAlerts(
             id = a.id,
             header = pickText(a.header).ifEmpty { "Service alert ${a.id}" },
             description = stripHtml(pickText(a.description)),
-            url = pickText(a.url).ifEmpty { null },
+            url = pickText(a.url).takeIf(::isTrustedAlertUrl),
             effectType = a.effectType ?: a.routes?.firstOrNull()?.effectType,
             routeIds = a.routeIds ?: a.routes?.mapNotNull { it.routeId?.takeIf(String::isNotEmpty) },
             stopIds = a.stopIds,
@@ -439,59 +457,65 @@ private fun effectWeight(effectType: String?): Int = when (effectType) {
     else -> 3
 }
 
-/** "3 MIN" — total-minute countdown text for departure cards. */
-fun formatCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes MIN"
+/** Whole minutes until [ms], rounded up; 0 once it is due. */
+internal fun etaMinutes(ms: Long, now: Long): Int = maxOf(0, ceil((ms - now) / 60_000.0).toInt())
 
 /** "2'" — prime-marked total minutes for compact readouts. */
-fun formatPrimeCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes'"
-
-const val CompactCountdownMaxMinutes = 99
-
-/** Compact minutes for dashboard tiles; null past the horizon. */
-fun formatCompactCountdown(minutes: Int): String? = if (minutes > CompactCountdownMaxMinutes) null else formatPrimeCountdown(minutes)
+internal fun formatPrimeCountdown(minutes: Int): String = if (minutes <= 0) "NOW" else "$minutes'"
 
 /** Snapshots older than this (or offline) are stale: 3× the 20s poll. */
-const val ArrivalsStaleMs = 60_000L
+internal const val ArrivalsStaleMs = 60_000L
 
-fun isArrivalsStale(dataUpdatedAt: Long?, now: Long, offline: Boolean): Boolean {
+internal fun isArrivalsStale(dataUpdatedAt: Long?, now: Long, offline: Boolean): Boolean {
     if (offline) return true
     val at = dataUpdatedAt ?: 0L
     return at > 0 && now - at > ArrivalsStaleMs
 }
 
 /** Real now, or the snapshot time when the snapshot is stale. */
-fun arrivalsStaleNow(dataUpdatedAt: Long?, now: Long, offline: Boolean): Long {
+internal fun arrivalsStaleNow(dataUpdatedAt: Long?, now: Long, offline: Boolean): Long {
     val at = dataUpdatedAt ?: 0L
     return if (isArrivalsStale(dataUpdatedAt, now, offline)) min(now, at) else now
 }
 
-const val MaxTrackerStops = 4
-const val MaxFavoriteTrackers = 5
+internal const val MaxTrackerStops = 4
+internal const val MaxFavoriteTrackers = 5
 
 /** The tracker's stops, falling back to the legacy single-stop columns. */
-fun getTrackerStops(tracker: TransitTracker): List<TrackerStop> {
+internal fun getTrackerStops(tracker: TransitTracker): List<TrackerStop> {
     val stops = tracker.stops
     if (!stops.isNullOrEmpty()) return stops.take(MaxTrackerStops)
     return listOf(TrackerStop(tracker.stopId, tracker.stopName, tracker.headsign))
 }
 
-fun addOrUpdateTrackerStop(stops: List<TrackerStop>, newStop: TrackerStop): List<TrackerStop> {
+internal fun addOrUpdateTrackerStop(stops: List<TrackerStop>, newStop: TrackerStop): List<TrackerStop> {
     val i = stops.indexOfFirst { it.stopId == newStop.stopId }
     if (i >= 0) return stops.toMutableList().also { it[i] = newStop }
     if (stops.size >= MaxTrackerStops) return stops
     return stops + newStop
 }
 
-fun removeTrackerStop(stops: List<TrackerStop>, stopId: String): List<TrackerStop> = stops.filter { it.stopId != stopId }
-
-fun splitRouteTitle(title: String?): List<String> =
+internal fun splitRouteTitle(title: String?): List<String> =
     if (title.isNullOrEmpty()) emptyList() else title.split(RouteTitleSeparator).filter { it.isNotEmpty() }
+
+/**
+ * A line title ("A | B") as where it starts and where it goes: "A" and "B". Further termini fold into
+ * the second part ("A | B | C" gives "B / C"); a title with no second part has no destination.
+ */
+internal fun splitTermini(title: String?): Pair<String, String?> {
+    val parts = splitRouteTitle(title)
+    return when (parts.size) {
+        0 -> "" to null
+        1 -> parts[0] to null
+        else -> parts[0] to parts.drop(1).joinToString(" / ")
+    }
+}
 
 /**
  * Normalizes a platform stop ID into its station-level area ID
  * (BKK_F… → BKK_CSF…, BKK_123456 → BKK_CS123456, BKK_12345678 → BKK_12345).
  */
-fun normalizeStopIdToStation(stopId: String?): String {
+internal fun normalizeStopIdToStation(stopId: String?): String {
     if (stopId.isNullOrEmpty()) return ""
     if (stopId.startsWith("BKK_CS") || stopId.startsWith("AREA_CS")) return stopId
     if (stopId.startsWith("BKK_F")) return "BKK_CSF" + stopId.removePrefix("BKK_F")

@@ -8,7 +8,7 @@ import (
 // Turns on PocketBase's built-in per-IP rate limiter. It ships disabled
 // (Settings.RateLimits.Enabled defaults to false), which leaves the records
 // API — including auth-with-password — open to unthrottled guessing. Keyed by
-// e.RealIP(), so it relies on the TrustedProxy setting from 1700000008.
+// e.RealIP(), so it relies on the client IP resolved by internal/proxytrust (TRUSTED_PROXY).
 //
 // The rules are PocketBase's own defaults. `*:auth` matches every
 // auth-with-password / OAuth2 / OTP call on any auth collection; a configured

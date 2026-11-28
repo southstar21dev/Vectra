@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.weather
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.navigation.LocalNavigator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import dev.southstar21.vectra.core.designsystem.components.rememberPageClock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -60,7 +62,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.VectraColors
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -121,14 +123,13 @@ private fun alertIcon(key: WeatherAlertKey) = when (key) {
     WeatherAlertKey.Rain -> RemixIcons.RainyLine
 }
 
-private val Tnum = "tnum"
 
 /**
  * The dashboard's slim weather strip; tapping it opens the
  * live radar. Hides itself when the first fetch fails with nothing to show.
  */
 @Composable
-fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
+internal fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
     val location by repo.location.collectAsStateWithLifecycle()
     val weather by repo.weather.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
@@ -151,7 +152,9 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
     if (data != null && !isPlaceholder && settledTitle != liveTitle) settledTitle = liveTitle
     val title = if (isPlaceholder) settledTitle else liveTitle
 
-    if (weather.error != null && data == null) return
+    // Ticks each minute so the age label, and the drop past a day, follow the clock while the app is open.
+    val now = rememberPageClock(60_000)
+    if (!weatherCardVisible(weather, now)) return
     if (loc == null || data == null) {
         WeatherCardSkeleton(modifier)
         return
@@ -172,7 +175,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
             Modifier
                 .fillMaxWidth()
                 .pressScale(interaction, 0.995f)
-                .glass(shape)
+                .plannerCard(shape)
                 .angledLinearGradient(160f, skyFrom, skyTo, shape)
                 .clip(shape)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
@@ -181,10 +184,10 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                     contentDescription = "Weather for $title: ${roundHalfUpToInt(data.temperature)} degrees, ${meta.label}. Tap to open live weather radar."
                 },
         ) {
-            // Condition artwork spilling off the top-right corner.
+            // Condition artwork tucked into the top-right corner (inside the card's rounded edge, not cut by it).
             VIcon(
                 skyArt(meta.sky),
-                Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-12).dp).alpha(artAlpha),
+                Modifier.align(Alignment.TopEnd).offset(x = (-8).dp, y = 0.dp).alpha(artAlpha),
                 size = 104.dp,
                 tint = artTint,
             )
@@ -192,6 +195,9 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     VIcon(RemixIcons.MapPin2Fill, size = 14.dp, tint = c.textSecondary)
                     VText(title, Modifier.weight(1f, fill = false), vtext(TypeScale.Caption, Weight.Semibold), c.textSecondary, maxLines = 1)
+                    weatherAgeLabel(weather.fetchedAt, now)?.let {
+                        VText(it, Modifier.padding(start = 6.dp), vtext(TypeScale.Caption, Weight.Medium), c.textMuted, maxLines = 1)
+                    }
                     Row(
                         Modifier.padding(start = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -204,7 +210,7 @@ fun WeatherCard(repo: WeatherRepository, modifier: Modifier = Modifier) {
                 VText(
                     "${roundHalfUpToInt(data.temperature)}°",
                     Modifier.padding(top = 8.dp),
-                    vtext(54.sp to 54.sp, Weight.Bold, Tracking.Tighter).copy(fontFeatureSettings = Tnum),
+                    vtext(54.sp to 54.sp, Weight.Bold, Tracking.Tighter).tnum(),
                     c.textPrimary,
                 )
                 Row(
@@ -259,7 +265,7 @@ private fun Reading(icon: ImageVector, value: String, label: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(icon, size = 14.dp, tint = c.textMuted)
-        VText(value, style = vtext(13.sp to 18.sp, Weight.Bold).copy(fontFeatureSettings = Tnum), color = c.textPrimary, maxLines = 1)
+        VText(value, style = vtext(TypeScale.Meta13, Weight.Bold).tnum(), color = c.textPrimary, maxLines = 1)
     }
 }
 
@@ -290,4 +296,10 @@ private fun WeatherCardSkeleton(modifier: Modifier) {
             Box(Modifier.width(64.dp).height(36.dp).background(c.surfaceOverlay, Radius.Hairline))
         }
     }
+}
+
+/** Hidden when the first fetch failed with nothing to show, and once the data is older than a stored snapshot may be. */
+private fun weatherCardVisible(weather: WeatherState, now: Long): Boolean {
+    weather.data ?: return weather.error == null
+    return !isWeatherTooOld(weather.fetchedAt, now)
 }

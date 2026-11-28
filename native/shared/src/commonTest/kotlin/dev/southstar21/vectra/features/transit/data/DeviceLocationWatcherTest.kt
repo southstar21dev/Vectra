@@ -1,0 +1,160 @@
+package dev.southstar21.vectra.features.transit.data
+
+import dev.southstar21.vectra.core.data.KeyValueStore
+import dev.southstar21.vectra.core.platform.GeoFix
+import dev.southstar21.vectra.core.platform.GeoPermission
+import dev.southstar21.vectra.core.platform.LocationProvider
+import dev.southstar21.vectra.core.time.nowMs
+import dev.southstar21.vectra.features.coursetracker.FakeDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.ContinuationInterceptor
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+
+/** The watcher keeps its state on one thread (audit 03 #14). */
+class DeviceLocationWatcherTest {
+    private class RecordingProvider : LocationProvider {
+        val ranOn = mutableListOf<Pair<String, ContinuationInterceptor?>>()
+        var watching = 0
+        var permission = GeoPermission.Granted
+
+        override fun permission() = permission
+
+        override suspend fun current(): GeoFix {
+            ranOn += "current" to currentCoroutineContext()[ContinuationInterceptor]
+            return GeoFix(47.5, 19.05, 10.0, timeMs = nowMs())
+        }
+
+        override fun watch(): Flow<GeoFix> = flow {
+            ranOn += "watch" to currentCoroutineContext()[ContinuationInterceptor]
+            watching += 1
+            try {
+                awaitCancellation()
+            } finally {
+                watching -= 1
+            }
+        }
+    }
+
+    @Test fun theWatchAndTheOneShotFixRunOnTheConfinedDispatcher() = runTest {
+        val appScope = StandardTestDispatcher(testScheduler, name = "app scope")
+        val confined = StandardTestDispatcher(testScheduler, name = "confined")
+        val provider = RecordingProvider()
+        val watcher = DeviceLocation(
+            provider,
+            KeyValueStore(FakeDataStore()),
+            CoroutineScope(backgroundScope.coroutineContext + appScope),
+            confined = confined,
+        )
+
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(listOf<Pair<String, ContinuationInterceptor?>>("current" to confined, "watch" to confined), provider.ranOn)
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        assertEquals(1, provider.watching)
+
+        release()
+        runCurrent()
+        assertEquals(0, provider.watching)
+    }
+
+    @Test fun aPermissionRevokedWhileAwayEndsTrackingOnResume() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider()
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+
+        // Revoked in system settings: the platform watch just goes quiet, the last fix still looks live.
+        provider.permission = GeoPermission.Denied
+        watcher.onResume()
+        runCurrent()
+        assertNotEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        assertEquals(0, provider.watching)
+        release()
+    }
+
+    @Test fun withoutPermissionNothingAsksOnItsOwn() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        watcher.prompt = { asked += 1 }
+
+        val release = watcher.acquire()
+        watcher.onResume()
+        runCurrent()
+        assertEquals(0, asked)
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
+
+    @Test fun aUserActionAsksAndTrackingStartsOnceGranted() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        var grants = 0
+        watcher.onUserGrant = { grants += 1 }
+        watcher.prompt = { onResult ->
+            asked += 1
+            provider.permission = GeoPermission.Granted
+            onResult(true)
+        }
+
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(0, asked)
+        watcher.refreshLocation()
+        runCurrent()
+        assertEquals(1, asked)
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        // The grant reaches the weather setting, so Settings shows location on.
+        assertEquals(1, grants)
+        release()
+    }
+
+    @Test fun aStoredFixDoesNotReadAsLiveWithoutPermission() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider().also { it.permission = GeoPermission.Prompt }
+        val kv = KeyValueStore(FakeDataStore())
+        kv.set(DeviceLocationStorageKey, """{"lat":47.5,"lon":19.05,"accuracy":10,"lastUpdatedMs":${nowMs()}}""")
+        val watcher = DeviceLocation(provider, kv, CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        watcher.prompt = { }
+
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
+
+    @Test fun aLapsedPermissionFallsBackToIdleWithoutAsking() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val provider = RecordingProvider()
+        val watcher = DeviceLocation(provider, KeyValueStore(FakeDataStore()), CoroutineScope(backgroundScope.coroutineContext + dispatcher), confined = dispatcher)
+        var asked = 0
+        watcher.prompt = { asked += 1 }
+        val first = watcher.acquire()
+        runCurrent()
+        assertEquals(WatchLocationStatus.Tracking, watcher.state.value.status)
+        first()
+        runCurrent()
+
+        // An iOS "Allow Once" ran out while the app was away: back to undecided, not denied.
+        provider.permission = GeoPermission.Prompt
+        val release = watcher.acquire()
+        runCurrent()
+        assertEquals(0, asked)
+        assertEquals(WatchLocationStatus.Idle, watcher.state.value.status)
+        release()
+    }
+}

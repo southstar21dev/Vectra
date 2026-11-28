@@ -73,12 +73,4 @@ class KeyValueStore(private val store: DataStore<Preferences>, private val blobs
 }
 
 /** Keys that can grow large, stored one file per key. */
-internal val LargeValueKeyPrefixes = arrayOf(
-    "vectra_schedule_cache_events",
-    "vectra_schedule_items",
-    "vectra_transit_trackers_cache",
-    "vectra_course_tracker_cache",
-    "vectra_trip_plans_cache",
-    "vectra.weather.snapshot",
-    "vectra.deviceLocation",
-)
+internal val LargeValueKeyPrefixes: Array<String> = UserKeys.all.filter { it.large }.map { it.base }.toTypedArray()

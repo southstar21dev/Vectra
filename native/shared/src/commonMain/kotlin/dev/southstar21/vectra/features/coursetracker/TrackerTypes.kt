@@ -21,7 +21,7 @@ private val LooseTime = Regex("""^(\d{1,2}):(\d{1,2})""")
  * are written as explicit nulls.
  */
 @Serializable
-enum class AttendanceStatus {
+internal enum class AttendanceStatus {
     @SerialName("present") Present,
     @SerialName("absent") Absent,
     @SerialName("excused") Excused,
@@ -30,7 +30,7 @@ enum class AttendanceStatus {
 }
 
 @Serializable
-enum class SessionType(val wire: String) {
+internal enum class SessionType(val wire: String) {
     @SerialName("lecture") Lecture("lecture"),
     @SerialName("seminar") Seminar("seminar"),
     @SerialName("lab") Lab("lab"),
@@ -45,13 +45,13 @@ enum class SessionType(val wire: String) {
 }
 
 /** Default course total points — the denominator of the Points Earned card. */
-const val DefaultCourseTotalPoints = 100.0
+internal const val DefaultCourseTotalPoints = 100.0
 
 /**
  * Identifies a course wherever it is seen (schedule event, check-in, Course
  * Hub). Codes may carry a group suffix (`X5VX18SUBM01M-G10`); the canonical key strips it.
  */
-data class CourseIdentity(
+internal data class CourseIdentity(
     val courseCode: String? = null,
     val courseName: String? = null,
     val semester: String? = null,
@@ -61,7 +61,7 @@ data class CourseIdentity(
 )
 
 @Serializable
-data class AttendanceSession(
+internal data class AttendanceSession(
     val id: String,
     /** ISO 'YYYY-MM-DD'. */
     val date: String,
@@ -72,26 +72,28 @@ data class AttendanceSession(
     val status: AttendanceStatus,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val notes: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val isCustom: Boolean? = null,
+    /** ISO instant of the last status change, so a merge keeps the newer of two devices' marks. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val markedAt: String? = null,
 )
 
 /**
  * Canonical slot key (`date_HH:MM_type`). Remembers deleted generated sessions
  * so the reconciler never resurrects them.
  */
-fun sessionSlotKey(date: String, startTime: String?, sessionType: SessionType): String {
+internal fun sessionSlotKey(date: String, startTime: String?, sessionType: SessionType): String {
     val raw = (startTime ?: "").trim()
     val m = LooseTime.find(raw)
     val time = if (m != null) "${m.groupValues[1].padStart(2, '0')}:${m.groupValues[2].padStart(2, '0')}" else ""
     return "${date.trim()}_${time}_${sessionType.wire}"
 }
 
-fun sessionSlotKey(session: AttendanceSession): String = sessionSlotKey(session.date, session.startTime, session.sessionType)
+internal fun sessionSlotKey(session: AttendanceSession): String = sessionSlotKey(session.date, session.startTime, session.sessionType)
 
 @Serializable
-data class GradingScaleTier(val grade: Int, val minPercentage: Double)
+internal data class GradingScaleTier(val grade: Int, val minPercentage: Double)
 
 @Serializable
-data class AssessmentItem(
+internal data class AssessmentItem(
     val id: String,
     val name: String,
     val earnedPoints: Double,
@@ -105,7 +107,7 @@ data class AssessmentItem(
 )
 
 @Serializable
-data class TrackerAttendance(
+internal data class TrackerAttendance(
     val maxAbsencesAllowed: Int?,
     val minAttendancePercent: Double?,
     val sessions: List<AttendanceSession>,
@@ -114,7 +116,7 @@ data class TrackerAttendance(
 )
 
 @Serializable
-data class TrackerPoints(
+internal data class TrackerPoints(
     val useWeightedCategories: Boolean = false,
     val gradingScale: List<GradingScaleTier>,
     val assessments: List<AssessmentItem>,
@@ -123,7 +125,7 @@ data class TrackerPoints(
 )
 
 @Serializable
-data class CourseTracker(
+internal data class CourseTracker(
     val id: String,
     val courseKey: String,
     val courseName: String,
@@ -143,12 +145,12 @@ data class CourseTracker(
 )
 
 @Serializable
-data class CourseTrackerData(
+internal data class CourseTrackerData(
     val version: Int,
     val trackers: Map<String, CourseTracker>,
 )
 
-val DefaultGradingScale: List<GradingScaleTier> = listOf(
+internal val DefaultGradingScale: List<GradingScaleTier> = listOf(
     GradingScaleTier(5, 87.0),
     GradingScaleTier(4, 75.0),
     GradingScaleTier(3, 62.0),
@@ -157,17 +159,17 @@ val DefaultGradingScale: List<GradingScaleTier> = listOf(
 )
 
 /** Seeded attendance limits — defaults to confirm, never asserted facts. */
-object DefaultAttendanceLimits {
+internal object DefaultAttendanceLimits {
     const val MaxAbsencesAllowed = 3
     val MinAttendancePercent: Double? = null
 }
 
 /** genId(): crypto.randomUUID. */
-fun genId(): String = Uuid.random().toString()
+internal fun genId(): String = Uuid.random().toString()
 
-fun nowIso(): String = Clock.System.now().toString()
+internal fun nowIso(): String = Clock.System.now().toString()
 
-fun createDefaultTracker(
+internal fun createDefaultTracker(
     courseName: String,
     courseCode: String? = null,
     semester: String? = null,
@@ -193,7 +195,7 @@ fun createDefaultTracker(
     )
 }
 
-fun createEmptyTrackerData() = CourseTrackerData(1, emptyMap())
+internal fun createEmptyTrackerData() = CourseTrackerData(1, emptyMap())
 
 internal val TrackerJson = Json {
     ignoreUnknownKeys = true
@@ -222,7 +224,7 @@ private fun CourseTracker.isValid(): Boolean {
  * parseTrackerData: validates the document and collapses sessions sharing a
  * slot (date + start + type), keeping the marked one, sorted by date and time.
  */
-fun parseTrackerData(raw: String?): CourseTrackerData? {
+internal fun parseTrackerData(raw: String?): CourseTrackerData? {
     if (raw.isNullOrEmpty()) return null
     val parsed = runCatching { TrackerJson.decodeFromString(CourseTrackerData.serializer(), raw) }.getOrNull() ?: return null
     if (parsed.version != 1 || parsed.trackers.values.any { !it.isValid() }) return null
@@ -244,7 +246,7 @@ fun parseTrackerData(raw: String?): CourseTrackerData? {
     return parsed.copy(trackers = trackers)
 }
 
-fun serializeTrackerData(data: CourseTrackerData): String = TrackerJson.encodeToString(CourseTrackerData.serializer(), data)
+internal fun serializeTrackerData(data: CourseTrackerData): String = TrackerJson.encodeToString(CourseTrackerData.serializer(), data)
 
 /** `x || y` for optional strings: empty reads as missing. */
 internal fun String?.nonEmpty(): String? = this?.takeIf { it.isNotEmpty() }

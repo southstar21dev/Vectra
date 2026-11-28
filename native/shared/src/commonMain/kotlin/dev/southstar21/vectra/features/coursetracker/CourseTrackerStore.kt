@@ -13,21 +13,51 @@ import kotlin.time.Instant
  * rekeyed on their next write.
  */
 
+private fun markedAtMs(session: AttendanceSession): Long =
+    session.markedAt?.let { runCatching { Instant.parse(it).toEpochMilliseconds() }.getOrNull() } ?: 0L
+
 private fun updatedAtMs(tracker: CourseTracker): Long =
     runCatching { Instant.parse(tracker.updatedAt).toEpochMilliseconds() }.getOrDefault(0L)
 
 /**
- * Local vs cloud: the newest version of each tracker wins (local on a tie);
- * trackers on one side only are kept. A stale cloud snapshot must never revert
- * a just-applied local update whose upload is still in flight.
+ * Local vs cloud: the newest version of each tracker wins its fields (local on a tie), but the
+ * attendance marks of both sides are combined (see [mergeAttendanceMarks]), so two devices that
+ * each marked something in the same course before syncing keep both. Trackers on one side only
+ * are kept. A stale cloud snapshot must never revert a just-applied local update whose upload
+ * is still in flight.
  */
-fun mergeTrackerData(local: CourseTrackerData, cloud: CourseTrackerData): CourseTrackerData {
+internal fun mergeTrackerData(local: CourseTrackerData, cloud: CourseTrackerData): CourseTrackerData {
     val trackers = LinkedHashMap(cloud.trackers)
     for ((key, localTracker) in local.trackers) {
         val cloudTracker = trackers[key]
-        if (cloudTracker == null || updatedAtMs(localTracker) >= updatedAtMs(cloudTracker)) trackers[key] = localTracker
+        trackers[key] = when {
+            cloudTracker == null -> localTracker
+            updatedAtMs(localTracker) >= updatedAtMs(cloudTracker) -> mergeAttendanceMarks(localTracker, cloudTracker)
+            else -> mergeAttendanceMarks(cloudTracker, localTracker)
+        }
     }
     return CourseTrackerData(1, trackers)
+}
+
+/**
+ * [newer] with the student's own work from [older] added back: a session both copies have takes
+ * the status changed last (by [AttendanceSession.markedAt]; the newer copy on a tie or without
+ * clocks), and a marked or custom session only [older] has is kept unless the newer copy deleted
+ * that slot. Unmarked generated sessions are not carried over; the reconciler regenerates them.
+ */
+private fun mergeAttendanceMarks(newer: CourseTracker, older: CourseTracker): CourseTracker {
+    val removed = newer.attendance.removedSessionKeys.toSet()
+    val olderWork = older.attendance.sessions.filter { (it.isCustom == true || it.status != AttendanceStatus.Unmarked) && sessionSlotKey(it) !in removed }
+    val olderById = older.attendance.sessions.associateBy { it.id }
+    val olderBySlot = older.attendance.sessions.associateBy { sessionSlotKey(it) }
+    val merged = newer.attendance.sessions.map { s ->
+        val counterpart = olderById[s.id] ?: olderBySlot[sessionSlotKey(s)]
+        if (counterpart != null && markedAtMs(counterpart) > markedAtMs(s)) counterpart.copy(id = s.id) else s
+    }
+    val have = merged.map { it.id }.toSet() + merged.map { sessionSlotKey(it) }.toSet()
+    val extra = olderWork.filter { it.id !in have && sessionSlotKey(it) !in have }
+    val unchanged = merged == newer.attendance.sessions && extra.isEmpty()
+    return if (unchanged) newer else newer.copy(attendance = newer.attendance.copy(sessions = deduplicateSessions(merged + extra)))
 }
 
 private fun splitCourseKey(key: String): Pair<String, String> {
@@ -56,10 +86,10 @@ private fun findLegacyTracker(trackers: Map<String, CourseTracker>, canonicalKey
     return null
 }
 
-data class TrackerLookup(val key: String, val tracker: CourseTracker?, val legacyKey: String? = null)
+internal data class TrackerLookup(val key: String, val tracker: CourseTracker?, val legacyKey: String? = null)
 
 /** Canonical key, else adopt a legacy tracker, else a fresh one under the canonical key. */
-fun getOrCreateTrackerFromStore(trackers: Map<String, CourseTracker>, canonicalKey: String, identity: CourseIdentity): TrackerLookup {
+internal fun getOrCreateTrackerFromStore(trackers: Map<String, CourseTracker>, canonicalKey: String, identity: CourseIdentity): TrackerLookup {
     trackers[canonicalKey]?.let { return TrackerLookup(canonicalKey, it) }
     findLegacyTracker(trackers, canonicalKey, identity)?.let { return TrackerLookup(canonicalKey, it.second, it.first) }
     val created = createDefaultTracker(
@@ -74,7 +104,7 @@ fun getOrCreateTrackerFromStore(trackers: Map<String, CourseTracker>, canonicalK
 }
 
 /** Read-only lookup: exact canonical key first, then legacy adoption. */
-fun findTrackerInStore(trackers: Map<String, CourseTracker>, canonicalKey: String, identity: CourseIdentity? = null): TrackerLookup {
+internal fun findTrackerInStore(trackers: Map<String, CourseTracker>, canonicalKey: String, identity: CourseIdentity? = null): TrackerLookup {
     if (canonicalKey.isEmpty()) return TrackerLookup(canonicalKey, null)
     trackers[canonicalKey]?.let { return TrackerLookup(canonicalKey, it) }
     if (identity != null) findLegacyTracker(trackers, canonicalKey, identity)?.let { return TrackerLookup(canonicalKey, it.second, it.first) }
@@ -82,7 +112,7 @@ fun findTrackerInStore(trackers: Map<String, CourseTracker>, canonicalKey: Strin
 }
 
 /** Places a tracker at its canonical key, dropping any legacy key it replaced. */
-fun commitTracker(trackers: Map<String, CourseTracker>, key: String, tracker: CourseTracker, legacyKey: String? = null): Map<String, CourseTracker> {
+internal fun commitTracker(trackers: Map<String, CourseTracker>, key: String, tracker: CourseTracker, legacyKey: String? = null): Map<String, CourseTracker> {
     val next = LinkedHashMap(trackers)
     if (legacyKey != null && legacyKey != key) next.remove(legacyKey)
     next[key] = tracker
@@ -93,13 +123,13 @@ fun commitTracker(trackers: Map<String, CourseTracker>, key: String, tracker: Co
  * [base] plus every tracker that [live] changed after [before] was read: an edit made while
  * a sync was busy with the network. The newest `updatedAt` wins, as in [mergeTrackerData].
  */
-fun withEditsSince(before: CourseTrackerData, live: CourseTrackerData, base: CourseTrackerData): CourseTrackerData {
+internal fun withEditsSince(before: CourseTrackerData, live: CourseTrackerData, base: CourseTrackerData): CourseTrackerData {
     val edited = live.trackers.filter { (key, tracker) -> before.trackers[key] !== tracker }
     return if (edited.isEmpty()) base else mergeTrackerData(CourseTrackerData(1, edited), base)
 }
 
 /** Mark the session identified by [identifier] (a session id or a date). */
-fun applySetAttendanceStatus(
+internal fun applySetAttendanceStatus(
     data: CourseTrackerData,
     identity: CourseIdentity,
     identifier: String,
@@ -130,7 +160,7 @@ fun applySetAttendanceStatus(
     val nextSessions: List<AttendanceSession>
     val changedSlot: String
     if (target != null) {
-        val updated = target.copy(startTime = target.startTime.nonEmpty() ?: normStart, endTime = target.endTime.nonEmpty() ?: normEnd, status = status)
+        val updated = target.copy(startTime = target.startTime.nonEmpty() ?: normStart, endTime = target.endTime.nonEmpty() ?: normEnd, status = status, markedAt = now)
         changedSlot = sessionSlotKey(updated)
         nextSessions = sessions.map { if (it.id == target.id) updated else it }
     } else {
@@ -143,6 +173,7 @@ fun applySetAttendanceStatus(
             title = title.nonEmpty() ?: tracker.courseName.nonEmpty() ?: "Class Session",
             sessionType = sessionType ?: SessionType.Lecture,
             status = status,
+            markedAt = now,
         )
         changedSlot = sessionSlotKey(created)
         nextSessions = deduplicateSessions(sessions + created)
@@ -160,32 +191,23 @@ fun applySetAttendanceStatus(
     )
 }
 
-/** Upsert a full tracker under its canonical key (healing legacy keys). */
-fun applyUpsertTracker(data: CourseTrackerData, tracker: CourseTracker, now: String = nowIso()): CourseTrackerData {
-    val canonicalKey = resolveCourseKey(CourseIdentity(courseCode = tracker.courseCode, courseName = tracker.courseName, semester = tracker.semester))
-    val cleaned = tracker.copy(
-        courseKey = canonicalKey,
-        attendance = tracker.attendance.copy(sessions = deduplicateSessions(tracker.attendance.sessions)),
-        updatedAt = now,
-    )
-    return data.copy(trackers = commitTracker(data.trackers, canonicalKey, cleaned, tracker.courseKey.takeIf { it != canonicalKey }))
-}
-
 /**
  * Writes to the tracker the Course Hub shows: the canonical key, else a legacy-keyed tracker
  * (moved to the canonical key), else a new one when [create]. Without [create] a course with
- * no tracker is left alone.
+ * no tracker is left alone. Machine-made changes pass `bumpUpdatedAt = false` so they never beat
+ * another device's real edits.
  */
 private fun CourseTrackerData.withTracker(
     identity: CourseIdentity,
     now: String,
     create: Boolean = true,
+    bumpUpdatedAt: Boolean = true,
     change: (CourseTracker) -> CourseTracker,
 ): CourseTrackerData {
     val canonicalKey = resolveCourseKey(identity)
     val found = if (create) getOrCreateTrackerFromStore(trackers, canonicalKey, identity) else findTrackerInStore(trackers, canonicalKey, identity)
     val tracker = found.tracker ?: return this
-    val next = change(tracker).copy(courseKey = found.key, updatedAt = now)
+    val next = change(tracker).copy(courseKey = found.key, updatedAt = if (bumpUpdatedAt) now else tracker.updatedAt)
     return copy(trackers = commitTracker(trackers, found.key, next, found.legacyKey))
 }
 
@@ -193,7 +215,7 @@ private fun CourseTrackerData.withTracker(
  * addAttendanceSession. Adding a session at a slot removed earlier is an explicit "I want this
  * session": its tombstone goes, or the next reconcile would delete it again (audit 04 #19).
  */
-fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
+internal fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
     val slot = sessionSlotKey(session)
     return data.withTracker(identity, now) {
         it.copy(
@@ -206,7 +228,7 @@ fun applyAddSession(data: CourseTrackerData, identity: CourseIdentity, session: 
 }
 
 /** removeAttendanceSession: also tombstones the slot so the reconciler never regenerates it. */
-fun applyRemoveSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =
+internal fun applyRemoveSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()) =
     data.withTracker(identity, now, create = false) {
         it.copy(
             attendance = it.attendance.copy(
@@ -217,7 +239,7 @@ fun applyRemoveSession(data: CourseTrackerData, identity: CourseIdentity, sessio
     }
 
 /** restoreAttendanceSession (undo). */
-fun applyRestoreSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
+internal fun applyRestoreSession(data: CourseTrackerData, identity: CourseIdentity, session: AttendanceSession, now: String = nowIso()): CourseTrackerData {
     val slot = sessionSlotKey(session)
     return data.withTracker(identity, now, create = false) {
         it.copy(
@@ -230,32 +252,32 @@ fun applyRestoreSession(data: CourseTrackerData, identity: CourseIdentity, sessi
 }
 
 /** The Course Hub's regenerated sessions for the course. */
-fun applySessions(data: CourseTrackerData, identity: CourseIdentity, sessions: List<AttendanceSession>, now: String = nowIso()) =
-    data.withTracker(identity, now) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(sessions))) }
+internal fun applySessions(data: CourseTrackerData, identity: CourseIdentity, sessions: List<AttendanceSession>, now: String = nowIso()) =
+    data.withTracker(identity, now, bumpUpdatedAt = false) { it.copy(attendance = it.attendance.copy(sessions = deduplicateSessions(sessions))) }
 
 /** Assessment writes resolve the tracker the way the sheet reads it (canonical, then legacy). */
-fun applyAssessments(
+internal fun applyAssessments(
     data: CourseTrackerData,
     identity: CourseIdentity,
     now: String = nowIso(),
     mutate: (List<AssessmentItem>) -> List<AssessmentItem>,
 ): CourseTrackerData = data.withTracker(identity, now) { it.copy(points = it.points.copy(assessments = mutate(it.points.assessments))) }
 
-fun applyGradingScale(data: CourseTrackerData, identity: CourseIdentity, scale: List<GradingScaleTier>, now: String = nowIso()) =
+internal fun applyGradingScale(data: CourseTrackerData, identity: CourseIdentity, scale: List<GradingScaleTier>, now: String = nowIso()) =
     data.withTracker(identity, now) { it.copy(settingsConfirmed = true, points = it.points.copy(gradingScale = scale)) }
 
 /** Marks the attendance limits + grading scale as checked against the syllabus. */
-fun applyConfirmSettings(data: CourseTrackerData, identity: CourseIdentity, now: String = nowIso()) =
+internal fun applyConfirmSettings(data: CourseTrackerData, identity: CourseIdentity, now: String = nowIso()) =
     data.withTracker(identity, now) { it.copy(settingsConfirmed = true) }
 
-data class TrackerLimits(
+internal data class TrackerLimits(
     val maxAbsencesAllowed: Int?,
     val minAttendancePercent: Double?,
     val useWeightedCategories: Boolean? = null,
     val totalPoints: Double? = null,
 )
 
-fun applyLimits(data: CourseTrackerData, identity: CourseIdentity, limits: TrackerLimits, now: String = nowIso()) =
+internal fun applyLimits(data: CourseTrackerData, identity: CourseIdentity, limits: TrackerLimits, now: String = nowIso()) =
     data.withTracker(identity, now) {
         it.copy(
             settingsConfirmed = true,
@@ -268,14 +290,14 @@ fun applyLimits(data: CourseTrackerData, identity: CourseIdentity, limits: Track
     }
 
 /** getTracker: the tracker for a course (canonical or legacy) with deduplicated sessions, or null. */
-fun findTracker(data: CourseTrackerData, identity: CourseIdentity): CourseTracker? {
+internal fun findTracker(data: CourseTrackerData, identity: CourseIdentity): CourseTracker? {
     if (identity.courseCode.isNullOrEmpty() && identity.courseName.isNullOrEmpty()) return null
     val t = findTrackerInStore(data.trackers, resolveCourseKey(identity), identity).tracker ?: return null
     return t.copy(attendance = t.attendance.copy(sessions = deduplicateSessions(t.attendance.sessions)))
 }
 
 /** getOrCreateTracker: never null; a fresh tracker until the first write stores it. */
-fun findOrCreateTracker(data: CourseTrackerData, identity: CourseIdentity): CourseTracker {
+internal fun findOrCreateTracker(data: CourseTrackerData, identity: CourseIdentity): CourseTracker {
     val key = resolveCourseKey(identity)
     val t = getOrCreateTrackerFromStore(data.trackers, key, identity).tracker!!
     return t.copy(courseKey = key, attendance = t.attendance.copy(sessions = deduplicateSessions(t.attendance.sessions)))
@@ -285,7 +307,7 @@ fun findOrCreateTracker(data: CourseTrackerData, identity: CourseIdentity): Cour
  * isSessionHoliday: whether the class at [dateStr] (and [startTime]) was marked
  * "No class". A cancelled 08:00 lecture must not hide the same course's 14:00 seminar.
  */
-fun isSessionHoliday(
+internal fun isSessionHoliday(
     data: CourseTrackerData,
     courseName: String,
     courseCode: String?,

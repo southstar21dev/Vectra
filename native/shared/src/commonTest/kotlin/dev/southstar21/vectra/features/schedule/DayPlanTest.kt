@@ -140,19 +140,24 @@ class DayPlanTest {
 
     @Test fun nextStartSkipsEmptyDays() {
         // 2026-09-12 is a Saturday; the Monday class is the next thing on.
-        val monday = scheduleEvent(id = "m", dayOfWeek = 1, startTime = "08:00", endTime = "09:30")
-        assertEquals("Monday" to "08:00", nextScheduledStart(listOf(monday), emptyList(), "2026-09-12"))
+        val monday = scheduleEvent(id = "m", courseName = "Calculus II", dayOfWeek = 1, startTime = "08:00", endTime = "09:30")
+        assertEquals(NextStart("Monday", "08:00", "Calculus II"), nextScheduledStart(listOf(monday), emptyList(), "2026-09-12"))
         // From Sunday it is tomorrow.
-        assertEquals("tomorrow" to "08:00", nextScheduledStart(listOf(monday), emptyList(), "2026-09-13"))
+        assertEquals(NextStart("tomorrow", "08:00", "Calculus II"), nextScheduledStart(listOf(monday), emptyList(), "2026-09-13"))
         assertNull(nextScheduledStart(emptyList(), emptyList(), "2026-09-13"))
     }
 
+    @Test fun backOnLineReadsNaturally() {
+        assertEquals("Back tomorrow at ", backOnPrefix("tomorrow"))
+        assertEquals("Back on Monday at ", backOnPrefix("Monday"))
+    }
+
     @Test fun statusCycleWrapsAround() {
-        var s = AttendanceStatus.Unmarked
-        val seen = mutableListOf<AttendanceStatus>()
+        var s = CardAttendance.Unmarked
+        val seen = mutableListOf<CardAttendance>()
         repeat(5) { s = nextStatus(s); seen += s }
         assertEquals(
-            listOf(AttendanceStatus.Present, AttendanceStatus.Absent, AttendanceStatus.Excused, AttendanceStatus.Cancelled, AttendanceStatus.Unmarked),
+            listOf(CardAttendance.Present, CardAttendance.Absent, CardAttendance.Excused, CardAttendance.Cancelled, CardAttendance.Unmarked),
             seen,
         )
     }

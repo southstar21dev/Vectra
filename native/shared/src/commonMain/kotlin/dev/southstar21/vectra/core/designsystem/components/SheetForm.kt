@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -26,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.pressScale
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import kotlinx.coroutines.delay
 import dev.southstar21.vectra.core.designsystem.theme.tappable
@@ -39,8 +38,8 @@ import dev.southstar21.vectra.core.designsystem.theme.Radius
  * pass the rows as a list and the dividers are inserted between them.
  */
 @Composable
-fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
-    Column(modifier.fillMaxWidth().glass(Radius.Card)) {
+internal fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
+    Column(modifier.fillMaxWidth().plannerCard()) {
         rows.forEachIndexed { i, row ->
             if (i > 0) HairlineDivider()
             row()
@@ -50,7 +49,7 @@ fun FormGroup(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>)
 
 /** A stacked label + control row inside a FormGroup. */
 @Composable
-fun FormField(
+internal fun FormField(
     label: String,
     modifier: Modifier = Modifier,
     hint: String? = null,
@@ -70,7 +69,7 @@ fun FormField(
 
 /** A single-line row: text on the left, a switch or value on the right. */
 @Composable
-fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String? = null, control: @Composable () -> Unit) {
+internal fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String? = null, control: @Composable () -> Unit) {
     val c = Vectra.colors
     Row(
         modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
@@ -87,7 +86,7 @@ fun SwitchRow(label: String, modifier: Modifier = Modifier, description: String?
 
 /** Segmented choice on the shared Tabs pill; wraps into rows of [columns]. */
 @Composable
-fun <T> PillRadio(
+internal fun <T> PillRadio(
     value: T,
     options: List<SelectOption<T>>,
     onChange: (T) -> Unit,
@@ -110,7 +109,7 @@ fun <T> PillRadio(
  * disarms itself after four seconds.
  */
 @Composable
-fun DeleteRow(
+internal fun DeleteRow(
     label: String,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
@@ -127,7 +126,7 @@ fun DeleteRow(
             armed = false
         }
     }
-    val shape = Radius.Card
+    val shape = Radius.Control
     val interaction = remember { MutableInteractionSource() }
     val bg by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.15f) else c.surfaceOverlay, tween(150), label = "deleteRowBg")
     val border by animateColorAsState(if (armed) Palette.Rose500.copy(alpha = 0.5f) else c.borderSubtle, tween(150), label = "deleteRowBorder")
@@ -157,4 +156,4 @@ fun DeleteRow(
 }
 
 /** Text field height inside sheets and forms. */
-val SheetInputHeight = 44.dp
+internal val SheetInputHeight = 44.dp

@@ -3,7 +3,6 @@ package dev.southstar21.vectra.features.weather
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -22,16 +21,17 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import dev.southstar21.vectra.features.transit.OrbEngine
-import dev.southstar21.vectra.features.transit.ThinkingOrbState
-import dev.southstar21.vectra.features.transit.drawOrb
-import dev.southstar21.vectra.features.transit.grey
+import dev.southstar21.vectra.core.designsystem.components.CoverClock
+import dev.southstar21.vectra.core.designsystem.components.OrbEngine
+import dev.southstar21.vectra.core.designsystem.components.drawOrb
+import dev.southstar21.vectra.core.designsystem.components.grey
+import dev.southstar21.vectra.core.designsystem.theme.easeInOutCubic
+import dev.southstar21.vectra.core.designsystem.theme.sineHash
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
-import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -67,14 +67,13 @@ internal enum class SweepPhase { Loading, Sweeping, HandingOver, Done }
 /** The sweep's phase and frame clock. Frames are read in draw only, so they never recompose. */
 @Stable
 internal class RadarSweep(reduced: Boolean) {
-    val engine = OrbEngine(ThinkingOrbState.Searching, OrbDp.value.toDouble())
+    val engine = OrbEngine(OrbDp.value.toDouble())
     private val share = FloatArray(engine.count)
     private val delay = FloatArray(engine.count)
     private val reducedMotion = reduced
     var phase by mutableStateOf(SweepPhase.Loading)
         private set
-    private var frame by mutableLongStateOf(0L)
-    private var start = 0L
+    private val clock = CoverClock(engine)
 
     /** The drawn rain's opacity: dropped once the map's layer shows the same pixels. */
     var overlay by mutableFloatStateOf(1f)
@@ -86,7 +85,7 @@ internal class RadarSweep(reduced: Boolean) {
      */
     suspend fun run(isReady: () -> Boolean, hasRain: () -> Boolean, handOver: suspend () -> Unit) {
         if (phase == SweepPhase.Done) return
-        while (!isReady()) withFrameNanos { if (!reducedMotion) frame = it }
+        while (!isReady()) withFrameNanos { if (!reducedMotion) clock.tick(it) }
         // No rain in view: nothing to sweep over, so the orb just fades away.
         plain = reducedMotion || !hasRain()
         phase = SweepPhase.Sweeping
@@ -94,9 +93,9 @@ internal class RadarSweep(reduced: Boolean) {
         var done = false
         while (!done) {
             withFrameNanos { n ->
-                if (start == 0L) { start = n; prepare() }
-                frame = n
-                done = (n - start) / 1e6f >= span
+                clock.tick(n)
+                if (clock.begin(n)) prepare()
+                done = clock.elapsedNanos() / 1e6f >= span
             }
         }
         phase = SweepPhase.HandingOver
@@ -112,9 +111,9 @@ internal class RadarSweep(reduced: Boolean) {
     }
 
     /** Milliseconds into the sweep (0 before it starts). */
-    fun elapsed(): Float = if (start == 0L) 0f else (frame - start) / 1e6f
+    fun elapsed(): Float = clock.elapsedNanos() / 1e6f
 
-    fun orbTime(): Double = if (reducedMotion || frame == 0L) 0.6 else frame / 1e9 * engine.speed
+    fun orbTime(): Double = clock.orbTime(reducedMotion)
 
     /** Dots nearest the orb's top go furthest out along the line. */
     private fun prepare() {
@@ -122,7 +121,7 @@ internal class RadarSweep(reduced: Boolean) {
         val n = engine.count
         val byY = (0 until n).sortedByDescending { engine.y[it] }
         byY.forEachIndexed { rank, i -> share[i] = 0.04f + 0.96f * rank / max(1, n - 1) }
-        for (i in 0 until n) delay[i] = hash(i) * 0.25f
+        for (i in 0 until n) delay[i] = sineHash(i.toDouble(), 4.1).toFloat() * 0.25f
     }
 
     fun share(i: Int) = share[i]
@@ -154,7 +153,7 @@ internal fun DrawScope.drawRadarSweep(sweep: RadarSweep, ink: SweepInk, orbAt: O
             drawRect(ink.cover.copy(alpha = 1 - p))
             drawOrb(sweep.engine, orbAt, k, ink.dark, alpha = 1 - p)
         } else {
-            drawRect(ink.cover.copy(alpha = 1 - smooth(t, 0f, GatherMs * 0.8f)))
+            drawRect(ink.cover.copy(alpha = 1 - smoothstep(0f, GatherMs * 0.8f, t)))
             val turn = ((t - GatherMs) / TurnMs).coerceIn(0f, 1f)
             val angle = 360f * easeInOutSine(turn)
             // Once the line is back at the top, the feather behind it catches up on its own.
@@ -174,17 +173,17 @@ internal fun DrawScope.drawRadarSweep(sweep: RadarSweep, ink: SweepInk, orbAt: O
 /** The orb's dots gathering into the line from [pivot], then the line turning by [angle] and fading. */
 private fun DrawScope.drawLine(sweep: RadarSweep, ink: SweepInk, orbAt: Offset, pivot: Offset, t: Float, angle: Float, k: Float) {
     // Fades as it comes back round to the top.
-    val fade = 1 - smooth(t, GatherMs + TurnMs * 0.85f, SweepMs)
+    val fade = 1 - smoothstep(GatherMs + TurnMs * 0.85f, SweepMs, t)
     if (fade <= 0f) return
     val engine = sweep.engine
     engine.compute(sweep.orbTime())
     val reach = hypot(max(pivot.x, size.width - pivot.x), max(pivot.y, size.height - pivot.y))
-    val length = reach * smooth(t, GatherMs * 0.35f, GatherMs + TurnMs * 0.15f)
+    val length = reach * smoothstep(GatherMs * 0.35f, GatherMs + TurnMs * 0.15f, t)
     val rad = (angle - 90f) * PI.toFloat() / 180f
     val dir = Offset(cos(rad), sin(rad))
     val half = engine.size / 2
     val onLine = DotOnLine.toPx()
-    val gathered = smooth(t, GatherMs * 0.6f, GatherMs)
+    val gathered = smoothstep(GatherMs * 0.6f, GatherMs, t)
     if (gathered > 0f && length > 0f) {
         drawLine(
             Brush.linearGradient(listOf(ink.line.copy(alpha = 0.16f * gathered * fade), Color.Transparent), pivot, pivot + dir * length),
@@ -196,7 +195,7 @@ private fun DrawScope.drawLine(sweep: RadarSweep, ink: SweepInk, orbAt: Offset, 
     }
     for (o in 0 until engine.count) {
         val i = engine.order[o]
-        val e = easeInOut(((t / GatherMs - sweep.delay(i)) / 0.75f).coerceIn(0f, 1f))
+        val e = easeInOutCubic(((t / GatherMs - sweep.delay(i)) / 0.75f).coerceIn(0f, 1f))
         val from = Offset(orbAt.x + ((engine.x[i] - half) * k).toFloat(), orbAt.y + ((engine.y[i] - half) * k).toFloat())
         val to = pivot + dir * (sweep.share(i) * length)
         val g = engine.grey(i, ink.dark)
@@ -251,16 +250,5 @@ private fun DrawScope.drawFeathered(tiles: List<PlacedTile>, pivot: Offset, head
     canvas.restore()
 }
 
-private fun smooth(x: Float, a: Float, b: Float): Float {
-    val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
-    return u * u * (3 - 2 * u)
-}
-
 private fun easeInOutSine(u: Float): Float = -(cos(PI.toFloat() * u) - 1) / 2
 
-private fun easeInOut(u: Float): Float = if (u < 0.5f) 4 * u * u * u else 1 - (-2 * u + 2).pow(3) / 2
-
-private fun hash(i: Int): Float {
-    val h = sin(i * 12.9898 + 4.1 * 78.233) * 43758.5453
-    return (h - floor(h)).toFloat()
-}

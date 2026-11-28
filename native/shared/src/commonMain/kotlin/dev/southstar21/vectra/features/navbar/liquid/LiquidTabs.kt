@@ -45,6 +45,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -75,6 +77,15 @@ import kotlin.math.abs
 import kotlin.math.sign
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 
+/** A tap on the current item is a reselection; on another it moves the selection. */
+private inline fun tapped(index: Int, current: Int, reselect: (Int) -> Unit, select: () -> Unit) {
+    if (index == current) reselect(index) else select()
+}
+
+/** Names an item for screen readers when its label isn't drawn (a tucked-away bar). */
+private fun Modifier.tabName(name: String?, selected: Boolean): Modifier =
+    if (name == null) this else clearAndSetSemantics { contentDescription = name; this.selected = selected; role = Role.Tab }
+
 /**
  * iOS 26-style Liquid Glass tabs: one pane of glass whose selection is itself a drop of glass you
  * can tap, or press and drag between items. The drop magnifies the item beneath it (shown in the
@@ -87,7 +98,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
  * @param item one item's content; [tinted] is the accent copy the drop shows.
  */
 @Composable
-fun LiquidTabs(
+internal fun LiquidTabs(
     count: Int,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
@@ -109,10 +120,16 @@ fun LiquidTabs(
     onLongPress: ((index: Int, bounds: Rect?) -> Unit)? = null,
     /** Which items [onLongPress] is for; holding any other is just a tap. */
     holdable: (index: Int) -> Boolean = { true },
+    /** The current item tapped again (the bar's page scrolls back to its top). */
+    onReselect: (index: Int) -> Unit = {},
+    /** An item's accessible name, for bars whose labels fold away; null keeps what [item] draws. */
+    label: (index: Int) -> String? = { null },
     item: @Composable ColumnScope.(index: Int, tinted: Boolean) -> Unit,
 ) {
     val selectedNow by rememberUpdatedState(selectedIndex)
     val onSelectNow by rememberUpdatedState(onSelect)
+    val onReselectNow by rememberUpdatedState(onReselect)
+    val labelNow by rememberUpdatedState(label)
     val shadowColor = Color.Black.copy(alpha = 0.10f)
     val itemsBackdrop = rememberLayerBackdrop()
     // The bar's height as it tucks away; the selection pill sits 4 dp inside it.
@@ -171,7 +188,7 @@ fun LiquidTabs(
             snapshotFlow { drag.value.fastRoundToInt() }.drop(1).collect { onCrossNow() }
         }
         LaunchedEffect(drag) {
-            snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
+            snapshotFlow { currentIndex }.collectLatest { index ->
                 drag.animateToValue(index.toFloat())
                 snapshotFlow { abs(drag.value - index) < 0.2f }.first { it }
                 if (index != selectedNow) onSelectNow(index)
@@ -213,8 +230,9 @@ fun LiquidTabs(
                             role = Role.Tab,
                             highlight = false,
                             onLongClick = onLongPressNow?.takeIf { holdable(index) }?.let { hold -> { hold(index, itemBounds[index]) } },
-                        ) { currentIndex = index }
+                        ) { tapped(index, currentIndex, onReselectNow) { currentIndex = index } }
                         .semantics { selected = index == selectedIndex }
+                        .tabName(labelNow(index), index == selectedIndex)
                         .fillMaxHeight()
                         .weight(1f)
                         .graphicsLayer { val s = scale(); scaleX = s; scaleY = s },

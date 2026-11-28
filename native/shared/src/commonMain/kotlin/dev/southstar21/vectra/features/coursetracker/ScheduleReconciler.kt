@@ -16,7 +16,7 @@ import dev.southstar21.vectra.features.schedule.isExamSummary
  * sync seeded have none; a tracker for "Exam Skills" the student worked on
  * does, so the exam cleanup must never delete it.
  */
-fun trackerHasUserWork(tracker: CourseTracker?): Boolean {
+internal fun trackerHasUserWork(tracker: CourseTracker?): Boolean {
     if (tracker == null) return false
     if (tracker.settingsConfirmed) return true
     if (tracker.attendance.removedSessionKeys.isNotEmpty()) return true
@@ -26,7 +26,7 @@ fun trackerHasUserWork(tracker: CourseTracker?): Boolean {
     return false
 }
 
-data class ReconcileResult(
+internal data class ReconcileResult(
     val data: CourseTrackerData,
     /** Trackers deliberately removed (stale exam trackers, rekeyed legacy keys); the upload must not resurrect them. */
     val dropKeys: List<String>,
@@ -34,12 +34,17 @@ data class ReconcileResult(
     val changed: Boolean,
 )
 
-fun reconcileTrackersWithSchedule(existing: CourseTrackerData, events: List<ScheduleEvent>, now: String = nowIso()): ReconcileResult {
+internal fun reconcileTrackersWithSchedule(existing: CourseTrackerData, events: List<ScheduleEvent>, now: String = nowIso()): ReconcileResult {
     // Exams are not attendance-tracked (including exams imported as 'class').
     val classEvents = events.filter { !it.isExam() }
 
-    // Trackers an earlier sync created for exams are stale data, not user work.
-    var next: Map<String, CourseTracker> = existing.trackers.filterNot { (_, t) -> isExamSummary(t.courseName) && !trackerHasUserWork(t) }
+    // Trackers an earlier sync created for exams are stale data, not user work. A class still on the
+    // schedule keeps its tracker even when its name reads like an exam ("Exam prep seminar"), or every
+    // sync would drop and recreate it.
+    val classKeys = classEvents.filter { it.courseName.isNotEmpty() }.map { resolveCourseKey(it) }.toSet()
+    var next: Map<String, CourseTracker> = existing.trackers.filterNot { (key, t) ->
+        key !in classKeys && isExamSummary(t.courseName) && !trackerHasUserWork(t)
+    }
     val pruned = next.size != existing.trackers.size
     if (classEvents.isEmpty() && !pruned) return ReconcileResult(existing, emptyList(), false)
 

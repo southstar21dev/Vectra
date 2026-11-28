@@ -1,11 +1,18 @@
 package dev.southstar21.vectra.features.settings
 
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import dev.southstar21.vectra.core.designsystem.components.VInput
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,13 +38,14 @@ import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
-import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.platform.Launcher
 import dev.southstar21.vectra.core.platform.PermissionKind
 import dev.southstar21.vectra.core.platform.platformName
 import dev.southstar21.vectra.core.platform.rememberPermissionRequester
-import dev.southstar21.vectra.core.time.formatDDMMYYYY
+import dev.southstar21.vectra.core.time.formatLocalDate
 import dev.southstar21.vectra.core.util.runSuspendCatching
+import dev.southstar21.vectra.features.auth.BiometricCopy
 import dev.southstar21.vectra.features.auth.PasskeyRepository
 import dev.southstar21.vectra.features.notifications.NotificationsRepository
 import dev.southstar21.vectra.features.reminders.classReminderRows
@@ -55,13 +63,13 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 private val SettingsColumnWidth = 448.dp
 
 /** Published by .github/workflows/release.yml from .github/pages/privacy.html. */
-const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
+internal const val PrivacyPolicyUrl = "https://southstar21dev.github.io/Vectra/privacy.html"
 
 /** "1" once the setup card was dismissed on this device. */
 private const val SetupDismissedKey = "settings_setup_dismissed"
 
 /** Sections the setup card can bring into view, for features set up in place. */
-enum class SettingsAnchor { Account, Commute }
+internal enum class SettingsAnchor { Account, Commute }
 
 /**
  * The settings page. The Neptun card, the location row and the schedule's Danger-zone rows belong
@@ -69,7 +77,7 @@ enum class SettingsAnchor { Account, Commute }
  * passed in as slots.
  */
 @Composable
-fun SettingsScreen(
+internal fun SettingsScreen(
     graph: AppGraph,
     neptunSection: (@Composable () -> Unit)? = null,
     locationRow: (@Composable () -> Unit)? = null,
@@ -109,7 +117,7 @@ fun SettingsScreen(
                 SettingsSection(
                     "Permissions",
                     tilt = StampTilt.Left,
-                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository),
+                    rows = listOfNotNull(locationRow) + pushRow(graph.notificationsRepository, graph.launcher),
                     footer = { TestNotificationLink(graph.notificationsRepository) },
                 )
             }
@@ -128,7 +136,7 @@ fun SettingsScreen(
 private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): List<@Composable () -> Unit> = listOfNotNull(
     {
         val c = Vectra.colors
-        SettingsRow(RemixIcons.InformationLine, c.tints.sky.text, "Version") {
+        SettingsRow(RemixIcons.InformationLine, "Version") {
             VText("${graph.config.appVersion}-$platformName", style = vtext(TypeScale.Body), color = c.textSecondary)
         }
     },
@@ -137,7 +145,6 @@ private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): L
         val uri = LocalUriHandler.current
         SettingsRow(
             RemixIcons.ShieldCheckLine,
-            c.tints.purple.text,
             "Privacy policy",
             "What Vectra stores and how to remove it",
             onClick = { runCatching { uri.openUri(PrivacyPolicyUrl) } },
@@ -146,7 +153,7 @@ private fun aboutRows(graph: AppGraph, tipsLeft: Int, onShowTips: () -> Unit): L
     if (tipsLeft > 0) {
         {
             val c = Vectra.colors
-            SettingsRow(RemixIcons.CheckboxCircleLine, c.accentPrimary, "Setup tips", "$tipsLeft ${if (tipsLeft == 1) "thing" else "things"} left to set up") {
+            SettingsRow(RemixIcons.CheckboxCircleLine, "Setup tips", "$tipsLeft ${if (tipsLeft == 1) "thing" else "things"} left to set up") {
                 SettingsLink("Show", onShowTips)
             }
         }
@@ -166,45 +173,75 @@ private fun passkeyRows(repo: PasskeyRepository): List<@Composable () -> Unit> =
     LaunchedEffect(repo) { runSuspendCatching { repo.refresh() }.onFailure { loadError = true } }
     // The server re-checks the password before enrolling: a stolen session alone must not add a passkey.
     val register: () -> Unit = { registering = true }
-    CurrentPasswordDialog(
-        open = registering,
-        title = "Add a passkey",
-        description = "Confirm it's you with your current password, then follow your device's prompt.",
-        confirmText = "Continue",
-        onDismiss = { registering = false },
-        onConfirm = { password -> repo.register(password); toaster.success("Passkey added") },
-        errorMessage = repo::errorMessage,
-    )
     val list = passkeys
     Column {
         when {
-            !repo.isSupported -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Not supported on this device (needs Android 9+ or a modern browser on HTTPS)")
-            loadError -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Couldn't load your passkeys") {
+            registering -> PasskeySetupForm(repo) { registering = false }
+            !repo.isSupported -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Not supported on this device (needs Android 9+ or a modern browser on HTTPS)")
+            loadError -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Couldn't load your passkeys") {
                 SettingsLink("Retry", { loadError = false; scope.launch { runSuspendCatching { repo.refresh() }.onFailure { loadError = true } } })
             }
-            list == null -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Checking your passkeys…")
+            list == null -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", "Checking your passkeys…")
             list.isNotEmpty() -> {
                 list.forEach { p ->
-                    SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, p.friendlyName ?: "Passkey", "Added ${formatDDMMYYYY(p.createdAt.take(10))}") {
+                    SettingsRow(RemixIcons.FingerprintLine, p.friendlyName ?: "Passkey", "Added ${formatLocalDate(p.createdAt)}") {
                         VButton(onClick = { deleting = true; scope.launchCatching({ repo.delete(p.id); deleting = false }) { deleting = false } }, variant = ButtonVariant.Ghost, size = ButtonSize.Icon, enabled = !deleting, contentDescription = "Delete passkey ${p.friendlyName ?: ""}".trim()) {
                             if (deleting) InlineLoader(tint = c.textMuted) else VIcon(RemixIcons.DeleteBinLine, tint = c.textMuted)
                         }
                     }
                 }
-                SettingsRow(RemixIcons.AddLine, c.textSecondary, "Add another passkey", "Register this device too", enabled = !registering, onClick = register)
+                SettingsRow(RemixIcons.AddLine, "Add another passkey", "Register this device too", onClick = register)
             }
-            else -> SettingsRow(RemixIcons.FingerprintLine, c.tints.violet.text, "Passkey sign-in", "Use your fingerprint or face instead of a password") {
-                SettingsLink("Set up", register, enabled = !registering)
+            else -> SettingsRow(RemixIcons.FingerprintLine, "Passkey", BiometricCopy.useInstead()) {
+                SettingsLink("Set up", register)
             }
         }
     }
 }
 
+/**
+ * "Add a passkey" in place, like "Change password": the server re-checks the password before
+ * enrolling, so a stolen session alone cannot add one.
+ */
+@Composable
+private fun PasskeySetupForm(repo: PasskeyRepository, onClose: () -> Unit) {
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val submit = {
+        if (!busy) {
+            if (password.isEmpty()) error = "Enter your current password" else {
+                busy = true; error = null
+                scope.launchCatching({ repo.register(password); busy = false; toaster.success("Passkey added"); onClose() }) {
+                    busy = false
+                    // A null message means the person cancelled the system prompt: close quietly.
+                    val message = repo.errorMessage(it)
+                    if (message == null) onClose() else error = message
+                }
+            }
+        }
+    }
+    Column(SettingsBlockPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        VText(BiometricCopy.confirmPrompt(), style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary)
+        FormLabel("Current password")
+        VInput(
+            password, { password = it; error = null }, placeholder = "Your current password", icon = RemixIcons.LockLine, enabled = !busy,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+        )
+        FieldError(error)
+        EditActions(busy, onClose, confirmText = "Continue") { submit() }
+    }
+}
+
 /** The push-notifications toggle for the Permissions group. */
-private fun pushRow(repo: NotificationsRepository): @Composable () -> Unit = { PushNotificationsRow(repo) }
+private fun pushRow(repo: NotificationsRepository, launcher: Launcher): @Composable () -> Unit = { PushNotificationsRow(repo, launcher) }
 
 @Composable
-private fun PushNotificationsRow(repo: NotificationsRepository) {
+private fun PushNotificationsRow(repo: NotificationsRepository, launcher: Launcher) {
     val c = Vectra.colors
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -212,11 +249,15 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
     var busy by remember { mutableStateOf(false) }
     var granted by remember { mutableStateOf(repo.permissionGranted()) }
     LaunchedEffect(repo) { repo.check() }
+    // Settings stays composed in its tab, so re-read the OS permission when the app returns.
+    LifecycleResumeEffect(repo) {
+        granted = repo.permissionGranted()
+        onPauseOrDispose { }
+    }
     val requester = rememberPermissionRequester(PermissionKind.Notifications)
     val on = if (repo.pushAvailable) subscribed else granted
     SettingsRow(
         if (on) RemixIcons.Notification3Line else RemixIcons.NotificationOffLine,
-        c.tints.purple.text,
         "Push notifications",
         when {
             !repo.pushAvailable && granted -> "System notifications allowed"
@@ -234,6 +275,10 @@ private fun PushNotificationsRow(repo: NotificationsRepository) {
                     else if (!repo.pushAvailable) busy = false
                     else scope.launchCatching({ repo.subscribe(); busy = false; toaster.success("Push notifications enabled and synced") }) { busy = false; toaster.error(it.message ?: "Failed to toggle push notifications") }
                 }
+            } else if (!repo.pushAvailable) {
+                // Without push the switch mirrors the system permission, which only system settings can revoke.
+                busy = false
+                launcher.openAppSettings()
             } else {
                 scope.launchCatching({ repo.unsubscribe(); busy = false; toaster.show("Push notifications disabled") }) { busy = false }
             }
@@ -253,7 +298,7 @@ private fun TestNotificationLink(repo: NotificationsRepository) {
         if (subscribed) {
             scope.launchCatching({ val n = repo.sendServerTest(); sending = false; toaster.success("Server test push delivered to $n device(s)!") }) { sending = false; toaster.error(it.message ?: "Test failed") }
         } else {
-            val shown = repo.showLocal("Vectra Local Alert 🚀", "Local notifications are active. Turn on push notifications above for background alerts.")
+            val shown = repo.showLocal("Vectra Local Alert 🚀", if (repo.pushAvailable) "Local notifications are active. Enable push notifications above for alerts while Vectra is closed." else "Notifications are working on this device.")
             sending = false
             if (!shown) toaster.error("Notifications are blocked. Allow them for Vectra in system settings.")
         }

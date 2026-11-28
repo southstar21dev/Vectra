@@ -29,7 +29,7 @@ actual fun rememberSystemReduceMotion(): Boolean {
 }
 
 @Composable
-actual fun SystemBarsAppearance(darkTheme: Boolean) {
+internal actual fun SystemBarsAppearance(darkTheme: Boolean, followSystem: Boolean) {
     val view = LocalView.current
     if (view.isInEditMode) return
     SideEffect {

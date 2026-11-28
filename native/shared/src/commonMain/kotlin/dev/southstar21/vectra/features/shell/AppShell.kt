@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -57,7 +56,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -98,7 +96,7 @@ private const val ParallaxFraction = 0.28f
  * going back is instant and every tab keeps its state; it drifts left as a screen covers it.
  */
 @Composable
-fun AppShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, screen: @Composable (Screen) -> Unit) {
+internal fun AppShell(navigator: AppNavigator, page: @Composable (Route) -> Unit, screen: @Composable (Screen) -> Unit) {
     val cover = remember { ShellCover() }
     val reduceMotion = Vectra.reduceMotion
     val fullyCovered by remember { derivedStateOf { cover.fraction >= 1f } }

@@ -21,6 +21,9 @@ import (
 //     edits passkeys through the records API (rename/delete go through
 //     /api/vectra/passkeys), so the rule becomes superuser-only.
 func init() {
+	// A frozen snapshot: this migration ran against exactly these collections.
+	// A future rule migration should derive its list with schema.OwnerCollections
+	// (skipping the server-managed passkey collections) instead of copying this.
 	ownerCollections := []string{
 		"schedule_events", "neptun_schedule_events", "schedule_items",
 		"transit_trackers", "course_tracker_data", "trip_plans", "push_subscriptions",

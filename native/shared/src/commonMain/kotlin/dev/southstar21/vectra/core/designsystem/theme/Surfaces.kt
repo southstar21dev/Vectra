@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
  * A border whose top edge has its own colour. The
  * specular top colour fades into the side colour over the corner radius.
  */
-fun Modifier.specularBorder(shape: Shape, side: Color, top: Color, width: Float = 1f): Modifier =
+internal fun Modifier.specularBorder(shape: Shape, side: Color, top: Color, width: Float = 1f): Modifier =
     if (side == top) border(width.dp, side, shape)
     else border(
         width.dp,
@@ -34,8 +34,53 @@ fun Modifier.glass(shape: Shape, colors: VectraColors = Vectra.colors, hairlineI
         .specularBorder(shape, side, top)
 }
 
+/**
+ * The planner's card recipe: opaque, a soft drop shadow and a lit top edge. Content cards use it
+ * (the day list, tracker strips, settings sections); [glass] stays for chrome and controls.
+ */
+internal object PlannerSurface {
+    fun fill(dark: Boolean): Color = if (dark) Color(0xFF0E0F14) else Color.White
+    fun border(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.08f) else rgba(15, 23, 42, 0.08f)
+    fun borderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.2f) else rgba(15, 23, 42, 0.1f)
+    fun shadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 16f, blur = 36f, spread = -8f, color = if (dark) rgba(0, 0, 0, 0.5f) else rgba(15, 23, 42, 0.12f)))
+}
+
+/** The planner's flatter pieces: the strip between cards, the small card, the card pile and the loading strip. */
+internal object PlannerParts {
+    /** A cancelled card: darker than a card, still flat (never carved in). */
+    fun cancelledFill(dark: Boolean): Color = if (dark) Color(0xFF08090B) else Color(0xFFE2E8F0)
+
+    /** The flat strip between cards (breaks, notes, the stacked day's rows). */
+    fun stripFill(dark: Boolean): Color = if (dark) Color(0xFF14151C) else Color(0xFFF8FAFC)
+    fun stripShadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 8f, blur = 18f, spread = -6f, color = if (dark) rgba(0, 0, 0, 0.75f) else rgba(15, 23, 42, 0.1f)))
+
+    /** The small card (panel radius): a stronger top edge and a tighter shadow. */
+    fun smallBorderTop(dark: Boolean): Color = if (dark) rgba(255, 255, 255, 0.18f) else rgba(15, 23, 42, 0.18f)
+    fun smallShadow(dark: Boolean): List<BoxShadow> =
+        listOf(BoxShadow(y = 10f, blur = 22f, spread = -10f, color = if (dark) rgba(0, 0, 0, 0.8f) else rgba(15, 23, 42, 0.14f)))
+
+    /** The two edges of a stacked card pile behind the front card. */
+    fun edgeNear(dark: Boolean): Color = if (dark) Color(0xFF13141B) else Color(0xFFE9EDF3)
+    fun edgeFar(dark: Boolean): Color = if (dark) Color(0xFF101117) else Color(0xFFE2E7EE)
+
+    /** The loading placeholder strip. */
+    fun placeholderStripFill(dark: Boolean): Color = if (dark) Color(0xFF121318) else Color(0xFFE9EDF3)
+}
+
+/** The planner card surface (light and dark). Pass [Radius.Strip] or [Radius.Panel] for smaller cards. */
+@Composable
+internal fun Modifier.plannerCard(shape: Shape = Radius.Card, colors: VectraColors = Vectra.colors): Modifier {
+    val dark = colors.isDark
+    return this
+        .boxShadow(shape, PlannerSurface.shadow(dark))
+        .background(PlannerSurface.fill(dark), shape)
+        .specularBorder(shape, PlannerSurface.border(dark), PlannerSurface.borderTop(dark))
+}
+
 /** Depth of dialogs and solid cards. */
-fun cardDepthShadows(dark: Boolean): List<BoxShadow> = if (dark) listOf(
+internal fun cardDepthShadows(dark: Boolean): List<BoxShadow> = if (dark) listOf(
     BoxShadow(y = 1f, color = rgba(255, 255, 255, 0.08f), inset = true),
     BoxShadow(y = 1f, blur = 2f, color = rgba(0, 0, 0, 0.35f)),
     BoxShadow(y = 16f, blur = 36f, spread = -14f, color = rgba(0, 0, 0, 0.7f)),
@@ -48,10 +93,10 @@ fun cardDepthShadows(dark: Boolean): List<BoxShadow> = if (dark) listOf(
 
 /** The pill depth recipes behind buttons, toggles and selected options. */
 @Immutable
-enum class PillTone { Accent, Emerald, Blue, Gray, Destructive }
+internal enum class PillTone { Accent, Emerald, Blue, Gray, Destructive }
 
 @Composable
-fun Modifier.pillDepth(shape: Shape, tone: PillTone, colors: VectraColors = Vectra.colors): Modifier {
+internal fun Modifier.pillDepth(shape: Shape, tone: PillTone, colors: VectraColors = Vectra.colors): Modifier {
     val dark = colors.isDark
     val (fill, border, glow) = when (tone) {
         PillTone.Accent -> Triple(colors.accentPrimary, colors.accentPrimary.mix(70f, Color.White), colors.accentPrimary)
@@ -90,7 +135,7 @@ fun Modifier.pillDepth(shape: Shape, tone: PillTone, colors: VectraColors = Vect
 
 /** Glass pill depth (outline buttons). */
 @Composable
-fun Modifier.pillGlass(shape: Shape, colors: VectraColors = Vectra.colors): Modifier {
+internal fun Modifier.pillGlass(shape: Shape, colors: VectraColors = Vectra.colors): Modifier {
     val shadows = listOf(
         BoxShadow(y = 2f, blur = 8f, color = rgba(0, 0, 0, 0.08f)),
         BoxShadow(y = 1f, color = rgba(255, 255, 255, 0.15f), inset = true),
@@ -103,7 +148,7 @@ fun Modifier.pillGlass(shape: Shape, colors: VectraColors = Vectra.colors): Modi
 }
 
 /** Glow behind the active nav pill. */
-fun navPillGlow(accent: Color) = listOf(
+internal fun navPillGlow(accent: Color) = listOf(
     BoxShadow(blur = 20f, color = accent.mixTransparent(35f)),
     BoxShadow(y = 4f, blur = 12f, color = accent.mixTransparent(25f)),
 )

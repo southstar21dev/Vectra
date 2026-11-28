@@ -2,11 +2,15 @@ package dev.southstar21.vectra.features.navbar
 
 import androidx.compose.ui.geometry.Rect
 
-/** One + action as the platform bar shows it (labels only; the platform picks its own icons by [id]). */
-data class SystemNavbarAction(val id: String, val label: String, val disabled: Boolean)
+/** One + action as the platform bar shows it; [sfSymbol] is the SF Symbol its menu row draws on iOS. */
+data class SystemNavbarAction(val id: String, val label: String, val sfSymbol: String, val disabled: Boolean)
+
+/** One tab as the platform bar shows it; the order of the list is the index [SystemNavbarState.selectedIndex] and the callbacks use. */
+data class SystemNavbarTab(val label: String, val sfSymbol: String, val holdable: Boolean)
 
 /** Everything a platform tab bar needs to draw itself. */
 data class SystemNavbarState(
+    val tabs: List<SystemNavbarTab>,
     val selectedIndex: Int,
     /** The + menu; empty hides the + button. */
     val actions: List<SystemNavbarAction>,
@@ -21,7 +25,7 @@ data class SystemNavbarState(
  * A tab bar drawn by the platform in place of [LiquidNavbar] (iOS: the system UITabBarController,
  * so the bar is the real Liquid Glass one). See [platformNavbar].
  */
-interface SystemNavbar {
+internal interface SystemNavbar {
     fun update(state: SystemNavbarState)
 
     /** How far a pushed screen covers the tabs, 0..1, every frame of a push or pop. */
@@ -38,4 +42,4 @@ interface SystemNavbar {
 }
 
 /** The platform tab bar, or null where the Compose [LiquidNavbar] draws (Android). */
-expect val platformNavbar: SystemNavbar?
+internal expect val platformNavbar: SystemNavbar?

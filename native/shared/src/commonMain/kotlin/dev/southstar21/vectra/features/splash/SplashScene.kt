@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import dev.southstar21.vectra.core.designsystem.theme.smoothstep
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -32,23 +33,18 @@ import kotlin.random.Random
 
 /**
  * A faint dotted orb over a dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue,
- * the Rock Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the Danube.
+ * the Rock Chapel, Liberty Bridge with a tram, the old Customs House on Fővám tér) reflected in the Danube.
  * Shapes live in fixed scene units (260 wide, waterline at B), are rasterised once and sampled
  * into dots, sparse and sized by depth; the bridge lamps and the chapel's cross glow in the
  * accent. Frames only draw dots, batched. The exit disperses every dot outwards ([DisperseExitMs]).
  */
-const val SceneW = 260f
-const val B = 424f
-const val DisperseExitMs = 700f
+internal const val SceneW = 260f
+internal const val B = 424f
+internal const val DisperseExitMs = 700f
 private const val TAU = (PI * 2).toFloat()
 
 internal fun ease(x: Float) = 1f - (1f - x.coerceIn(0f, 1f)).pow(3)
 internal fun easeIn(x: Float) = x.coerceIn(0f, 1f).pow(2)
-internal fun smoothstep(a: Float, b: Float, x: Float): Float {
-    val u = ((x - a) / (b - a)).coerceIn(0f, 1f)
-    return u * u * (3 - 2 * u)
-}
-
 /** How far a dot (its [seed] 0..1) has drifted out (scene units) at disperse progress [u]. */
 internal fun disperseDrift(u: Float, seed: Float, far: Float, base: Float, near: Float) = easeIn(u) * (base + far * seed) + ease(u) * near
 
@@ -222,9 +218,9 @@ private const val LIGHTS_START_MS = 100f
 private val TramColor = Color(255, 205, 0)
 
 /** A frame with the city fully lit and the tram mid-bridge, for reduced motion. */
-const val STILL_FRAME_ELAPSED = LIGHTS_START_MS + 500 + TRAM_LOOP_MS / 2
+internal const val STILL_FRAME_ELAPSED = LIGHTS_START_MS + 500 + TRAM_LOOP_MS / 2
 
-class SplashScene(seed: Int = 7) {
+internal class SplashScene(seed: Int = 7) {
     private val rnd = Random(seed)
     private val skyDots: List<SkyDot>
     private val tramDots: List<Offset>
@@ -474,7 +470,7 @@ class SplashScene(seed: Int = 7) {
 }
 
 /** The scene's inks: the dots, the lamps (the accent, lifted a little), and the backdrop they melt into. */
-class SplashColors(val fg: Color, val lamp: Color, val bg: Color)
+internal class SplashColors(val fg: Color, val lamp: Color, val bg: Color)
 
 /** A steady pseudo-random 0..1 for [i]: staggers dots that have no phase of their own. */
 private fun seedOf(i: Int, salt: Float): Float {
@@ -483,9 +479,9 @@ private fun seedOf(i: Int, salt: Float): Float {
 }
 
 /** Maps the scene onto a screen: skyline spans the width, waterline at 81.5% height. */
-data class SceneMapping(val scale: Float, val offsetX: Float, val offsetY: Float, val view: Rect)
+internal data class SceneMapping(val scale: Float, val offsetX: Float, val offsetY: Float, val view: Rect)
 
-fun sceneTransform(screenW: Float, screenH: Float, density: Float): SceneMapping {
+internal fun sceneTransform(screenW: Float, screenH: Float, density: Float): SceneMapping {
     val scale = min(screenW / SceneW, 2.4f * density)
     val offsetX = screenW / 2 - (SceneW / 2) * scale
     val offsetY = screenH * 0.815f - B * scale

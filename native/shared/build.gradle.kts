@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.metro)
+    alias(libs.plugins.detekt)
 }
 
 // iOS gets the same build-time values as androidApp's BuildConfig, from the same Gradle properties,
@@ -17,14 +18,19 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
     @Suppress("UNCHECKED_CAST")
     val debugVersionName = rootProject.extra["debugVersionName"] as Provider<String>
     val pocketbaseOverride = providers.gradleProperty("vectra.pocketbaseUrl")
-    val pocketbaseUrl = pocketbaseOverride.orElse("https://apivectra.southstar21.dev")
-    val devPocketbaseUrl = pocketbaseOverride.orElse("https://apivectra-dev.southstar21.dev")
-    val catalogOrigin = providers.gradleProperty("vectra.catalogOrigin").orElse("https://vectra.southstar21.dev")
+    val pocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.release"))
+    val devPocketbaseUrl = pocketbaseOverride.orElse(providers.gradleProperty("vectra.pocketbaseUrl.debug"))
+    // The transit catalog is served by the same backend as the API, so its origin follows the backend URL
+    // unless -Pvectra.catalogOrigin=… overrides it.
+    val catalogOverride = providers.gradleProperty("vectra.catalogOrigin")
+    val catalogOrigin = catalogOverride.orElse(pocketbaseUrl)
+    val devCatalogOrigin = catalogOverride.orElse(devPocketbaseUrl)
     inputs.property("versionName", versionName)
     inputs.property("debugVersionName", debugVersionName)
     inputs.property("pocketbaseUrl", pocketbaseUrl)
     inputs.property("devPocketbaseUrl", devPocketbaseUrl)
     inputs.property("catalogOrigin", catalogOrigin)
+    inputs.property("devCatalogOrigin", devCatalogOrigin)
     val out = layout.buildDirectory.dir("generated/iosBuildConfig")
     outputs.dir(out)
     doLast {
@@ -41,10 +47,18 @@ val generateIosBuildConfig = tasks.register("generateIosBuildConfig") {
             |    const val POCKETBASE_URL = "${pocketbaseUrl.get()}"
             |    const val DEV_POCKETBASE_URL = "${devPocketbaseUrl.get()}"
             |    const val CATALOG_ORIGIN = "${catalogOrigin.get()}"
+            |    const val DEV_CATALOG_ORIGIN = "${devCatalogOrigin.get()}"
             |}
             |""".trimMargin(),
         )
     }
+}
+
+// Type-resolved detekt: the root detekt task has no classpath, so UnusedImport and other rules that
+// need types stay silent there. The root detekt task depends on these, so `./gradlew detekt` runs them.
+detekt {
+    config.setFrom(rootProject.file("config/detekt/type-resolved.yml"))
+    buildUponDefaultConfig = false
 }
 
 kotlin {

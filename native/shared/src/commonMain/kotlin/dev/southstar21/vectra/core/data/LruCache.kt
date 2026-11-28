@@ -1,7 +1,7 @@
 package dev.southstar21.vectra.core.data
 
 /** A size-bounded map that evicts the least recently used key. Not thread-safe. */
-class LruCache<K : Any, V : Any>(private val capacity: Int) {
+internal class LruCache<K : Any, V : Any>(private val capacity: Int) {
     private val entries = LinkedHashMap<K, V>()
 
     val size: Int get() = entries.size

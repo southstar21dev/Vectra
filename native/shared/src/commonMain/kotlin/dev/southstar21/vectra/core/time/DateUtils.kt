@@ -17,9 +17,9 @@ import kotlin.time.Instant
  * wall-clock, so "now"/"today" always resolve in Europe/Budapest regardless of
  * the device time zone.
  */
-val Budapest: TimeZone = TimeZone.of("Europe/Budapest")
+internal val Budapest: TimeZone = TimeZone.of("Europe/Budapest")
 
-fun nowMs(): Long = Clock.System.now().toEpochMilliseconds()
+internal fun nowMs(): Long = Clock.System.now().toEpochMilliseconds()
 
 data class BudapestNow(
     val year: Int,
@@ -41,23 +41,23 @@ fun nowInBudapest(at: Instant = Clock.System.now()): BudapestNow {
 }
 
 /** Day index counted from Sunday: Sunday = 0 … Saturday = 6. */
-val DayOfWeek.daysSinceSunday: Int get() = isoDayNumber % 7
+internal val DayOfWeek.daysSinceSunday: Int get() = isoDayNumber % 7
 
-fun pad2(n: Int) = n.toString().padStart(2, '0')
+internal fun pad2(n: Int) = n.toString().padStart(2, '0')
 
-fun LocalDate.ymd(): String = "$year-${pad2(month.number)}-${pad2(day)}"
+internal fun LocalDate.ymd(): String = "$year-${pad2(month.number)}-${pad2(day)}"
 
-fun parseYmd(value: String?): LocalDate? =
+internal fun parseYmd(value: String?): LocalDate? =
     if (value == null || !isYmdString(value)) null else runCatching { LocalDate.parse(value) }.getOrNull()
 
 /** "08:00:00" → "08:00" */
-fun formatHHMM(time: String?): String {
+internal fun formatHHMM(time: String?): String {
     if (time.isNullOrEmpty()) return ""
     val parts = time.split(':')
     return if (parts.size >= 2) "${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}" else time
 }
 
-fun formatTime(time: String?, format: TimeFormat = TimeFormat.H24): String {
+internal fun formatTime(time: String?, format: TimeFormat = TimeFormat.H24): String {
     if (time.isNullOrEmpty()) return ""
     val clean = formatHHMM(time)
     if (format == TimeFormat.H24) return clean
@@ -69,23 +69,23 @@ fun formatTime(time: String?, format: TimeFormat = TimeFormat.H24): String {
 
 private val DayNames = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 
-fun getDayName(dayOfWeek: Int): String = DayNames.getOrElse(dayOfWeek) { "" }
-fun getShortDayName(dayOfWeek: Int): String = DayNames.getOrNull(dayOfWeek)?.take(3).orEmpty()
+internal fun getDayName(dayOfWeek: Int): String = DayNames.getOrElse(dayOfWeek) { "" }
+internal fun getShortDayName(dayOfWeek: Int): String = DayNames.getOrNull(dayOfWeek)?.take(3).orEmpty()
 
 /** Budapest `HH:MM` (24h) for an epoch-millis timestamp. */
-fun formatBudapestHm(ms: Long): String {
+internal fun formatBudapestHm(ms: Long): String {
     val t = Instant.fromEpochMilliseconds(ms).toLocalDateTime(Budapest)
     return "${pad2(t.hour)}:${pad2(t.minute)}"
 }
 
 /** Budapest wall clock honouring the 12h/24h preference ("8:05 AM" / "08:05"). */
-fun formatClock(ms: Long, format: TimeFormat = TimeFormat.H24): String {
+internal fun formatClock(ms: Long, format: TimeFormat = TimeFormat.H24): String {
     val t = Instant.fromEpochMilliseconds(ms).toLocalDateTime(Budapest)
     return if (format == TimeFormat.H24) "${pad2(t.hour)}:${pad2(t.minute)}"
     else "${(t.hour % 12).let { if (it == 0) 12 else it }}:${pad2(t.minute)} ${if (t.hour >= 12) "PM" else "AM"}"
 }
 
-fun formatDDMMYYYY(date: String?): String {
+internal fun formatDDMMYYYY(date: String?): String {
     if (date.isNullOrEmpty()) return ""
     if (isYmdString(date)) {
         val (y, m, d) = date.split('-')
@@ -95,23 +95,33 @@ fun formatDDMMYYYY(date: String?): String {
         .getOrDefault(date)
 }
 
+/**
+ * `DD/MM/YYYY` of a stored timestamp (UTC, as PocketBase writes it: `2026-11-24 23:51:00.000Z`) on the
+ * device's own calendar, so a late-evening event does not show yesterday's date. Falls back to [formatDDMMYYYY].
+ */
+internal fun formatLocalDate(timestamp: String?, zone: TimeZone = TimeZone.currentSystemDefault()): String {
+    val instant = runCatching { Instant.parse(timestamp.orEmpty().trim().replaceFirst(' ', 'T')) }.getOrNull()
+    val date = instant?.toLocalDateTime(zone)?.date ?: return formatDDMMYYYY(timestamp?.take(10))
+    return "${pad2(date.day)}/${pad2(date.month.number)}/${date.year}"
+}
+
 private val MonthNames = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
-fun monthName(month: Int): String = MonthNames.getOrElse(month - 1) { "" }
+internal fun monthName(month: Int): String = MonthNames.getOrElse(month - 1) { "" }
 
 /** `12 October` from a YYYY-MM-DD date. */
-fun formatDayMonth(ymd: String): String {
+internal fun formatDayMonth(ymd: String): String {
     val d = parseYmd(ymd) ?: return ymd
     return "${d.day} ${monthName(d.month.number)}"
 }
 
-fun isValidCalendarDate(value: String): Boolean = isYmdString(value) && runCatching { LocalDate.parse(value) }.isSuccess
+internal fun isValidCalendarDate(value: String): Boolean = isYmdString(value) && runCatching { LocalDate.parse(value) }.isSuccess
 
 private val YmdPattern = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
-fun isYmdString(value: String?): Boolean = value != null && YmdPattern.matches(value)
+internal fun isYmdString(value: String?): Boolean = value != null && YmdPattern.matches(value)
 
 /** `y-m-d` with numeric parts; null for zero parts or an invalid date. */
-fun parseIsoDate(iso: String): LocalDate? {
+internal fun parseIsoDate(iso: String): LocalDate? {
     val parts = iso.split('-')
     if (parts.size < 3) return null
     val y = parts[0].toIntOrNull() ?: return null
@@ -122,14 +132,14 @@ fun parseIsoDate(iso: String): LocalDate? {
 }
 
 /** `HH:MM` from minutes since midnight; ≥ 1440 folds to `24:00`. */
-fun formatMinuteOfDay(minute: Int): String {
+internal fun formatMinuteOfDay(minute: Int): String {
     if (minute >= 1440) return "24:00"
     val n = minute.coerceAtLeast(0)
     return "${pad2(n / 60)}:${pad2(n % 60)}"
 }
 
 /** "HH:MM[:SS]" → hour and minute as written, unchecked, or null. */
-fun parseHourMinute(time: String?): Pair<Int, Int>? {
+internal fun parseHourMinute(time: String?): Pair<Int, Int>? {
     val parts = time?.split(':') ?: return null
     if (parts.size < 2) return null
     val h = parts[0].toIntOrNull() ?: return null
@@ -137,10 +147,10 @@ fun parseHourMinute(time: String?): Pair<Int, Int>? {
     return h to m
 }
 
-fun LocalDateTime.toBudapestInstant(): Instant = toInstant(Budapest)
+internal fun LocalDateTime.toBudapestInstant(): Instant = toInstant(Budapest)
 
 /** Time-of-day greeting for [hour]. */
-fun greeting(hour: Int = nowInBudapest().hours): String = when {
+internal fun greeting(hour: Int = nowInBudapest().hours): String = when {
     hour < 12 -> "Good morning"
     hour < 17 -> "Good afternoon"
     else -> "Good evening"

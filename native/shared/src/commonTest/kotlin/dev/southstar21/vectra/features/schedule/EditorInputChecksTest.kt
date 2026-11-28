@@ -16,11 +16,11 @@ class EditorInputChecksTest {
     }
 
     @Test fun onlyACalendarLinkIsConnected() {
-        assertTrue(isCalendarLink("https://neptun3r.web.uni-corvinus.hu/Hallgatoi/api/Calendar/abc?x=1"))
+        assertTrue(isCalendarLink("https://neptun.example.hu/Hallgatoi/api/Calendar/abc?x=1"))
         assertTrue(isCalendarLink("  HTTPS://neptun.example.hu/cal.ics "))
         assertFalse(isCalendarLink(""))
         assertFalse(isCalendarLink("my neptun code"))
-        assertFalse(isCalendarLink("neptun3r.web.uni-corvinus.hu/Hallgatoi/api/Calendar"))
+        assertFalse(isCalendarLink("neptun.example.hu/Hallgatoi/api/Calendar"))
         assertFalse(isCalendarLink("https://localhost/cal"))
         assertFalse(isCalendarLink("https://neptun.hu/a b"))
         assertFalse(isCalendarLink("ftp://neptun.hu/cal.ics"))

@@ -7,21 +7,21 @@ import dev.southstar21.vectra.core.maps.MapColors
 
 /* Map colours; themed values come from VectraColors. */
 
-fun withHash(color: String): String = if (color.startsWith("#")) color else "#$color"
+internal fun withHash(color: String): String = if (color.startsWith("#")) color else "#$color"
 
-data class LiveLineColors(
+internal data class LiveLineColors(
     val casing: Color,
     val casingSecondary: Color,
     val baseGray: Color,
 )
 
-fun liveLineColors(colors: VectraColors): LiveLineColors = LiveLineColors(
+internal fun liveLineColors(colors: VectraColors): LiveLineColors = LiveLineColors(
     casing = colors.mapLineCasing,
     casingSecondary = colors.mapLineCasingSecondary,
     baseGray = if (!colors.isDark) Color(0xFF9CA3AF) else Palette.Zinc600,
 )
 
-data class ExplorerRouteColors(
+internal data class ExplorerRouteColors(
     val isLight: Boolean,
     val casing: Color,
     val casingWidth: Double,
@@ -33,7 +33,7 @@ data class ExplorerRouteColors(
     val stopStroke: Color,
 )
 
-fun explorerRouteColors(isLight: Boolean): ExplorerRouteColors = ExplorerRouteColors(
+internal fun explorerRouteColors(isLight: Boolean): ExplorerRouteColors = ExplorerRouteColors(
     isLight = isLight,
     casing = if (isLight) Color(0f, 0f, 0f, 0.5f) else Color(1f, 1f, 1f, 0.24f),
     casingWidth = if (isLight) 12.0 else 13.0,

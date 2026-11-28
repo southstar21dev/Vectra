@@ -3,7 +3,11 @@ package dev.southstar21.vectra.platform
 import dev.southstar21.vectra.core.platform.WidgetHost
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSNumber
 import platform.Foundation.NSString
+import platform.Foundation.NSURL
+import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.writeToFile
@@ -32,7 +36,8 @@ object IosWidgets : WidgetHost {
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     override fun publish(snapshot: String) {
         val bridge = bridge ?: run { pending = snapshot; return }
-        val dir = bridge.containerPath() ?: return
+        val container = bridge.containerPath() ?: return
+        val dir = prepareDirectory(container)
         @Suppress("CAST_NEVER_SUCCEEDS")
         val text = NSString.create(string = snapshot)
         if (text.writeToFile("$dir/$SnapshotFile", atomically = true, encoding = NSUTF8StringEncoding, error = null)) {
@@ -40,6 +45,23 @@ object IosWidgets : WidgetHost {
         }
     }
 
-    /** Also in iosApp/VectraWidgets/Snapshot.swift. */
+    /**
+     * The snapshot lives in its own subdirectory, excluded from iCloud and Finder backups like the
+     * main store. The flag sits on the directory, so it also covers the file replaced by rename.
+     * The copy older builds left in the container root is removed.
+     */
+    @OptIn(ExperimentalForeignApi::class)
+    private fun prepareDirectory(container: String): String {
+        val dir = "$container/$SnapshotDir"
+        val files = NSFileManager.defaultManager
+        files.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
+        NSURL.fileURLWithPath(dir, isDirectory = true)
+            .setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+        files.removeItemAtPath("$container/$SnapshotFile", error = null)
+        return dir
+    }
+
+    /** Also in iosApp/Shared/AppGroup.swift. */
+    private const val SnapshotDir = "Widgets"
     private const val SnapshotFile = "widget_snapshot.json"
 }

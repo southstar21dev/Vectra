@@ -16,7 +16,7 @@ private val ExamWord = Regex("""(?<![A-Za-z0-9_])exam(?![A-Za-z0-9_])""", RegexO
 private val ExamTypeParenthetical = Regex("^(írásbeli|szóbeli|irasbeli|szobeli|written|oral)$", RegexOption.IGNORE_CASE)
 
 /** Whether a parenthetical is an exam type ("Írásbeli") rather than a course code. */
-fun isExamTypeParenthetical(value: String): Boolean =
+internal fun isExamTypeParenthetical(value: String): Boolean =
     ExamTypeParenthetical.matches(value.trim().replace(LeadingDash, "").trim())
 
 /**
@@ -30,7 +30,7 @@ private val HungarianMidterm = listOf(
 )
 
 /** Whether a Neptun summary describes an exam rather than a recurring class. */
-fun isExamSummary(summary: String?): Boolean {
+internal fun isExamSummary(summary: String?): Boolean {
     if (summary.isNullOrEmpty()) return false
     if (VizsgaSuffix.containsMatchIn(summary)) return true
     val parenthetical = Parenthetical.find(summary)
@@ -44,11 +44,16 @@ fun isExamSummary(summary: String?): Boolean {
  * check still say 'class', so the title is the fallback; an explicit non-class
  * type ('other') is never overridden.
  */
-fun isExamEvent(eventType: String?, courseName: String?): Boolean {
+internal fun isExamEvent(eventType: String?, courseName: String?): Boolean {
     val type = eventType.orEmpty().lowercase()
     if (type == "exam") return true
     if (type.isNotEmpty() && type != "class") return false
     return isExamSummary(courseName.orEmpty())
 }
 
-fun ScheduleEvent.isExam(): Boolean = isExamEvent(eventType, courseName)
+/**
+ * Manual classes never carry an exam type (the editor has no such field), so the
+ * title heuristic must not turn "Exam prep seminar" into a one-off exam row.
+ */
+internal fun ScheduleEvent.isExam(): Boolean =
+    if (source == "manual") eventType.lowercase() == "exam" else isExamEvent(eventType, courseName)

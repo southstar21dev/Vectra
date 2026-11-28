@@ -7,7 +7,3 @@ package dev.southstar21.vectra.core.platform
 interface WidgetHost {
     fun publish(snapshot: String)
 }
-
-object NoWidgets : WidgetHost {
-    override fun publish(snapshot: String) = Unit
-}

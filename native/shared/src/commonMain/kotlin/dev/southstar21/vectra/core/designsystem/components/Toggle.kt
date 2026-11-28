@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -28,13 +29,12 @@ import dev.southstar21.vectra.core.designsystem.theme.VectraEasing
 import dev.southstar21.vectra.core.designsystem.theme.VectraMotion
 import dev.southstar21.vectra.core.designsystem.theme.VectraSprings
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
-import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.pillDepth
 import dev.southstar21.vectra.core.designsystem.theme.rgba
 
 /** On/off switch. The thumb springs so a fast flick keeps its momentum. */
 @Composable
-fun VToggle(
+internal fun VToggle(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -51,10 +51,10 @@ fun VToggle(
     )
     // The off and on track recipes cross-fade rather than interpolating colour and shadow.
     val on by animateFloatAsState(if (checked) 1f else 0f, tween(200, easing = VectraEasing.Fade), label = "track")
+    // Flat: no inner shadow, so the off track never reads as a well.
     val off = Modifier
-        .background(if (c.isDark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.12f), CircleShape)
-        .insetShadow(CircleShape, listOf(BoxShadow(y = 2f, blur = 4f, color = rgba(0, 0, 0, 0.05f), inset = true)))
-        .border(1.dp, if (c.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f), CircleShape)
+        .background(c.surfaceOverlay.compositeOver(c.surfaceOverlay), CircleShape)
+        .border(1.dp, c.borderPrimary, CircleShape)
     Box(
         modifier
             .size(48.dp, 24.dp)

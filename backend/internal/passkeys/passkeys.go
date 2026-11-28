@@ -45,17 +45,7 @@ const (
 	// grows without bound.
 	challengeCleanupJobID    = "passkey_challenges_cleanup"
 	challengeCleanupSchedule = "*/10 * * * *" // every 10 minutes
-
-	// loginStartMaxPerWindow caps how many public login ceremonies one client
-	// (keyed by remote IP) may begin per loginStartWindow, so a single caller
-	// cannot flood passkey_challenges.
-	loginStartMaxPerWindow = 30
-	loginStartWindow       = time.Minute
 )
-
-// loginStartLimiter is the process-wide fixed-window limiter guarding the
-// public LoginStartHandler. It is a var so tests can substitute a fresh one.
-var loginStartLimiter = ratelimit.New(loginStartMaxPerWindow, loginStartWindow)
 
 var (
 	errChallengeNotFound = errors.New("challenge not found")
@@ -65,9 +55,9 @@ var (
 )
 
 // newWebAuthn builds the WebAuthn relying-party instance from the deployment
-// environment. RPID/RPOrigins MUST mirror Supabase's webauthn_rp_id /
-// webauthn_rp_origins (including any android:apk-key-hash: origin) or existing
-// Supabase-migrated passkeys will stop verifying.
+// environment. RPID/RPOrigins must stay the values existing credentials were
+// registered under (including any android:apk-key-hash: origin) or those
+// passkeys, migrated Supabase ones included, will stop verifying.
 //
 // User verification is required for both ceremonies: passkeys are the only
 // factor on this login path, so a bare user-presence tap must not suffice.
@@ -388,11 +378,15 @@ func passkeyJSON(r *core.Record) map[string]any {
 // RegistrationStartHandler implements POST /api/vectra/passkeys/register/start.
 // Requires auth and the body {currentPassword}: a passkey is a login factor
 // that outlives the session, so a stolen session token alone must not be able
-// to enrol one (see reauth.Check, which also rate-limits the check). Returns
+// to enrol one (see reauth.Guard.Check, which also rate-limits the check). Returns
 // {challenge_id, options} where options is the
 // PublicKeyCredentialCreationOptions the client feeds to
 // navigator.credentials.create({publicKey: options}) or the native plugin.
-func RegistrationStartHandler(e *core.RequestEvent) error {
+func RegistrationStartHandler(guard *reauth.Guard) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return registrationStart(guard, e) }
+}
+
+func registrationStart(guard *reauth.Guard, e *core.RequestEvent) error {
 	if e.Auth == nil {
 		return e.UnauthorizedError("Authentication required", nil)
 	}
@@ -402,7 +396,7 @@ func RegistrationStartHandler(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
-	if err := reauth.Check(e, body.CurrentPassword); err != nil {
+	if err := guard.Check(e, body.CurrentPassword); err != nil {
 		return err
 	}
 	w, err := newWebAuthn()
@@ -484,11 +478,17 @@ func RegistrationVerifyHandler(e *core.RequestEvent) error {
 }
 
 // LoginStartHandler implements POST /api/vectra/passkeys/login/start. Public:
-// the ceremony runs before a session exists. Returns {challenge_id, options}.
-func LoginStartHandler(e *core.RequestEvent) error {
+// the ceremony runs before a session exists. limiter caps the ceremonies one
+// client IP may begin (limits.PasskeyLoginStart), so a single caller cannot
+// flood passkey_challenges. Returns {challenge_id, options}.
+func LoginStartHandler(limiter *ratelimit.Limiter) func(*core.RequestEvent) error {
+	return func(e *core.RequestEvent) error { return loginStart(limiter, e) }
+}
+
+func loginStart(limiter *ratelimit.Limiter, e *core.RequestEvent) error {
 	// Public endpoint that writes a challenge row per call; cap the rate per
 	// client so a single caller cannot flood passkey_challenges.
-	if !loginStartLimiter.Allow(ratelimit.ClientIP(e), time.Now()) {
+	if !limiter.Allow(ratelimit.ClientIP(e), time.Now()) {
 		return e.TooManyRequestsError("Too many passkey login attempts. Please wait a moment and try again.", nil)
 	}
 	w, err := newWebAuthn()

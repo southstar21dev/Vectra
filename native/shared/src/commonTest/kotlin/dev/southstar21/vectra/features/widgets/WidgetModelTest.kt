@@ -12,13 +12,16 @@ class WidgetModelTest {
     private val today = "2026-11-10"
     private val midnight = 1_000 * 24 * hour
 
+    // 2026-11-10 07:00 in Budapest: the day the snapshot was written, so it still covers `today`.
+    private val generated = 1_794_290_400_000L
+
     private fun at(h: Double) = midnight + (h * hour).toLong()
 
     private fun session(title: String, from: Double, to: Double, kind: WidgetKind = WidgetKind.Lecture, day: String = today) =
         WidgetSession(title, "C.203", kind, at(from), at(to), day)
 
     private fun snapshot(vararg sessions: WidgetSession) =
-        WidgetSnapshot(generatedAtMs = midnight, signedIn = true, sessions = sessions.toList())
+        WidgetSnapshot(generatedAtMs = generated, signedIn = true, sessions = sessions.toList())
 
     private val stats = session("Business Statistics", 8.0, 9.5)
     private val micro = session("Microeconomics", 10.0, 11.5)
@@ -55,6 +58,19 @@ class WidgetModelTest {
         val up = assertIs<NextUp.DayDone>(snapshot(stats, tomorrow).nextUp(at(12.0), today))
         assertEquals(true, up.hadToday)
         assertEquals(tomorrow, up.next)
+    }
+
+    @Test
+    fun asksForTheAppOncePastTheHorizon() {
+        val snap = snapshot(stats)
+        // generated on the 10th with 14 days ahead: the 24th is the last covered day.
+        assertIs<NextUp.DayDone>(snap.nextUp(at(12.0) + 14 * 24 * hour, "2026-11-24"))
+        assertIs<NextUp.Stale>(snap.nextUp(at(12.0) + 15 * 24 * hour, "2026-11-25"))
+        assertEquals(true, snap.isStale("2026-11-25"))
+        assertEquals(false, snap.isStale("2026-11-24"))
+        assertEquals(false, snap.copy(aheadDays = 21).isStale("2026-11-25"))
+        assertEquals(false, snap.copy(signedIn = false).isStale("2026-12-25"))
+        assertNull(NextUp.Stale.featured)
     }
 
     @Test

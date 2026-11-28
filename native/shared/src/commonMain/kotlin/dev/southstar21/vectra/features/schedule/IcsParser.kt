@@ -11,7 +11,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 /*
- * Neptun Corvinus iCalendar parser and semester categoriser.
+ * Neptun iCalendar parser and semester categoriser.
  * Times come out as Budapest wall clock regardless of the device zone.
  */
 
@@ -21,7 +21,7 @@ private val MarkedCodeParenthetical = Regex("""\(\s*-\s*([^)]*)\)""")
 /** The bare form "(G04)": a single unbroken token, so "(Probability and Statistics)" never reads as a code. */
 private val BareCodeParenthetical = Regex("""\(\s*([A-Za-z0-9][\w./-]*)\s*\)""")
 
-data class ParsedIcsEvent(
+internal data class ParsedIcsEvent(
     val courseName: String,
     val courseCode: String,
     val instructor: String,
@@ -38,22 +38,22 @@ data class ParsedIcsEvent(
     val eventType: String = "class",
 )
 
-data class IcsParseError(val row: Int, val message: String)
+internal data class IcsParseError(val row: Int, val message: String)
 
-data class ParseIcsResult(
+internal data class ParseIcsResult(
     val valid: List<ParsedIcsEvent>,
     val errors: List<IcsParseError>,
     val semesters: List<String>,
     val eventsBySemester: Map<String, List<ParsedIcsEvent>>,
 )
 
-data class IcsProperty(val name: String, val params: Map<String, String>, val value: String)
+internal data class IcsProperty(val name: String, val params: Map<String, String>, val value: String)
 
 /**
  * Splits a content line at the first colon outside double quotes — a quoted
  * parameter may itself contain one (`DTSTART;TZID="GMT+01:00 Budapest":2025…`).
  */
-fun splitIcsProperty(line: String): IcsProperty? {
+internal fun splitIcsProperty(line: String): IcsProperty? {
     var inQuotes = false
     var colon = -1
     for (i in line.indices) {
@@ -91,7 +91,7 @@ fun splitIcsProperty(line: String): IcsProperty? {
     return IcsProperty(segments[0].trim().uppercase(), params, value)
 }
 
-data class IcsTimestampInfo(
+internal data class IcsTimestampInfo(
     val instant: Instant,
     val dateStr: String,
     val timeStr: String,
@@ -110,7 +110,7 @@ private val NestedEnd = Regex("^END:", RegexOption.IGNORE_CASE)
  * property line) into Budapest wall-clock parts. Floating and TZID stamps are
  * wall-clock in that zone (floating = Budapest) — never the device's zone.
  */
-fun parseIcsTimestamp(dtStr: String): IcsTimestampInfo? {
+internal fun parseIcsTimestamp(dtStr: String): IcsTimestampInfo? {
     if (dtStr.isEmpty()) return null
     val input = dtStr.trim()
     val property = if (BareDatePrefix.containsMatchIn(input)) null else splitIcsProperty(input)
@@ -161,7 +161,7 @@ private val CourseColors = listOf(
 )
 
 /** Clusters YYYY-MM-DD dates into contiguous ranges; gaps over 8 days split a range. */
-fun clusterConsecutiveWeeks(dates: List<String>): List<Pair<String, String>> {
+internal fun clusterConsecutiveWeeks(dates: List<String>): List<Pair<String, String>> {
     if (dates.isEmpty()) return emptyList()
     val sorted = dates.distinct().sorted()
     val clusters = mutableListOf<Pair<String, String>>()
@@ -200,7 +200,7 @@ private class RawIcsEvent {
 }
 
 /** RFC 5545 DURATION (`PT1H30M`, `P1D`, `P2W`) in milliseconds; null when malformed. */
-fun parseIcsDurationMs(value: String): Long? {
+internal fun parseIcsDurationMs(value: String): Long? {
     val v = value.trim().uppercase()
     val m = Regex("""^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$""").find(v) ?: return null
     if (Regex("""^[+-]?PT?$""").matches(v)) return null
@@ -305,7 +305,7 @@ private fun expandRecurrence(dtstartLine: String, first: IcsTimestampInfo, rrule
 }
 
 /** Parse Neptun ICS text into deduplicated, semester-tagged weekly slots. */
-fun parseIcsContent(icsText: String, includeExams: Boolean = true): ParseIcsResult {
+internal fun parseIcsContent(icsText: String, includeExams: Boolean = true): ParseIcsResult {
     val lines = unfoldIcs(icsText).split(Regex("\r?\n"))
     val events = mutableListOf<RawIcsEvent>()
     var inEvent = false
@@ -455,8 +455,8 @@ fun parseIcsContent(icsText: String, includeExams: Boolean = true): ParseIcsResu
 }
 
 /** The Google Apps Script proxy: the university blocks datacenter IPs, Google is not blocked. */
-const val NEPTUN_ICS_PROXY_URL =
+internal const val NEPTUN_ICS_PROXY_URL =
     "https://script.google.com/macros/s/AKfycbxp_HKH85vTNjtVC5L2d8Ojhwt7BJQzxFVvvOi00UQK1w1G89RrMX11OaAMRHnD-5kj/exec"
 
-const val NEPTUN_FETCH_FAILED =
+internal const val NEPTUN_FETCH_FAILED =
     "We couldn't download your Neptun calendar. The university's servers may be blocking the sync, or the connection timed out. Check your connection and try again in a few minutes."

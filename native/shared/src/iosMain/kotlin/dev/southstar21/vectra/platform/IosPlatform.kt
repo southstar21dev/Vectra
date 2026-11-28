@@ -8,8 +8,9 @@ import androidx.datastore.preferences.core.Preferences
 import dev.southstar21.vectra.core.data.BlobStore
 import dev.southstar21.vectra.core.data.moveStorage
 import dev.southstar21.vectra.core.network.createHttpClient
+import dev.southstar21.vectra.core.platform.HttpCache
 import dev.southstar21.vectra.core.platform.SecretCipher
-import dev.southstar21.vectra.features.transit.CatalogDiskCache
+import dev.southstar21.vectra.features.transit.data.CatalogDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.BetaInteropApi
@@ -129,18 +130,26 @@ fun createCatalogCache(): CatalogDiskCache {
 private const val HttpCacheBytes = 52_428_800uL // 50 MiB, as on Android
 private const val HttpMemoryCacheBytes = 8_388_608uL // 8 MiB
 
+/** The client's URL cache, kept apart so a sign-out can empty it. */
+@OptIn(ExperimentalForeignApi::class)
+class IosHttpCache : HttpCache {
+    internal val cache = NSURLCache(
+        memoryCapacity = HttpMemoryCacheBytes,
+        diskCapacity = HttpCacheBytes,
+        directoryURL = NSURL.fileURLWithPath(appDirectory(NSCachesDirectory) + "/http"),
+    )
+
+    override fun clear() = cache.removeAllCachedResponses()
+}
+
 /** NSURLSession allows 6 connections per host by default, which map tiles and the cold-start burst exceed. */
 @OptIn(ExperimentalForeignApi::class)
-fun createIosHttpClient(): HttpClient = createHttpClient(
+internal fun createIosHttpClient(httpCache: IosHttpCache): HttpClient = createHttpClient(
     HttpClient(Darwin) {
         engine {
             configureSession {
                 HTTPMaximumConnectionsPerHost = 16
-                URLCache = NSURLCache(
-                    memoryCapacity = HttpMemoryCacheBytes,
-                    diskCapacity = HttpCacheBytes,
-                    directoryURL = NSURL.fileURLWithPath(appDirectory(NSCachesDirectory) + "/http"),
-                )
+                URLCache = httpCache.cache
             }
         }
     },
@@ -151,7 +160,7 @@ fun createIosHttpClient(): HttpClient = createHttpClient(
  * token never sits on disk in clear. The iOS counterpart of Android's KeystoreSecretCipher.
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-class KeychainSecretCipher : SecretCipher {
+internal class KeychainSecretCipher : SecretCipher {
     private val tag = "dev.southstar21.vectra.session"
     private val algorithm = kSecKeyAlgorithmECIESEncryptionCofactorVariableIVX963SHA256AESGCM
 

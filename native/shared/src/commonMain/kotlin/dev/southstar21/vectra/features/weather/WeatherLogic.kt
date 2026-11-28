@@ -1,6 +1,8 @@
 package dev.southstar21.vectra.features.weather
 
+import dev.southstar21.vectra.core.data.UserKeys
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.core.platform.GeoPermission
 import dev.southstar21.vectra.core.util.roundHalfUp
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -15,12 +17,12 @@ import kotlin.math.roundToLong
 // Weather alerts
 // ---------------------------------------------------------------------------
 
-enum class WeatherAlertKey { HighWind, Heat, Cold, Rain }
+internal enum class WeatherAlertKey { HighWind, Heat, Cold, Rain }
 
-data class WeatherAlertItem(val key: WeatherAlertKey, val label: String)
+internal data class WeatherAlertItem(val key: WeatherAlertKey, val label: String)
 
 /** Fixed v1 thresholds — baked in per the approved design (no settings UI). */
-object WeatherAlertThresholds {
+internal object WeatherAlertThresholds {
     const val WindKmh = 25.0
     const val HeatC = 30.0
     const val ColdC = 5.0
@@ -28,7 +30,7 @@ object WeatherAlertThresholds {
 }
 
 /** Alert chips for the conditions; order is fixed: highWind → heat → cold → rain. */
-fun weatherAlertItems(weather: WeatherData): List<WeatherAlertItem> = buildList {
+internal fun weatherAlertItems(weather: WeatherData): List<WeatherAlertItem> = buildList {
     if (weather.windSpeed >= WeatherAlertThresholds.WindKmh) add(WeatherAlertItem(WeatherAlertKey.HighWind, "Strong wind"))
     if (weather.temperature >= WeatherAlertThresholds.HeatC) add(WeatherAlertItem(WeatherAlertKey.Heat, "High temperature"))
     if (weather.temperature <= WeatherAlertThresholds.ColdC) add(WeatherAlertItem(WeatherAlertKey.Cold, "Low temperature"))
@@ -40,32 +42,50 @@ fun weatherAlertItems(weather: WeatherData): List<WeatherAlertItem> = buildList 
 // immediately on app open instead of flashing its skeleton.
 // ---------------------------------------------------------------------------
 
-const val WeatherSnapshotKey = "vectra.weather.snapshot"
+internal const val WeatherSnapshotKey = UserKeys.WEATHER_SNAPSHOT
 
 /** Weather older than this is not worth showing — a fresh fetch is awaited. */
-const val WeatherSnapshotMaxAgeMs = 24 * 60 * 60_000L
+internal const val WeatherSnapshotMaxAgeMs = 24 * 60 * 60_000L
+
+/** Past this age the live data is no longer worth showing, same as a stored snapshot. */
+internal fun isWeatherTooOld(fetchedAt: Long, now: Long): Boolean = now - fetchedAt >= WeatherSnapshotMaxAgeMs
+
+/** "Updated 25 min ago" once the conditions are older than the ~15 min refresh window; null while fresh. */
+internal fun weatherAgeLabel(fetchedAt: Long, now: Long, staleMs: Long = WeatherRepository.StaleMs): String? {
+    val age = now - fetchedAt
+    if (age < staleMs) return null
+    val minutes = age / 60_000
+    return if (minutes < 60) "Updated $minutes min ago" else "Updated ${minutes / 60} h ago"
+}
 
 @Serializable
-data class WeatherSnapshot(
+internal data class WeatherSnapshot(
     val coords: WeatherCoords,
     val city: String? = null,
     val data: WeatherData,
     val fetchedAt: Long,
 )
 
-/** Coordinates rounded to ~11 m: precise enough for a forecast, stable across reloads. */
-fun roundCoords(coords: WeatherCoords, precision: Int = 4): WeatherCoords {
+/** Decimals kept in the coordinates sent to third parties. */
+internal const val NetworkCoordPrecision = 2
+
+/**
+ * Coordinates rounded to 2 decimals (~1.1 km): precise enough for a forecast and a city name,
+ * stable across reloads, and all that leaves the device (the privacy policy promises an
+ * approximate location to Open-Meteo and BigDataCloud).
+ */
+internal fun roundCoords(coords: WeatherCoords, precision: Int = NetworkCoordPrecision): WeatherCoords {
     val factor = 10.0.pow(precision)
     return WeatherCoords(roundHalfUp(coords.latitude * factor) / factor, roundHalfUp(coords.longitude * factor) / factor)
 }
 
-fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = 4): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
+internal fun coordsMatch(a: WeatherCoords, b: WeatherCoords, precision: Int = NetworkCoordPrecision): Boolean = roundCoords(a, precision) == roundCoords(b, precision)
 
 private fun JsonObject.finite(key: String): Double? =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull?.takeIf { it.isFinite() }
 
 /** readWeatherSnapshot: null for anything that is not a complete snapshot. */
-fun parseWeatherSnapshot(raw: String?): WeatherSnapshot? {
+internal fun parseWeatherSnapshot(raw: String?): WeatherSnapshot? {
     if (raw.isNullOrEmpty()) return null
     return runCatching {
         val o = VectraJson.parseToJsonElement(raw) as? JsonObject ?: return null
@@ -88,21 +108,21 @@ fun parseWeatherSnapshot(raw: String?): WeatherSnapshot? {
     }.getOrNull()
 }
 
-fun encodeWeatherSnapshot(snapshot: WeatherSnapshot): String = VectraJson.encodeToString(WeatherSnapshot.serializer(), snapshot)
+internal fun encodeWeatherSnapshot(snapshot: WeatherSnapshot): String = VectraJson.encodeToString(WeatherSnapshot.serializer(), snapshot)
 
 /**
  * updateWeatherSnapshotCity: the snapshot to write after a geocode, or null
  * when nothing should change (different location, same city, or a null that
  * would downgrade a name we already know).
  */
-fun snapshotWithCity(snapshot: WeatherSnapshot?, coords: WeatherCoords, city: String?): WeatherSnapshot? {
+internal fun snapshotWithCity(snapshot: WeatherSnapshot?, coords: WeatherCoords, city: String?): WeatherSnapshot? {
     if (snapshot == null || !coordsMatch(snapshot.coords, coords)) return null
     if (snapshot.city == city) return null
     if (city == null && snapshot.city != null) return null
     return snapshot.copy(city = city)
 }
 
-fun isSnapshotFresh(snapshot: WeatherSnapshot, nowMs: Long, maxAgeMs: Long = WeatherSnapshotMaxAgeMs): Boolean =
+internal fun isSnapshotFresh(snapshot: WeatherSnapshot, nowMs: Long, maxAgeMs: Long = WeatherSnapshotMaxAgeMs): Boolean =
     nowMs - snapshot.fetchedAt <= maxAgeMs
 
 // ---------------------------------------------------------------------------
@@ -110,13 +130,20 @@ fun isSnapshotFresh(snapshot: WeatherSnapshot, nowMs: Long, maxAgeMs: Long = Wea
 // ---------------------------------------------------------------------------
 
 /** 'auto' = device location, 'budapest' = always Budapest (the fresh-install default). */
-enum class WeatherLocationMode(val stored: String) { Auto("auto"), Budapest("budapest") }
+internal enum class WeatherLocationMode(val stored: String) { Auto("auto"), Budapest("budapest") }
 
-const val LocationModeKey = "vectra.weather.locationMode"
+internal const val LocationModeKey = "vectra.weather.locationMode"
 
-fun parseLocationMode(raw: String?): WeatherLocationMode = if (raw == "auto") WeatherLocationMode.Auto else WeatherLocationMode.Budapest
+internal fun parseLocationMode(raw: String?): WeatherLocationMode = if (raw == "auto") WeatherLocationMode.Auto else WeatherLocationMode.Budapest
 
-enum class WeatherLocationStatus {
+/**
+ * The mode in effect: the stored choice, or, when the user never chose in Settings, the device
+ * location as soon as the OS permission is granted. An explicit "off" ([raw] "budapest") always wins.
+ */
+internal fun effectiveLocationMode(raw: String?, permission: GeoPermission): WeatherLocationMode =
+    if (raw == null && permission == GeoPermission.Granted) WeatherLocationMode.Auto else parseLocationMode(raw)
+
+internal enum class WeatherLocationStatus {
     /** Initial, before the first permission check. */
     Idle,
     /** Position read in flight. */
@@ -133,7 +160,7 @@ enum class WeatherLocationStatus {
     Unsupported,
 }
 
-data class WeatherLocationState(
+internal data class WeatherLocationState(
     val mode: WeatherLocationMode,
     /** Device coordinates, or null when the caller should fall back to [BudapestCoords]. */
     val coords: WeatherCoords?,
@@ -143,7 +170,7 @@ data class WeatherLocationState(
 )
 
 /** BigDataCloud reverse geocode → display name: city → locality → principalSubdivision. */
-fun parseGeoCity(json: JsonElement?): String? {
+internal fun parseGeoCity(json: JsonElement?): String? {
     val o = json as? JsonObject ?: return null
     for (key in listOf("city", "locality", "principalSubdivision")) {
         val v = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()
@@ -157,7 +184,7 @@ fun parseGeoCity(json: JsonElement?): String? {
  * rounded coordinates and city are used right away so the card paints
  * instantly instead of doing the Budapest → device-title dance.
  */
-fun resolveInitialWeatherLocation(mode: WeatherLocationMode, snapshot: WeatherSnapshot?, nowMs: Long): WeatherLocationState {
+internal fun resolveInitialWeatherLocation(mode: WeatherLocationMode, snapshot: WeatherSnapshot?, nowMs: Long): WeatherLocationState {
     if (mode == WeatherLocationMode.Auto && snapshot != null && isSnapshotFresh(snapshot, nowMs)) {
         return WeatherLocationState(mode, roundCoords(snapshot.coords), snapshot.city, WeatherLocationStatus.Located)
     }
@@ -165,11 +192,11 @@ fun resolveInitialWeatherLocation(mode: WeatherLocationMode, snapshot: WeatherSn
 }
 
 /** A fix landing after the user switched to Budapest mode is dropped. */
-fun applyPositionState(prev: WeatherLocationState, coords: WeatherCoords): WeatherLocationState =
+internal fun applyPositionState(prev: WeatherLocationState, coords: WeatherCoords): WeatherLocationState =
     if (prev.mode != WeatherLocationMode.Auto) prev else prev.copy(coords = coords, status = WeatherLocationStatus.Located)
 
 /** Why a position read failed. */
-object GeoErrorCode {
+internal object GeoErrorCode {
     const val PermissionDenied = 1
     const val PositionUnavailable = 2
     const val Timeout = 3
@@ -179,7 +206,7 @@ object GeoErrorCode {
  * Permission denied (1) clears the device location; a transient failure (2/3)
  * keeps the last good coordinates instead of snapping the card to Budapest.
  */
-fun applyErrorState(prev: WeatherLocationState, code: Int?): WeatherLocationState {
+internal fun applyErrorState(prev: WeatherLocationState, code: Int?): WeatherLocationState {
     if (prev.mode != WeatherLocationMode.Auto) return prev
     if ((code == GeoErrorCode.PositionUnavailable || code == GeoErrorCode.Timeout) && prev.coords != null) {
         return prev.copy(status = WeatherLocationStatus.Located)
@@ -192,7 +219,7 @@ fun applyErrorState(prev: WeatherLocationState, code: Int?): WeatherLocationStat
 }
 
 /** The header: "Budapest" without device coords, else the city or "My location". */
-fun weatherLocationTitle(state: WeatherLocationState): String = when {
+internal fun weatherLocationTitle(state: WeatherLocationState): String = when {
     state.coords == null -> "Budapest"
     state.city != null -> state.city
     else -> "My location"

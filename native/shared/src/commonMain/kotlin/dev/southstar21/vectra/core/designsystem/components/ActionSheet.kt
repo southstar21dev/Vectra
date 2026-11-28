@@ -18,11 +18,11 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.designsystem.theme.Radius
 
-class SheetAction(val label: String, val icon: ImageVector, val destructive: Boolean = false, val onClick: () -> Unit)
+internal class SheetAction(val label: String, val icon: ImageVector, val destructive: Boolean = false, val onClick: () -> Unit)
 
 /** A short list of actions for one thing (a long-press menu), shown in a sheet. */
 @Composable
-fun ActionSheet(open: Boolean, onDismiss: () -> Unit, title: String?, actions: List<SheetAction>, subtitle: String? = null) {
+internal fun ActionSheet(open: Boolean, onDismiss: () -> Unit, title: String?, actions: List<SheetAction>, subtitle: String? = null) {
     VSheet(open, onDismiss, title = title) {
         if (title != null) SheetHeader(title, onDismiss, subtitle = subtitle)
         Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {

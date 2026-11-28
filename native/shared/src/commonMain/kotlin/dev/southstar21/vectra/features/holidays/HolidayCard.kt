@@ -45,6 +45,7 @@ import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.boxShadow
 import dev.southstar21.vectra.core.designsystem.theme.insetShadow
 import dev.southstar21.vectra.core.designsystem.theme.rgba
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.nowInBudapest
 import kotlinx.datetime.DatePeriod
@@ -88,7 +89,7 @@ private fun holidayGlyph(holiday: Holiday): HolidayGlyph {
 
 /** Upcoming Hungarian holidays within two weeks; renders nothing otherwise. */
 @Composable
-fun HolidayCard(modifier: Modifier = Modifier) {
+internal fun HolidayCard(modifier: Modifier = Modifier) {
     // Minute clock so the countdown rolls over at midnight while the app is open.
     val now = rememberNowInstant(60_000)
     val upcoming = remember(now) { getUpcomingHolidays(now) }
@@ -152,7 +153,7 @@ private fun HolidayRow(item: UpcomingHoliday, date: LocalDate) {
                 Column(horizontalAlignment = Alignment.End) {
                     VText(
                         item.daysUntil.toString(),
-                        style = vtext(26.sp to 26.sp, Weight.Bold, Tracking.Tight).copy(fontFeatureSettings = "tnum"),
+                        style = vtext(26.sp to 26.sp, Weight.Bold, Tracking.Tight).tnum(),
                         color = c.textPrimary,
                         align = TextAlign.End,
                     )

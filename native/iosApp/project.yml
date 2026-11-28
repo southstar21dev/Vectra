@@ -1,5 +1,7 @@
 # The Xcode project is generated from this file: `cd native/iosApp && xcodegen`.
 # Edit this, not iosApp.xcodeproj.
+# .github/scripts/altstore-source.mjs reads options.deploymentTarget.iOS below (the AltStore minimum
+# OS) and repeats the version-to-build-number rule of scripts/version.sh, the build number phase.
 name: iosApp
 options:
   bundleIdPrefix: dev.southstar21
@@ -8,13 +10,47 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    SWIFT_VERSION: "5.0"
+    # Swift 6 language mode: data-race safety is checked at compile time and the isolation of the
+    # callbacks Kotlin makes on the main thread is checked at run time.
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
     # The Gradle phase reads the repo and writes the framework outside the sandbox's declared outputs.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+# Settings both the app and the widget extension need, written once. The app group is the Debug/Release
+# switch: Debug gets its own group and display name so a debug and a release install never share data.
+settingGroups:
+  VectraSigning:
+    DEVELOPMENT_TEAM: 3HNYQ2F575  # also listed in the site's apple-app-site-association for passkeys
+    CODE_SIGN_STYLE: Automatic
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+    # shared targets iosArm64 + iosSimulatorArm64 only (MapLibre ships no x64 simulator build).
+    "ARCHS[sdk=iphonesimulator*]": arm64
+    TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
+    # The version comes from gradle.properties' vectra.versionName, like androidApp's (scripts/version.sh).
+    INFOPLIST_PREPROCESS: YES
+    INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
+  VectraAppGroup:
+    VECTRA_APP_GROUP: group.dev.southstar21.vectra
+    VECTRA_DISPLAY_NAME: Vectra
+targetTemplates:
+  VectraApple:
+    platform: iOS
+    settings:
+      groups: [VectraSigning, VectraAppGroup]
+      configs:
+        Debug:
+          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
+          VECTRA_DISPLAY_NAME: Vectra Dev
+    preBuildScripts:
+      - name: Version from Gradle
+        basedOnDependencyAnalysis: false
+        shell: /bin/sh
+        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
+        path: scripts/version.sh
 targets:
   iosApp:
     type: application
-    platform: iOS
+    templates: [VectraApple]
     sources:
       - path: iosApp
       - path: Shared
@@ -69,19 +105,7 @@ targets:
       base:
         PRODUCT_NAME: Vectra
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra
-        VECTRA_APP_GROUP: group.dev.southstar21.vectra
-        VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # The version comes from gradle.properties' vectra.versionName, like androidApp's.
-        INFOPLIST_PREPROCESS: YES
-        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
-        # Apple Developer team that signs device and App Store builds (also listed in the site's apple-app-site-association for passkeys).
-        DEVELOPMENT_TEAM: 3HNYQ2F575
-        CODE_SIGN_STYLE: Automatic
-        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
-        # shared targets iosArm64 + iosSimulatorArm64 only (MapLibre ships no x64 simulator build).
-        "ARCHS[sdk=iphonesimulator*]": arm64
         # The shared Kotlin framework (static), built by the Gradle phase below.
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared", "-lsqlite3", "-lc++"]
@@ -90,35 +114,7 @@ targets:
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug
-          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
-          VECTRA_DISPLAY_NAME: Vectra Dev
     preBuildScripts:
-      - name: Version from Gradle
-        basedOnDependencyAnalysis: false
-        shell: /bin/sh
-        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        script: |
-          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
-          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
-          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
-          # gradle.properties only holds the real version while CI builds a release.
-          set -e
-          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
-          if [ "$CONFIGURATION" = "Debug" ]; then
-            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-            [ -n "$TAG" ] && FULL=$TAG
-          fi
-          NAME=${FULL%%-*}
-          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
-          CODE=$(echo "$FULL" | awk -F'[.-]' '{
-            b = 99
-            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
-            if ($4 == "dev") b = $5
-            if ($4 == "rc") b = 50 + $5
-            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
-          }')
-          mkdir -p "$DERIVED_FILE_DIR"
-          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"
       - name: Compile Kotlin framework
         basedOnDependencyAnalysis: false
         shell: /bin/sh
@@ -134,7 +130,7 @@ targets:
   # the App Group (shared/…/features/widgets) and never links the Kotlin framework.
   VectraWidgets:
     type: app-extension
-    platform: iOS
+    templates: [VectraApple]
     sources:
       - path: VectraWidgets
       - path: Shared
@@ -159,45 +155,24 @@ targets:
       base:
         PRODUCT_NAME: VectraWidgets
         PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgets
-        VECTRA_APP_GROUP: group.dev.southstar21.vectra
-        VECTRA_DISPLAY_NAME: Vectra
-        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad; iPad also runs on Apple silicon Macs ("Designed for iPad")
-        INFOPLIST_PREPROCESS: YES
-        INFOPLIST_PREFIX_HEADER: "$(DERIVED_FILE_DIR)/VectraVersion.h"
-        DEVELOPMENT_TEAM: 3HNYQ2F575
-        CODE_SIGN_STYLE: Automatic
-        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
-        "ARCHS[sdk=iphonesimulator*]": arm64
         SKIP_INSTALL: YES
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.debug.widgets
-          VECTRA_APP_GROUP: group.dev.southstar21.vectra.debug
-          VECTRA_DISPLAY_NAME: Vectra Dev
-    preBuildScripts:
-      - name: Version from Gradle
-        basedOnDependencyAnalysis: false
-        shell: /bin/sh
-        outputFiles: ["$(DERIVED_FILE_DIR)/VectraVersion.h"]
-        script: |
-          # Same rule as androidApp's versionCode: 1.2.3 -> 1020399, 1.2.3-dev.4 -> 1020304,
-          # 1.2.3-rc.2 -> 1020352. The short version drops the prerelease suffix (iOS wants x.y.z).
-          # Debug builds use the newest vX.Y.Z tag instead, like the Gradle builds (native/build.gradle.kts):
-          # gradle.properties only holds the real version while CI builds a release.
-          set -e
-          FULL=$(sed -n 's/^vectra.versionName=//p' "$SRCROOT/../gradle.properties")
-          if [ "$CONFIGURATION" = "Debug" ]; then
-            TAG=$(git -C "$SRCROOT" tag --list 'v*' | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-            [ -n "$TAG" ] && FULL=$TAG
-          fi
-          NAME=${FULL%%-*}
-          # Past dev.49 or rc.48 two builds would share a build number: fail instead, as Gradle does.
-          CODE=$(echo "$FULL" | awk -F'[.-]' '{
-            b = 99
-            if (($4 == "dev" && $5 > 49) || ($4 == "rc" && $5 > 48)) { print "prerelease number too high for the build number scheme: " $0 > "/dev/stderr"; exit 1 }
-            if ($4 == "dev") b = $5
-            if ($4 == "rc") b = 50 + $5
-            print ($1 * 10000 + $2 * 100 + $3) * 100 + b
-          }')
-          mkdir -p "$DERIVED_FILE_DIR"
-          printf '#define VECTRA_VERSION_NAME %s\n#define VECTRA_VERSION_CODE %s\n' "$NAME" "$CODE" > "$DERIVED_FILE_DIR/VectraVersion.h"
+
+  # Unit tests for the widget rules (Model.swift). They decode the same JSON cases the Kotlin
+  # WidgetFixturesTest runs, so the two implementations are held to one set of expectations.
+  # Not hosted by an app: the model files are compiled into the bundle.
+  VectraWidgetsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: VectraWidgetsTests
+      - path: VectraWidgets/Model.swift
+      - path: Shared/AppGroup.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.southstar21.vectra.widgetstests
+        GENERATE_INFOPLIST_FILE: YES
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+        "ARCHS[sdk=iphonesimulator*]": arm64

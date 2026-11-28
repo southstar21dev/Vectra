@@ -38,7 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateContentSize
-import dev.southstar21.vectra.core.designsystem.theme.Tracking
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.util.roundHalfUpToInt
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
@@ -48,9 +48,9 @@ import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.consumeTouches
-import dev.southstar21.vectra.core.designsystem.theme.glass
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
+import dev.southstar21.vectra.core.maps.solidMapGlass
 import kotlin.math.floor
 
 private val ChromeShape = RoundedCornerShape(24.dp)
@@ -73,7 +73,7 @@ internal fun RadarHeader(weather: WeatherData?, frame: RadarFrameLabel?, onClose
             Box(
                 Modifier
                     .size(PillHeight)
-                    .glass(CircleShape)
+                    .solidMapGlass(CircleShape)
                     .tappable(CircleShape, role = Role.Button, onClickLabel = "Close radar", onClick = onClose),
                 contentAlignment = Alignment.Center,
             ) { VIcon(RemixIcons.CloseLine, size = 20.dp, tint = c.textPrimary, contentDescription = "Close radar") }
@@ -88,7 +88,7 @@ private fun NowPill(weather: WeatherData) {
     val meta = weatherCodeMeta(weather.weatherCode)
     val (tint, alpha) = skyTone(meta.sky, c)
     Row(
-        Modifier.height(PillHeight).glass(CircleShape).consumeTouches().padding(start = 12.dp, end = 14.dp)
+        Modifier.height(PillHeight).solidMapGlass(CircleShape).consumeTouches().padding(start = 12.dp, end = 14.dp)
             .semantics { contentDescription = "${roundHalfUpToInt(weather.temperature)} degrees, ${meta.label}" },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -96,7 +96,7 @@ private fun NowPill(weather: WeatherData) {
         VIcon(skyArt(meta.sky), Modifier.graphicsLayer { this.alpha = alpha }, size = 22.dp, tint = tint)
         VText(
             "${roundHalfUpToInt(weather.temperature)}°",
-            style = vtext(TypeScale.BodyLarge, Weight.Bold).copy(fontFeatureSettings = "tnum"),
+            style = vtext(TypeScale.BodyLarge, Weight.Bold).tnum(),
             color = c.textPrimary,
         )
     }
@@ -122,7 +122,7 @@ private fun LiveChip(frame: RadarFrameLabel?) {
     val c = Vectra.colors
     val live = frame == null || frame.relative == "Now"
     Row(
-        Modifier.height(PillHeight).glass(CircleShape).padding(horizontal = 14.dp).animateContentSize(),
+        Modifier.height(PillHeight).solidMapGlass(CircleShape).padding(horizontal = 14.dp).animateContentSize(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -156,7 +156,8 @@ internal class TimelineState(
 @Composable
 internal fun RadarTimeline(state: TimelineState, onTogglePlay: () -> Unit, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = Vectra.colors
-    Column(modifier.fillMaxWidth().glass(ChromeShape).consumeTouches().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
+    // Solid enough that the map's labels do not read through the card.
+    Column(modifier.fillMaxWidth().solidMapGlass(ChromeShape).consumeTouches().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier

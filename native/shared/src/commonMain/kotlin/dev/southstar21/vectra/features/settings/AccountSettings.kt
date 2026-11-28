@@ -1,9 +1,9 @@
 package dev.southstar21.vectra.features.settings
 
+import dev.southstar21.vectra.core.designsystem.components.Banner
+import dev.southstar21.vectra.core.designsystem.components.BannerTone
 import dev.southstar21.vectra.core.designsystem.components.SettingsLink
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +41,6 @@ import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.components.launchCatching
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
-import dev.southstar21.vectra.core.designsystem.theme.Palette
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
 import dev.southstar21.vectra.core.designsystem.theme.vtext
@@ -50,21 +49,11 @@ import dev.southstar21.vectra.features.auth.AccountLogic
 import dev.southstar21.vectra.features.auth.PasskeyResetNote
 import dev.southstar21.vectra.features.auth.PasskeyResetNotes
 import kotlinx.serialization.json.JsonPrimitive
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 
 @Composable
 internal fun FieldError(message: String?) {
     if (message == null) return
-    val c = Vectra.colors
-    val shape = Radius.Control
-    Row(
-        Modifier.fillMaxWidth().background(Palette.Red500.copy(alpha = 0.1f), shape).border(1.dp, c.tints.red.border, shape).padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VIcon(RemixIcons.ErrorWarningLine, tint = c.tints.red.text)
-        VText(message, style = vtext(TypeScale.Caption), color = c.tints.red.text)
-    }
+    Banner(BannerTone.Red, RemixIcons.ErrorWarningLine, message)
 }
 
 @Composable
@@ -74,11 +63,11 @@ internal fun FormLabel(text: String) = VText(text, style = vtext(TypeScale.Capti
 private fun EditButton(label: String, onClick: () -> Unit) = SettingsLink(label, onClick)
 
 @Composable
-private fun EditActions(saving: Boolean, onCancel: () -> Unit, onSave: () -> Unit) {
+internal fun EditActions(saving: Boolean, onCancel: () -> Unit, confirmText: String = "Save", onSave: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
         VButton("Cancel", onCancel, variant = ButtonVariant.Ghost, size = ButtonSize.Sm, enabled = !saving)
         VButton(onClick = onSave, variant = ButtonVariant.Primary, size = ButtonSize.Sm, enabled = !saving) {
-            if (saving) InlineLoader(size = 14.dp) else VText("Save")
+            if (saving) InlineLoader(size = 14.dp) else VText(confirmText)
         }
     }
 }
@@ -86,7 +75,7 @@ private fun EditActions(saving: Boolean, onCancel: () -> Unit, onSave: () -> Uni
 private fun messageOf(e: Throwable, fallback: String) = AccountLogic.fieldErrorMessage(e) ?: e.message?.takeIf { it.isNotBlank() } ?: fallback
 
 /** The editable name, email and password rows. */
-fun accountRows(auth: AuthRepository): List<@Composable () -> Unit> = listOf({ NameRow(auth) }, { EmailRow(auth) }, { PasswordRow(auth) })
+internal fun accountRows(auth: AuthRepository): List<@Composable () -> Unit> = listOf({ NameRow(auth) }, { EmailRow(auth) }, { PasswordRow(auth) })
 
 @Composable
 private fun NameRow(auth: AuthRepository) {
@@ -115,7 +104,7 @@ private fun NameRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.UserLine, c.tints.blue.text, profile?.fullName ?: "Not set", "Full name") {
+        SettingsRow(RemixIcons.UserLine, profile?.fullName ?: "Not set", "Full name") {
             EditButton("Edit") { value = profile?.fullName.orEmpty(); error = null; editing = true }
         }
     }
@@ -156,7 +145,7 @@ private fun EmailRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.MailLine, c.tints.purple.text, profile?.email ?: "N/A", "Email address") {
+        SettingsRow(RemixIcons.MailLine, profile?.email ?: "N/A", "Email address") {
             EditButton("Change") { email = profile?.email.orEmpty(); current = ""; error = null; editing = true }
         }
     }
@@ -200,7 +189,7 @@ private fun PasswordRow(auth: AuthRepository) {
             }
         }
     } else {
-        SettingsRow(RemixIcons.LockLine, c.tints.sky.text, "Password", "Change your password") {
+        SettingsRow(RemixIcons.LockLine, "Password", "Change your password") {
             EditButton("Change") { current = ""; next = ""; confirm = ""; error = null; editing = true }
         }
     }
@@ -217,7 +206,7 @@ internal fun DeleteAccountRow(auth: AuthRepository) {
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf(false) }
-    SettingsRow(RemixIcons.DeleteBinLine, c.tints.red.text, "Delete account", "Permanently delete your account and data", danger = true, onClick = { text = ""; password = ""; error = null; open = true })
+    SettingsRow(RemixIcons.DeleteBinLine, "Delete account", "Permanently delete your account and data", danger = true, onClick = { text = ""; password = ""; error = null; open = true })
     val close = { if (!deleting) { open = false; text = ""; password = ""; error = null } }
     VDialog(open, close, showClose = false, title = "Delete account?") {
         DialogHeader(Modifier.padding(top = 4.dp)) {

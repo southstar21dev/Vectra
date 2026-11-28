@@ -7,13 +7,22 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.currentState
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import dev.southstar21.vectra.android.VectraApplication
 import dev.southstar21.vectra.core.platform.WidgetHost
 import dev.southstar21.vectra.core.time.nowInBudapest
 import dev.southstar21.vectra.features.widgets.WidgetSnapshot
+import dev.southstar21.vectra.features.widgets.clockLabel
 import dev.southstar21.vectra.features.widgets.decodeWidgetSnapshot
 import dev.southstar21.vectra.features.widgets.nextBudapestMidnightMs
 import dev.southstar21.vectra.features.widgets.nextRefreshMs
@@ -28,6 +37,19 @@ import kotlin.time.Instant
 /** What every widget draws from: the snapshot and the moment it's drawn at. */
 internal class WidgetFrame(val snapshot: WidgetSnapshot?, val nowMs: Long) {
     val today: String = nowInBudapest(Instant.fromEpochMilliseconds(nowMs)).ymd
+
+    /** The app's 12-hour setting as the snapshot carries it; no snapshot reads as 24-hour. */
+    val hour12: Boolean get() = snapshot?.hour12 == true
+
+    /** A clock time in the app's format. */
+    fun clock(ms: Long): String = clockLabel(ms, hour12)
+}
+
+/** The frame, re-read from the snapshot file whenever a redraw bumps the widget's state. */
+@Composable
+internal fun rememberFrame(context: Context): WidgetFrame {
+    val stamp = currentState<Preferences>()[WidgetStore.RedrawKey]
+    return remember(stamp) { WidgetStore.frame(context) }
 }
 
 internal object WidgetStore {
@@ -55,13 +77,21 @@ internal object WidgetStore {
     fun isStale(snapshot: WidgetSnapshot?): Boolean =
         snapshot == null || System.currentTimeMillis() - snapshot.generatedAtMs > StaleMs
 
+    val RedrawKey = longPreferencesKey("redraw_stamp")
+
     private val widgets: List<GlanceAppWidget>
         get() = listOf(NextClassWidget(), TodayWidget(), WeekWidget(), AgendaWidget(), LockScreenWidget())
 
     /** Redraws every placed widget and books the next redraw. */
     suspend fun redraw(context: Context) {
         if (!anyPlaced(context)) return
-        widgets.forEach { it.updateAll(context) }
+        val stamp = System.currentTimeMillis()
+        widgets.forEach { widget ->
+            // A live Glance session only recomposes on a state change, so every redraw bumps the state.
+            val ids = GlanceAppWidgetManager(context).getGlanceIds(widget.javaClass)
+            ids.forEach { id -> updateAppWidgetState(context, id) { it[RedrawKey] = stamp } }
+            widget.updateAll(context)
+        }
         scheduleNext(context, read(context))
     }
 
@@ -78,7 +108,14 @@ internal object WidgetStore {
         val now = System.currentTimeMillis()
         val at = snapshot.nextRefreshMs(now, nextBudapestMidnightMs()).coerceAtLeast(now + 30_000)
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
-        alarms.setWindow(AlarmManager.RTC, at, 60_000, refreshIntent(context))
+        val intent = refreshIntent(context)
+        // A 60 s window may be stretched to 10 minutes on Android 12+, so book exactly when allowed.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()) {
+            runCatching { alarms.setExact(AlarmManager.RTC, at, intent) }
+                .onFailure { alarms.setWindow(AlarmManager.RTC, at, 60_000, intent) }
+        } else {
+            alarms.setWindow(AlarmManager.RTC, at, 60_000, intent)
+        }
     }
 
     private fun refreshIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
@@ -96,9 +133,10 @@ internal object WidgetStore {
         if (isStale(read(context))) {
             val app = context.applicationContext as? VectraApplication
             if (app != null) {
-                // publish() writes the file and redraws through AndroidWidgetHost.
-                withTimeoutOrNull(8_000) { app.graph.widgets.publishWhenReady(timeoutMs = 7_000) }
-                return
+                // A publish writes the file and redraws through AndroidWidgetHost; without one (cache not
+                // ready, timeout) fall through so the next redraw is still booked.
+                val published = withTimeoutOrNull(8_000) { app.graph.widgets.publishWhenReady(timeoutMs = 7_000) }
+                if (published == true) return
             }
         }
         redraw(context)

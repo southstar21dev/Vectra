@@ -8,9 +8,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.withContext
 import org.maplibre.compose.map.DefaultMapRuntime
 import org.maplibre.compose.resource.MapResourceError
 import org.maplibre.compose.resource.MapResourceLoad
@@ -19,26 +17,35 @@ import org.maplibre.compose.resource.MapResourceProvider
 import org.maplibre.compose.resource.MapResourceRequest
 
 /**
+ * A map resource scheme a feature serves itself instead of plain HTTP (the weather radar's
+ * `doppler://` recoloured tiles). Core knows only this seam, not what any scheme draws.
+ */
+internal interface MapSchemeHandler {
+    /** The URL prefix this handler answers, e.g. `doppler://`. */
+    val scheme: String
+
+    /** The resource's bytes, or null when there is none; a throw is reported as a connection failure. */
+    suspend fun load(url: String): ByteArray?
+}
+
+/**
  * Serves MapLibre's HTTP(S) requests (styles, tiles, glyphs, sprites) through the
  * app's HTTP client. MapLibre's built-in rustls client rejects OpenFreeMap's
  * responses ("peer closed connection without sending TLS close_notify"), which
- * left every basemap blank; the platform TLS stack accepts them.
+ * left every basemap blank; the platform TLS stack accepts them. Requests for a
+ * [handlers] scheme go to that handler.
  */
-private class KtorMapResources(private val http: HttpClient) : MapResourceProvider {
-    private val radar = radarTileRenderer(http)
+private class KtorMapResources(private val http: HttpClient, private val handlers: List<MapSchemeHandler>) : MapResourceProvider {
+    private fun handlerFor(url: String) = handlers.firstOrNull { url.startsWith(it.scheme) }
 
     override fun accepts(request: MapResourceRequest): Boolean =
-        request.url.startsWith("https://") || request.url.startsWith("http://") || request.url.startsWith(DopplerScheme)
+        request.url.startsWith("https://") || request.url.startsWith("http://") || handlerFor(request.url) != null
 
     override suspend fun load(request: MapResourceLoadRequest): MapResourceLoad =
-        if (request.url.startsWith(DopplerScheme)) loadDoppler(request.url) else loadHttp(request)
+        handlerFor(request.url)?.let { loadScheme(it, request.url) } ?: loadHttp(request)
 
-    /** Radar tiles: RainViewer's, recoloured (and past zoom 7 enlarged) by [RadarTileRenderer], as a PNG. */
-    private suspend fun loadDoppler(url: String): MapResourceLoad = try {
-        val ref = RadarTileRef.parse(dopplerToHttps(url))
-        val px = ref?.let { radar.render(it) }
-        val png = px?.let { withContext(Dispatchers.Default) { encodePng(ArgbImage(RadarTilePixels, RadarTilePixels, it)) } }
-        if (png == null) MapResourceLoad.NoContent() else MapResourceLoad.Bytes(bytes = png)
+    private suspend fun loadScheme(handler: MapSchemeHandler, url: String): MapResourceLoad = try {
+        handler.load(url)?.let { MapResourceLoad.Bytes(bytes = it) } ?: MapResourceLoad.NoContent()
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {
@@ -66,7 +73,7 @@ private class KtorMapResources(private val http: HttpClient) : MapResourceProvid
 private val configured = MutableStateFlow(false)
 
 /** Install once, before the first map composes. */
-fun configureMapNetworking(http: HttpClient) {
+internal fun configureMapNetworking(http: HttpClient, handlers: List<MapSchemeHandler> = emptyList()) {
     if (!configured.compareAndSet(expect = false, update = true)) return
-    DefaultMapRuntime.configure { resourceProvider = KtorMapResources(http) }
+    DefaultMapRuntime.configure { resourceProvider = KtorMapResources(http, handlers) }
 }

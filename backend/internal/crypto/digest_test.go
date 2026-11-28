@@ -48,13 +48,6 @@ func TestDigestIsPerUserAndKeyed(t *testing.T) {
 	require.NotContains(t, a[0], oldStyle("digest-key", "a", "b"),
 		"the unkeyed SHA-256 must not be returned")
 
-	// A stored old key upgrades to exactly what the route returns now.
-	up, changed := UpgradeDigest(digestKey, alice.Id, oldStyle("digest-key", "a", "b"))
-	require.True(t, changed)
-	require.Equal(t, a[0], up)
-	same, changed := UpgradeDigest(digestKey, alice.Id, up)
-	require.False(t, changed)
-	require.Equal(t, up, same)
 }
 
 // TestDigestEscapingKeepsPlainParts: escaping only changes parts that contain

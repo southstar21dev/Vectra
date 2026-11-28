@@ -22,7 +22,7 @@ import kotlin.time.TimeSource
  * A value (the tab bar's selection position) that follows a drag on stiff springs, while the
  * glass it moves swells when pressed and stretches with its velocity, like a droplet.
  */
-class DampedDragAnimation(
+internal class DampedDragAnimation(
     private val animationScope: CoroutineScope,
     initialValue: Float,
     val valueRange: ClosedRange<Float>,

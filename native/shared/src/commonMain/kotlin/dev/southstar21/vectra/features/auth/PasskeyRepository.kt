@@ -22,10 +22,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
-data class Passkey(val id: String, val friendlyName: String?, val createdAt: String, val lastUsedAt: String?)
+internal data class Passkey(val id: String, val friendlyName: String?, val createdAt: String, val lastUsedAt: String?)
 
 /** Passkey listing, registration and removal over the /api/vectra/passkeys routes. */
-class PasskeyRepository(
+internal class PasskeyRepository(
     private val pb: PocketBaseClient,
     private val auth: AuthRepository,
     private val authenticator: PasskeyAuthenticator,
@@ -109,11 +109,11 @@ class PasskeyRepository(
 private fun passkeyErrorMessage(code: String): String =
     when {
         code.contains("Current password is incorrect") -> "Current password is incorrect."
-        code.contains("passkey_disabled") -> "Biometric sign-in is not available yet."
+        code.contains("passkey_disabled") -> "Passkeys are not available yet."
         code.contains("credential_not_found") -> "No passkey found for this account on this device."
         code.contains("too_many_passkeys") -> "Too many passkeys. Remove one in Settings first."
         code.contains("credential_exists") -> "This device already has a passkey for your account."
         code.contains("challenge_expired") || code.contains("verification_failed") -> "Something went wrong. Please try again."
-        code.contains("not_supported") -> "Biometric sign-in is not supported on this device."
-        else -> "Biometric sign-in failed. Please try again."
+        code.contains("not_supported") -> "Passkeys are not supported on this device."
+        else -> "Passkey sign-in failed. Please try again."
     }

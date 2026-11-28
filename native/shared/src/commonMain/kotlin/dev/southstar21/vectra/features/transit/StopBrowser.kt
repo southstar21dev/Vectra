@@ -1,7 +1,6 @@
 package dev.southstar21.vectra.features.transit
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.components.SectionTitle
@@ -23,31 +21,39 @@ import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
+import dev.southstar21.vectra.core.designsystem.theme.tnum
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 import dev.southstar21.vectra.core.time.formatClock
 import dev.southstar21.vectra.core.preferences.TimeFormat
+import dev.southstar21.vectra.features.transit.data.Arrival
+import dev.southstar21.vectra.features.transit.data.CatalogStop
+import dev.southstar21.vectra.features.transit.data.CuratedStops
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.trackers.ClippedFormGroup
+import dev.southstar21.vectra.features.transit.trackers.LineRow
+import dev.southstar21.vectra.features.transit.trackers.ListRow
+import dev.southstar21.vectra.features.transit.trackers.ListStatus
+import dev.southstar21.vectra.features.transit.trackers.MetroFallbackColorsByLine
+import dev.southstar21.vectra.features.transit.trackers.MetroView
+import dev.southstar21.vectra.features.transit.trackers.SheetFootnote
+import dev.southstar21.vectra.features.transit.trackers.SheetListSpinner
+import dev.southstar21.vectra.features.transit.trackers.SheetMutedText
+import dev.southstar21.vectra.features.transit.trackers.SheetRetryButton
+import dev.southstar21.vectra.features.transit.trackers.TrackedChip
+import dev.southstar21.vectra.features.transit.trackers.metroViewLabel
 
 private val QuickPickGroups = listOf(MetroView.M1, MetroView.M2, MetroView.M3, MetroView.M4, MetroView.POPULAR)
 
+/** A quick pick's badge: the metro line as everywhere else, the popular set as a neutral pin. */
 @Composable
-private fun GroupDot(group: MetroView) {
-    val c = Vectra.colors
-    val m = Modifier.size(36.dp)
+private fun GroupBadge(group: MetroView) {
     if (group == MetroView.POPULAR) {
-        Box(
-            m.background(parseHexColor(GroupLineColors.getValue("POPULAR")) ?: Color.Unspecified, CircleShape)
-                .border(1.dp, c.borderPrimary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { VText("🚏", style = vtext(TypeScale.BodyLarge), color = Color(0xFF1A1A1A)) }
+        RouteBadge("", null, null, size = RouteBadgeSize.Sm, icon = RemixIcons.MapPinLine)
         return
     }
     val colors = MetroFallbackColorsByLine.getValue(group.key)
-    Box(
-        m.background(parseHexColor(colors.color) ?: Color.Unspecified, CircleShape).border(1.dp, c.borderPrimary, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        VText(group.key, style = vtext(TypeScale.Body, Weight.Black, mono = true), color = parseHexColor(colors.textColor) ?: Color.White)
-    }
+    RouteBadge(group.key, colors.color, colors.textColor, size = RouteBadgeSize.Sm)
 }
 
 @Composable
@@ -55,7 +61,7 @@ private fun StopPin() = VIcon(RemixIcons.MapPinLine, tint = Vectra.colors.tints.
 
 /** Root of By stop: search results when typing, otherwise the curated groups. */
 @Composable
-fun StopBrowser(
+internal fun StopBrowser(
     searchQuery: String,
     filteredStops: List<CatalogStop>,
     catalogLoaded: Boolean,
@@ -90,12 +96,12 @@ fun StopBrowser(
             rows = QuickPickGroups.map { group ->
                 @Composable {
                     val count = CuratedStops.count { it.group == group.key }
-                    ListRow(
-                        metroViewLabel(group),
+                    LineRow(
+                        badge = { GroupBadge(group) },
+                        title = metroViewLabel(group),
                         onClick = { onOpenGroup(group) },
-                        leading = { GroupDot(group) },
-                        subtitle = "$count stops",
                         navigates = true,
+                        meta = { VText("$count stops", style = vtext(TypeScale.Caption), color = Vectra.colors.textSecondary, maxLines = 1) },
                     )
                 }
             },
@@ -106,7 +112,7 @@ fun StopBrowser(
 
 /** The stops of one curated group (a metro line or the popular set). */
 @Composable
-fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
+internal fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
     ClippedFormGroup(
         rows = CuratedStops.filter { it.group == group.key }.map { stop ->
             @Composable { ListRow(stop.name, onClick = { onSelectStop(stop.id) }, leading = { StopPin() }, navigates = true) }
@@ -115,11 +121,11 @@ fun CuratedStopList(group: MetroView, onSelectStop: (String) -> Unit) {
 }
 
 /** One direction at a stop with its upcoming departures. */
-data class StopDirection(val headSign: String, val times: List<Arrival>)
+internal data class StopDirection(val headSign: String, val times: List<Arrival>)
 
 /** After a stop is picked: the lines serving it, then the direction. */
 @Composable
-fun StopRoutePicker(
+internal fun StopRoutePicker(
     loadingRoutes: Boolean,
     routesError: String?,
     onRetry: () -> Unit,
@@ -158,31 +164,18 @@ fun StopRoutePicker(
                     @Composable {
                         val meta = routeTypeMeta(route.type)
                         val isTracked = existing.any { isRouteMatch(it.routeId, route.id) }
-                        ListRow(
-                            meta.label,
+                        val (from, to) = splitTermini(route.description)
+                        LineRow(
+                            badge = { RouteBadge(route.shortName, route.color, route.textColor) },
+                            title = from.ifEmpty { meta.label },
+                            toLine = to,
                             onClick = { onSelectRoute(route.id) },
                             selected = selectedRouteId == route.id,
-                            leading = { RouteBadge(route.shortName, route.color, route.textColor) },
-                            titleContent = {
+                            meta = {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    VIcon(meta.icon, size = 14.dp, tint = c.textSecondary)
-                                    VText(
-                                        meta.label,
-                                        Modifier.weight(1f, fill = false),
-                                        vtext(TypeScale.Body, Weight.Semibold),
-                                        c.textPrimary,
-                                        maxLines = 1,
-                                    )
+                                    VIcon(meta.icon, size = 12.dp, tint = c.textMuted)
+                                    VText(meta.label, style = vtext(TypeScale.Caption), color = c.textSecondary, maxLines = 1)
                                     if (isTracked) TrackedChip()
-                                }
-                                if (route.description.isNotEmpty()) {
-                                    FormattedRouteTitle(
-                                        route.description,
-                                        Modifier.padding(top = 2.dp),
-                                        style = vtext(TypeScale.Caption),
-                                        color = c.textSecondary,
-                                        iconSize = 10.dp,
-                                    )
                                 }
                             },
                         )
@@ -235,12 +228,14 @@ private fun DepartureChip(t: Arrival, timeFormat: TimeFormat) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (t.isPredicted) LiveSignalIcon(size = 10.dp, tint = c.tints.emerald.text)
-        else VIcon(RemixIcons.TimeLine, size = 10.dp, tint = c.textMuted)
+        // Live in the board's amber, timetable in its grey with a clock.
+        val tone = if (t.isPredicted) Vectra.monitor.live else Vectra.monitor.sched
+        if (t.isPredicted) LiveSignalIcon(size = 10.dp, tint = tone)
+        else VIcon(RemixIcons.TimeLine, size = 10.dp, tint = tone)
         VText(
             formatClock(t.arrivalMs, timeFormat),
-            style = vtext(11.sp to 16.sp, Weight.Semibold).copy(fontFeatureSettings = "tnum"),
-            color = c.textSecondary,
+            style = vtext(11.sp to 16.sp, Weight.Semibold).tnum(),
+            color = tone,
             maxLines = 1,
         )
     }

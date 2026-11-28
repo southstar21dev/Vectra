@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.southstar21.vectra.core.designsystem.components.ButtonSize
@@ -30,12 +29,11 @@ import dev.southstar21.vectra.core.designsystem.components.VButton
 import dev.southstar21.vectra.core.designsystem.components.VIcon
 import dev.southstar21.vectra.core.designsystem.components.VText
 import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
-import dev.southstar21.vectra.core.designsystem.theme.Radius
 import dev.southstar21.vectra.core.designsystem.theme.Tracking
 import dev.southstar21.vectra.core.designsystem.theme.TypeScale
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
 import dev.southstar21.vectra.core.designsystem.theme.Weight
-import dev.southstar21.vectra.core.designsystem.theme.glass
+import dev.southstar21.vectra.core.designsystem.theme.plannerCard
 import dev.southstar21.vectra.core.designsystem.theme.tappable
 import dev.southstar21.vectra.core.designsystem.theme.vtext
 
@@ -44,13 +42,14 @@ import dev.southstar21.vectra.core.designsystem.theme.vtext
  * left out rather than flashing in as missing.
  */
 @Immutable
-class SetupItem(
+internal class SetupItem(
     val icon: ImageVector,
-    val tint: Color,
     val title: String,
     val subtitle: String,
     val done: Boolean?,
     val actionLabel: String,
+    /** False when the same action is a link elsewhere on this page, so it is never the card's one button. */
+    val canBeButton: Boolean = true,
     val action: () -> Unit,
 )
 
@@ -62,13 +61,14 @@ private const val FirstShown = 4
  * turns it on. Items drop off as they're done; [onDismiss] hides the card for good (About brings it back).
  */
 @Composable
-fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = Vectra.colors
     val known = items.filter { it.done != null }
     val missing = known.filter { it.done == false }
     var expanded by remember { mutableStateOf(false) }
     val shown = if (expanded) missing else missing.take(FirstShown)
-    Column(modifier.fillMaxWidth().glass(Radius.Card).animateContentSize()) {
+    val buttonItem = missing.firstOrNull { it.canBeButton }
+    Column(modifier.fillMaxWidth().plannerCard().animateContentSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).padding(top = 2.dp)) {
                 VText("Finish setting up Vectra", style = vtext(TypeScale.BodyLarge, Weight.Extrabold, Tracking.Tight), color = c.textPrimary)
@@ -90,7 +90,7 @@ fun SetupCard(items: List<SetupItem>, onDismiss: () -> Unit, modifier: Modifier 
         SetupProgress(done = known.size - missing.size, total = known.size, Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 6.dp))
         shown.forEachIndexed { i, item ->
             if (i > 0) HairlineDivider(Modifier.padding(start = 52.dp))
-            SetupRow(item, primary = i == 0)
+            SetupRow(item, primary = item === buttonItem)
         }
         if (missing.size > FirstShown) {
             SettingsLink(
@@ -123,11 +123,13 @@ private fun SetupRow(item: SetupItem, primary: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { VIcon(item.icon, size = 18.dp, tint = item.tint) }
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { VIcon(item.icon, size = 18.dp, tint = c.textSecondary) }
         Column(Modifier.weight(1f)) {
             VText(item.title, style = vtext(TypeScale.Body, Weight.Semibold), color = c.textPrimary)
             VText(item.subtitle, Modifier.padding(top = 2.dp), vtext(TypeScale.Caption), c.textSecondary)
         }
-        VButton(item.actionLabel, item.action, variant = if (primary) ButtonVariant.Primary else ButtonVariant.Outline, size = ButtonSize.Sm)
+        // Only the first unfinished step is a button; the rest are links like the Account rows.
+        if (primary) VButton(item.actionLabel, item.action, variant = ButtonVariant.Primary, size = ButtonSize.Sm)
+        else SettingsLink(item.actionLabel, item.action)
     }
 }

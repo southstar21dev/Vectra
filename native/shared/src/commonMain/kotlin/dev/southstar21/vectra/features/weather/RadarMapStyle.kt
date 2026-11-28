@@ -13,14 +13,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
-const val RainViewerAttribution = "© RainViewer"
+internal const val RainViewerAttribution = "© RainViewer"
 
 /**
  * The OpenFreeMap style, sanitized and with the park overlays, as a style document string. Paint
  * changes apply at once (no 300 ms transition): the radar layer switching on after the sweep has
  * to land in one frame, or it doubles up with the sweep's own copy of the rain and flashes.
  */
-suspend fun fetchRadarBaseStyle(http: HttpClient, isLight: Boolean): String {
+internal suspend fun fetchRadarBaseStyle(http: HttpClient, isLight: Boolean): String {
     val res = http.get(openFreeMapStyleUrl(isLight)) { header("Cache-Control", "no-store") }
     if (!res.status.isSuccess()) error("OpenFreeMap style request failed (${res.status.value})")
     val style = VectraJson.parseToJsonElement(prepareOpenFreeMapStyle(res.bodyAsText(), isLight)).jsonObject

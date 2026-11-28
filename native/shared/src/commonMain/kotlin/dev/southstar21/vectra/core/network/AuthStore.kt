@@ -21,7 +21,7 @@ import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 
 /** The signed-in session: PocketBase token + the users auth record. */
-data class AuthState(val token: String, val record: JsonObject) {
+internal data class AuthState(val token: String, val record: JsonObject) {
     val userId: String get() = record.string("id").orEmpty()
     val email: String? get() = record.string("email")
 
@@ -41,7 +41,7 @@ data class AuthState(val token: String, val record: JsonObject) {
  * The session lives in memory as a StateFlow and is persisted (encrypted) so a
  * cold start resumes signed in.
  */
-class AuthStore(private val storage: KeyValueStore, private val cipher: SecretCipher) {
+internal class AuthStore(private val storage: KeyValueStore, private val cipher: SecretCipher) {
     private val _state = MutableStateFlow<AuthState?>(null)
     val state: StateFlow<AuthState?> = _state.asStateFlow()
 

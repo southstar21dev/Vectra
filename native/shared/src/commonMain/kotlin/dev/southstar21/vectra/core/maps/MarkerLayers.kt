@@ -11,13 +11,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import dev.southstar21.vectra.core.designsystem.theme.Palette
-import dev.southstar21.vectra.features.transit.VehicleFrame
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.maplibre.compose.expressions.dsl.asNumber
 import org.maplibre.compose.expressions.dsl.asString
 import org.maplibre.compose.expressions.dsl.const
-import org.maplibre.compose.expressions.dsl.dp
 import org.maplibre.compose.expressions.dsl.eq
 import org.maplibre.compose.expressions.dsl.feature
 import org.maplibre.compose.expressions.dsl.image
@@ -40,7 +38,7 @@ private fun pointJson(lat: Double, lon: Double): String = GeoJson.collection(lis
 /** The blue "you are here" dot: a soft halo and a white-ringed core. */
 @Composable
 @MaplibreComposable
-fun UserLocationLayers(idPrefix: String, location: LatLon, scale: Float = 1f) {
+internal fun UserLocationLayers(idPrefix: String, location: LatLon, scale: Float = 1f) {
     val source = rememberGeoJsonSource(GeoJsonData.JsonString(pointJson(location.lat, location.lon)))
     CircleLayer(id = "$idPrefix-user-halo", source = source, radius = const(10.dp * scale), color = const(Palette.Blue400), opacity = const(0.3f))
     CircleLayer(
@@ -53,7 +51,7 @@ fun UserLocationLayers(idPrefix: String, location: LatLon, scale: Float = 1f) {
 /** The selected stop: a blue beacon with its name above. */
 @Composable
 @MaplibreComposable
-fun SelectedStopLayers(idPrefix: String, location: LatLon, name: String, isLight: Boolean) {
+internal fun SelectedStopLayers(idPrefix: String, location: LatLon, name: String, isLight: Boolean) {
     val json = remember(location, name) {
         GeoJson.collection(listOf(GeoJson.point(location.lat, location.lon, buildJsonObject { put("name", JsonPrimitive(name)) })))
     }
@@ -88,7 +86,7 @@ private class TeardropPainter(private val color: Color) : Painter() {
 /** Live vehicles as teardrops rotated to their heading, one layer per meaning variant. */
 @Composable
 @MaplibreComposable
-fun VehicleLayers(idPrefix: String, frames: List<VehicleFrame>) {
+internal fun VehicleLayers(idPrefix: String, frames: List<VehicleFrame>) {
     val json = GeoJson.collection(
         frames.map { f ->
             GeoJson.point(

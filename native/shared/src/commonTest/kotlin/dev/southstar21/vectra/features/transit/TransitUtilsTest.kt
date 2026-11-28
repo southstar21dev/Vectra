@@ -1,6 +1,22 @@
 package dev.southstar21.vectra.features.transit
 
 import dev.southstar21.vectra.core.network.VectraJson
+import dev.southstar21.vectra.features.transit.data.FutarAlert
+import dev.southstar21.vectra.features.transit.data.FutarAlertRoute
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsData
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsEntry
+import dev.southstar21.vectra.features.transit.data.FutarArrivalsResponse
+import dev.southstar21.vectra.features.transit.data.FutarReferences
+import dev.southstar21.vectra.features.transit.data.FutarRoute
+import dev.southstar21.vectra.features.transit.data.FutarStop
+import dev.southstar21.vectra.features.transit.data.FutarStopTime
+import dev.southstar21.vectra.features.transit.data.FutarTranslations
+import dev.southstar21.vectra.features.transit.data.FutarTripRef
+import dev.southstar21.vectra.features.transit.data.TrackerStop
+import dev.southstar21.vectra.features.transit.data.TransitTracker
+import dev.southstar21.vectra.features.transit.data.TripDetailsKey
+import dev.southstar21.vectra.features.transit.data.tripDetailsKey
+import dev.southstar21.vectra.features.transit.nearby.parseAllNearbyBoards
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -349,11 +365,6 @@ class TransitUtilsTest {
         assertEquals(listOf("s1", "s2", "s3", "s4"), added5.map { it.stopId })
     }
 
-    @Test fun removesStop() = assertEquals(
-        listOf(TrackerStop("s2", "Stop 2", "")),
-        removeTrackerStop(listOf(TrackerStop("s1", "Stop 1", ""), TrackerStop("s2", "Stop 2", "")), "s1"),
-    )
-
     @Test fun stationIdsUnchanged() {
         assertEquals("BKK_CSF01330", normalizeStopIdToStation("BKK_CSF01330"))
         assertEquals("BKK_CS011732", normalizeStopIdToStation("BKK_CS011732"))
@@ -391,34 +402,12 @@ class TransitUtilsTest {
         assertEquals(5, MaxFavoriteTrackers)
     }
 
-    @Test fun countdown() {
-        assertEquals("NOW", formatCountdown(0))
-        assertEquals("NOW", formatCountdown(-3))
-        assertEquals("3 MIN", formatCountdown(3))
-        assertEquals("59 MIN", formatCountdown(59))
-        assertEquals("60 MIN", formatCountdown(60))
-        assertEquals("65 MIN", formatCountdown(65))
-        assertEquals("120 MIN", formatCountdown(120))
-    }
-
     @Test fun primeCountdown() {
         assertEquals("NOW", formatPrimeCountdown(0))
         assertEquals("NOW", formatPrimeCountdown(-4))
         assertEquals("2'", formatPrimeCountdown(2))
         assertEquals("73'", formatPrimeCountdown(73))
         assertEquals("120'", formatPrimeCountdown(120))
-    }
-
-    @Test fun compactCountdown() {
-        assertEquals("NOW", formatCompactCountdown(0))
-        assertEquals("NOW", formatCompactCountdown(-2))
-        assertEquals("2'", formatCompactCountdown(2))
-        assertEquals("59'", formatCompactCountdown(59))
-        assertEquals("60'", formatCompactCountdown(60))
-        assertEquals("78'", formatCompactCountdown(78))
-        assertEquals("99'", formatCompactCountdown(CompactCountdownMaxMinutes))
-        assertNull(formatCompactCountdown(100))
-        assertNull(formatCompactCountdown(180))
     }
 
     @Test fun staleAfterBudget() {

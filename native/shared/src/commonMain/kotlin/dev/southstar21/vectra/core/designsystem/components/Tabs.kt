@@ -66,7 +66,7 @@ import dev.southstar21.vectra.core.designsystem.theme.tappable
  * out as a grid that wraps (PillRadio).
  */
 @Composable
-fun <T> VTabs(
+internal fun <T> VTabs(
     selected: T,
     options: List<T>,
     onSelect: (T) -> Unit,
@@ -99,7 +99,7 @@ fun <T> VTabs(
         modifier
             // One row is 40dp tall (growing with large text); otherwise the triggers fill
             // whatever height the parent allows (a sheet header stretched to the whole sheet).
-            .then(if (rows == 1 && triggerHeight == null) Modifier.heightIn(min = 40.dp).height(IntrinsicSize.Min) else Modifier)
+            .then(if (rows == 1) Modifier.heightIn(min = triggerHeight?.plus(8.dp) ?: 40.dp).height(IntrinsicSize.Min) else Modifier)
             .glass(shape)
             .padding(4.dp),
     ) {
@@ -124,7 +124,13 @@ fun <T> VTabs(
             val ink by animateColorAsState(if (isSelected) Color.White else c.textSecondary, tween(200), label = "tabInk")
             Box(
                 m
-                    .then(if (triggerHeight != null) Modifier.heightIn(min = triggerHeight) else Modifier.fillMaxHeight())
+                    .then(
+                        when {
+                            rows > 1 -> Modifier.heightIn(min = triggerHeight ?: 44.dp)
+                            triggerHeight != null -> Modifier.heightIn(min = triggerHeight)
+                            else -> Modifier.fillMaxHeight()
+                        },
+                    )
                     .onGloballyPositioned { coords -> container.value?.let { bounds[i] = it.localBoundingBoxOf(coords) } }
                     .pressScale(interaction, 0.97f)
                     .tappable(role = Role.Tab, highlight = false, interactionSource = interaction) {
@@ -150,7 +156,7 @@ fun <T> VTabs(
                 options.indices.forEach { trigger(it, Modifier.weight(1f)) }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (r in 0 until rows) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         for (col in 0 until columns) {
@@ -171,7 +177,7 @@ fun <T> VTabs(
 
 /** Plain-text tabs (the common case). */
 @Composable
-fun <T> VTabs(
+internal fun <T> VTabs(
     selected: T,
     options: List<T>,
     onSelect: (T) -> Unit,

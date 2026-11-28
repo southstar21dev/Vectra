@@ -9,6 +9,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
+import dev.southstar21.vectra.core.designsystem.icons.RemixIcons
 import dev.southstar21.vectra.core.designsystem.components.LocalAppPresented
 import dev.southstar21.vectra.core.designsystem.components.LocalOverlayHost
 import dev.southstar21.vectra.core.designsystem.theme.Vectra
@@ -16,6 +18,7 @@ import dev.southstar21.vectra.features.navbar.NavbarActions
 import dev.southstar21.vectra.features.navbar.SystemNavbar
 import dev.southstar21.vectra.features.navbar.SystemNavbarAction
 import dev.southstar21.vectra.features.navbar.SystemNavbarState
+import dev.southstar21.vectra.features.navbar.SystemNavbarTab
 import dev.southstar21.vectra.navigation.ActionRoutes
 import dev.southstar21.vectra.navigation.AppNavigator
 import dev.southstar21.vectra.navigation.PrimaryNavItems
@@ -41,9 +44,10 @@ internal fun SystemNavbarBridge(
     val current = navigator.current
     val config = actions.config
     val state = SystemNavbarState(
+        tabs = PrimaryNavItems.map { SystemNavbarTab(it.label, it.sfSymbol, it.holdable) },
         selectedIndex = PrimaryNavItems.indexOfFirst { it.route == current }.coerceAtLeast(0),
         actions = if (current in ActionRoutes && config != null) {
-            config.actions.map { SystemNavbarAction(it.id, it.label, it.disabled) }
+            config.actions.map { SystemNavbarAction(it.id, it.label, sfSymbolFor(it.icon), it.disabled) }
         } else {
             emptyList()
         },
@@ -70,4 +74,15 @@ internal fun SystemNavbarBridge(
             bar.detach()
         }
     }
+}
+
+/** The SF Symbol for a + action's icon, for the native iOS menu. */
+internal fun sfSymbolFor(icon: ImageVector): String = when (icon) {
+    RemixIcons.Equalizer2Line -> "list.bullet"
+    RemixIcons.MapPinLine -> "map"
+    RemixIcons.AddLine -> "plus"
+    RemixIcons.UploadLine -> "arrow.up.doc"
+    RemixIcons.BriefcaseLine -> "briefcase"
+    RemixIcons.TaskLine -> "checklist"
+    else -> "circle"
 }

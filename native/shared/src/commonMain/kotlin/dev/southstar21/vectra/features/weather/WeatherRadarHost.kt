@@ -1,6 +1,7 @@
 package dev.southstar21.vectra.features.weather
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
@@ -13,12 +14,19 @@ import dev.southstar21.vectra.navigation.AppNavigator
  * from (W2) into the full-screen map, and shrinks back into it on close or back.
  */
 @Composable
-fun WeatherRadarHost(repo: WeatherRepository, navigator: AppNavigator, modifier: Modifier = Modifier) {
+internal fun WeatherRadarHost(repo: WeatherRepository, navigator: AppNavigator, modifier: Modifier = Modifier) {
     val close = { navigator.radar = null }
     val density = LocalDensity.current
     CardGrowOverlay(navigator.radar, close, modifier) { g ->
+        ReleaseRadarTilesOnExit()
         // The orb starts where the card's art was.
         val orbFrom = g.origin?.let { with(density) { Offset(it.right - 44.dp.toPx(), it.top + 36.dp.toPx()) } }
         RadarView(repo, grow = g.grow, opened = g.opened, orbFrom = orbFrom, onClose = close)
     }
+}
+
+/** The radar's raw tile cache (about 24 MB) is only worth keeping while the radar is open. */
+@Composable
+internal fun ReleaseRadarTilesOnExit() {
+    DisposableEffect(Unit) { onDispose { releaseRadarTileCache() } }
 }
