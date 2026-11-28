@@ -7,7 +7,7 @@
 **Your university timetable, Budapest transit and the weather, in one app.**
 
 Classes from Neptun with your breaks worked out, live departures and vehicles around you, and
-attendance you can actually keep track of. Built for students at Corvinus in Budapest.
+attendance you can actually keep track of. Built for university students in Budapest.
 
 [![Release](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/southstar21dev/Vectra/actions/workflows/release.yml)
 [![Native version](https://img.shields.io/github/v/release/southstar21dev/Vectra?sort=semver&label=native&color=8B5CF6)](https://github.com/southstar21dev/Vectra/releases/latest)
@@ -223,7 +223,7 @@ updated AltStore/SideStore sources, plus an ad-hoc-signed IPA unless the release
 > **Vectra is an unofficial, independent student project.**
 >
 > - **No affiliation.** Vectra isn't made, endorsed, sponsored or approved by Campus Codeworks Zrt.
->   (the company behind Neptun), Corvinus University of Budapest or any other university, or
+>   (the company behind Neptun), any university, or
 >   BKK (Budapesti Közlekedési Központ). Neptun, BKK Futár and other product names and logos belong to
 >   their owners and appear here only to say what Vectra works with.
 > - **Your data.** Your Neptun calendar is downloaded through a Google Apps Script relay, and your

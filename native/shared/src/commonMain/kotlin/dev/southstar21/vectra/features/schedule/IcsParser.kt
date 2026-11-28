@@ -11,7 +11,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 /*
- * Neptun Corvinus iCalendar parser and semester categoriser.
+ * Neptun iCalendar parser and semester categoriser.
  * Times come out as Budapest wall clock regardless of the device zone.
  */
 

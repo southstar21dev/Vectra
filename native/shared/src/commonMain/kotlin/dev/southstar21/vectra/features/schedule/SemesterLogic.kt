@@ -19,7 +19,7 @@ internal fun shouldShowSemesterStatus(info: SemesterInfo, selectedSemester: Stri
 
 // ---- Semester tags ------------------------------------------------------------
 
-/** Corvinus semester tag for a year and month (1–12): Aug–Jan → "/1", Feb–Jul → "/2". */
+/** Neptun semester tag for a year and month (1–12): Aug–Jan → "/1", Feb–Jul → "/2". */
 internal fun getSemesterFromYearMonth(year: Int, month: Int): String = when {
     month in 8..12 -> "$year/${(year + 1).toString().takeLast(2)}/1"
     month == 1 -> "${year - 1}/${year.toString().takeLast(2)}/1"

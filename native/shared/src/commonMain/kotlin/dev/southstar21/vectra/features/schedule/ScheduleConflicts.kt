@@ -147,7 +147,7 @@ internal fun mondayOf(date: String): String? {
     return formatDateOrdinal(ordinal - (LocalDate.fromEpochDays(ordinal).dayOfWeek.daysSinceSunday + 6) % 7)
 }
 
-/** The Monday of the week a Corvinus semester nominally starts: 1 September for "/1", 1 February for "/2". */
+/** The Monday of the week a Neptun semester nominally starts: 1 September for "/1", 1 February for "/2". */
 internal fun nominalSemesterStart(semester: String): String? {
     val m = SemesterTag.find(semester.trim()) ?: return null
     val year = m.groupValues[1].toInt()

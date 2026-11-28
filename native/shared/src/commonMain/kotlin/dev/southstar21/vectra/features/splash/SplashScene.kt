@@ -33,7 +33,7 @@ import kotlin.random.Random
 
 /**
  * A faint dotted orb over a dotted Budapest skyline (Gellért Hill + Citadella + Liberty Statue,
- * the Rock Chapel, Liberty Bridge with a tram, Corvinus E building) reflected in the Danube.
+ * the Rock Chapel, Liberty Bridge with a tram, the old Customs House on Fővám tér) reflected in the Danube.
  * Shapes live in fixed scene units (260 wide, waterline at B), are rasterised once and sampled
  * into dots, sparse and sized by depth; the bridge lamps and the chapel's cross glow in the
  * accent. Frames only draw dots, batched. The exit disperses every dot outwards ([DisperseExitMs]).

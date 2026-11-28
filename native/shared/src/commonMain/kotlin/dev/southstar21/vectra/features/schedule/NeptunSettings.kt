@@ -254,7 +254,7 @@ internal fun NeptunSettings(repo: ScheduleRepository, auth: AuthRepository) {
                     VInput(
                         value = urlInput,
                         onValueChange = { urlInput = it },
-                        placeholder = "https://neptun3r.web.uni-corvinus.hu/Hallgatoi/api/Calendar/...",
+                        placeholder = "https://neptun.example.hu/Hallgatoi/api/Calendar/...",
                         textSize = TypeScale.Caption,
                     )
                     VButton(
